@@ -2,12 +2,11 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import profile from '@/routes/profile';
-import { type SharedData, type BreadcrumbItem as BreadcrumbItemType } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: BreadcrumbItemType[] }) {
-    const { auth } = usePage<SharedData>().props;
+export function AppSidebarHeader({ breadcrumbs = [] }) {
+    const { auth } = usePage().props;
     const [now, setNow] = useState(new Date());
 
     useEffect(() => {
@@ -32,7 +31,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
                 <Link href={profile.edit()} prefetch className="flex items-center gap-3">
                     <div className="text-right">
                         <div className="text-white font-semibold leading-tight">{auth.user.name}</div>
-                        <div className="text-neutral-300 text-sm">{(auth.user as any)?.access?.role ?? 'member'}</div>
+                        <div className="text-neutral-300 text-sm">{auth.user?.access?.role ?? 'member'}</div>
                     </div>
                     <Avatar className="h-10 w-10 overflow-hidden rounded-full ring-1 ring-white/10">
                         <AvatarImage src={auth.user.avatar} alt={auth.user.name} />
