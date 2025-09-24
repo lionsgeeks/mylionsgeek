@@ -1,32 +1,50 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
+    { title: 'Members', href: '/members', icon: Users },
     {
         title: 'Dashboard',
         href: "/admin/dashboard",
         icon: LayoutGrid,
     },
+    {
+        title: 'Places',
+        href: '/places',
+        icon: Building2,
+        chevron: true,
+        children: [
+            { title: 'Studios', href: '/places/studios', icon: Building2 },
+            { title: 'Meeting room', href: '/places/meeting-room', icon: Building2 },
+            { title: 'Co-work', href: '/places/co-work', icon: Building2 },
+        ],
+    },
+    { title: 'Reservations', href: '/reservations', icon: Timer, badge: 9 },
+    {
+        title: 'Calendar',
+        href: '/calendar',
+        icon: CalendarDays,
+        chevron: true,
+        children: [
+            { title: 'Studio', href: '/calendar/studio', icon: CalendarDays },
+            { title: 'Meeting Room', href: '/calendar/meeting-room', icon: CalendarDays },
+            { title: 'Co-work', href: '/calendar/co-work', icon: CalendarDays },
+            { title: 'Exterior', href: '/calendar/exterior', icon: CalendarDays },
+        ],
+    },
+    { title: 'Computers', href: '/computers', icon: Monitor },
+    { title: 'Equipment', href: '/equipment', icon: Wrench },
+    { title: 'Training', href: '/training', icon: GraduationCap },
+    { title: 'Attendance', href: '/attendance', icon: ClipboardList },
+    { title: 'Settings', href: '/settings', icon: Settings },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+// Footer links removed per request
 
 export function AppSidebar() {
     return (
@@ -48,7 +66,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
