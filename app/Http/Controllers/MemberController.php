@@ -8,10 +8,12 @@ use Inertia\Inertia;
 
 class MemberController extends Controller
 {
-    public function index(){
-        return Inertia::render('admin/members/partials/index');
-    }
-    public function sendAllMembers(){
+    public function index()
+    {
         $members = User::all();
+        return Inertia::render(
+            'admin/members/index',
+            ['allMembers' => $members,]
+        );
     }
 }
