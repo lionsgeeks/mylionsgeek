@@ -1,12 +1,11 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import { Head } from '@inertiajs/react';
 
 const breadcrumbs = [
     {
         title: 'Dashboard',
-        href: dashboard().url,
+        href: "/admin/dashboard",
     },
 ];
 
