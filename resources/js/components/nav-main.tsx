@@ -55,7 +55,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             )}
                             {hasChildren && (
                                 <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} ml-8 mt-1 border-l border-white/10 pl-2`}>
-                                    {item.children.map((sub) => {
+                                    {item.children?.map((sub) => {
                                         const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
                                         const subActive = page.url.startsWith(subHref);
                                         return (
