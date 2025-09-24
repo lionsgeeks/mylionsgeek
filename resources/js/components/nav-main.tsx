@@ -27,11 +27,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     aria-expanded={isOpen}
                                     onClick={() => toggleOpen(item.title)}
                                 >
-                                    {item.icon && <item.icon className="text-[#ffc801]" />}
+                                    {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
                                     <span>{item.title}</span>
                                     <ChevronDown
                                         data-chevron
-                                        className={`text-[#ffc801] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                        className={`text-[var(--color-alpha)] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                                     />
                                 </SidebarMenuButton>
                             ) : (
@@ -42,10 +42,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     className="[&>[data-chevron]]:ml-auto"
                                 >
                                     <Link href={item.href} prefetch>
-                                        {item.icon && <item.icon className="text-[#ffc801]" />}
+                                        {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
                                         <span>{item.title}</span>
                                         {item.chevron && (
-                                            <ChevronRight data-chevron className="text-[#ffc801] opacity-80" />
+                                            <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />
                                         )}
                                     </Link>
                                 </SidebarMenuButton>
@@ -62,7 +62,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                             <SidebarMenuSubItem key={sub.title}>
                                                 <SidebarMenuSubButton asChild isActive={subActive}>
                                                     <Link href={sub.href} prefetch>
-                                                        {sub.icon && <sub.icon className="text-[#ffc801]" />}
+                                                        {sub.icon && <sub.icon className="text-[var(--color-alpha)]" />}
                                                         <span>{sub.title}</span>
                                                     </Link>
                                                 </SidebarMenuSubButton>
