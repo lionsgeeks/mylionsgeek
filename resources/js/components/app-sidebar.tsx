@@ -24,7 +24,7 @@ const mainNavItems: NavItem[] = [
             { title: 'Co-work', href: '/places/co-work', icon: Building2 },
         ],
     },
-    { title: 'Reservations', href: '/reservations', icon: Timer, badge: 9 },
+    { title: 'Reservations', href: '/reservations', icon: Timer },
     {
         title: 'Calendar',
         href: '/calendar',
