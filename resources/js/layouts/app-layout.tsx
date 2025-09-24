@@ -9,6 +9,8 @@ interface AppLayoutProps {
 
 export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => (
     <AppLayoutTemplate breadcrumbs={breadcrumbs} {...props}>
-        {children}
+        <div className='bg-light shadow-lg dark:bg-dark w-[96%] my-6 mx-auto h-full  rounded-lg '>
+            {children}
+        </div>
     </AppLayoutTemplate>
 );
