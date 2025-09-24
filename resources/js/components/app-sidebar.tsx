@@ -7,12 +7,12 @@ import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, Gra
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
-    { title: 'Members', href: '/members', icon: Users },
     {
         title: 'Dashboard',
         href: "/admin/dashboard",
         icon: LayoutGrid,
     },
+    { title: 'Members', href: '/admin/members', icon: Users },
     {
         title: 'Places',
         href: '/places',
