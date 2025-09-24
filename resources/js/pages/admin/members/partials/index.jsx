@@ -5,10 +5,8 @@ import Header from './Header';
 const Members = () => {
     return (
         <>
-            <AppLayout>
-                <div className='p-15 bg-'>
-                    <Header />
-                </div>
+            <AppLayout className="bg-white p-9">
+              
             </AppLayout>
         </>
     );

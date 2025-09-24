@@ -11,12 +11,14 @@
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-alpha: #212529;
-    --color-yello: #ffc801;
+    --color-alpha: #ffc801;
+    --color-beta: #212529;
     --color-error: #ef4444;
     --color-good: #51b04f;
     --color-dark_gray: #1f2326;
-    --color-light: #b1b2b3;
+    --color-light: #fafafa;
+    --color-dark: #171717;
+
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
