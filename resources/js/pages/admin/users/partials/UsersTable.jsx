@@ -1,19 +1,15 @@
 import { Link } from '@inertiajs/react';
 import { Pencil, Trash, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
 import { useEffect, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useInitials } from '@/hooks/use-initials';
+
 
 const UsersTable = ({ users, filter }) => {
+    const getInitials = useInitials();
     const [currentPage, setCurrentPage] = useState(1);
-    const [filterUsers , setFilterUsers] = useState(users)
+    const [filterUsers, setFilterUsers] = useState(users)
     const itemsPerPage = 10;
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -22,7 +18,7 @@ const UsersTable = ({ users, filter }) => {
     useEffect(() => {
         const filtersUsers = users.filter(user => user.name.toLowerCase().includes(filter.search))
         setFilterUsers(filtersUsers)
-    } , [filter])
+    }, [filter])
 
 
     return (
@@ -43,7 +39,14 @@ const UsersTable = ({ users, filter }) => {
                         <TableRow key={user.id} className='cursor-pointer'>
                             <TableCell className="font-medium">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-[40px] h-[40px] rounded-full bg-white"></div>
+                                    {
+                                        <Avatar className="h-8 w-8 overflow-hidden rounded-full">
+                                            <AvatarImage src={user.image} alt={user.name} />
+                                            <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                {getInitials(user.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    }
                                     <h1>{user.name}</h1>
                                 </div>
                             </TableCell>

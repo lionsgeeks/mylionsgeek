@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthSplitLayout from '@/layouts/auth/auth-split-layout';
+import AuthLayout from '@/layouts/auth-layout';
 // import { register } from '@/routes';
 import { request } from '@/routes/password';
 import { Form, Head } from '@inertiajs/react';
@@ -65,7 +66,7 @@ export default function Login({ status, canResetPassword }) {
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full bg-[var(--color-alpha)] text-black hover:brightness-95 dark:text-black"
+                                className="mt-4 w-full bg-neutral-900 text-white hover:bg-black dark:bg-[var(--color-alpha)] dark:text-black dark:hover:brightness-95"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
@@ -77,7 +78,7 @@ export default function Login({ status, canResetPassword }) {
 
                         {/* <div className="text-center text-sm text-muted-foreground">
                             Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
+                            {/* <TextLink href={register()} tabIndex={5}>
                                 Sign up
                             </TextLink>
                         </div> */}

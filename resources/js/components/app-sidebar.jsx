@@ -8,14 +8,16 @@ import AppLogo from './app-logo';
 const mainNavItems = [
     {
         title: 'Dashboard',
-        href: '/admin/dashboard',
+        href: "/admin/dashboard",
         icon: LayoutGrid,
     },
+
     {
         title: 'Members',
         href: '/admin/users',
-        icon: Users,
+        icon: Users
     },
+
     {
         title: 'Places',
         href: '/places',
@@ -27,11 +29,7 @@ const mainNavItems = [
             { title: 'Co-work', href: '/places/co-work', icon: Building2 },
         ],
     },
-    {
-        title: 'Reservations',
-        href: '/reservations',
-        icon: Timer,
-    },
+    { title: 'Reservations', href: '/reservations', icon: Timer },
     {
         title: 'Calendar',
         href: '/calendar',
@@ -44,33 +42,12 @@ const mainNavItems = [
             { title: 'Exterior', href: '/calendar/exterior', icon: CalendarDays },
         ],
     },
-    {
-        title: 'Computers',
-        href: '/computers',
-        icon: Monitor,
-    },
-    {
-        title: 'Equipment',
-        href: '/equipment',
-        icon: Wrench,
-    },
-    {
-        title: 'Training',
-        href: '/training',
-        icon: GraduationCap,
-    },
-    {
-        title: 'Attendance',
-        href: '/attendance',
-        icon: ClipboardList,
-    },
-    {
-        title: 'Settings',
-        href: '/settings',
-        icon: Settings,
-    },
+    { title: 'Computers', href: '/admin/computers', icon: Monitor },
+    { title: 'Equipment', href: '/equipment', icon: Wrench },
+    { title: 'Training', href: '/training', icon: GraduationCap },
+    { title: 'Attendance', href: '/attendance', icon: ClipboardList },
+    { title: 'Settings', href: '/settings', icon: Settings },
 ];
-
 
 // Footer links removed per request
 
