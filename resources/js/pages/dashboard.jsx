@@ -1,6 +1,12 @@
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
+import React from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+
 
 const breadcrumbs = [
     {
@@ -26,7 +32,16 @@ export default function Dashboard() {
                     </div>
                 </div>
                 <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+                    <FullCalendar
+                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                        initialView="dayGridMonth"
+                        selectable={true}
+                        editable={true} // allows drag/drop
+                        events={[]} // pass Laravel events
+                        eventClick={(info) => alert(`Event: ${info.event.title}`)}
+                        dateClick={(info) => alert(`Clicked date: ${info.dateStr}`)}
+                    />
+
                 </div>
             </div>
         </AppLayout>
