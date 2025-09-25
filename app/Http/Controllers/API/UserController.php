@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Mail\UserInvitedPasswordMail;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+
+class UserController extends Controller
+{
+    //
+
+    public function inviteStudent(Request $request)
+    {
+
+
+        $data =  $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'phone' => ['required', 'max:15'],
+            'image' => ['required'],
+        ]);
+        // Idempotent create-or-skip by email
+        $existing = User::query()->where('email', $data['email'])->first();
+        if ($existing) {
+            return response()->json([
+                'status' => 'exists',
+                'data' => $existing,
+            ]);
+        }
+
+        $plainPassword = Str::random(12);
+
+        $user = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($plainPassword),
+            'phone' => $data['phone'],
+            'image' => $data['image'],
+            'status' => 'Studying',
+            'cin' => null,
+            'formation_id' => null,
+            'remember_token' => null,
+            'email_verified_at' => null,
+        ]);
+
+        // Send the password to the user's email (queued)
+        Mail::to($user->email)->queue(new UserInvitedPasswordMail($user, $plainPassword));
+
+
+        return response()->json([
+            'status' => 'created',
+            'data' => $user,
+        ]);
+    }
+}
