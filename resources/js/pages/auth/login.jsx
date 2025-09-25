@@ -65,7 +65,7 @@ export default function Login({ status, canResetPassword }) {
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full bg-[var(--color-alpha)] text-black hover:brightness-95 dark:text-black"
+                                className="mt-4 w-full bg-neutral-900 text-white hover:bg-black dark:bg-[var(--color-alpha)] dark:text-black dark:hover:brightness-95"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
