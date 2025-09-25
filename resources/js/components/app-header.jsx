@@ -13,6 +13,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Menu, Search, Workflow } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
+import ThemeToggle from './ThemeToggle';
 
 
 
@@ -99,7 +100,11 @@ export function AppHeader({ breadcrumbs = [] }) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
-    
+                <div className="flex items-center gap-4">
+                    <div className="">
+                        {/* component change mode */}
+                        <ThemeToggle />
+                    </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="size-10 rounded-full p-1">
@@ -115,6 +120,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                                 <UserMenuContent user={auth.user} />
                             </DropdownMenuContent>
                         </DropdownMenu>
+                    </div>
                     </div>
                 </div>
             </div>
