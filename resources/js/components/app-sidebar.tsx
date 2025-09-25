@@ -1,18 +1,21 @@
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings } from 'lucide-react';
 import AppLogo from './app-logo';
 
-const mainNavItems: NavItem[] = [
+const mainNavItems = [
     {
         title: 'Dashboard',
-        href: "/admin/dashboard",
+        href: '/admin/dashboard',
         icon: LayoutGrid,
     },
-    { title: 'Members', href: '/admin/members', icon: Users },
+    {
+        title: 'Members',
+        href: '/admin/users',
+        icon: Users,
+    },
     {
         title: 'Places',
         href: '/places',
@@ -24,7 +27,11 @@ const mainNavItems: NavItem[] = [
             { title: 'Co-work', href: '/places/co-work', icon: Building2 },
         ],
     },
-    { title: 'Reservations', href: '/reservations', icon: Timer },
+    {
+        title: 'Reservations',
+        href: '/reservations',
+        icon: Timer,
+    },
     {
         title: 'Calendar',
         href: '/calendar',
@@ -37,12 +44,33 @@ const mainNavItems: NavItem[] = [
             { title: 'Exterior', href: '/calendar/exterior', icon: CalendarDays },
         ],
     },
-    { title: 'Computers', href: '/computers', icon: Monitor },
-    { title: 'Equipment', href: '/equipment', icon: Wrench },
-    { title: 'Training', href: '/training', icon: GraduationCap },
-    { title: 'Attendance', href: '/attendance', icon: ClipboardList },
-    { title: 'Settings', href: '/settings', icon: Settings },
+    {
+        title: 'Computers',
+        href: '/computers',
+        icon: Monitor,
+    },
+    {
+        title: 'Equipment',
+        href: '/equipment',
+        icon: Wrench,
+    },
+    {
+        title: 'Training',
+        href: '/training',
+        icon: GraduationCap,
+    },
+    {
+        title: 'Attendance',
+        href: '/attendance',
+        icon: ClipboardList,
+    },
+    {
+        title: 'Settings',
+        href: '/settings',
+        icon: Settings,
+    },
 ];
+
 
 // Footer links removed per request
 

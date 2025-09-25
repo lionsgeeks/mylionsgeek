@@ -11,16 +11,22 @@ import {
 
 
 
-const FilterPart = () => {
+const FilterPart = ({ filters, setFilters }) => {
+    const handleChange = (field, e) => {
+        setFilters(prev => ({ ...prev, [field]: e }));
+    };
+    
     return (
         <>
-            <div className='grid grid-cols-4 gap-4'>
+            <div className='grid lg:grid-cols-4 grid-cols-1 gap-4'>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4" />
                     <Input
                         type="text"
                         placeholder="Search"
                         className="pl-10"
+                        value={filters.search}
+                        onChange={e => handleChange("search", e.target.value)}
                     />
                 </div>
                 {/* select by training */}
