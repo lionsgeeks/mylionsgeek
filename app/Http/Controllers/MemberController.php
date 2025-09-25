@@ -10,13 +10,11 @@ class MemberController extends Controller
 {
     public function index()
     {
-        $members = User::latest()->paginate(10);
-        $allMembers = User::all();
+        $allUsers = User::orderBy('created_at' , 'desc')->get();
         return Inertia::render(
             'admin/members/index',
             [
-                'paginateMembers' => $members,
-                'allMembers' => $allMembers
+                'users' => $allUsers
             ]
         );
     }
