@@ -20,8 +20,8 @@ const breadcrumbs = [
 ];
 
 export default function Password() {
-    const passwordInput = useRef<HTMLInputElement>(null);
-    const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const passwordInput = useRef(null);
+    const currentPasswordInput = useRef(null);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
