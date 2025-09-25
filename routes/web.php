@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use App\Jobs\CreateInvitedUser;
 
 Route::get('/', function () {
     if (Auth::check()) {
