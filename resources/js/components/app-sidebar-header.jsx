@@ -30,7 +30,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                     <span className="text-sm text-muted-foreground">{dateStr}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="">
+                    <div className="pb-2">
                         {/* component change mode */}
                         <ThemeToggle />
                     </div>

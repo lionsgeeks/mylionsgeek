@@ -34,7 +34,7 @@ export default function ThemeToggle() {
                         variant="ghost" 
                         size="icon" 
                         onClick={toggleTheme}
-                        className="h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors mb-2"
+                        className="h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                     >
                         {theme === 'light' ? (
                             <Moon className="h-6 w-6" />
