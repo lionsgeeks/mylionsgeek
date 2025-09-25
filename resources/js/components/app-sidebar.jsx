@@ -11,7 +11,13 @@ const mainNavItems = [
         href: "/admin/dashboard",
         icon: LayoutGrid,
     },
-    { title: 'Members', href: '/admin/members', icon: Users },
+
+    {
+        title: 'Members',
+        href: '/admin/users',
+        icon: Users
+    },
+
     {
         title: 'Places',
         href: '/places',
