@@ -10,10 +10,14 @@ class MemberController extends Controller
 {
     public function index()
     {
-        $members = User::all();
+        $members = User::latest()->paginate(10);
+        $allMembers = User::all();
         return Inertia::render(
             'admin/members/index',
-            ['allMembers' => $members,]
+            [
+                'paginateMembers' => $members,
+                'allMembers' => $allMembers
+            ]
         );
     }
 }
