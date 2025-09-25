@@ -5,7 +5,7 @@ use Inertia\Inertia;
 use App\Models\Computer;
 use App\Models\User;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','role:admin'])->group(function () {
     Route::get('/admin/computers', function () {
         $computers = Computer::with('user')->get()->map(function ($c) {
             return [
