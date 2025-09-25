@@ -15,7 +15,7 @@ const FilterPart = ({ filters, setFilters }) => {
     const handleChange = (field, e) => {
         setFilters(prev => ({ ...prev, [field]: e }));
     };
-
+    
     return (
         <>
             <div className='grid lg:grid-cols-4 grid-cols-1 gap-4'>

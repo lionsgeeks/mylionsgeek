@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { useEffect, useState } from 'react';
 
-const MembersTable = ({ users, filter }) => {
+const UsersTable = ({ users, filter }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [filterUsers , setFilterUsers] = useState(users)
     const itemsPerPage = 10;
@@ -102,4 +102,4 @@ const MembersTable = ({ users, filter }) => {
     );
 };
 
-export default MembersTable;
+export default UsersTable;

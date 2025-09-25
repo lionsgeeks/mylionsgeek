@@ -3,9 +3,9 @@ import AppLayout from '@/layouts/app-layout';
 import Header from './partials/Header';
 import FilterPart from './partials/FilterPart';
 import { usePage } from '@inertiajs/react';
-import MembersTable from './partials/MembersTable';
+import UsersTable from './partials/UsersTable';
 
-const Members = ({ users }) => {
+const Users = ({ users }) => {
     const [filters, setFilters] = useState({
         search: "",              // "default" means no sorting applied
     });
@@ -16,11 +16,11 @@ const Members = ({ users }) => {
                 <div className='p-10 flex flex-col gap-10'>
                     <Header allmembers={users.length} />
                     <FilterPart filters={filters} setFilters={setFilters} />
-                    <MembersTable users={users} filter={filters} />
+                    <UsersTable users={users} filter={filters} />
                 </div>
             </AppLayout>
         </>
     );
 };
 
-export default Members;
+export default Users;
