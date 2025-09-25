@@ -3,11 +3,11 @@ import { SVGAttributes } from 'react';
 export default function AppLogoIcon({ size, color }) {
     return (
 
-        <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+        <svg className='dark:invert-0 invert' version="1.0" xmlns="http://www.w3.org/2000/svg"
             width={size ? size : "50"} height={size ? size : "50"} viewBox="0 0 301.000000 302.000000"
             preserveAspectRatio="xMidYMid meet">
 
-            <g transform="translate(0.000000,302.000000) scale(0.100000,-0.100000)"
+            <g transform="translate(0.000000,325.000000) scale(0.100000,-0.100000)"
                 fill={color ? color : "#000"} stroke="none">
                 <path d="M705 3008 c-41 -120 -475 -1467 -475 -1474 1 -9 1238 -910 1257 -916
 6 -2 294 203 640 454 l631 458 -84 257 c-46 142 -154 477 -241 745 l-158 488
