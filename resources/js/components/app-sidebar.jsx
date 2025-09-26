@@ -43,7 +43,7 @@ const mainNavItems = [
         ],
     },
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
-    { title: 'Equipment', href: '/equipment', icon: Wrench },
+    { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
     { title: 'Training', href: '/training', icon: GraduationCap },
     { title: 'Attendance', href: '/attendance', icon: ClipboardList },
     { title: 'Settings', href: '/settings', icon: Settings },
