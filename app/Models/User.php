@@ -59,4 +59,8 @@ class User extends Authenticatable
     {
         return $this->hasOne(Access::class);
     }
+    public function formation()
+    {
+        return $this->hasOne(Formation::class);
+    }
 }
