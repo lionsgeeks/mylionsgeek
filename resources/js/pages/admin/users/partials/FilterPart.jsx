@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
+import { Clipboard, Copy, RotateCw, Search } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -8,17 +8,35 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Button } from '@headlessui/react';
 
 
 
-const FilterPart = ({ filters, setFilters }) => {
+const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] }) => {
+    const [copy, setCopy] = useState(true);
+
+    const emailsToCopy = useMemo(() => {
+        return filteredUsers
+            .map(u => u?.email)
+            .filter(Boolean)
+            .join(", ");
+    }, [filteredUsers]);
+
+    const handleCopyEmails = () => {
+        if (!emailsToCopy) return;
+        navigator.clipboard.writeText(emailsToCopy).then(() => {
+            setCopy(false);
+            setTimeout(() => setCopy(true), 1500);
+        });
+    };
+
     const handleChange = (field, e) => {
         setFilters(prev => ({ ...prev, [field]: e }));
     };
-    
+
     return (
         <>
-            <div className='grid lg:grid-cols-4 grid-cols-1 gap-4'>
+            <div className='grid lg:grid-cols-6 grid-cols-1 gap-4'>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4" />
                     <Input
@@ -30,33 +48,68 @@ const FilterPart = ({ filters, setFilters }) => {
                     />
                 </div>
                 {/* select by training */}
-                <Select>
+                <Select
+                    value={filters.training === null ? undefined : String(filters.training)}
+                    onValueChange={e => handleChange('training', Number(e))}
+                >
                     <SelectTrigger>
                         <SelectValue placeholder="Select By Training" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
+                        {trainings.map(training => (
+                            <SelectItem key={training.id} value={training.id.toString()}>
+                                {training.name}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
-                {/* select by select by promo */}
-                <Select>
+                {/* select by select by role */}
+                <Select
+                    value={filters.role || undefined}
+                    onValueChange={e => handleChange('role', e)}
+                >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select By Training" />
+                        <SelectValue placeholder="Select By Role" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
+                        {roles.map((role, index) =>
+                            <SelectItem key={index} value={role}>{role}</SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
                 {/* select by select by date newest to older or reverse */}
-                <Select>
+                <Select
+                    value={filters.date || undefined}
+                    onValueChange={e => handleChange('date', e)}
+                >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select By Training" />
+                        <SelectValue placeholder="Select By Date" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
+                        <SelectItem value="oldest">Oldest To Newest</SelectItem>
+                        <SelectItem value="newest">Newest To Oldest</SelectItem>
                     </SelectContent>
                 </Select>
-
+                <Button className='dark:bg-light cursor-pointer dark:hover:bg-light/80 py-1 px-2 w-fit flex gap-2 items-center dark:text-black bg-dark text-light rounded-lg'
+                    onClick={() =>
+                        setFilters({
+                            search: "",
+                            training: null,
+                            role: "",
+                            date: ""
+                        })
+                    }
+                >
+                    <RotateCw size={15} /> Reset
+                </Button>
+                <Button
+                    onClick={handleCopyEmails}
+                    className="transform rounded-lg bg-[#212529] text-white transition-all duration-300 ease-in-out hover:scale-105 hover:bg-[#fee819] hover:text-[#212529] py-1 px-2 w-fit flex gap-2 items-center"
+                    disabled={!emailsToCopy}
+                >
+                    {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                    {copy ? 'Copy Emails' : 'Copied!'}
+                </Button>
             </div>
         </>
     );
