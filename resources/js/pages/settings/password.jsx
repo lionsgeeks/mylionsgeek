@@ -59,7 +59,7 @@ export default function Password() {
                                         ref={currentPasswordInput}
                                         name="current_password"
                                         type="password"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                                         autoComplete="current-password"
                                         placeholder="Current password"
                                     />
@@ -75,7 +75,7 @@ export default function Password() {
                                         ref={passwordInput}
                                         name="password"
                                         type="password"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                                         autoComplete="new-password"
                                         placeholder="New password"
                                     />
@@ -90,7 +90,7 @@ export default function Password() {
                                         id="password_confirmation"
                                         name="password_confirmation"
                                         type="password"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                                         autoComplete="new-password"
                                         placeholder="Confirm password"
                                     />
@@ -99,7 +99,7 @@ export default function Password() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-password-button">Save password</Button>
+                                    <Button disabled={processing} data-test="update-password-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save password</Button>
 
                                     <Transition
                                         show={recentlySuccessful}

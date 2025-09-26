@@ -22,13 +22,14 @@ export default function DeleteUser() {
 
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button variant="destructive" data-test="delete-user-button">Delete account</Button>
+                        <Button variant="destructive" data-test="delete-user-button" className='cursor-pointer'>Delete account</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
                         <DialogDescription>
-                            Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your password
-                            to confirm you would like to permanently delete your account.
+                            Once your account is deactivated, you will lose access to all resources. 
+                            Your data will be preserved but your account will be disabled. 
+                            Please enter your password to confirm deactivation.
                         </DialogDescription>
 
                         <Form
@@ -61,13 +62,13 @@ export default function DeleteUser() {
 
                                     <DialogFooter className="gap-2">
                                         <DialogClose asChild>
-                                            <Button variant="secondary" onClick={() => resetAndClearErrors()}>
+                                            <Button variant="secondary" onClick={() => resetAndClearErrors()} className='cursor-pointer'>
                                                 Cancel
                                             </Button>
                                         </DialogClose>
 
                                         <Button variant="destructive" disabled={processing} asChild>
-                                            <button type="submit" data-test="confirm-delete-user-button">Delete account</button>
+                                            <button type="submit" data-test="confirm-delete-user-button" className='cursor-pointer'>Delete account</button>
                                         </Button>
                                     </DialogFooter>
                                 </>
