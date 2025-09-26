@@ -26,10 +26,11 @@ class User extends Authenticatable
         'status',
         'formation_id',
         'email_verified_at',
-        'account_state',
         // 'remember_token',
-        // 'created_at',
-        // 'updated_at',
+        'created_at',
+        'updated_at',
+        'wakatime_api_key',
+  'account_state',
     ];
 
     /**
