@@ -12,7 +12,7 @@ class UsersController extends Controller
 {
     public function index()
     {
-        $allUsers = User::orderBy('created_at', 'desc')->get();
+        $allUsers = User::where('account_state', 0)->orderBy('created_at', 'desc')->get();
         $allFormation = Formation::orderBy('created_at', 'desc')->get();
 
         return Inertia::render(
@@ -38,8 +38,9 @@ class UsersController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return redirect()->route('admin.users')->with('success', 'User deleted successfully');
+        $user->account_state = 1;
+        $user->save();
+        return redirect()->route('admin.users')->with('success', 'User deactivated successfully');
     }
 
     public function update(Request $request, User $user)

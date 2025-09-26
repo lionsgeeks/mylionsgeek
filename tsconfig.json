@@ -113,6 +113,6 @@
         },
         "jsx": "react-jsx"
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.tsx", "resources/js/pages/welcome.jsx", "resources/js/pages/dashboard.jsx", "resources/js/pages/settings/profile.jsx", "resources/js/pages/settings/password.jsx", "resources/js/pages/settings/appearance.jsx", "resources/js/pages/auth/login.jsx", "resources/js/pages/auth/register.jsx", "resources/js/pages/auth/reset-password.jsx", "resources/js/pages/auth/forgot-password.jsx", "resources/js/components/app-sidebar-header.jsx", "resources/js/components/app-header.jsx", "resources/js/components/app-sidebar.jsx", "resources/js/components/app-logo-icon.jsx"]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.d.ts", "resources/js/**/*.tsx", "resources/js/pages/welcome.jsx", "resources/js/pages/dashboard.jsx", "resources/js/pages/settings/profile.jsx", "resources/js/pages/settings/password.jsx", "resources/js/pages/settings/appearance.jsx", "resources/js/pages/auth/login.jsx", "resources/js/pages/auth/register.jsx", "resources/js/pages/auth/reset-password.jsx", "resources/js/pages/auth/forgot-password.jsx", "resources/js/components/app-sidebar-header.jsx", "resources/js/components/app-header.jsx", "resources/js/components/app-sidebar.jsx", "resources/js/components/app-logo-icon.jsx", "resources/js/components/delete-user.tsx"]
 
 }

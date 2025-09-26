@@ -45,7 +45,7 @@ export default function Profile({ mustVerifyEmail, status }) {
 
                                     <Input
                                         id="name"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                                         defaultValue={auth.user.name}
                                         name="name"
                                         required
@@ -62,7 +62,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                     <Input
                                         id="email"
                                         type="email"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                                         defaultValue={auth.user.email}
                                         name="email"
                                         required
@@ -95,7 +95,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 )}
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-profile-button">Save</Button>
+                                    <Button disabled={processing} data-test="update-profile-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save</Button>
 
                                     <Transition
                                         show={recentlySuccessful}

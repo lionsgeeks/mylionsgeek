@@ -25,10 +25,11 @@ class User extends Authenticatable
         'cin',
         'status',
         'formation_id',
-        'remember_token',
         'email_verified_at',
-        'created_at',
-        'updated_at',
+        'account_state',
+        // 'remember_token',
+        // 'created_at',
+        // 'updated_at',
     ];
 
     /**
@@ -62,5 +63,9 @@ class User extends Authenticatable
     public function formation()
     {
         return $this->hasOne(Formation::class);
+    }
+    public function scopeActive($query)
+    {
+        return $query->where('account_state', 0);
     }
 }

@@ -30,20 +30,20 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const currentPath = window.location.pathname;
 
     return (
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-10">
             <Heading title="Settings" description="Manage your profile and account settings" />
 
-            <div className="flex flex-col lg:flex-row lg:space-x-12">
+            <div className=" flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
                 <aside className="w-full max-w-xl lg:w-48">
-                    <nav className="flex flex-col space-y-1 space-x-0">
+                    <nav className="flex gap-5">
                         {sidebarNavItems.map((item, index) => (
                             <Button
                                 key={`${typeof item.href === 'string' ? item.href : item.href.url}-${index}`}
                                 size="sm"
                                 variant="ghost"
                                 asChild
-                                className={cn('w-full justify-start', {
-                                    'bg-muted': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
+                                className={cn('w-fit justify-center px-12 py-5 rounded-full dark:bg-[#FAFAFA] dark:text-[#171717] hover:text-[#FAFAFA] bg-[#171717] text-[#FAFAFA] hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA] transition-all', {
+                                    'dark:bg-[#FFC801] dark:text-[#FAFAFA] bg-[#FFC801] ': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
                                 })}
                             >
                                 <Link href={item.href} prefetch>
@@ -54,8 +54,6 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         ))}
                     </nav>
                 </aside>
-
-                <Separator className="my-6 lg:hidden" />
 
                 <div className="flex-1 md:max-w-2xl">
                     <section className="max-w-xl space-y-12">{children}</section>
