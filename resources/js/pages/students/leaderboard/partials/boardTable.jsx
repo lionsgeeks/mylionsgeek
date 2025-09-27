@@ -1,9 +1,13 @@
 import { Activity, Award, Calendar, Clock, Code, Laptop, Medal, Monitor, RefreshCw, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import React from 'react';
 import { TableRowSkeleton } from '@/components/LoadingSkeleton';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useInitials } from "@/hooks/use-initials";
 
 
-const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetchLeaderboardData, showSidePanel , getRankIcon , highlightText , selectedUser , formatTime, userInsights , loadingInsights , closeSidePanel , getRankBadge  , handleUserClick  , getRankColor}) => {
+const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetchLeaderboardData, showSidePanel, getRankIcon, highlightText, selectedUser, formatTime, userInsights, loadingInsights, closeSidePanel, getRankBadge, handleUserClick, getRankColor }) => {
+    const getInitials = useInitials();
+
     return (
         <>
             {/* Enhanced Leaderboard Table */}
@@ -57,9 +61,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
 
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-alpha rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                                                        {user.user?.name?.charAt(0).toUpperCase() || '?'}
-                                                    </div>
+                                                    <Avatar className="h-14 w-14 overflow-hidden rounded-full">
+                                                        <AvatarImage
+                                                            src={user?.user?.image}
+                                                            alt={user?.user?.name}
+                                                        />
+                                                        <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                            {getInitials(user?.user?.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
                                                     <div>
                                                         <div
                                                             className="font-semibold text-dark dark:text-light text-lg"

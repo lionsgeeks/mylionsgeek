@@ -65,7 +65,7 @@ class LeaderboardController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'avatar' => $user->avatar ?? null,
+                        'image' => $user->image ?? null,
                         'promo' => $user->promo ?? null,
                         'created_at' => $user->created_at,
                     ];
@@ -87,7 +87,7 @@ class LeaderboardController extends Controller
                             'id' => $user->id,
                             'name' => $user->name,
                             'email' => $user->email,
-                            'avatar' => $user->avatar ?? null,
+                            'image' => $user->image ?? null,
                             'promo' => $user->promo ?? null,
                             'created_at' => $user->created_at,
                         ],
