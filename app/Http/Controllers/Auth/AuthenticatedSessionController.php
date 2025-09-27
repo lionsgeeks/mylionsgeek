@@ -29,24 +29,34 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request)
     {
 
-        $user = User::active()->where('email', $request->email)->first();
-    
-        if (!$user) {
-            throw ValidationException::withMessages([
-                'email' => 'This account has been deactivated.',
-            ]);
+        // $user = User::active()->where('email', $request->email)->first();
+
+        // if (!$user) {
+        //     throw ValidationException::withMessages([
+        //         'email' => 'This account has been deactivated.',
+        //     ]);
+        // }
+
+        $request->authenticate();
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || $user->account_state) {
+            // If account is deleted or suspended, return an error message
+            return response()->json([
+                'errors' => [
+                    'email' => 'Your account has been deleted. Please contact administration.'
+                ]
+            ], 403);
         }
 
         $request->authenticate();
-
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
-
     /**
      * Destroy an authenticated session.
      */

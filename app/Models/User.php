@@ -21,16 +21,21 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'phone',
         'cin',
         'status',
         'formation_id',
+        'account_state',
+        'image',
+        'access_cowork',
+        'access_studio',
+        'remember_token',
         'email_verified_at',
         // 'remember_token',
         'created_at',
         'updated_at',
         'wakatime_api_key',
-  'account_state',
     ];
 
     /**
@@ -56,7 +61,7 @@ class User extends Authenticatable
         ];
     }
 
-    
+
     public function access(): HasOne
     {
         return $this->hasOne(Access::class);

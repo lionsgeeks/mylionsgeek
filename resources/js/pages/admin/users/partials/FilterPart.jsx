@@ -12,9 +12,10 @@ import { Button } from '@headlessui/react';
 
 
 
-const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] }) => {
+const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [], status }) => {
     const [copy, setCopy] = useState(true);
 
+    // ! email copy
     const emailsToCopy = useMemo(() => {
         return filteredUsers
             .map(u => u?.email)
@@ -22,6 +23,7 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] 
             .join(", ");
     }, [filteredUsers]);
 
+    //! copy email 
     const handleCopyEmails = () => {
         if (!emailsToCopy) return;
         navigator.clipboard.writeText(emailsToCopy).then(() => {
@@ -30,6 +32,7 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] 
         });
     };
 
+    //! handel change selects and saerch
     const handleChange = (field, e) => {
         setFilters(prev => ({ ...prev, [field]: e }));
     };
@@ -79,15 +82,16 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] 
                 </Select>
                 {/* select by select by date newest to older or reverse */}
                 <Select
-                    value={filters.date || undefined}
-                    onValueChange={e => handleChange('date', e)}
+                    value={filters.status || undefined}
+                    onValueChange={e => handleChange('status', e)}
                 >
                     <SelectTrigger>
-                        <SelectValue placeholder="Select By Date" />
+                        <SelectValue placeholder="Select By Status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="oldest">Oldest To Newest</SelectItem>
-                        <SelectItem value="newest">Newest To Oldest</SelectItem>
+                        {status.map((s, index) =>
+                            <SelectItem key={index} value={s}>{s}</SelectItem>
+                        )}
                     </SelectContent>
                 </Select>
                 <Button className='dark:bg-light cursor-pointer dark:hover:bg-light/80 py-1 px-2 w-fit flex gap-2 items-center dark:text-black bg-dark text-light rounded-lg'
@@ -96,6 +100,7 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [] 
                             search: "",
                             training: null,
                             role: "",
+                            status:'',
                             date: ""
                         })
                     }
