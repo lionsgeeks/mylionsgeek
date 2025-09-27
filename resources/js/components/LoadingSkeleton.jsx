@@ -23,12 +23,7 @@ export const TableRowSkeleton = () => (
     <td className="px-6 py-4">
       <div className="w-16 h-6 skeleton rounded-full"></div>
     </td>
-    <td className="px-6 py-4">
-      <div className="flex items-center gap-2">
-        <div className="w-16 h-2 skeleton rounded-full"></div>
-        <div className="w-8 h-4 skeleton rounded"></div>
-      </div>
-    </td>
+
     <td className="px-6 py-4">
       <div className="w-20 h-6 skeleton rounded-full"></div>
     </td>
@@ -38,50 +33,20 @@ export const TableRowSkeleton = () => (
   </tr>
 );
 
-export const PodiumSkeleton = () => (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-    {[1, 2, 3].map((index) => (
-      <div 
-        key={index}
-        className="relative p-6 rounded-xl shadow-lg animate-pulse podium-card"
-      >
-        <div className="absolute top-4 right-4">
-          <div className="w-8 h-8 skeleton rounded"></div>
-        </div>
-        
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 skeleton rounded"></div>
-          <div className="w-20 h-6 skeleton rounded"></div>
-        </div>
-        
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 skeleton rounded-full"></div>
-          <div className="space-y-2">
-            <div className="w-24 h-4 skeleton rounded"></div>
-            <div className="w-16 h-3 skeleton rounded"></div>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex justify-between items-center">
-              <div className="w-16 h-3 skeleton rounded"></div>
-              <div className="w-12 h-4 skeleton rounded"></div>
-            </div>
-          ))}
-        </div>
-        
-        <div className="mt-4">
-          <div className="flex justify-between items-center mb-1">
-            <div className="w-16 h-3 skeleton rounded"></div>
-            <div className="w-8 h-4 skeleton rounded"></div>
-          </div>
-          <div className="w-full skeleton rounded-full h-2"></div>
-        </div>
-      </div>
+
+export const PodiumSkeleton = () => {
+  // Podium order: 2nd (left), 1st (middle, tallest), 3rd (right) 
+  const podiumHeights = { 1: "h-[220px]", 2: "h-[180px]", 3: "h-[140px]", };
+  return (
+    <div className="flex justify-center items-end gap-6 max-w-5xl mx-auto animate-pulse"> {[2, 1, 3].map((rank, idx) => (<div key={idx} className="flex flex-col items-center cursor-default" >
+      {/* Avatar placeholder */}
+      <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 mb-3" /> {/* Name placeholder */}
+      <div className="w-24 h-4 rounded bg-gray-300 dark:bg-gray-700 mb-2" /> {/* Podium block */}
+      <div className={`w-28 ${podiumHeights[rank]} bg-gray-200 dark:bg-gray-600 rounded-t-lg`} /> </div>
     ))}
-  </div>
-);
+    </div>);
+}
+
 
 export const LoadingSpinner = ({ size = 'md', className = '' }) => {
   const sizeClasses = {
