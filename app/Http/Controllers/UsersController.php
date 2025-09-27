@@ -45,13 +45,16 @@ class UsersController extends Controller
 
     public function update(Request $request, User $user)
     {
+
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'role' => ['nullable', 'string', 'max:100'],
-            'status' => ['nullable', 'string', 'max:100'],
-            'formation_id' => ['nullable', 'integer', 'exists:formations,id'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'role' => 'nullable|string|max:100',
+            'status' => 'nullable|string|max:100',
+            'formation_id' => 'nullable|integer|exists:formations,id',
+            'phone' => 'nullable|string|max:15',
+            'cin' => 'nullable|string|max:100',
+            'image' => 'nullable|image|max:2048',
         ]);
 
         if ($request->hasFile('image')) {
@@ -62,5 +65,18 @@ class UsersController extends Controller
         $user->update($validated);
 
         return redirect()->back()->with('success', 'User updated successfully');
+    }
+    public function updateAccountStatus(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'account_state' => 'required|integer|in:0,1'
+        ]);
+
+        $user->update([
+            'account_state' => $validated['account_state'],
+        ]);
+        // dd($user->account_state , $request->account_state);
+
+        return redirect()->back()->with('success', 'User account status updated successfully');
     }
 }

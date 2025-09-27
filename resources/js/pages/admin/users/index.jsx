@@ -9,6 +9,7 @@ const Users = ({ users, trainings }) => {
         search: "",
         training: null,
         role: "",
+        status: "",
         date: ""
     });
     const allRoles = [...new Set(users.map((user) => user.role))]
@@ -18,6 +19,7 @@ const Users = ({ users, trainings }) => {
             .filter(user => user.name?.toLowerCase().includes(filters.search.toLowerCase()))
             .filter(user => filters.training === null ? true : user.formation_id === filters.training)
             .filter(user => (user.role || "").toLowerCase().includes(filters.role.toLowerCase()))
+            .filter(user => (user.status || "").toLowerCase().includes(filters.status.toLowerCase()))
             .sort((a, b) => {
                 if (filters.date === "oldest") {
                     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -26,6 +28,9 @@ const Users = ({ users, trainings }) => {
             });
         return list;
     }, [users, filters]);
+    const allStatus = [...new Set(users.map((user)=>user.status))]
+    // console.log(status);
+    
     return (
         <AppLayout>
             <div className="p-10 flex flex-col gap-10">
@@ -34,10 +39,11 @@ const Users = ({ users, trainings }) => {
                     filters={filters}
                     setFilters={setFilters}
                     trainings={trainings}
+                    status={allStatus}
                     roles={allRoles}
                     filteredUsers={filteredUsers}
                 />
-                <UsersTable users={filteredUsers} filters={filters} roles={allRoles} trainings={trainings} />
+                <UsersTable users={filteredUsers} filters={filters} roles={allRoles} trainings={trainings} status={allStatus} />
 
             </div>
         </AppLayout>

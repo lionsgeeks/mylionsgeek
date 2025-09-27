@@ -1,5 +1,4 @@
 import { NavMain } from '@/components/nav-main';
-import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link } from '@inertiajs/react';
 import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings } from 'lucide-react';
@@ -71,7 +70,7 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavUser />
+                {/* <NavUser /> */}
             </SidebarFooter>
         </Sidebar>
     );
