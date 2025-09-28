@@ -47,7 +47,7 @@ export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [allLeaderboardData, setAllLeaderboardData] = useState([]); // Store all data for client-side filtering
   const [topWinners, setTopWinners] = useState([]);
-  const [filter, setFilter] = useState("alltime");
+  const [filter, setFilter] = useState("this_week");
   const [searchText, setSearchText] = useState("");
   const [selectedPromo, setSelectedPromo] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -73,8 +73,12 @@ export default function Leaderboard() {
         insights: 'true'
       });
 
+      
       const res = await fetch(`/leaderboard/data?${params}`);
       const data = await res.json();
+
+      console.log(data);
+      
 
       // Store all data for client-side filtering
       setAllLeaderboardData(data.data || []);
@@ -173,7 +177,6 @@ export default function Leaderboard() {
     }
   };
 
-  console.log(topWinners);
 
 
   const getRankBadge = (timeInSeconds) => {

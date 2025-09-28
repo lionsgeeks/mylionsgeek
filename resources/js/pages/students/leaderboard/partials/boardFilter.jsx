@@ -18,9 +18,10 @@ const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos,
                                 className="pl-10 pr-8 py-3 rounded-xl border border-alpha/20 dark:border-alpha/30 bg-white dark:bg-dark_gray text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-transparent transition-all duration-200 shadow-sm"
                             >
                                 <option value="alltime">All Time</option>
+                                <option value="this_week">This week</option>
                                 <option value="month">This Month</option>
-                                <option value="week">This Week</option>
-                                <option value="daily">Today</option>
+                                <option value="week">Last 7 Days</option>
+                                {/* <option value="daily">Today</option> */}
                             </select>
                         </div>
 

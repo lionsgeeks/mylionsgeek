@@ -22,8 +22,8 @@ class LeaderboardController extends Controller
      */
     private function sanitizeRange($range)
     {
-        $allowedRanges = ['alltime', 'week', 'month', 'daily'];
-        return in_array($range, $allowedRanges) ? $range : 'alltime';
+        $allowedRanges = ['alltime', 'week', 'month', 'this_week'];
+        return in_array($range, $allowedRanges) ? $range : 'this_week';
     }
 
     /**
@@ -37,7 +37,7 @@ class LeaderboardController extends Controller
 
         // Handle array input
         if (is_array($promo)) {
-            return array_filter($promo, function($p) {
+            return array_filter($promo, function ($p) {
                 return is_string($p) && !empty(trim($p));
             });
         }
@@ -62,7 +62,7 @@ class LeaderboardController extends Controller
         // Remove potentially dangerous characters and limit length
         $search = trim($search);
         $search = preg_replace('/[<>"\']/', '', $search);
-        
+
         return strlen($search) > 100 ? substr($search, 0, 100) : $search;
     }
 
@@ -83,7 +83,8 @@ class LeaderboardController extends Controller
     public function getData(Request $request)
     {
         // Sanitize and validate inputs
-        $range = $this->sanitizeRange($request->query('range', 'alltime'));
+        // return response()->json("j");
+        $range = $this->sanitizeRange($request->query('range', 'this_week'));
         $promo = $this->sanitizePromo($request->query('promo', 'all'));
         $includeInsights = filter_var($request->query('insights', false), FILTER_VALIDATE_BOOLEAN);
 
@@ -95,23 +96,25 @@ class LeaderboardController extends Controller
             return $this->fetchLeaderboardData($range, $promo, $includeInsights);
         });
     }
-
     private function fetchLeaderboardData($range, $promo, $includeInsights)
     {
         // Map frontend value to WakaTime endpoint
         $map = [
             'alltime' => 'stats/all_time',
-            'week' => 'stats/last_7_days',
-            'month' => 'stats/last_30_days',
-            'daily' => 'stats/last_7_days', // We'll filter daily from weekly data
+            'week'    => 'stats/last_7_days',
+            'month'   => 'stats/last_30_days',
         ];
 
-        $endpoint = $map[$range] ?? 'stats/all_time';
+        // Special case for "this_week"
+        $isThisWeek = $range === 'this_week';
+
+        if (!$isThisWeek) {
+            $endpoint = $map[$range] ?? 'stats/all_time';
+        }
 
         // Get users with Wakatime API keys
         $query = User::whereNotNull('wakatime_api_key');
-        
-        // Handle multiple promos (array) or single promo
+
         if ($promo !== 'all') {
             if (is_array($promo)) {
                 $query->whereIn('promo', $promo);
@@ -126,7 +129,6 @@ class LeaderboardController extends Controller
         $errorCount = 0;
         $failedUsers = [];
 
-        // Get existing cached data to preserve valid data for failed fetches
         $existingData = $this->getExistingCachedData($range, $promo);
 
         foreach ($users as $user) {
@@ -135,14 +137,43 @@ class LeaderboardController extends Controller
             $errorMessage = '';
 
             try {
-                $response = Http::timeout(15)->withHeaders([
-                    'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
-                ])->get("https://wakatime.com/api/v1/users/current/{$endpoint}");
+                if ($isThisWeek) {
+                    // Define the date range dynamically
+                    $startDate = now()->startOfWeek()->toDateString(); // e.g. 2025-09-21
+                    $endDate   = now()->endOfWeek()->toDateString();   // e.g. 2025-09-28
+
+                    $response = Http::timeout(15)->withHeaders([
+                        'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
+                    ])->get('https://wakatime.com/api/v1/users/current/summaries', [
+                        'start' => $startDate,
+                        'end'   => $endDate,
+                    ]);
+                } else {
+                    // Default endpoints
+                    $response = Http::timeout(15)->withHeaders([
+                        'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
+                    ])->get("https://wakatime.com/api/v1/users/current/{$endpoint}");
+                }
 
                 if ($response->successful()) {
                     $data = $response->json();
-                    
-                    // Add user information to the response
+
+                    if ($isThisWeek) {
+                        // Summaries API returns an array of days, so sum them up
+                        $totalSeconds = collect($data['data'] ?? [])
+                            ->sum(fn($day) => $day['grand_total']['total_seconds'] ?? 0);
+
+                        $data = [
+                            'data' => [
+                                'total_seconds' => $totalSeconds,
+                                'daily_average' => count($data['data'] ?? []) > 0
+                                    ? round($totalSeconds / count($data['data']), 0)
+                                    : 0,
+                            ],
+                        ];
+                    }
+
+                    // Attach user info
                     $data['user'] = [
                         'id' => $user->id,
                         'name' => $user->name,
@@ -152,38 +183,32 @@ class LeaderboardController extends Controller
                         'created_at' => $user->created_at,
                     ];
 
-                    // Calculate additional metrics
+                    // Metrics
                     $data['metrics'] = $this->calculateMetrics($data, $range);
                     $data['success'] = true;
-                    
-                    // Fetch additional insights if requested
+
                     if ($includeInsights) {
                         $data['insights'] = $this->fetchUserInsights($user, $range);
                     }
-                    
+
                     $userData = $data;
                     $fetchSuccess = true;
                     $successCount++;
                 } else {
                     $errorMessage = 'Failed to fetch WakaTime data';
-                    $fetchSuccess = false;
                 }
             } catch (\Exception $e) {
                 $errorMessage = 'API request failed: ' . $e->getMessage();
-                $fetchSuccess = false;
             }
 
-            // If fetch failed, try to use existing cached data
             if (!$fetchSuccess) {
                 $existingUserData = $this->findUserInExistingData($existingData, $user->id);
-                
+
                 if ($existingUserData && $existingUserData['success']) {
-                    // Use existing valid data
                     $userData = $existingUserData;
-                    $userData['cached'] = true; // Mark as cached data
+                    $userData['cached'] = true;
                     $userData['last_fetch_error'] = $errorMessage;
                 } else {
-                    // No existing data, create error entry
                     $userData = [
                         'user' => [
                             'id' => $user->id,
@@ -208,7 +233,7 @@ class LeaderboardController extends Controller
                             'languages_count' => 0,
                             'top_language' => 'Unknown',
                             'rank' => 999,
-                        ]
+                        ],
                     ];
                 }
                 $errorCount++;
@@ -216,7 +241,7 @@ class LeaderboardController extends Controller
                     'user_id' => $user->id,
                     'user_name' => $user->name,
                     'error' => $errorMessage,
-                    'timestamp' => now()->toISOString()
+                    'timestamp' => now()->toISOString(),
                 ];
             }
 
@@ -225,29 +250,16 @@ class LeaderboardController extends Controller
             }
         }
 
-        // Log failed users for monitoring
-        if (!empty($failedUsers)) {
-            Log::info('Leaderboard API fetch failures', [
-                'range' => $range,
-                'promo' => $promo,
-                'failed_users' => $failedUsers,
-                'total_failed' => count($failedUsers)
-            ]);
-        }
+        // Sort by total_seconds
+        usort(
+            $results,
+            fn($a, $b) => ($b['data']['total_seconds'] ?? 0) - ($a['data']['total_seconds'] ?? 0)
+        );
 
-        // Sort by total seconds and add ranking
-        usort($results, function($a, $b) {
-            $aSeconds = $a['data']['total_seconds'] ?? 0;
-            $bSeconds = $b['data']['total_seconds'] ?? 0;
-            return $bSeconds - $aSeconds;
-        });
-
-        // Add ranking
         foreach ($results as $index => &$result) {
             $result['metrics']['rank'] = $index + 1;
         }
 
-        // Calculate overall stats
         $totalHours = array_sum(array_column($results, 'metrics.total_hours'));
         $averageHours = count($results) > 0 ? round($totalHours / count($results), 1) : 0;
 
@@ -269,15 +281,16 @@ class LeaderboardController extends Controller
         ]);
     }
 
+
     private function calculateMetrics($data, $range)
     {
         $totalSeconds = $data['data']['total_seconds'] ?? 0;
         $dailyAverage = $data['data']['daily_average'] ?? 0;
-        
+
         // Calculate win rate based on consistency
         $days = $this->getDaysForRange($range);
         $winRate = $days > 0 ? min(100, ($dailyAverage / 3600) * 10) : 0; // Simplified win rate calculation
-        
+
         return [
             'total_seconds' => $totalSeconds,
             'daily_average' => $dailyAverage,
@@ -290,7 +303,7 @@ class LeaderboardController extends Controller
 
     private function getDaysForRange($range)
     {
-        return match($range) {
+        return match ($range) {
             'daily' => 1,
             'week' => 7,
             'month' => 30,
@@ -305,7 +318,7 @@ class LeaderboardController extends Controller
         return Cache::remember('weekly_winners', 900, function () {
             $startOfWeek = Carbon::now()->startOfWeek();
             $endOfWeek = Carbon::now()->endOfWeek();
-            
+
             $users = User::whereNotNull('wakatime_api_key')->get();
             $weeklyData = [];
 
@@ -329,7 +342,7 @@ class LeaderboardController extends Controller
             }
 
             // Sort by total seconds and get top 3
-            usort($weeklyData, function($a, $b) {
+            usort($weeklyData, function ($a, $b) {
                 return $b['total_seconds'] - $a['total_seconds'];
             });
 
@@ -346,11 +359,11 @@ class LeaderboardController extends Controller
     private function fetchUserInsights($user, $range)
     {
         $insights = [];
-        
+
         try {
             // Map range to WakaTime range format
-            $wakatimeRange = match($range) {
-                'daily' => 'last_7_days',
+            $wakatimeRange = match ($range) {
+                // 'this_week' => 'last_7_days',
                 'week' => 'last_7_days',
                 'month' => 'last_30_days',
                 'alltime' => 'all_time',
@@ -363,23 +376,23 @@ class LeaderboardController extends Controller
                     'best_day' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/best_day?range={$wakatimeRange}"),
-                    
+
                     'daily_average' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/daily_average?range={$wakatimeRange}"),
-                    
+
                     'languages' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/languages?range={$wakatimeRange}"),
-                    
+
                     'projects' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/projects?range={$wakatimeRange}"),
-                    
+
                     'editors' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/editors?range={$wakatimeRange}"),
-                    
+
                     'machines' => $pool->timeout(10)->withHeaders([
                         'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                     ])->get("https://wakatime.com/api/v1/users/current/insights/machines?range={$wakatimeRange}"),
@@ -394,7 +407,6 @@ class LeaderboardController extends Controller
                     $insights[$key] = null;
                 }
             }
-
         } catch (\Exception $e) {
             // Return empty insights on error
             $insights = [
@@ -417,11 +429,11 @@ class LeaderboardController extends Controller
     {
         $cacheKey = $this->generateCacheKey($range, $promo, '', false);
         $cachedData = Cache::get($cacheKey);
-        
+
         if ($cachedData && isset($cachedData['data'])) {
             return $cachedData['data'];
         }
-        
+
         return [];
     }
 
@@ -435,7 +447,7 @@ class LeaderboardController extends Controller
                 return $userData;
             }
         }
-        
+
         return null;
     }
 }
