@@ -39,14 +39,18 @@ export const PodiumSkeleton = () => {
   const podiumHeights = { 1: "h-[220px]", 2: "h-[180px]", 3: "h-[140px]", };
   return (
     <div className="flex justify-center items-end gap-6 max-w-5xl mx-auto animate-pulse">
-      {[2, 1, 3].map((rank, idx) => (<div key={idx} className="flex flex-col items-center cursor-default" >
+      {[2, 1, 3].map((rank, idx) => (<div key={idx} className="flex flex-col items-center cursor-default lg:hidden " >
         {/* Avatar placeholder */}
-        <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 mb-3" /> {/* Name placeholder */}
-        <div className="w-24 h-4 rounded bg-gray-300 dark:bg-gray-700 mb-2" /> {/* Podium block */}
-        <div className={`w-28 ${podiumHeights[rank]} bg-gray-200 dark:bg-gray-600 rounded-t-lg`} /> </div>
+        <div className="w-20 h-20 rounded-full bg-gray-300 lg:hidden flex dark:bg-gray-700 mb-3" /> {/* Name placeholder */}
+        <div className="w-24 h-4 rounded bg-gray-300 lg:hidden flex dark:bg-gray-700 mb-2" /> {/* Podium block */}
+        <div className={`w-28 ${podiumHeights[rank]} bg-gray-200 lg:hidden flex dark:bg-gray-600 rounded-t-lg`} /> </div>
+      ))}
+      {[2, 1, 3].map((rank, idx) => (<div key={idx} className="lg:flex flex-col items-center cursor-default hidden " >
+        {/* Avatar placeholder */}
+        <div className={`w-72 ${podiumHeights[rank]} bg-gray-200  dark:bg-gray-600 rounded-lg`} /> </div>
       ))}
     </div>
-    );
+  );
 }
 
 
