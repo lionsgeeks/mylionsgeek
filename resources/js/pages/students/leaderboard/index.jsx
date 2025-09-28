@@ -268,6 +268,7 @@ export default function Leaderboard() {
             availablePromos={availablePromos}
             selectedPromo={selectedPromo}
             setSelectedPromo={setSelectedPromo}
+            isRefreshing={isRefreshing}
           />
 
           <BoardTable

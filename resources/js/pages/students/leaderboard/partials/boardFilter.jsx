@@ -1,7 +1,7 @@
-import { Award, Calendar, Search } from 'lucide-react';
+import { Award, Calendar, RefreshCw, Search } from 'lucide-react';
 import React from 'react';
 
-const BoardFilter = ({filter , selectedPromo , setSelectedPromo , availablePromos , searchText , setSearchText , leaderboardData}) => {
+const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos, searchText, setSearchText, leaderboardData, isRefreshing }) => {
     return (
         <>
 
@@ -53,13 +53,23 @@ const BoardFilter = ({filter , selectedPromo , setSelectedPromo , availablePromo
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                            Showing {leaderboardData.length} coders
+                        {
+                            !isRefreshing &&
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                {leaderboardData.length} coders
+                            </div>
+
+                        }
+                        <div className="flex items-center gap-2 text-sm text-dark/70 dark:text-light/70">
+                            {
+                                isRefreshing ?
+                                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                    :
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            }
+                            <span>{isRefreshing ? 'Updating...' : 'Live'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span>Live Data</span>
-                        </div>
+
                     </div>
                 </div>
             </div>

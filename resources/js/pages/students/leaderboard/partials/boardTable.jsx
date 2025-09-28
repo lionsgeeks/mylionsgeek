@@ -13,7 +13,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
             {/* Enhanced Leaderboard Table */}
             <div className="w-full">
                 <div className="bg-white/80 dark:bg-dark/80 backdrop-blur-sm rounded-2xl shadow-xl border border-alpha/20 dark:border-alpha/30 overflow-hidden">
-                    <div className="px-6 py-5 border-b border-alpha/20 dark:border-alpha/30">
+                    {/* <div className="px-6 py-5 border-b border-alpha/20 dark:border-alpha/30">
                         <div className="flex items-center justify-between">
                             <h3 className="text-xl font-bold text-dark dark:text-light">Leaderboard</h3>
                             <div className="flex items-center gap-2 text-sm text-dark/70 dark:text-light/70">
@@ -21,9 +21,9 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                 <span>{isRefreshing ? 'Updating...' : 'Live'}</span>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto lg:overflow-hidden">
                         <table className="w-full">
                             <thead className="bg-gradient-to-r from-alpha/10 to-alpha/5 dark:from-alpha/20 dark:to-alpha/10">
                                 <tr>
@@ -47,15 +47,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                     leaderboardData.map((user, index) => (
                                         <tr
                                             key={user.user?.id || index}
-                                            className="hover:bg-alpha/5 dark:hover:bg-alpha/10 transition-all duration-200 cursor-pointer group table-row"
+                                            className={`hover:bg-alpha/5 ${index == 0 && "bg-alpha/5"} dark:hover:bg-alpha/5 transition-all duration-200 cursor-pointer group table-row`}
                                             onClick={() => handleUserClick(user)}
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {getRankIcon(user.metrics?.rank || index + 1)}
-                                                    <span className="text-lg font-bold text-dark dark:text-light">
+                                                    {/* <span className="text-lg font-bold text-dark dark:text-light">
                                                         {user.metrics?.rank || index + 1}
-                                                    </span>
+                                                    </span> */}
                                                 </div>
                                             </td>
 
