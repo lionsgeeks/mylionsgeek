@@ -11,14 +11,12 @@ const BoardPodium = ({
     fetchLeaderboardData,
     getRankBadge,
     formatTime,
+    handleUserClick
 }) => {
     const getInitials = useInitials();
 
-    const handleUserClick = (user) => {
-        console.log("Clicked user:", user);
-    };
-
-    const podiumRanks = [0, 1, 2]; // 2nd, 1st, 3rd (index in topWinners)
+ 
+    const podiumRanks = [1,0, 2]; // 2nd, 1st, 3rd (index in topWinners)
 
     return (
         <>
@@ -48,24 +46,24 @@ const BoardPodium = ({
                                 {/* const cardHeight =
                                     rank === 1 ? "h-[320px]" : rank === 2 ? "h-[280px]" : "h-[240px]"; */}
                                 const bgStyle =
-                                    rank === 1
+                                    rank === 2
                                         ? "bg-gradient-to-br from-alpha/10 to-alpha/5 dark:from-alpha/20 dark:to-alpha/10"
                                         : "bg-white/80 dark:bg-dark/80 backdrop-blur-sm";
 
                                 // Decide icon
                                 const icon =
-                                    rank === 1 ? (
+                                    rank === 2 ? (
                                         <CrownIcon className="w-8 h-8 text-white" />
-                                    ) : rank === 2 ? (
+                                    ) : rank === 1 ? (
                                         <MedalIcon className="w-6 h-6 text-white" />
                                     ) : (
                                         <AwardIcon className="w-6 h-6 text-white" />
                                     );
 
                                 const iconWrapper =
-                                    rank === 1
+                                    rank === 2
                                         ? "w-16 h-16 bg-alpha rounded-full flex items-center justify-center shadow-2xl animate-pulse"
-                                        : rank === 2
+                                        : rank === 1
                                             ? "w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg"
                                             : "w-12 h-12 bg-alpha/80 rounded-full flex items-center justify-center shadow-lg";
 
@@ -80,7 +78,7 @@ const BoardPodium = ({
                                     >
                                         {/* Icon */}
                                         <div
-                                            className={`absolute ${rank === 1 ? "-top-6" : "-top-4"
+                                            className={`absolute ${rank === 2 ? "-top-6" : "-top-4"
                                                 } left-1/2 transform -translate-x-1/2 z-10`}
                                         >
                                             <div className={iconWrapper}>{icon}</div>
@@ -88,18 +86,18 @@ const BoardPodium = ({
 
                                         {/* Rank */}
                                         <div
-                                            className={`text-center mb-4 ${rank === 1 ? "pt-6" : "pt-4"
+                                            className={`text-center mb-4 ${rank === 2 ? "pt-10" : rank == 1 ? "pt-4" : "pt-2"
                                                 }`}
                                         >
                                             <div
-                                                className={`font-bold mb-2 ${rank === 1
+                                                className={`font-bold mb-2 ${rank === 2
                                                     ? "text-5xl text-alpha"
-                                                    : rank === 2
+                                                    : (rank === 1 || 3)
                                                         ? "text-4xl text-gray-600 dark:text-gray-400"
                                                         : "text-4xl text-alpha"
                                                     }`}
                                             >
-                                                {rank}
+                                                {rank == 2 ? 1 : rank == 1 ? 2 : 3}
                                             </div>
 
                                         </div>
@@ -125,20 +123,20 @@ const BoardPodium = ({
                                             >
                                                 {winner.user?.name || "Unknown"}
                                             </h3>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            {/* <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 {winner.user?.promo
                                                     ? `Promo ${winner.user.promo}`
                                                     : "No Promo"}
-                                            </p>
+                                            </p> */}
                                         </div>
 
                                         {/* Stats */}
                                         <div className="text-center">
                                             <div
-                                                className={`font-bold ${rank === 1 ? "text-xl" : "text-lg"
-                                                    } text-alpha`}
+                                                className={`font-bold ${rank === 2 ? "text-2xl text-alpha" : "text-lg text-alpha/95"
+                                                    } `}
                                             >
-                                                {formatTime(winner.data?.data?.total_seconds || 0)}
+                                                {formatTime(winner.data?.data?.total_seconds )}
                                             </div>
 
                                         </div>

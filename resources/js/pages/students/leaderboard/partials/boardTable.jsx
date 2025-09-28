@@ -122,7 +122,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm rank-badge ${getRankColor(user.metrics?.rank || index + 1)}`}>
                                                     <Star className="w-4 h-4" />
-                                                    {getRankBadge(user.metrics?.rank || index + 1)}
+                                                    {getRankBadge(user.data?.total_seconds)}
                                                 </span>
                                             </td>
                                         </tr>
@@ -174,7 +174,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                             <div className="text-center mb-6">
                                 <div className="relative">
                                     <div className="w-20 h-20 bg-gradient-to-r from-alpha to-alpha/80 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-                                        {selectedUser.user?.name?.charAt(0).toUpperCase() || '?'}
+                                        <Avatar className="h-full w-full overflow-hidden rounded-full">
+                                            <AvatarImage
+                                                src={selectedUser?.user?.image}
+                                                alt={selectedUser?.user?.name}
+                                            />
+                                            <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                {getInitials(selectedUser?.user?.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
                                     </div>
                                     {selectedUser.metrics?.rank <= 3 && (
                                         <div className="absolute -top-2 -right-2">
@@ -193,7 +201,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                 <div className="mt-2 flex items-center justify-center gap-2">
                                     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRankColor(selectedUser.metrics?.rank || 1)}`}>
                                         <Star className="w-4 h-4" />
-                                        {getRankBadge(selectedUser.metrics?.rank || 1)}
+                                        {getRankBadge(selectedUser.data?.total_seconds  || 1)}
                                     </span>
                                     <span className="text-xs text-dark/50 dark:text-light/50">
                                         #{selectedUser.metrics?.rank || 1}

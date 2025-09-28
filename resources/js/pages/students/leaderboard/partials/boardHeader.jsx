@@ -9,8 +9,8 @@ const BoardHeader = ({fetchLeaderboardData , isRefreshing}) => {
             <div className="text-center mb-12">
                 <div className="flex flex-col lg:flex-row items-start justify-between mb-8 gap-6">
                     <div className="flex  gap-4">
-                        <div className="p-4 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-2xl shadow-2xl">
-                            <Trophy className="w-10 h-10 text-white" />
+                        <div className="p-4 bg-gradient-to-br from-yellow-400 via-alpha to-alpha rounded-2xl shadow-2xl">
+                            <Trophy className="w-10 h-10 text-dark" />
                         </div>
                         <div className="text-left">
                             <h1 className="text-3xl font-bold text-alpha mb-2">
@@ -20,7 +20,7 @@ const BoardHeader = ({fetchLeaderboardData , isRefreshing}) => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    {/* <div className="flex items-center gap-4">
                         <button
                             onClick={fetchLeaderboardData}
                             disabled={isRefreshing}
@@ -29,7 +29,7 @@ const BoardHeader = ({fetchLeaderboardData , isRefreshing}) => {
                             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                             {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
                         </button>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </>

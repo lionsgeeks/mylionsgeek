@@ -145,12 +145,22 @@ export default function Leaderboard() {
     }
   };
 
-  const getRankBadge = (rank) => {
-    if (rank <= 3) return "Challenger";
-    if (rank <= 10) return "Grandmaster";
-    if (rank <= 25) return "Master";
-    if (rank <= 50) return "Diamond";
-    return "Gold";
+  console.log(topWinners);
+
+
+  const getRankBadge = (timeInSeconds) => {
+    const hours = timeInSeconds / 3600; // convert seconds to hours
+
+    if (hours >= 2000) return "Grand Master";
+    if (hours >= 1500) return "Master Elite";
+    if (hours >= 1200) return "Master";
+    if (hours >= 900) return "Diamond Pro";
+    if (hours >= 700) return "Diamond";
+    if (hours >= 500) return "Gold Pro";
+    if (hours >= 350) return "Gold";
+    if (hours >= 200) return "Silver";
+    if (hours >= 100) return "Bronze";
+    return "Beginner";
   };
 
   const getRankColor = (rank) => {
@@ -247,7 +257,7 @@ export default function Leaderboard() {
             isRefreshing={isRefreshing}
             getRankBadge={getRankBadge}
             fetchLeaderboardData={fetchLeaderboardData}
-
+            handleUserClick={handleUserClick}
           />
 
           <BoardFilter
@@ -279,15 +289,15 @@ export default function Leaderboard() {
             getRankColor={getRankColor}
 
           />
-        {/* Footer */}
-        <div className="mt-8 text-center text-sm text-dark/70 dark:text-light/70">
-          <div className="flex justify-between items-center">
-            <div>Last updated: {stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Never'}</div>
-           
+          {/* Footer */}
+          <div className="mt-8 text-center text-sm text-dark/70 dark:text-light/70">
+            <div className="flex justify-between items-center">
+              <div>Last updated: {stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Never'}</div>
+
+            </div>
           </div>
         </div>
       </div>
-        </div>
 
 
       {/* Floating Action Button */}
