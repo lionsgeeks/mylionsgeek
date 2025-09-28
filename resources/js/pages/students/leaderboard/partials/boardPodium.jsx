@@ -15,8 +15,8 @@ const BoardPodium = ({
 }) => {
     const getInitials = useInitials();
 
- 
-    const podiumRanks = [1,0, 2]; // 2nd, 1st, 3rd (index in topWinners)
+
+    const podiumRanks = [1, 0, 2]; // 2nd, 1st, 3rd (index in topWinners)
 
     return (
         <>
@@ -35,115 +35,176 @@ const BoardPodium = ({
                             isRefreshing={isRefreshing}
                         />
                     ) : (
-                        <div className="relative flex flex-col sm:flex-row items-center sm:items-end justify-center gap-4 max-w-6xl mx-auto">
-                            {podiumRanks.map((rankIndex, idx) => {
-                                const winner = topWinners[rankIndex];
-                                if (!winner) return null;
+                        <>
+                            {/* Laptop Podium */}
+                            <div className="relative hidden  lg:flex flex-col sm:flex-row items-center sm:items-end justify-center gap-4 max-w-6xl mx-auto">
+                                {podiumRanks.map((rankIndex, idx) => {
+                                    const winner = topWinners[rankIndex];
+                                    if (!winner) return null;
 
-                                const rank = idx + 1;
+                                    const rank = idx + 1;
 
-                                // Decide styles based on rank
-                                {/* const cardHeight =
+                                    // Decide styles based on rank
+                                    {/* const cardHeight =
                                     rank === 1 ? "h-[320px]" : rank === 2 ? "h-[280px]" : "h-[240px]"; */}
-                                const bgStyle =
-                                    rank === 2
-                                        ? "bg-gradient-to-br from-alpha/10 to-alpha/5 dark:from-alpha/20 dark:to-alpha/10"
-                                        : "bg-white/80 dark:bg-dark/80 backdrop-blur-sm";
+                                    const bgStyle =
+                                        rank === 2
+                                            ? "bg-gradient-to-br from-alpha/10 to-alpha/5 dark:from-alpha/20 dark:to-alpha/10"
+                                            : "bg-white/80 dark:bg-dark/80 backdrop-blur-sm";
 
-                                // Decide icon
-                                const icon =
-                                    rank === 2 ? (
-                                        <CrownIcon className="w-8 h-8 text-white" />
-                                    ) : rank === 1 ? (
-                                        <MedalIcon className="w-6 h-6 text-white" />
-                                    ) : (
-                                        <AwardIcon className="w-6 h-6 text-white" />
-                                    );
+                                    // Decide icon
+                                    const icon =
+                                        rank === 2 ? (
+                                            <CrownIcon className="w-8 h-8 text-white" />
+                                        ) : rank === 1 ? (
+                                            <MedalIcon className="w-6 h-6 text-white" />
+                                        ) : (
+                                            <AwardIcon className="w-6 h-6 text-white" />
+                                        );
 
-                                const iconWrapper =
-                                    rank === 2
-                                        ? "w-16 h-16 bg-alpha rounded-full flex items-center justify-center shadow-2xl animate-pulse"
-                                        : rank === 1
-                                            ? "w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg"
-                                            : "w-12 h-12 bg-alpha/80 rounded-full flex items-center justify-center shadow-lg";
+                                    const iconWrapper =
+                                        rank === 2
+                                            ? "w-16 h-16 bg-alpha rounded-full flex items-center justify-center shadow-2xl animate-pulse"
+                                            : rank === 1
+                                                ? "w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg"
+                                                : "w-12 h-12 bg-alpha/80 rounded-full flex items-center justify-center shadow-lg";
 
-                                return (
-                                    <div
-                                        key={idx}
-                                        className={`w-full sm:w-80 ${bgStyle} rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer group relative border border-alpha/20 dark:border-alpha/30 ${rank === 1
-                                            ? "order-first sm:order-none shadow-2xl hover:shadow-3xl hover:scale-110"
-                                            : ""
-                                            }`}
-                                        onClick={() => handleUserClick(winner)}
-                                    >
-                                        {/* Icon */}
+                                    return (
                                         <div
-                                            className={`absolute ${rank === 2 ? "-top-6" : "-top-4"
-                                                } left-1/2 transform -translate-x-1/2 z-10`}
-                                        >
-                                            <div className={iconWrapper}>{icon}</div>
-                                        </div>
-
-                                        {/* Rank */}
-                                        <div
-                                            className={`text-center mb-4 ${rank === 2 ? "pt-10" : rank == 1 ? "pt-4" : "pt-2"
+                                            key={idx}
+                                            className={`w-full sm:w-80 ${bgStyle} rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer group relative border border-alpha/20 dark:border-alpha/30 ${rank === 1
+                                                ? "order-first sm:order-none shadow-2xl hover:shadow-3xl hover:scale-110"
+                                                : ""
                                                 }`}
+                                            onClick={() => handleUserClick(winner)}
                                         >
+                                            {/* Icon */}
                                             <div
-                                                className={`font-bold mb-2 ${rank === 2
-                                                    ? "text-5xl text-alpha"
-                                                    : (rank === 1 || 3)
-                                                        ? "text-4xl text-gray-600 dark:text-gray-400"
-                                                        : "text-4xl text-alpha"
-                                                    }`}
+                                                className={`absolute ${rank === 2 ? "-top-6" : "-top-4"
+                                                    } left-1/2 transform -translate-x-1/2 z-10`}
                                             >
-                                                {rank == 2 ? 1 : rank == 1 ? 2 : 3}
+                                                <div className={iconWrapper}>{icon}</div>
                                             </div>
 
-                                        </div>
-
-                                        {/* Avatar */}
-                                        <div className="text-center mb-4 flex justify-center">
-                                            <Avatar className="h-26 w-26 overflow-hidden rounded-full">
-                                                <AvatarImage
-                                                    src={winner.user?.image}
-                                                    alt={winner.user?.name}
-                                                />
-                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                    {getInitials(winner.user?.name)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        </div>
-
-                                        {/* Name */}
-                                        <div className="text-center mb-4">
-                                            <h3
-                                                className={`font-bold text-gray-900 dark:text-white ${rank === 1 ? "text-xl" : "text-lg"
-                                                    } mb-1`}
+                                            {/* Rank */}
+                                            <div
+                                                className={`text-center mb-4 ${rank === 2 ? "pt-10" : rank == 1 ? "pt-4" : "pt-2"
+                                                    }`}
                                             >
-                                                {winner.user?.name || "Unknown"}
-                                            </h3>
-                                            {/* <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                <div
+                                                    className={`font-bold mb-2 ${rank === 2
+                                                        ? "text-5xl text-alpha"
+                                                        : (rank === 1 || 3)
+                                                            ? "text-4xl text-gray-600 dark:text-gray-400"
+                                                            : "text-4xl text-alpha"
+                                                        }`}
+                                                >
+                                                    {rank == 2 ? 1 : rank == 1 ? 2 : 3}
+                                                </div>
+
+                                            </div>
+
+                                            {/* Avatar */}
+                                            <div className="text-center mb-4 flex justify-center">
+                                                <Avatar className="h-26 w-26 overflow-hidden rounded-full">
+                                                    <AvatarImage
+                                                        src={winner.user?.image}
+                                                        alt={winner.user?.name}
+                                                    />
+                                                    <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                        {getInitials(winner.user?.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+
+                                            {/* Name */}
+                                            <div className="text-center mb-4">
+                                                <h3
+                                                    className={`font-bold text-gray-900 dark:text-white ${rank === 1 ? "text-xl" : "text-lg"
+                                                        } mb-1`}
+                                                >
+                                                    {winner.user?.name || "Unknown"}
+                                                </h3>
+                                                {/* <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 {winner.user?.promo
                                                     ? `Promo ${winner.user.promo}`
                                                     : "No Promo"}
                                             </p> */}
-                                        </div>
-
-                                        {/* Stats */}
-                                        <div className="text-center">
-                                            <div
-                                                className={`font-bold ${rank === 2 ? "text-2xl text-alpha" : "text-lg text-alpha/95"
-                                                    } `}
-                                            >
-                                                {formatTime(winner.data?.data?.total_seconds )}
                                             </div>
 
+                                            {/* Stats */}
+                                            <div className="text-center">
+                                                <div
+                                                    className={`font-bold ${rank === 2 ? "text-2xl text-alpha" : "text-lg text-alpha/95"
+                                                        } `}
+                                                >
+                                                    {formatTime(winner.data?.data?.total_seconds)}
+                                                </div>
+
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                            {/* Mobile Podium */}
+                            <div className="flex lg:hidden  justify-center items-end gap-6 max-w-5xl mx-auto ">
+                                {
+                                    podiumRanks.map((rankIndex, idx) => {
+                                        const winner = topWinners[rankIndex];
+                                        if (!winner) return null;
+
+                                        const rank = idx + 1;
+
+                                        const podiumHeights = { 2: "h-[220px]", 1: "h-[180px]", 3: "h-[140px]", };
+
+                                        const bgStyle =
+                                            rank === 2
+                                                ? "bg-gradient-to-br from-alpha/80 to-alpha/70 dark:from-alpha/80 dark:to-alpha/50"
+                                                : "bg-dark/30 dark:bg-white/30 backdrop-blur-sm";
+
+                                        // Decide icon
+                                        const icon =
+                                            rank === 2 ? (
+                                                <CrownIcon className="w-8 h-8 text-white" />
+                                            ) : rank === 1 ? (
+                                                <MedalIcon className="w-6 h-6 text-white" />
+                                            ) : (
+                                                <AwardIcon className="w-6 h-6 text-white" />
+                                            );
+
+                                        const iconWrapper =
+                                            rank === 2
+                                                ? "w-16 h-16 bg-alpha rounded-full flex items-center justify-center shadow-2xl animate-pulse"
+                                                : rank === 1
+                                                    ? "w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg"
+                                                    : "w-12 h-12 bg-alpha/80 rounded-full flex items-center justify-center shadow-lg";
+
+                                        return (
+                                            <div key={idx} className="flex flex-col items-center cursor-default" >
+                                                {/* Avatar placeholder */}
+                                                <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 mb-3" >
+                                                    <Avatar className="h-full w-full overflow-hidden rounded-full">
+                                                        <AvatarImage
+                                                            src={winner.user?.image}
+                                                            alt={winner.user?.name}
+                                                        />
+                                                        <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                            {getInitials(winner.user?.name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                </div>
+                                                {/* Name placeholder */}
+                                                <div title={winner.user?.name || "Unknown"} className=" rounded truncate mb-2" >
+                                                    {winner.user?.name || "Unknown"}
+                                                </div>
+
+                                                {/* Podium block */}
+                                                <div className={`w-28 ${podiumHeights[rank]} ${bgStyle}   rounded-t-lg`} />
+                                            </div>
+                                        )
+                                    })}
+                            </div>
+                        </>
                     )}
                 </div>
             )}
