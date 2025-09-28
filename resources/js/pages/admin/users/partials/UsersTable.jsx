@@ -81,7 +81,9 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
         }, {
             onSuccess: () => {
                 // alert(`Account state updated from ${user.accoun} to ${newState}`);
-                user.account_state = newState; // Update user state locally to reflect changes
+                // user.account_state = newState; // Update user state locally to reflect changes
+                // console.log(users.length);
+                
             },
 
             onError: () => {

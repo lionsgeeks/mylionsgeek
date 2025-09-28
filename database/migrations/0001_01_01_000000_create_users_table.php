@@ -19,18 +19,16 @@ return new class extends Migration
             $table->string('password')->nullable();
             $table->string('phone');
             $table->string('cin');
-            $table->enum('status', ['Working', 'Studying', 'Internship', 'Unemployed','Freelancing']);
+            $table->enum('status', ['Working', 'Studying', 'Internship', 'Unemployed', 'Freelancing']);
             $table->foreignId('formation_id')->nullable()->constrained()->cascadeOnUpdate()->cascadeOnDelete();
             $table->rememberToken();
             $table->timestamps();
         });
-
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
-
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();

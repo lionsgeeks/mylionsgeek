@@ -22,9 +22,9 @@ class EquipmentController extends Controller
         // Map equipment_type_id to string
         $typeMap = [
             1 => 'camera',
-            2 => 'son', 
-            3 => 'lumiere',
-            4 => 'data/stockage',
+            2 => 'sound', 
+            3 => 'lighting',
+            4 => 'data/storage',
             5 => 'podcast',
             6 => 'other',
         ];
@@ -50,9 +50,9 @@ class EquipmentController extends Controller
         // Map equipment_type string to ID
         $typeMap = [
             'camera' => 1,
-            'son' => 2,
-            'lumiere' => 3,
-            'data/stockage' => 4,
+            'sound' => 2,
+            'lighting' => 3,
+            'data/storage' => 4,
             'podcast' => 5,
             'other' => 6,
         ];
@@ -60,7 +60,7 @@ class EquipmentController extends Controller
         $validated = $request->validate([
             'mark' => ['required', 'string', 'max:255'],
             'reference' => ['required', 'string', 'max:255'],
-            'equipment_type' => ['required', Rule::in(['camera','son','lumiere','data/stockage','podcast','other'])],
+            'equipment_type' => ['required', Rule::in(['camera','sound','lighting','data/storage','podcast','other'])],
             'state' => ['required', 'boolean'],
             'image' => ['nullable', 'image', 'max:4096'],
         ]);
@@ -85,6 +85,50 @@ class EquipmentController extends Controller
         ]);
 
         return back()->with('success', 'Equipment added');
+    }
+
+    public function update(Request $request, Equipment $equipment)
+    {
+        // Map equipment_type string to ID
+        $typeMap = [
+            'camera' => 1,
+            'son' => 2,
+            'lumiere' => 3,
+            'data/stockage' => 4,
+            'podcast' => 5,
+            'other' => 6,
+        ];
+
+        $validated = $request->validate([
+            'mark' => ['required', 'string', 'max:255'],
+            'reference' => ['required', 'string', 'max:255'],
+            'equipment_type' => ['required', Rule::in(['camera','sound','lighting','data/storage','podcast','other'])],
+            'state' => ['required', 'boolean'],
+            'image' => ['nullable', 'image', 'max:4096'],
+        ]);
+
+        // Handle image upload
+        $imagePath = $equipment->image; // Keep existing image by default
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('equipment', 'public');
+            $imagePath = 'storage/'.$path; // Remove leading slash for proper URL
+        }
+
+        $equipment->update([
+            'mark' => $validated['mark'],
+            'reference' => $validated['reference'],
+            'equipment_type_id' => $typeMap[$validated['equipment_type']],
+            'state' => (string)$validated['state'] === '1' || $validated['state'] === 1 || $validated['state'] === true,
+            'image' => $imagePath,
+        ]);
+
+        return back()->with('success', 'Equipment updated');
+    }
+
+    public function destroy(Equipment $equipment)
+    {
+        $equipment->delete();
+        return back()->with('success', 'Equipment deleted');
     }
 }
 

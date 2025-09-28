@@ -13,6 +13,7 @@ const Users = ({ users, trainings }) => {
         date: ""
     });
     const allRoles = [...new Set(users.map((user) => user.role))]
+    console.log(users);
     
     const filteredUsers = useMemo(() => {
         const list = users
@@ -30,6 +31,8 @@ const Users = ({ users, trainings }) => {
     }, [users, filters]);
     const allStatus = [...new Set(users.map((user)=>user.status))]
     // console.log(status);
+    console.log(filteredUsers.length);
+    
     
     return (
         <AppLayout>
