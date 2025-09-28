@@ -50,7 +50,7 @@ Route::get('/wakatime-data', function () {
 
         $cumulative = $data['cumulative_total'];
 
-        dd($cumulative);
+        dd($data);
     }
     // Fetch data from WakaTime API
 

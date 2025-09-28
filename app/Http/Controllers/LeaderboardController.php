@@ -163,12 +163,95 @@ class LeaderboardController extends Controller
                         $totalSeconds = collect($data['data'] ?? [])
                             ->sum(fn($day) => $day['grand_total']['total_seconds'] ?? 0);
 
+                        // Collect comprehensive data from all days
+                        $languages = [];
+                        $projects = [];
+                        $editors = [];
+                        $machines = [];
+                        $dailyBreakdown = [];
+
+                        foreach ($data['data'] ?? [] as $day) {
+                            $dayDate = $day['range']['date'] ?? null;
+                            $daySeconds = $day['grand_total']['total_seconds'] ?? 0;
+                            
+                            if ($dayDate && $daySeconds > 0) {
+                                $dailyBreakdown[] = [
+                                    'date' => $dayDate,
+                                    'total_seconds' => $daySeconds,
+                                    'text' => $day['grand_total']['text'] ?? '0 secs'
+                                ];
+                            }
+
+                            // Aggregate languages
+                            foreach ($day['languages'] ?? [] as $lang) {
+                                $langName = $lang['name'] ?? 'Unknown';
+                                if (!isset($languages[$langName])) {
+                                    $languages[$langName] = [
+                                        'name' => $langName,
+                                        'total_seconds' => 0,
+                                        'percent' => 0
+                                    ];
+                                }
+                                $languages[$langName]['total_seconds'] += $lang['total_seconds'] ?? 0;
+                            }
+
+                            // Aggregate projects
+                            foreach ($day['projects'] ?? [] as $project) {
+                                $projectName = $project['name'] ?? 'Unknown';
+                                if (!isset($projects[$projectName])) {
+                                    $projects[$projectName] = [
+                                        'name' => $projectName,
+                                        'total_seconds' => 0,
+                                        'percent' => 0
+                                    ];
+                                }
+                                $projects[$projectName]['total_seconds'] += $project['total_seconds'] ?? 0;
+                            }
+
+                            // Aggregate editors
+                            foreach ($day['editors'] ?? [] as $editor) {
+                                $editorName = $editor['name'] ?? 'Unknown';
+                                if (!isset($editors[$editorName])) {
+                                    $editors[$editorName] = [
+                                        'name' => $editorName,
+                                        'total_seconds' => 0,
+                                        'percent' => 0
+                                    ];
+                                }
+                                $editors[$editorName]['total_seconds'] += $editor['total_seconds'] ?? 0;
+                            }
+
+                            // Aggregate machines
+                            foreach ($day['machines'] ?? [] as $machine) {
+                                $machineName = $machine['name'] ?? 'Unknown';
+                                if (!isset($machines[$machineName])) {
+                                    $machines[$machineName] = [
+                                        'name' => $machineName,
+                                        'total_seconds' => 0,
+                                        'percent' => 0
+                                    ];
+                                }
+                                $machines[$machineName]['total_seconds'] += $machine['total_seconds'] ?? 0;
+                            }
+                        }
+
+                        // Calculate percentages and sort
+                        $languages = $this->calculatePercentagesAndSort($languages, $totalSeconds);
+                        $projects = $this->calculatePercentagesAndSort($projects, $totalSeconds);
+                        $editors = $this->calculatePercentagesAndSort($editors, $totalSeconds);
+                        $machines = $this->calculatePercentagesAndSort($machines, $totalSeconds);
+
                         $data = [
                             'data' => [
                                 'total_seconds' => $totalSeconds,
                                 'daily_average' => count($data['data'] ?? []) > 0
                                     ? round($totalSeconds / count($data['data']), 0)
                                     : 0,
+                                'languages' => array_values($languages),
+                                'projects' => array_values($projects),
+                                'editors' => array_values($editors),
+                                'machines' => array_values($machines),
+                                'daily_breakdown' => $dailyBreakdown,
                             ],
                         ];
                     }
@@ -449,5 +532,27 @@ class LeaderboardController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Calculate percentages and sort data by total_seconds
+     */
+    private function calculatePercentagesAndSort($data, $totalSeconds)
+    {
+        if ($totalSeconds <= 0) {
+            return [];
+        }
+
+        // Calculate percentages
+        foreach ($data as &$item) {
+            $item['percent'] = round(($item['total_seconds'] / $totalSeconds) * 100, 1);
+        }
+
+        // Sort by total_seconds descending
+        uasort($data, function ($a, $b) {
+            return $b['total_seconds'] - $a['total_seconds'];
+        });
+
+        return $data;
     }
 }

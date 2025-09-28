@@ -228,14 +228,44 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                             {/* Languages */}
                             <div className="mb-6">
                                 <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Top Languages</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedUser.data?.languages?.slice(0, 4).map((lang, index) => (
-                                        <span key={index} className="px-3 py-1 bg-gradient-to-r from-alpha/20 to-alpha/10 text-alpha rounded-full text-sm font-medium">
-                                            {lang.name}
-                                        </span>
+                                <div className="space-y-2">
+                                    {selectedUser.data?.languages?.slice(0, 5).map((lang, index) => (
+                                        <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-alpha/10 to-alpha/5 rounded-lg">
+                                            <span className="text-sm font-medium text-dark dark:text-light">{lang.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-16 bg-light/50 dark:bg-dark/50 rounded-full h-2">
+                                                    <div
+                                                        className="h-2 rounded-full bg-gradient-to-r from-alpha to-alpha/80"
+                                                        style={{ width: `${lang.percent || 0}%` }}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-xs text-dark/70 dark:text-light/70 min-w-[3rem]">
+                                                    {lang.percent || 0}%
+                                                </span>
+                                            </div>
+                                        </div>
                                     )) || <span className="text-dark/50 dark:text-light/50">No data</span>}
                                 </div>
                             </div>
+
+                            {/* Daily Breakdown */}
+                            {selectedUser.data?.daily_breakdown && selectedUser.data.daily_breakdown.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Daily Breakdown</div>
+                                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                                        {selectedUser.data.daily_breakdown.map((day, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+                                                <span className="text-sm font-medium text-dark dark:text-light">
+                                                    {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                </span>
+                                                <span className="text-sm text-green-600 dark:text-green-400 font-semibold">
+                                                    {day.text}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Consistency */}
                             <div className="mb-6">
@@ -267,6 +297,81 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Projects */}
+                            {selectedUser.data?.projects && selectedUser.data.projects.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Top Projects</div>
+                                    <div className="space-y-2">
+                                        {selectedUser.data.projects.slice(0, 4).map((project, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg">
+                                                <span className="text-sm font-medium text-dark dark:text-light truncate flex-1 mr-2">{project.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-12 bg-light/50 dark:bg-dark/50 rounded-full h-2">
+                                                        <div
+                                                            className="h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                                            style={{ width: `${project.percent || 0}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs text-dark/70 dark:text-light/70 min-w-[2.5rem]">
+                                                        {formatTime(project.total_seconds)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Editors */}
+                            {selectedUser.data?.editors && selectedUser.data.editors.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Top Editors</div>
+                                    <div className="space-y-2">
+                                        {selectedUser.data.editors.slice(0, 3).map((editor, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg">
+                                                <span className="text-sm font-medium text-dark dark:text-light">{editor.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-12 bg-light/50 dark:bg-dark/50 rounded-full h-2">
+                                                        <div
+                                                            className="h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500"
+                                                            style={{ width: `${editor.percent || 0}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs text-dark/70 dark:text-light/70 min-w-[2.5rem]">
+                                                        {formatTime(editor.total_seconds)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Machines */}
+                            {selectedUser.data?.machines && selectedUser.data.machines.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Machines</div>
+                                    <div className="space-y-2">
+                                        {selectedUser.data.machines.slice(0, 3).map((machine, index) => (
+                                            <div key={index} className="flex items-center justify-between p-2 bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-lg">
+                                                <span className="text-sm font-medium text-dark dark:text-light truncate flex-1 mr-2">{machine.name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-12 bg-light/50 dark:bg-dark/50 rounded-full h-2">
+                                                        <div
+                                                            className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                                                            style={{ width: `${machine.percent || 0}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-xs text-dark/70 dark:text-light/70 min-w-[2.5rem]">
+                                                        {formatTime(machine.total_seconds)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Coding Insights */}
                             {loadingInsights ? (
