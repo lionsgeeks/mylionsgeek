@@ -26,8 +26,8 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                 <SidebarTrigger className="-ml-1" />
                 {/* <Breadcrumbs breadcrumbs={breadcrumbs} /> */}
             </div>
-            <div className="flex w-full items-center justify-between pl-4">
-                <div className="flex flex-col leading-tight">
+            <div className="flex w-full items-center lg:justify-between justify-end pl-4">
+                <div className="lg:flex flex-col leading-tight hidden">
                     <span className="text-xl font-semibold tracking-tight text-foreground">{hours}</span>
                     <span className="text-sm text-muted-foreground">{dateStr}</span>
                 </div>
