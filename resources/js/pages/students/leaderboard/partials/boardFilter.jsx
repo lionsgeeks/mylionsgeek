@@ -1,7 +1,7 @@
 import { Award, Calendar, RefreshCw, Search } from 'lucide-react';
 import React from 'react';
 
-const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos, searchText, setSearchText, leaderboardData, isRefreshing }) => {
+const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos, searchText, setSearchText, leaderboardData, isRefreshing , setFilter }) => {
     return (
         <>
 

@@ -45,6 +45,7 @@ import BoardTable from './partials/boardTable';
 
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState([]);
+  const [allLeaderboardData, setAllLeaderboardData] = useState([]); // Store all data for client-side filtering
   const [topWinners, setTopWinners] = useState([]);
   const [filter, setFilter] = useState("alltime");
   const [searchText, setSearchText] = useState("");
@@ -69,13 +70,14 @@ export default function Leaderboard() {
       const params = new URLSearchParams({
         range: filter,
         promo: selectedPromo,
-        search: searchText,
         insights: 'true'
       });
 
       const res = await fetch(`/leaderboard/data?${params}`);
       const data = await res.json();
 
+      // Store all data for client-side filtering
+      setAllLeaderboardData(data.data || []);
       setLeaderboardData(data.data || []);
       setStats({
         totalCoders: data.stats?.total_users || 0,
@@ -91,7 +93,7 @@ export default function Leaderboard() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [filter, selectedPromo, searchText]);
+  }, [filter, selectedPromo]);
 
   const fetchTopWinners = useCallback(async () => {
     try {
@@ -102,6 +104,32 @@ export default function Leaderboard() {
       console.error('Failed to fetch weekly winners', err);
     }
   }, []);
+
+  // Real-time search filtering with correct ranking
+  const filteredData = useMemo(() => {
+    if (!searchText.trim()) {
+      return allLeaderboardData;
+    }
+    
+    const searchLower = searchText.toLowerCase();
+    const filtered = allLeaderboardData.filter(item => {
+      const userName = item.user?.name?.toLowerCase() || '';
+      const userEmail = item.user?.email?.toLowerCase() || '';
+      return userName.includes(searchLower) || userEmail.includes(searchLower);
+    });
+
+    // Keep original ranks from the full dataset
+    return filtered.map(item => ({
+      ...item,
+      // Keep the original rank from the full leaderboard
+      originalRank: item.metrics?.rank || 999
+    }));
+  }, [allLeaderboardData, searchText]);
+
+  // Update displayed data when search changes
+  useEffect(() => {
+    setLeaderboardData(filteredData);
+  }, [filteredData]);
 
   useEffect(() => {
     fetchLeaderboardData();
@@ -269,6 +297,7 @@ export default function Leaderboard() {
             selectedPromo={selectedPromo}
             setSelectedPromo={setSelectedPromo}
             isRefreshing={isRefreshing}
+            setFilter={setFilter}
           />
 
           <BoardTable

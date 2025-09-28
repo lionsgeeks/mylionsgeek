@@ -145,63 +145,89 @@ const BoardPodium = ({
                                     );
                                 })}
                             </div>
-                            {/* Mobile Podium */}
-                            <div className="flex lg:hidden  justify-center items-end gap-6 max-w-5xl mx-auto ">
-                                {
-                                    podiumRanks.map((rankIndex, idx) => {
-                                        const winner = topWinners[rankIndex];
-                                        if (!winner) return null;
+                            {/* Mobile Podium - Olympic Style */}
+                            <div className="flex lg:hidden justify-center items-end gap-3 sm:gap-4 max-w-5xl mx-auto px-4">
+                                {podiumRanks.map((rankIndex, idx) => {
+                                    const winner = topWinners[rankIndex];
+                                    if (!winner) return null;
 
-                                        const rank = idx + 1;
+                                    const rank = idx + 1;
+                                    const isWinner = rank === 2;
+                                    const isSecond = rank === 1;
+                                    const isThird = rank === 3;
 
-                                        const podiumHeights = { 2: "h-[220px]", 1: "h-[180px]", 3: "h-[140px]", };
+                                    // Olympic podium heights: 1st (center, highest), 2nd (left, medium), 3rd (right, lowest)
+                                    const podiumHeights = { 
+                                        2: "h-[200px] sm:h-[220px]", // Winner - highest
+                                        1: "h-[160px] sm:h-[180px]", // Second - medium  
+                                        3: "h-[120px] sm:h-[140px]"  // Third - lowest
+                                    };
 
-                                        const bgStyle =
-                                            rank === 2
-                                                ? "bg-gradient-to-br from-alpha/80 to-alpha/70 dark:from-alpha/80 dark:to-alpha/50"
-                                                : "bg-dark/30 dark:bg-white/30 backdrop-blur-sm";
+                                    // Distinct colors for each rank
+                                    const bgStyle = isWinner
+                                        ? "bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 shadow-yellow-500/50"
+                                        : isSecond
+                                            ? "bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500 shadow-gray-400/50"
+                                            : "bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 shadow-amber-600/50";
 
-                                        // Decide icon
-                                        const icon =
-                                            rank === 2 ? (
-                                                <CrownIcon className="w-8 h-8 text-white" />
-                                            ) : rank === 1 ? (
-                                                <MedalIcon className="w-6 h-6 text-white" />
-                                            ) : (
-                                                <AwardIcon className="w-6 h-6 text-white" />
-                                            );
+                                    // Icons for each rank
+                                    const icon = isWinner ? (
+                                        <CrownIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white drop-shadow-lg" />
+                                    ) : isSecond ? (
+                                        <MedalIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-lg" />
+                                    ) : (
+                                        <AwardIcon className="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-lg" />
+                                    );
 
-                                        const iconWrapper =
-                                            rank === 2
-                                                ? "w-16 h-16 bg-alpha rounded-full flex items-center justify-center shadow-2xl animate-pulse"
-                                                : rank === 1
-                                                    ? "w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center shadow-lg"
-                                                    : "w-12 h-12 bg-alpha/80 rounded-full flex items-center justify-center shadow-lg";
+                                    return (
+                                        <div key={idx} className="flex flex-col items-center cursor-pointer group" onClick={() => handleUserClick(winner)}>
+                                            {/* Rank badge */}
+                                            <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg z-10 ${
+                                                isWinner ? 'bg-yellow-500 text-white' :
+                                                isSecond ? 'bg-gray-400 text-white' :
+                                                'bg-amber-600 text-white'
+                                            }`}>
+                                                {rank}
+                                            </div>
 
-                                        return (
-                                            <div key={idx} className="flex flex-col items-center cursor-default" >
-                                                {/* Avatar placeholder */}
-                                                <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-700 mb-3" >
-                                                    <Avatar className="h-full w-full overflow-hidden rounded-full">
-                                                        <AvatarImage
-                                                            src={winner.user?.image}
-                                                            alt={winner.user?.name}
-                                                        />
-                                                        <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                            {getInitials(winner.user?.name)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                </div>
-                                                {/* Name placeholder */}
-                                                <div title={winner.user?.name || "Unknown"} className=" rounded truncate mb-2" >
+                                            {/* Avatar with ring */}
+                                            <div className={`relative mb-3 ${isWinner ? 'z-10' : ''}`}>
+                                                <Avatar className={`${isWinner ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-16 w-16 sm:h-20 sm:w-20'} ring-4 ring-white/80 shadow-xl`}>
+                                                    <AvatarImage src={winner.user?.image} alt={winner.user?.name} />
+                                                    <AvatarFallback className="bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white text-lg font-bold">
+                                                        {getInitials(winner.user?.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+
+                                            {/* Name and time */}
+                                            <div className="text-center mb-3 max-w-24">
+                                                <div className={`font-bold truncate ${isWinner ? 'text-base sm:text-lg' : 'text-sm sm:text-base'} mb-1`} title={winner.user?.name || "Unknown"}>
                                                     {winner.user?.name || "Unknown"}
                                                 </div>
-
-                                                {/* Podium block */}
-                                                <div className={`w-28 ${podiumHeights[rank]} ${bgStyle}   rounded-t-lg`} />
+                                                <div className={`text-xs sm:text-sm font-semibold ${isWinner ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                    {formatTime(winner.data?.data?.total_seconds)}
+                                                </div>
                                             </div>
-                                        )
-                                    })}
+
+                                            {/* Podium block with icon */}
+                                            <div className={`w-20 sm:w-24 ${podiumHeights[rank]} ${bgStyle} rounded-t-xl flex flex-col items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-300 relative overflow-hidden`}>
+                                                {/* Shine effect */}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 rounded-t-xl"></div>
+                                                
+                                                {/* Icon */}
+                                                <div className="relative z-10">
+                                                    {icon}
+                                                </div>
+                                                
+                                                {/* Rank number on podium */}
+                                                <div className=" bottom-2 right-2 text-white/80 font-bold text-lg">
+                                                    {rank ==2 ? 1 : rank == 1 ? 2 : 3}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </>
                     )}

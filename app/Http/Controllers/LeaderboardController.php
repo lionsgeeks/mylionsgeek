@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -15,13 +17,87 @@ class LeaderboardController extends Controller
         return Inertia::render('students/leaderboard/index');
     }
 
+    /**
+     * Sanitize and validate range parameter
+     */
+    private function sanitizeRange($range)
+    {
+        $allowedRanges = ['alltime', 'week', 'month', 'daily'];
+        return in_array($range, $allowedRanges) ? $range : 'alltime';
+    }
+
+    /**
+     * Sanitize and validate promo parameter (supports array or single value)
+     */
+    private function sanitizePromo($promo)
+    {
+        if ($promo === 'all') {
+            return 'all';
+        }
+
+        // Handle array input
+        if (is_array($promo)) {
+            return array_filter($promo, function($p) {
+                return is_string($p) && !empty(trim($p));
+            });
+        }
+
+        // Handle single value
+        if (is_string($promo) && !empty(trim($promo))) {
+            return trim($promo);
+        }
+
+        return 'all';
+    }
+
+    /**
+     * Sanitize search input
+     */
+    private function sanitizeSearch($search)
+    {
+        if (!is_string($search)) {
+            return '';
+        }
+
+        // Remove potentially dangerous characters and limit length
+        $search = trim($search);
+        $search = preg_replace('/[<>"\']/', '', $search);
+        
+        return strlen($search) > 100 ? substr($search, 0, 100) : $search;
+    }
+
+    /**
+     * Generate cache key based on all parameters
+     */
+    private function generateCacheKey($range, $promo, $search, $includeInsights)
+    {
+        if (is_array($promo)) {
+            sort($promo);
+            $promoKey = implode(',', $promo);
+        } else {
+            $promoKey = $promo;
+        }
+        return "leaderboard_data_{$range}_{$promoKey}_{$search}_{$includeInsights}";
+    }
+
     public function getData(Request $request)
     {
-        $range = $request->query('range', 'alltime'); // alltime | week | month | daily
-        $promo = $request->query('promo', 'all');
-        $search = $request->query('search', '');
-        $includeInsights = $request->query('insights', false);
+        // Sanitize and validate inputs
+        $range = $this->sanitizeRange($request->query('range', 'alltime'));
+        $promo = $this->sanitizePromo($request->query('promo', 'all'));
+        $includeInsights = filter_var($request->query('insights', false), FILTER_VALIDATE_BOOLEAN);
 
+        // Create cache key based on range, promo, and insights (search will be handled client-side)
+        $cacheKey = $this->generateCacheKey($range, $promo, '', $includeInsights);
+
+        // Return cached data if available (15 minutes cache)
+        return Cache::remember($cacheKey, 900, function () use ($range, $promo, $includeInsights) {
+            return $this->fetchLeaderboardData($range, $promo, $includeInsights);
+        });
+    }
+
+    private function fetchLeaderboardData($range, $promo, $includeInsights)
+    {
         // Map frontend value to WakaTime endpoint
         $map = [
             'alltime' => 'stats/all_time',
@@ -35,23 +111,29 @@ class LeaderboardController extends Controller
         // Get users with Wakatime API keys
         $query = User::whereNotNull('wakatime_api_key');
         
+        // Handle multiple promos (array) or single promo
         if ($promo !== 'all') {
-            $query->where('promo', $promo);
-        }
-        
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
+            if (is_array($promo)) {
+                $query->whereIn('promo', $promo);
+            } else {
+                $query->where('promo', $promo);
+            }
         }
 
         $users = $query->get();
         $results = [];
         $successCount = 0;
         $errorCount = 0;
+        $failedUsers = [];
+
+        // Get existing cached data to preserve valid data for failed fetches
+        $existingData = $this->getExistingCachedData($range, $promo);
 
         foreach ($users as $user) {
+            $userData = null;
+            $fetchSuccess = false;
+            $errorMessage = '';
+
             try {
                 $response = Http::timeout(15)->withHeaders([
                     'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
@@ -79,10 +161,30 @@ class LeaderboardController extends Controller
                         $data['insights'] = $this->fetchUserInsights($user, $range);
                     }
                     
-                    $results[] = $data;
+                    $userData = $data;
+                    $fetchSuccess = true;
                     $successCount++;
                 } else {
-                    $results[] = [
+                    $errorMessage = 'Failed to fetch WakaTime data';
+                    $fetchSuccess = false;
+                }
+            } catch (\Exception $e) {
+                $errorMessage = 'API request failed: ' . $e->getMessage();
+                $fetchSuccess = false;
+            }
+
+            // If fetch failed, try to use existing cached data
+            if (!$fetchSuccess) {
+                $existingUserData = $this->findUserInExistingData($existingData, $user->id);
+                
+                if ($existingUserData && $existingUserData['success']) {
+                    // Use existing valid data
+                    $userData = $existingUserData;
+                    $userData['cached'] = true; // Mark as cached data
+                    $userData['last_fetch_error'] = $errorMessage;
+                } else {
+                    // No existing data, create error entry
+                    $userData = [
                         'user' => [
                             'id' => $user->id,
                             'name' => $user->name,
@@ -96,7 +198,7 @@ class LeaderboardController extends Controller
                             'daily_average' => 0,
                             'languages' => [],
                         ],
-                        'error' => 'Failed to fetch WakaTime data',
+                        'error' => $errorMessage,
                         'success' => false,
                         'metrics' => [
                             'total_seconds' => 0,
@@ -108,37 +210,29 @@ class LeaderboardController extends Controller
                             'rank' => 999,
                         ]
                     ];
-                    $errorCount++;
                 }
-            } catch (\Exception $e) {
-                $results[] = [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'avatar' => $user->avatar ?? null,
-                        'promo' => $user->promo ?? null,
-                        'created_at' => $user->created_at,
-                    ],
-                    'data' => [
-                        'total_seconds' => 0,
-                        'daily_average' => 0,
-                        'languages' => [],
-                    ],
-                    'error' => 'API request failed: ' . $e->getMessage(),
-                    'success' => false,
-                    'metrics' => [
-                        'total_seconds' => 0,
-                        'daily_average' => 0,
-                        'win_rate' => 0,
-                        'total_hours' => 0,
-                        'languages_count' => 0,
-                        'top_language' => 'Unknown',
-                        'rank' => 999,
-                    ]
-                ];
                 $errorCount++;
+                $failedUsers[] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'error' => $errorMessage,
+                    'timestamp' => now()->toISOString()
+                ];
             }
+
+            if ($userData) {
+                $results[] = $userData;
+            }
+        }
+
+        // Log failed users for monitoring
+        if (!empty($failedUsers)) {
+            Log::info('Leaderboard API fetch failures', [
+                'range' => $range,
+                'promo' => $promo,
+                'failed_users' => $failedUsers,
+                'total_failed' => count($failedUsers)
+            ]);
         }
 
         // Sort by total seconds and add ranking
@@ -162,7 +256,6 @@ class LeaderboardController extends Controller
             'filters' => [
                 'range' => $range,
                 'promo' => $promo,
-                'search' => $search,
             ],
             'stats' => [
                 'total_users' => count($results),
@@ -208,43 +301,46 @@ class LeaderboardController extends Controller
 
     public function getWeeklyWinners()
     {
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
-        
-        $users = User::whereNotNull('wakatime_api_key')->get();
-        $weeklyData = [];
+        // Cache weekly winners for 15 minutes
+        return Cache::remember('weekly_winners', 900, function () {
+            $startOfWeek = Carbon::now()->startOfWeek();
+            $endOfWeek = Carbon::now()->endOfWeek();
+            
+            $users = User::whereNotNull('wakatime_api_key')->get();
+            $weeklyData = [];
 
-        foreach ($users as $user) {
-            try {
-                $response = Http::timeout(10)->withHeaders([
-                    'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
-                ])->get("https://wakatime.com/api/v1/users/current/stats/last_7_days");
+            foreach ($users as $user) {
+                try {
+                    $response = Http::timeout(10)->withHeaders([
+                        'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
+                    ])->get("https://wakatime.com/api/v1/users/current/stats/last_7_days");
 
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $weeklyData[] = [
-                        'user' => $user,
-                        'data' => $data,
-                        'total_seconds' => $data['data']['total_seconds'] ?? 0,
-                    ];
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $weeklyData[] = [
+                            'user' => $user,
+                            'data' => $data,
+                            'total_seconds' => $data['data']['total_seconds'] ?? 0,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    continue;
                 }
-            } catch (\Exception $e) {
-                continue;
             }
-        }
 
-        // Sort by total seconds and get top 3
-        usort($weeklyData, function($a, $b) {
-            return $b['total_seconds'] - $a['total_seconds'];
+            // Sort by total seconds and get top 3
+            usort($weeklyData, function($a, $b) {
+                return $b['total_seconds'] - $a['total_seconds'];
+            });
+
+            return response()->json([
+                'winners' => array_slice($weeklyData, 0, 3),
+                'week' => [
+                    'start' => $startOfWeek->toDateString(),
+                    'end' => $endOfWeek->toDateString(),
+                ]
+            ]);
         });
-
-        return response()->json([
-            'winners' => array_slice($weeklyData, 0, 3),
-            'week' => [
-                'start' => $startOfWeek->toDateString(),
-                'end' => $endOfWeek->toDateString(),
-            ]
-        ]);
     }
 
     private function fetchUserInsights($user, $range)
@@ -312,5 +408,34 @@ class LeaderboardController extends Controller
         }
 
         return $insights;
+    }
+
+    /**
+     * Get existing cached data to preserve valid data for failed fetches
+     */
+    private function getExistingCachedData($range, $promo)
+    {
+        $cacheKey = $this->generateCacheKey($range, $promo, '', false);
+        $cachedData = Cache::get($cacheKey);
+        
+        if ($cachedData && isset($cachedData['data'])) {
+            return $cachedData['data'];
+        }
+        
+        return [];
+    }
+
+    /**
+     * Find user data in existing cached data
+     */
+    private function findUserInExistingData($existingData, $userId)
+    {
+        foreach ($existingData as $userData) {
+            if (isset($userData['user']['id']) && $userData['user']['id'] == $userId) {
+                return $userData;
+            }
+        }
+        
+        return null;
     }
 }
