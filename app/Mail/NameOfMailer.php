@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -16,11 +17,21 @@ class NameOfMailer extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public function __construct(public User $user, public string $plainPassword)
     {
         //
     }
 
+    public function build(): self
+    {
+        return $this->subject(config('app.name') . ' - Your account credentials')
+            ->view('emails.user-invited-password')
+            ->with([
+                'user' => $this->user,
+                'plainPassword' => $this->plainPassword,
+                'loginUrl' => url('/login'),
+            ]);
+    }
     /**
      * Get the message envelope.
      */
