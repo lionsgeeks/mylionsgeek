@@ -36,20 +36,22 @@ export default function Dashboard() {
                     <FullCalendar
                         plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
                         initialView="timeGridWeek"         // shows week view with hours
-                        headerToolbar={{
-                            left: "prev,next today",
-                            center: "title",
-                            right: "dayGridMonth,timeGridWeek,timeGridDay", // buttons like in your screenshot
-                        }}
+                        // headerToolbar={{
+                        //     left: "prev,next today",
+                        //     center: "title",
+                        //     right: "dayGridMonth,timeGridWeek,timeGridDay", // buttons like in your screenshot
+                        // }}
                         allDaySlot={true}                  // shows the "all-day" row
                         slotMinTime="08:00:00"             // earliest hour
                         slotMaxTime="20:00:00"             // latest hour
-                        selectable={true}                  // allow selecting time slots
+                        selectable={true}   
+                        selectMirror={true}               // allow selecting time slots
                         editable={true}                    // allow drag/drop
                         // events={events}                    // your JS array of events
                         eventClick={(info) => alert(`Event: ${info.event.title}`)}
                         dateClick={(info) => console.log(`Clicked date: ${info.dateStr}`)}
                         height="auto"
+                        
                     />
 
                 </div>

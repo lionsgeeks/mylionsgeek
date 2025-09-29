@@ -1,238 +1,478 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Crown, Search, Filter, Award, RefreshCw, Moon, Sun } from "lucide-react";
+import {
+  Crown,
+  Search,
+  Filter,
+  Award,
+  RefreshCw,
+  Moon,
+  Sun,
+  Trophy,
+  Medal,
+  Star,
+  Clock,
+  Code,
+  TrendingUp,
+  Users,
+  Calendar,
+  ChevronDown,
+  X,
+  Eye,
+  Zap,
+  Target,
+  BarChart3,
+  Activity,
+  Flame,
+  Sparkles,
+  CheckCircle,
+  XCircle,
+  Info,
+  Crown as CrownIcon,
+  Medal as MedalIcon,
+  Award as AwardIcon,
+  Monitor,
+  Laptop,
+  Smartphone
+} from "lucide-react";
+import { TableRowSkeleton, PodiumSkeleton, LoadingSpinner, LoadingOverlay } from '@/components/LoadingSkeleton';
+import { NoResults } from '@/components/NoResults';
+import BoardHeader from './partials/boardHeader';
+import BoardPodium from './partials/boardPodium';
+import BoardFilter from './partials/boardFilter';
+import BoardTable from './partials/boardTable';
 
 export default function Leaderboard() {
-  const [studentsData, setStudentsData] = useState([]);
-  const [filter, setFilter] = useState("alltime");
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [allLeaderboardData, setAllLeaderboardData] = useState([]); // Store all data for client-side filtering
+  const [topWinners, setTopWinners] = useState([]);
+  const [filter, setFilter] = useState("this_week");
   const [searchText, setSearchText] = useState("");
   const [selectedPromo, setSelectedPromo] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [userInsights, setUserInsights] = useState(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [stats, setStats] = useState({
+    totalCoders: 0,
+    totalHours: 0,
+    averageTime: 0,
+    lastUpdated: null
+  });
 
-  // Dark mode effect
-  useEffect(() => {
-    if (darkMode) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
-  }, [darkMode]);
 
-  const fetchWakaData = useCallback(async () => {
+  const fetchLeaderboardData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`/waka?range=${filter}`);
+      const params = new URLSearchParams({
+        range: filter,
+        promo: selectedPromo,
+        insights: 'true'
+      });
+
+      
+      const res = await fetch(`/leaderboard/data?${params}`);
       const data = await res.json();
-      const flattened = data.flatMap(user => user.data || []);
-      setStudentsData(flattened);
+
+      console.log(data);
+      
+
+      // Store all data for client-side filtering
+      setAllLeaderboardData(data.data || []);
+      setLeaderboardData(data.data || []);
+      setStats({
+        totalCoders: data.stats?.total_users || 0,
+        totalHours: data.stats?.total_hours || 0,
+        averageTime: data.stats?.average_hours || 0,
+        lastUpdated: data.last_updated
+      });
+
+      showNotification('Leaderboard updated successfully!', 'success');
     } catch (err) {
-      console.error('Failed to fetch WakaTime data', err);
+      console.error('Failed to fetch leaderboard data', err);
+      showNotification('Failed to update leaderboard data', 'error');
     } finally {
       setIsRefreshing(false);
     }
-  }, [filter]);
+  }, [filter, selectedPromo]);
+
+  const fetchTopWinners = useCallback(async () => {
+    try {
+      const res = await fetch('/leaderboard/weekly-winners');
+      const data = await res.json();
+      setTopWinners(data.winners || []);
+    } catch (err) {
+      console.error('Failed to fetch weekly winners', err);
+    }
+  }, []);
+
+  // Real-time search filtering with correct ranking
+  const filteredData = useMemo(() => {
+    if (!searchText.trim()) {
+      return allLeaderboardData;
+    }
+    
+    const searchLower = searchText.toLowerCase();
+    const filtered = allLeaderboardData.filter(item => {
+      const userName = item.user?.name?.toLowerCase() || '';
+      const userEmail = item.user?.email?.toLowerCase() || '';
+      return userName.includes(searchLower) || userEmail.includes(searchLower);
+    });
+
+    // Keep original ranks from the full dataset
+    return filtered.map(item => ({
+      ...item,
+      // Keep the original rank from the full leaderboard
+      originalRank: item.metrics?.rank || 999
+    }));
+  }, [allLeaderboardData, searchText]);
+
+  // Update displayed data when search changes
+  useEffect(() => {
+    setLeaderboardData(filteredData);
+  }, [filteredData]);
 
   useEffect(() => {
-    fetchWakaData();
-  }, [fetchWakaData]);
+    fetchLeaderboardData();
+    fetchTopWinners();
+  }, [fetchLeaderboardData, fetchTopWinners]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showSidePanel) {
+        closeSidePanel();
+      }
+      if (event.key === 'r' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        fetchLeaderboardData();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showSidePanel, fetchLeaderboardData]);
 
   const formatTime = (seconds) => {
-    if (!seconds) return '0 hrs';
+    if (!seconds) return '0h 0m';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    return `${hrs} hrs ${mins} mins`;
+    return `${hrs}h ${mins}m`;
   };
 
-  const filteredStudents = useMemo(() => {
-    let filtered = studentsData.filter(student => {
-      if (selectedPromo !== "all" && student.promo !== selectedPromo) return false;
-      if (searchText && !student.username?.toLowerCase().includes(searchText.toLowerCase())) return false;
-      return true;
-    });
-    return filtered.sort((a, b) => {
-      const timeA = a.totalSeconds ?? a.total_seconds_including_other_language ?? 0;
-      const timeB = b.totalSeconds ?? b.total_seconds_including_other_language ?? 0;
-      return timeB - timeA;
-    });
-  }, [studentsData, selectedPromo, searchText]);
+  const formatHours = (hours) => {
+    if (!hours) return '0h';
+    return `${Math.round(hours)}h`;
+  };
+
+  const getRankIcon = (rank) => {
+    switch (rank) {
+      case 1: return <Trophy className="w-6 h-6 text-yellow-500" />;
+      case 2: return <Medal className="w-6 h-6 text-gray-400" />;
+      case 3: return <Award className="w-6 h-6 text-alpha" />;
+      default: return <span className="text-lg font-bold text-gray-500">#{rank}</span>;
+    }
+  };
+
+
+
+  const getRankBadge = (timeInSeconds) => {
+    const hours = timeInSeconds / 3600; // convert seconds to hours
+
+    if (hours >= 2000) return "Grand Master";
+    if (hours >= 1500) return "Master Elite";
+    if (hours >= 1200) return "Master";
+    if (hours >= 900) return "Diamond Pro";
+    if (hours >= 700) return "Diamond";
+    if (hours >= 500) return "Gold Pro";
+    if (hours >= 350) return "Gold";
+    if (hours >= 200) return "Silver";
+    if (hours >= 100) return "Bronze";
+    return "Beginner";
+  };
+
+  const getRankColor = (rank) => {
+    if (rank <= 3) return "bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-yellow-800 dark:text-yellow-200";
+    if (rank <= 10) return "bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-800 dark:text-purple-200";
+    if (rank <= 25) return "bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-800 dark:text-blue-200";
+    if (rank <= 50) return "bg-gradient-to-r from-cyan-100 to-teal-100 dark:from-cyan-900/30 dark:to-teal-900/30 text-cyan-800 dark:text-cyan-200";
+    return "bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 text-orange-800 dark:text-orange-200";
+  };
+
+  const fetchUserInsights = useCallback(async (user) => {
+    if (!user.user?.wakatime_api_key) return;
+
+    setLoadingInsights(true);
+    try {
+      const insights = await Promise.all([
+        // Best day insight
+        fetch(`https://wakatime.com/api/v1/users/current/insights/best_day?range=${filter}`, {
+          headers: { 'Authorization': 'Basic ' + btoa(user.user.wakatime_api_key + ':') }
+        }).then(res => res.json()).catch(() => null),
+
+        // Daily average insight
+        fetch(`https://wakatime.com/api/v1/users/current/insights/daily_average?range=${filter}`, {
+          headers: { 'Authorization': 'Basic ' + btoa(user.user.wakatime_api_key + ':') }
+        }).then(res => res.json()).catch(() => null),
+
+        // Languages insight
+        fetch(`https://wakatime.com/api/v1/users/current/insights/languages?range=${filter}`, {
+          headers: { 'Authorization': 'Basic ' + btoa(user.user.wakatime_api_key + ':') }
+        }).then(res => res.json()).catch(() => null),
+
+        // Projects insight
+        fetch(`https://wakatime.com/api/v1/users/current/insights/projects?range=${filter}`, {
+          headers: { 'Authorization': 'Basic ' + btoa(user.user.wakatime_api_key + ':') }
+        }).then(res => res.json()).catch(() => null)
+      ]);
+
+      setUserInsights({
+        bestDay: insights[0],
+        dailyAverage: insights[1],
+        languages: insights[2],
+        projects: insights[3]
+      });
+    } catch (error) {
+      console.error('Failed to fetch insights:', error);
+    } finally {
+      setLoadingInsights(false);
+    }
+  }, [filter]);
+
+  const handleUserClick = (user) => {
+    setSelectedUser(user);
+    setShowSidePanel(true);
+    fetchUserInsights(user);
+  };
+
+  const closeSidePanel = () => {
+    setShowSidePanel(false);
+    setSelectedUser(null);
+    setUserInsights(null);
+  };
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const availablePromos = useMemo(() => {
-    const promos = [...new Set(studentsData.map(s => s.promo))].filter(Boolean);
+    const promos = [...new Set(leaderboardData.map(user => user.user?.promo))].filter(Boolean);
     return promos.sort((a, b) => b.localeCompare(a));
-  }, [studentsData]);
+  }, [leaderboardData]);
 
-  const stats = useMemo(() => {
-    const totalSecondsAll = studentsData.reduce((sum, student) => {
-      return sum + (student.totalSeconds ?? student.total_seconds_including_other_language ?? 0);
-    }, 0);
-    const totalHours = Math.round(totalSecondsAll / 3600);
-    return {
-      totalCoders: studentsData.length,
-      totalHours,
-      topPerformer: filteredStudents[0]?.username || 'None',
-      averageTime: studentsData.length > 0 ? Math.round(totalSecondsAll / studentsData.length / 3600) : 0,
-    };
-  }, [studentsData, filteredStudents]);
+  const highlightText = (text, searchTerm) => {
+    if (!searchTerm) return text;
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    return text.replace(regex, '<mark class="bg-alpha/30 text-alpha font-semibold">$1</mark>');
+  };
 
   return (
     <AppLayout breadcrumbs={[{ title: 'leaderboard', href: "/students/leaderboard" }]}>
-      <Head title="Leaderboard" />
-      <div className="max-w-7xl mx-auto p-6 bg-white dark:bg-black rounded-2xl shadow-lg dark:shadow-gray-800">
+      <Head title="Wakatime Leaderboard" />
 
-        {/* Header + Dark Mode Toggle + Refresh */}
-        <div className="mb-8 text-center">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">🏆 Leaderboard</h1>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 flex items-center gap-2"
-              >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                {darkMode ? "Light" : "Dark"}
-              </button>
-              <button
-                onClick={fetchWakaData}
-                disabled={isRefreshing}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? 'Refreshing...' : 'Refresh'}
-              </button>
+      {/* Main Container with Enhanced Design */}
+      <div className="min-h-screen bg-gradient-to-br from-light to-light/80 dark:from-dark dark:to-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+          <BoardHeader
+            fetchLeaderboardData={fetchLeaderboardData}
+            isRefreshing={isRefreshing} />
+
+          <BoardPodium
+            topWinners={topWinners}
+            formatTime={formatTime}
+            isRefreshing={isRefreshing}
+            getRankBadge={getRankBadge}
+            fetchLeaderboardData={fetchLeaderboardData}
+            handleUserClick={handleUserClick}
+          />
+
+          <BoardFilter
+            filter={filter}
+            leaderboardData={leaderboardData}
+            searchText={searchText}
+            setSearchText={setSearchText}
+            availablePromos={availablePromos}
+            selectedPromo={selectedPromo}
+            setSelectedPromo={setSelectedPromo}
+            isRefreshing={isRefreshing}
+            setFilter={setFilter}
+          />
+
+          <BoardTable
+            isRefreshing={isRefreshing}
+            leaderboardData={leaderboardData}
+            NoResults={NoResults}
+            searchText={searchText}
+            fetchLeaderboardData={fetchLeaderboardData}
+            showSidePanel={showSidePanel}
+            getRankIcon={getRankIcon}
+            highlightText={highlightText}
+            selectedUser={selectedUser}
+            closeSidePanel={closeSidePanel}
+            formatTime={formatTime}
+            getRankBadge={getRankBadge}
+            loadingInsights={loadingInsights}
+            userInsights={userInsights}
+            handleUserClick={handleUserClick}
+            getRankColor={getRankColor}
+
+          />
+          {/* Footer */}
+          <div className="mt-8 text-center text-sm text-dark/70 dark:text-light/70">
+            <div className="flex justify-between items-center">
+              <div>Last updated: {stats.lastUpdated ? new Date(stats.lastUpdated).toLocaleString() : 'Never'}</div>
+
             </div>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div className="bg-yellow-50 dark:bg-yellow-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-300">{stats.totalCoders}</div>
-              <div className="text-sm text-yellow-700 dark:text-yellow-200">Total Coders</div>
-            </div>
-            <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-300">{stats.totalHours}h</div>
-              <div className="text-sm text-blue-700 dark:text-blue-200">Total Hours</div>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-300">{stats.averageTime}h</div>
-              <div className="text-sm text-green-700 dark:text-green-200">Avg per Coder</div>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-300">{stats.topPerformer.split(' ')[0]}</div>
-              <div className="text-sm text-purple-700 dark:text-purple-200">Top Performer</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4 mb-8 items-center justify-between bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-          <div className="flex flex-wrap gap-4">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300 w-4 h-4" />
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="pl-10 pr-6 py-2 rounded-lg font-medium border border-yellow-500 dark:border-yellow-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              >
-                <option value="alltime">All Time</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-              </select>
-            </div>
-
-            <div className="relative">
-              <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300 w-4 h-4" />
-              <select
-                value={selectedPromo}
-                onChange={(e) => setSelectedPromo(e.target.value)}
-                className="pl-10 pr-8 py-2 rounded-lg border border-yellow-500 dark:border-yellow-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              >
-                <option value="all">All Promotions</option>
-                {availablePromos.map(promo => (
-                  <option key={promo} value={promo}>Promo {promo}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-300 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search by coder name..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded-lg border border-yellow-500 dark:border-yellow-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-              />
-            </div>
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {filteredStudents.length} of {studentsData.length} coders
-          </div>
-        </div>
-
-        {/* Leaderboard Table */}
-        <div className="rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-          <table className="w-full table-auto border-collapse">
-            <thead className="bg-gradient-to-r from-yellow-700 to-yellow-800 dark:from-gray-800 dark:to-gray-900 text-white">
-              <tr>
-                <th className="px-6 py-4 text-left font-semibold">Rank</th>
-                <th className="px-6 py-4 text-left font-semibold">Coder</th>
-                <th className="px-6 py-4 text-left font-semibold">Total Time</th>
-                <th className="px-6 py-4 text-left font-semibold">Daily Avg</th>
-                <th className="px-6 py-4 text-left font-semibold">Favorite Language</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student, index) => (
-                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-6 py-4 font-bold flex items-center gap-2">
-                      <span className="text-lg font-black text-yellow-600 dark:text-yellow-300">{index + 1}</span>
-                      {index === 0 && <Crown className="w-5 h-5 text-yellow-400 dark:text-yellow-300 fill-current" />}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className='flex items-center gap-4'>
-                        <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 dark:from-yellow-600 dark:to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {student.username?.charAt(0).toUpperCase() || "?"}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900 dark:text-gray-100">{student.username}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {formatTime(student.total_seconds_including_other_language)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {formatTime(student.daily_average)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-sm font-medium">
-                        {student.languages?.[0]?.name || "N/A"}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-500 dark:text-gray-400">
-                    <Search className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                    <div className="text-lg font-semibold">No coders found</div>
-                    <div className="text-sm">Try changing your search criteria</div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400 flex justify-between items-center">
-          <div>Last updated: {new Date().toLocaleDateString()}</div>
-          <div>Data source: WakaTime API</div>
         </div>
       </div>
+
+
+      {/* Floating Action Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={fetchLeaderboardData}
+          disabled={isRefreshing}
+          className="bg-alpha hover:bg-alpha/80 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={`w-6 h-6 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Mobile Profile Modal */}
+      {showSidePanel && selectedUser && (
+        <div className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end z-50">
+          <div className="bg-white/95 dark:bg-dark/95 backdrop-blur-sm rounded-t-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-dark dark:text-light">Profile Details</h3>
+                <button
+                  onClick={closeSidePanel}
+                  className="p-2 hover:bg-alpha/10 dark:hover:bg-alpha/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-dark/70 dark:text-light/70" />
+                </button>
+              </div>
+
+              {/* Mobile User Header */}
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-gradient-to-r from-alpha to-alpha/80 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+                  {selectedUser.user?.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <h4 className="text-xl font-semibold text-dark dark:text-light">
+                  {selectedUser.user?.name || 'Unknown'}
+                </h4>
+                <p className="text-dark/70 dark:text-light/70">
+                  {selectedUser.user?.promo ? `Promo ${selectedUser.user.promo}` : 'No Promo'}
+                </p>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRankColor(selectedUser.metrics?.rank || 1)}`}>
+                    <Star className="w-4 h-4" />
+                    {getRankBadge(selectedUser.metrics?.rank || 1)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile Stats Grid */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-alpha/10 dark:bg-alpha/20 p-4 rounded-lg">
+                  <div className="text-sm text-dark/70 dark:text-light/70">Total Time</div>
+                  <div className="text-lg font-semibold text-dark dark:text-light">
+                    {formatTime(selectedUser.data?.total_seconds || 0)}
+                  </div>
+                </div>
+                <div className="bg-alpha/10 dark:bg-alpha/20 p-4 rounded-lg">
+                  <div className="text-sm text-dark/70 dark:text-light/70">Daily Average</div>
+                  <div className="text-lg font-semibold text-dark dark:text-light">
+                    {formatTime(selectedUser.data?.daily_average || 0)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Languages */}
+              <div className="mb-6">
+                <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Top Languages</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedUser.data?.languages?.slice(0, 4).map((lang, index) => (
+                    <span key={index} className="px-3 py-1 bg-gradient-to-r from-alpha/20 to-alpha/10 text-alpha rounded-full text-sm font-medium">
+                      {lang.name}
+                    </span>
+                  )) || <span className="text-dark/50 dark:text-light/50">No data</span>}
+                </div>
+              </div>
+
+              {/* Mobile Consistency */}
+              <div className="mb-6">
+                <div className="text-sm text-dark/70 dark:text-light/70 mb-2">Consistency</div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-light/50 dark:bg-dark/50 rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full bg-gradient-to-r from-alpha to-alpha/80 progress-bar"
+                      style={{ width: `${Math.min(100, selectedUser.metrics?.win_rate || 0)}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-medium text-dark dark:text-light">
+                    {selectedUser.metrics?.win_rate || 0}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile Achievements */}
+              <div className="mb-6">
+                <div className="text-sm text-dark/70 dark:text-light/70 mb-3">Achievements</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gradient-to-r from-alpha/10 to-alpha/5 p-3 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-alpha">{selectedUser.metrics?.languages_count || 0}</div>
+                    <div className="text-xs text-dark/70 dark:text-light/70">Languages</div>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-500/10 to-green-600/5 p-3 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-green-600">{Math.round(selectedUser.metrics?.total_hours || 0)}h</div>
+                    <div className="text-xs text-dark/70 dark:text-light/70">Total Hours</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Performance Indicators */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-dark/70 dark:text-light/70">Rank</span>
+                  <span className="font-semibold text-dark dark:text-light">#{selectedUser.metrics?.rank || 1}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-dark/70 dark:text-light/70">Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedUser.success ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                    {selectedUser.success ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 slide-in-right">
+          <div className={`px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm border ${notification.type === 'success' ? 'bg-green-500/90 text-white border-green-400' :
+            notification.type === 'error' ? 'bg-red-500/90 text-white border-red-400' :
+              'bg-alpha/90 text-white border-alpha/40'
+            }`}>
+            <div className="flex items-center gap-2">
+              {notification.type === 'success' && <CheckCircle className="w-4 h-4" />}
+              {notification.type === 'error' && <XCircle className="w-4 h-4" />}
+              {notification.type === 'info' && <Info className="w-4 h-4" />}
+              <span className="text-sm font-medium">{notification.message}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
