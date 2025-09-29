@@ -9,19 +9,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Computer extends Model
 {
     use HasFactory;
-
+    public $incrementing = false;       
+    protected $keyType = 'string';
+    protected $primaryKey = 'uuid';
     protected $fillable = [
-        'reference',
-        'CpuGpu',
-        'computer_state',
-        'is_available',
-        'user_id',
-        'start_date',
+        'uuid',
+        'reference', 
+        'cpu', 
+        'gpu', 
+        'state', 
+        'mark', 
+        'user_id', 
+        'start', 
+        'end'
     ];
 
     protected $casts = [
-        'is_available' => 'boolean',
-        'start_date' => 'date',
+        'start' => 'date',
+        'end' => 'date',
     ];
 
     public function user(): BelongsTo

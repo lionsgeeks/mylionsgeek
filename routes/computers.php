@@ -4,20 +4,21 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Models\Computer;
 use App\Models\User;
+use App\Http\Controllers\ComputersController;
 
 Route::middleware(['auth','role:admin'])->group(function () {
     Route::get('/admin/computers', function () {
         $computers = Computer::with('user')->get()->map(function ($c) {
             return [
                 'id' => $c->id,
-                'mark' => $c->mark ?? null,
+                'mark' => $c->mark,
                 'reference' => $c->reference,
-                'cpu' => $c->cpu ?? $c->serial_number ?? null,
-                'gpu' => $c->gpu ?? $c->CpuGpu,
-                'isBroken' => $c->computer_state !== 'working',
-                'isActive' => !$c->is_available && !is_null($c->user_id),
+                'cpu' => $c->cpu,
+                'gpu' => $c->gpu,
+                'isBroken' => $c->state !== 'working',
                 'assignedUserId' => $c->user_id,
-                'contractStart' => optional($c->start_date)->toDateString(),
+                'contractStart' => optional($c->start)->toDateString(),
+                'contractEnd' => optional($c->end)->toDateString(),
             ];
         });
 
@@ -35,6 +36,14 @@ Route::middleware(['auth','role:admin'])->group(function () {
             'computer' => $computer,
         ]);
     })->name('admin.computers.show');
+
+    // Create new computer
+    Route::post('/admin/computers', [ComputersController::class, 'store'])
+        ->name('admin.computers.store');
+
+    // Update existing computer
+    Route::put('/admin/computers/{computer}', [ComputersController::class, 'update'])
+        ->name('admin.computers.update');
 });
 
 
