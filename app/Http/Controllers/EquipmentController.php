@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Equipment;
+use App\Models\EquipmentType;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -19,48 +20,35 @@ class EquipmentController extends Controller
             $query->with('image');
         }
 
-        // Map equipment_type_id to string
-        $typeMap = [
-            1 => 'camera',
-            2 => 'sound', 
-            3 => 'lighting',
-            4 => 'data/storage',
-            5 => 'podcast',
-            6 => 'other',
-        ];
+        // Eager load type
+        $query->with('equipmentType');
 
-        $equipment = $query->orderByDesc('created_at')->get()->map(function ($e) use ($typeMap) {
+        $equipment = $query->orderByDesc('created_at')->get()->map(function ($e) {
             return [
                 'id' => $e->id,
                 'reference' => $e->reference,
                 'mark' => $e->mark,
                 'state' => (bool) $e->state,
-                'equipment_type' => $typeMap[$e->equipment_type_id] ?? 'other',
+                'equipment_type' => optional($e->equipmentType)->name ?? 'other',
                 'image' => $e->image ? asset($e->image) : null, // Convert path to full URL
             ];
         });
 
+        $types = EquipmentType::query()->orderBy('name')->pluck('name')->values();
+
         return Inertia::render('admin/equipment/index', [
             'equipment' => $equipment,
+            'types' => $types,
         ]);
     }
 
     public function store(Request $request)
     {
-        // Map equipment_type string to ID
-        $typeMap = [
-            'camera' => 1,
-            'sound' => 2,
-            'lighting' => 3,
-            'data/storage' => 4,
-            'podcast' => 5,
-            'other' => 6,
-        ];
-
         $validated = $request->validate([
             'mark' => ['required', 'string', 'max:255'],
             'reference' => ['required', 'string', 'max:255'],
-            'equipment_type' => ['required', Rule::in(['camera','sound','lighting','data/storage','podcast','other'])],
+            'equipment_type' => ['required', 'string', 'max:255'],
+            'other_type' => ['nullable', 'string', 'max:255', 'required_if:equipment_type,other'],
             'state' => ['required', 'boolean'],
             'image' => ['nullable', 'image', 'max:4096'],
         ]);
@@ -75,11 +63,18 @@ class EquipmentController extends Controller
             $imagePath = 'storage/'.$path; // Remove leading slash for proper URL
         }
 
+        // Resolve or create type
+        $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
+            ? strtolower(trim($validated['other_type']))
+            : strtolower(trim($validated['equipment_type']));
+
+        $type = EquipmentType::firstOrCreate(['name' => $typeName]);
+
         $equipment = Equipment::create([
             'id' => $nextId,
             'mark' => $validated['mark'],
             'reference' => $validated['reference'],
-            'equipment_type_id' => $typeMap[$validated['equipment_type']],
+            'equipment_type_id' => $type->id,
             'state' => (string)$validated['state'] === '1' || $validated['state'] === 1 || $validated['state'] === true,
             'image' => $imagePath, // Store the image path directly in the equipment table
         ]);
@@ -89,20 +84,11 @@ class EquipmentController extends Controller
 
     public function update(Request $request, Equipment $equipment)
     {
-        // Map equipment_type string to ID
-        $typeMap = [
-            'camera' => 1,
-            'son' => 2,
-            'lumiere' => 3,
-            'data/stockage' => 4,
-            'podcast' => 5,
-            'other' => 6,
-        ];
-
         $validated = $request->validate([
             'mark' => ['required', 'string', 'max:255'],
             'reference' => ['required', 'string', 'max:255'],
-            'equipment_type' => ['required', Rule::in(['camera','sound','lighting','data/storage','podcast','other'])],
+            'equipment_type' => ['required', 'string', 'max:255'],
+            'other_type' => ['nullable', 'string', 'max:255', 'required_if:equipment_type,other'],
             'state' => ['required', 'boolean'],
             'image' => ['nullable', 'image', 'max:4096'],
         ]);
@@ -114,10 +100,17 @@ class EquipmentController extends Controller
             $imagePath = 'storage/'.$path; // Remove leading slash for proper URL
         }
 
+        // Resolve or create type
+        $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
+            ? strtolower(trim($validated['other_type']))
+            : strtolower(trim($validated['equipment_type']));
+
+        $type = EquipmentType::firstOrCreate(['name' => $typeName]);
+
         $equipment->update([
             'mark' => $validated['mark'],
             'reference' => $validated['reference'],
-            'equipment_type_id' => $typeMap[$validated['equipment_type']],
+            'equipment_type_id' => $type->id,
             'state' => (string)$validated['state'] === '1' || $validated['state'] === 1 || $validated['state'] === true,
             'image' => $imagePath,
         ]);

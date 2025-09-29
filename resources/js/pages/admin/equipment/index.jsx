@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EquipmentIndex = ({ equipment = [] }) => {
+const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -20,6 +20,7 @@ const EquipmentIndex = ({ equipment = [] }) => {
         mark: '',
         reference: '',
         equipment_type: '',
+        other_type: '',
         state: '',
         image: null,
     });
@@ -27,6 +28,7 @@ const EquipmentIndex = ({ equipment = [] }) => {
         mark: '',
         reference: '',
         equipment_type: '',
+        other_type: '',
         state: '',
         image: null,
     });
@@ -37,6 +39,7 @@ const EquipmentIndex = ({ equipment = [] }) => {
             mark: equipment.mark,
             reference: equipment.reference,
             equipment_type: equipment.equipment_type,
+            other_type: '',
             state: equipment.state ? '1' : '0',
             image: null,
         });
@@ -58,6 +61,11 @@ const EquipmentIndex = ({ equipment = [] }) => {
             });
         }
     };
+
+    // Ensure 'other' exists in the type list and build options
+    const baseTypes = Array.from(new Set([...(types || []), 'other'])).sort();
+    // For the Add modal, we want 'other' to always be last
+    const addModalTypes = [...baseTypes.filter((t) => t !== 'other'), 'other'];
 
     // Filter equipment based on selected type
     const filteredEquipment = filterType === 'all' 
@@ -88,12 +96,9 @@ const EquipmentIndex = ({ equipment = [] }) => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="camera">Camera</SelectItem>
-                                <SelectItem value="sound">Sound</SelectItem>
-                                <SelectItem value="lighting">Lighting</SelectItem>
-                                <SelectItem value="data/storage">Data/Storage</SelectItem>
-                                <SelectItem value="podcast">Podcast</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
+                                {baseTypes.filter((t) => t !== 'other').map((t) => (
+                                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -201,15 +206,19 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                             <SelectValue placeholder="Choose Equipment Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="camera">Camera</SelectItem>
-                                            <SelectItem value="sound">Sound</SelectItem>
-                                            <SelectItem value="lighting">Lighting</SelectItem>
-                                            <SelectItem value="data/storage">Data/Storage</SelectItem>
-                                            <SelectItem value="podcast">Podcast</SelectItem>
-                                            <SelectItem value="other">Other</SelectItem>
+                                            {addModalTypes.map((t) => (
+                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {data.equipment_type === 'other' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="other-type">Specify Equipment Type</Label>
+                                        <Input id="other-type" placeholder="e.g. tripod" value={data.other_type} onChange={(e) => setData('other_type', e.target.value)} />
+                                        {errors.other_type && <p className="text-xs text-destructive">{errors.other_type}</p>}
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <Label htmlFor="image">Upload Image</Label>
                                     <Input id="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
@@ -281,15 +290,24 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                             <SelectValue placeholder="Choose Equipment Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="camera">Camera</SelectItem>
-                                            <SelectItem value="sound">Sound</SelectItem>
-                                            <SelectItem value="lighting">Lighting</SelectItem>
-                                            <SelectItem value="data/storage">Data/Storage</SelectItem>
-                                            <SelectItem value="podcast">Podcast</SelectItem>
-                                            <SelectItem value="other">Other</SelectItem>
+                                            {baseTypes.map((t) => (
+                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {editData.equipment_type === 'other' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-other-type">Specify Equipment Type</Label>
+                                        <Input 
+                                            id="edit-other-type" 
+                                            placeholder="e.g. tripod" 
+                                            value={editData.other_type} 
+                                            onChange={(e) => setEditData('other_type', e.target.value)} 
+                                        />
+                                        {editErrors.other_type && <p className="text-xs text-destructive">{editErrors.other_type}</p>}
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-image">Upload New Image (optional)</Label>
                                     <Input 
