@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,10 +24,10 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [assigned, setAssigned] = useState('all'); // all | assigned | unassigned
     const [userFilter, setUserFilter] = useState('all'); // all | userId
     const [showAddModal, setShowAddModal] = useState(false);
-    const [addForm, setAddForm] = useState({ mark: '', reference: '', serial: '', cpuGpu: '' });
+    const [addForm, setAddForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
     const [showEditModal, setShowEditModal] = useState(false);
     const [editTargetId, setEditTargetId] = useState(null);
-    const [editForm, setEditForm] = useState({ mark: '', reference: '', serial: '', cpuGpu: '', isBroken: false });
+    const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
 
     const filteredComputers = useMemo(() => {
         let list = computers;
@@ -88,53 +88,44 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     }
 
     function openAddModal() {
-        setAddForm({ mark: '', reference: '', serial: '', cpuGpu: '' });
+        setAddForm({ reference: '', cpu: '', gpu: '', state: 'working', user_id: null, start: '', end: '', mark: '' });
         setShowAddModal(true);
     }
 
     function addComputer() {
-        const newComputer = {
-            id: Math.max(0, ...computers.map(c => Number(c.id) || 0)) + 1,
-            mark: addForm.mark || null,
-            reference: addForm.reference || null,
-            cpu: addForm.serial || '',
-            gpu: addForm.cpuGpu || '',
-            isBroken: false,
-            assignedUserId: null,
-        };
-        setComputers(prev => [newComputer, ...prev]);
-        setShowAddModal(false);
+        router.post('/admin/computers', addForm, {
+            onSuccess: () => {
+                setShowAddModal(false);
+                // Refresh the page to get updated data
+                router.reload();
+            }
+        });
     }
 
     function openEditModal(computer) {
         setEditTargetId(computer.id);
         setEditForm({
-            mark: computer.mark || '',
             reference: computer.reference || '',
-            serial: computer.cpu || '',
-            cpuGpu: computer.gpu || '',
-            isBroken: !!computer.isBroken,
+            cpu: computer.cpu || '',
+            gpu: computer.gpu || '',
+            state: computer.isBroken ? 'not_working' : 'working',
+            user_id: computer.assignedUserId || null,
+            start: computer.contractStart || '',
+            end: computer.contractEnd || '',
+            mark: computer.mark || '',
         });
         setShowEditModal(true);
     }
 
     function updateComputer() {
         if (!editTargetId) return;
-        setComputers(prev =>
-            prev.map(c =>
-                c.id === editTargetId
-                    ? {
-                          ...c,
-                          mark: editForm.mark,
-                          reference: editForm.reference,
-                          cpu: editForm.serial,
-                          gpu: editForm.cpuGpu,
-                          isBroken: !!editForm.isBroken,
-                      }
-                    : c
-            )
-        );
-        setShowEditModal(false);
+        router.put(`/admin/computers/${editTargetId}`, editForm, {
+            onSuccess: () => {
+                setShowEditModal(false);
+                // Refresh the page to get updated data
+                router.reload();
+            }
+        });
     }
 
     function Header() {
@@ -310,21 +301,50 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </DialogHeader>
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-sm mb-1">Mark :</label>
-                            <Input value={addForm.mark} onChange={e => setAddForm(f => ({ ...f, mark: e.target.value }))} placeholder="mark" />
-                        </div>
-                        <div>
                             <label className="block text-sm mb-1">Reference :</label>
                             <Input value={addForm.reference} onChange={e => setAddForm(f => ({ ...f, reference: e.target.value }))} placeholder="reference" />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Serie :</label>
-                            <Input value={addForm.serial} onChange={e => setAddForm(f => ({ ...f, serial: e.target.value }))} placeholder="Serial number" />
+                            <label className="block text-sm mb-1">Serial Number :</label>
+                            <Input value={addForm.cpu} onChange={e => setAddForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
                         </div>
                         <div>
                             <label className="block text-sm mb-1">CPU-GPU :</label>
-                            <Input value={addForm.cpuGpu} onChange={e => setAddForm(f => ({ ...f, cpuGpu: e.target.value }))} placeholder="CPU-GPU" />
+                            <Select value={addForm.gpu} onValueChange={value => setAddForm(f => ({ ...f, gpu: value }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select CPU-GPU" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I5-GTX">I5-GTX</SelectItem>
+                                    <SelectItem value="I7-RTX">I7-RTX</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
+                        <div>
+                            <label className="block text-sm mb-1">Computer State :</label>
+                            <Select value={addForm.state} onValueChange={value => setAddForm(f => ({ ...f, state: value }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select state" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="working">Working</SelectItem>
+                                    <SelectItem value="not_working">Not Working</SelectItem>
+                                    <SelectItem value="damaged">Damaged</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Mark :</label>
+                            <Input value={addForm.mark} onChange={e => setAddForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
+                        </div>
+                        {/* <div>
+                            <label className="block text-sm mb-1">Start Date :</label>
+                            <Input type="date" value={addForm.start} onChange={e => setAddForm(f => ({ ...f, start: e.target.value }))} />
+                        </div> */}
+                        {/* <div>
+                            <label className="block text-sm mb-1">End Date :</label>
+                            <Input type="date" value={addForm.end} onChange={e => setAddForm(f => ({ ...f, end: e.target.value }))} />
+                        </div> */}
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
                             <Button onClick={addComputer}>Add Computer</Button>
@@ -340,30 +360,49 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </DialogHeader>
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-sm mb-1">Mark :</label>
-                            <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} />
-                        </div>
-                        <div>
                             <label className="block text-sm mb-1">Reference :</label>
                             <Input value={editForm.reference} onChange={e => setEditForm(f => ({ ...f, reference: e.target.value }))} />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Serie :</label>
-                            <Input value={editForm.serial} onChange={e => setEditForm(f => ({ ...f, serial: e.target.value }))} />
+                            <label className="block text-sm mb-1">Serial Number :</label>
+                            <Input value={editForm.cpu} onChange={e => setEditForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
                         </div>
                         <div>
                             <label className="block text-sm mb-1">CPU-GPU :</label>
-                            <Input value={editForm.cpuGpu} onChange={e => setEditForm(f => ({ ...f, cpuGpu: e.target.value }))} />
+                            <Select value={editForm.gpu} onValueChange={value => setEditForm(f => ({ ...f, gpu: value }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select CPU-GPU" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I5-GTX">I5-GTX</SelectItem>
+                                    <SelectItem value="I7-RTX">I7-RTX</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="flex items-center gap-6 pt-2">
-                            <label className="flex items-center gap-2">
-                                <input type="radio" name="broken" checked={!editForm.isBroken} onChange={() => setEditForm(f => ({ ...f, isBroken: false }))} />
-                                <span>Available</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                                <input type="radio" name="broken" checked={!!editForm.isBroken} onChange={() => setEditForm(f => ({ ...f, isBroken: true }))} />
-                                <span>Broken</span>
-                            </label>
+                        <div>
+                            <label className="block text-sm mb-1">Computer State :</label>
+                            <Select value={editForm.state} onValueChange={value => setEditForm(f => ({ ...f, state: value }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select state" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="working">Working</SelectItem>
+                                    <SelectItem value="not_working">Not Working</SelectItem>
+                                    <SelectItem value="damaged">Damaged</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Mark :</label>
+                            <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">Start Date :</label>
+                            <Input type="date" value={editForm.start} onChange={e => setEditForm(f => ({ ...f, start: e.target.value }))} />
+                        </div>
+                        <div>
+                            <label className="block text-sm mb-1">End Date :</label>
+                            <Input type="date" value={editForm.end} onChange={e => setEditForm(f => ({ ...f, end: e.target.value }))} />
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
