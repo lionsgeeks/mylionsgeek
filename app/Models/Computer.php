@@ -13,7 +13,7 @@ class Computer extends Model
     protected $keyType = 'string';
     protected $primaryKey = 'uuid';
     protected $fillable = [
-        'uuid',
+        'id',
         'reference', 
         'cpu', 
         'gpu', 

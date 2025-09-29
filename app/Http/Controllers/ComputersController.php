@@ -24,15 +24,19 @@ class ComputersController extends Controller
             'state'     => ['required', Rule::in(['working', 'not_working', 'damaged'])],
             'mark'      => ['required', 'string', 'max:255'],
         ]);
-        // dd($validated);
 
 
 
-        $computer = Computer::create(array_merge(
-            $validated,
-            ['uuid' => (string) Str::uuid()] // assign UUID manually
-        ));
+        $computer = Computer::create([
+            'id' => (string) Str::uuid(),
+            'reference'=>$validated['reference'],
+            'cpu'=>$validated['cpu'],
+            'gpu'=>$validated['gpu'],
+            'state'=>$validated['state'],
+            'mark'=>$validated['mark'],
+        ]);
 
+        // dd($computer);
 
         return redirect()->route('admin.computers')
             ->with('success', 'Computer added successfully');
