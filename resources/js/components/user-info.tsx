@@ -13,7 +13,7 @@ export function UserInfo({ user, showEmail = false }: { user: User; showEmail?: 
                 {showEmail && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
             </div>
             <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                <AvatarImage src={user.image} alt={user.name} />
+                <AvatarImage className='h-full w-full object-cover' src={user.image} alt={user.name} />
                 <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                     {getInitials(user.name)}
                 </AvatarFallback>

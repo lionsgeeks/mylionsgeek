@@ -395,6 +395,78 @@ class LeaderboardController extends Controller
         };
     }
 
+    /**
+     * Previous week podium (Monday to Sunday of last completed week)
+     * Cached for 15 minutes.
+     */
+    public function getPreviousWeekPodium()
+    {
+        // Determine last completed week: previous Monday -> previous Sunday
+        $start = Carbon::now()->startOfWeek()->subWeek();
+        $end = (clone $start)->endOfWeek();
+
+        $cacheKey = sprintf('previous_week_podium_%s_%s', $start->toDateString(), $end->toDateString());
+
+        return Cache::remember($cacheKey, 900, function () use ($start, $end) {
+            $users = User::whereNotNull('wakatime_api_key')->get();
+            $weeklyData = [];
+
+            foreach ($users as $user) {
+                try {
+                    $response = Http::timeout(15)->withHeaders([
+                        'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
+                    ])->get('https://wakatime.com/api/v1/users/current/summaries', [
+                        'start' => $start->toDateString(),
+                        'end' => $end->toDateString(),
+                    ]);
+
+                    if ($response->successful()) {
+                        $json = $response->json();
+                        $totalSeconds = collect($json['data'] ?? [])
+                            ->sum(fn($day) => $day['grand_total']['total_seconds'] ?? 0);
+
+                        $weeklyData[] = [
+                            'user' => [
+                                'id' => $user->id,
+                                'name' => $user->name,
+                                'email' => $user->email,
+                                'image' => $user->image ?? null,
+                                'promo' => $user->promo ?? null,
+                            ],
+                            'total_seconds' => (int)$totalSeconds,
+                            'total_hours' => round($totalSeconds / 3600, 1),
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Skip on error; continue building podium from others
+                    continue;
+                }
+            }
+
+            // Sort by total seconds desc
+            usort($weeklyData, function ($a, $b) {
+                return ($b['total_seconds'] ?? 0) <=> ($a['total_seconds'] ?? 0);
+            });
+
+            // Assign ranks
+            foreach ($weeklyData as $index => &$item) {
+                $item['rank'] = $index + 1;
+            }
+
+            return response()->json([
+                // Full ordered results for the modal (scrollable list)
+                'results' => $weeklyData,
+                // Convenience top3 for any existing consumers
+                'winners' => array_slice($weeklyData, 0, 3),
+                'period' => [
+                    'start' => $start->toDateString(),
+                    'end' => $end->toDateString(),
+                ],
+                'last_updated' => now()->toISOString(),
+            ]);
+        });
+    }
+
     public function getWeeklyWinners()
     {
         // Cache weekly winners for 15 minutes
