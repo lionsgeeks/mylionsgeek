@@ -103,14 +103,26 @@ class PlacesController extends Controller
         // To avoid NOT NULL constraint errors, explicitly assign the next id when needed.
         $nextId = (int) (DB::table($table)->max('id') ?? 0) + 1;
 
-        DB::table($table)->insert([
-            'id' => $nextId,
-            'name' => $data['name'],
-            'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
-            'image' => $imagePath,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        if ($table === 'coworks') {
+            DB::table($table)->insert([
+                'id' => $nextId,
+                'table' => $data['name'],
+                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'image' => $imagePath,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }else {
+            DB::table($table)->insert([
+                'id' => $nextId,
+                'name' => $data['name'],
+                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'image' => $imagePath,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
 
         return redirect()->route('admin.places')->with('success', 'Place added');
     }
@@ -129,11 +141,21 @@ class PlacesController extends Controller
             return back()->with('error', 'Target table not available.');
         }
 
-        $update = [
-            'name' => $data['name'],
-            'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
-            'updated_at' => now(),
-        ];
+        if ($table === 'coworks') {
+            $update = [
+                'table' => $data['name'],
+                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'updated_at' => now(),
+            ];
+        }else {
+            $update = [
+                'name' => $data['name'],
+                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'updated_at' => now(),
+            ];
+        }
+
+
 
         if ($request->hasFile('image')) {
             $update['image'] = 'storage/'.$request->file('image')->store('places', 'public');
