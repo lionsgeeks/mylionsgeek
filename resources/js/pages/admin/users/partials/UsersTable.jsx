@@ -156,19 +156,19 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                 <AlertDialog open={openDelete}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete your account
-                                and remove your data from our servers.
+                            <AlertDialogTitle className='text-dark dark:text-light'>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription className='text-dark dark:text-light'>
+                                {deleteUser.account_state ? 'This will reactivate this account and restore access to this account data.' : 'This will temporarily suspend this account and prevent access to this account data until reactivated.'}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setOpenDelete(false)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={deleteConfirmedUser}>Continue</AlertDialogAction>
+                            <AlertDialogCancel className='cursor-pointer' onClick={() => setOpenDelete(false)}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className={`cursor-pointer ${deleteUser.account_state ? 'text-dark bg-alpha hover:bg-alpha/80' : 'text-light bg-error hover:bg-error/80'}`} onClick={deleteConfirmedUser}>Continue</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
             )}
+
 
             {/* edit modal */}
             <EditModal
