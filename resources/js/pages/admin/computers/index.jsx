@@ -25,6 +25,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [showEditModal, setShowEditModal] = useState(false);
     const [editTargetId, setEditTargetId] = useState(null);
     const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
+    const [userSearch, setUserSearch] = useState('');
 
     const filteredComputers = useMemo(() => {
         let list = computers;
@@ -156,10 +157,10 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell className="flex gap-2 items-center">
                                         <button
                                             onClick={() => openEditModal(c)}
-                                            className="bg-alpha hover:bg-yellow-600 p-2 rounded-full transition-colors duration-200"
+                                            className="p-2 bg-transparent hover:bg-transparent duration-200"
                                             title="Edit"
                                         >
-                                            <Pencil size={18} color="#fff" />
+                                            <Pencil size={18} className="text-alpha" />
                                         </button>
                                     </TableCell>
                                 </TableRow>
@@ -363,31 +364,62 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div>
                         <div>
                             <label className="block text-sm mb-1">Assign to User :</label>
-                            <div className="flex gap-2">
-                                <Select
-                                    value={editForm.user_id ? String(editForm.user_id) : 'none'}
-                                    onValueChange={value => setEditForm(f => ({ ...f, user_id: value === 'none' ? null : Number(value) }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select user" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Not assigned</SelectItem>
-                                        {users.map(u => (
-                                            <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        placeholder="Search user by name or email"
+                                        value={userSearch}
+                                        onChange={e => setUserSearch(e.target.value)}
+                                    />
+                                    {editForm.user_id && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setEditForm(f => ({ ...f, user_id: null }))}
+                                        >
+                                            Dissociate
+                                        </Button>
+                                    )}
+                                </div>
+
                                 {editForm.user_id && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setEditForm(f => ({ ...f, user_id: null }))}
-                                    >
-                                        Dissociate
-                                    </Button>
+                                    <p className="text-xs text-muted-foreground">
+                                        Selected: {findUserById(users, editForm.user_id)?.name || 'Unknown'}
+                                    </p>
                                 )}
+
+                                {userSearch.trim() && (
+                                    <div className="max-h-48 overflow-auto border rounded">
+                                        {users
+                                            .filter(u => {
+                                                const q = userSearch.trim().toLowerCase();
+                                                return (
+                                                    u.name.toLowerCase().includes(q) ||
+                                                    (u.email || '').toLowerCase().includes(q)
+                                                );
+                                            })
+                                            .slice(0, 12)
+                                            .map(u => (
+                                                <button
+                                                    key={u.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditForm(f => ({ ...f, user_id: u.id }));
+                                                        setUserSearch(u.name);
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted ${editForm.user_id === u.id ? 'bg-muted' : ''
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium text-sm">{u.name}</span>
+                                                        <span className="text-xs text-gray-500">{u.email}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                    </div>
+                                )}
+
                             </div>
                         </div>
 
