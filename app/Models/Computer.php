@@ -11,7 +11,8 @@ class Computer extends Model
     use HasFactory;
     public $incrementing = false;       
     protected $keyType = 'string';
-    protected $primaryKey = 'uuid';
+    // We store UUIDs in the `id` column, so make it the primary key
+    protected $primaryKey = 'id';
     protected $fillable = [
         'id',
         'reference', 

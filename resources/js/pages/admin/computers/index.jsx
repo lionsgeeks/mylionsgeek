@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Minus, Pencil, Search } from 'lucide-react';
+import { Pencil, Search } from 'lucide-react';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -17,9 +17,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [query, setQuery] = useState('');
     const [computers, setComputers] = useState(computersProp);
     const [users] = useState(usersProp);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [assignTargetId, setAssignTargetId] = useState(null);
-    const [selectedUserId, setSelectedUserId] = useState(null);
     const [damaged, setDamaged] = useState('all'); // all | damaged | working
     const [assigned, setAssigned] = useState('all'); // all | assigned | unassigned
     const [userFilter, setUserFilter] = useState('all'); // all | userId
@@ -63,29 +60,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         return list;
     }, [computers, query, users, damaged, assigned, userFilter]);
 
-    function openAssignModal(computerId) {
-        setAssignTargetId(computerId);
-        setSelectedUserId(null);
-        setShowAssignModal(true);
-    }
-
-    function assignComputer() {
-        if (!assignTargetId || !selectedUserId) return;
-        setComputers(prev =>
-            prev.map(c =>
-                c.id === assignTargetId
-                    ? { ...c, assignedUserId: selectedUserId }
-                    : c
-            )
-        );
-        setShowAssignModal(false);
-    }
-
-    function dissociateComputer(computerId) {
-        setComputers(prev =>
-            prev.map(c => (c.id === computerId ? { ...c, assignedUserId: null } : c))
-        );
-    }
 
     function openAddModal() {
         setAddForm({ reference: '', cpu: '', gpu: '', state: 'working', user_id: null, start: '', end: '', mark: '' });
@@ -96,7 +70,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         router.post('/admin/computers', addForm, {
             onSuccess: () => {
                 setShowAddModal(false);
-                // Refresh the page to get updated data
+                // Reload to get the new computer
                 router.reload();
             }
         });
@@ -119,11 +93,32 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
     function updateComputer() {
         if (!editTargetId) return;
-        router.put(`/admin/computers/${editTargetId}`, editForm, {
+        const payload = { ...editForm };
+        if (payload.user_id === null) {
+            delete payload.user_id; // avoid NOT NULL violation if column isn't nullable
+        }
+        router.put(`/admin/computers/${editTargetId}`, payload, {
             onSuccess: () => {
+                // Update local state instead of reloading
+                setComputers(prev =>
+                    prev.map(c => {
+                        if (c.id === editTargetId) {
+                            return {
+                                ...c, 
+                                assignedUserId: editForm.user_id,
+                                reference: editForm.reference,
+                                cpu: editForm.cpu,
+                                gpu: editForm.gpu,
+                                isBroken: editForm.state !== 'working',
+                                contractStart: editForm.start,
+                                contractEnd: editForm.end,
+                                mark: editForm.mark
+                            };
+                        }
+                        return c; // Return unchanged computer
+                    })
+                );
                 setShowEditModal(false);
-                // Refresh the page to get updated data
-                router.reload();
             }
         });
     }
@@ -210,19 +205,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell>{c.gpu}</TableCell>
                                     <TableCell>
                                         {user ? (
-                                            <div className="flex items-center gap-2 w-10">
-                                                <span>{user.name}</span>
-                                                <Button
-                                                    size={18}
-                                                    onClick={() => dissociateComputer(c.id)}
-                                                    className="p-1 bg-white text-black  transition-colors duration-200"
-                                                    aria-label="Dissociate"
-                                                >
-                                                    <Minus className="w-4 h-4" />
-                                                </Button>
-                                            </div>
+                                            <span className="text-sm font-medium">{user.name}</span>
                                         ) : (
-                                            <Button size="sm" className="bg-white" onClick={() => openAssignModal(c.id)}>Assign</Button>
+                                            <span className="text-sm text-gray-500">Not assigned</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="flex gap-2 items-center">
@@ -263,36 +248,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                 {activeTab === 'history' ? renderHistoryTable() : renderAllTable()}
             </div>
 
-            <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Assign Computer</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                        <Input placeholder="Search users... (static list)" readOnly />
-                        <div className="max-h-64 overflow-auto border rounded">
-                            {users.map(u => (
-                                <label key={u.id} className="flex items-center justify-between px-3 py-2 border-b last:border-b-0 cursor-pointer">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium">{u.name}</span>
-                                        <span className="text-xs text-gray-500">{u.email}</span>
-                                    </div>
-                                    <input
-                                        type="radio"
-                                        name="user"
-                                        checked={selectedUserId === u.id}
-                                        onChange={() => setSelectedUserId(u.id)}
-                                    />
-                                </label>
-                            ))}
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-                            <Button onClick={assignComputer} disabled={!selectedUserId}>Assign</Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
                 <DialogContent>
@@ -397,13 +352,39 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
                         </div>
                         <div>
+                            <label className="block text-sm mb-1">Assign to User :</label>
+                            <div className="flex gap-2">
+                                <Select value={editForm.user_id ? String(editForm.user_id) : 'none'} onValueChange={value => setEditForm(f => ({ ...f, user_id: value === 'none' ? null : Number(value) }))}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Not assigned</SelectItem>
+                                        {users.map(u => (
+                                            <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {editForm.user_id && (
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => setEditForm(f => ({ ...f, user_id: null }))}
+                                    >
+                                        Dissociate
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                        {/* <div>
                             <label className="block text-sm mb-1">Start Date :</label>
                             <Input type="date" value={editForm.start} onChange={e => setEditForm(f => ({ ...f, start: e.target.value }))} />
-                        </div>
-                        <div>
+                        </div> */}
+                        {/* <div>
                             <label className="block text-sm mb-1">End Date :</label>
                             <Input type="date" value={editForm.end} onChange={e => setEditForm(f => ({ ...f, end: e.target.value }))} />
-                        </div>
+                        </div> */}
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
                             <Button onClick={updateComputer}>Update Computer</Button>
