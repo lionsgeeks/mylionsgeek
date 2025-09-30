@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('places', function (Blueprint $table) {
+        Schema::create('coworks', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('place_type');
-            $table->boolean('state')->default(1);
-            $table->string('image')->nullable();
+            $table->string('image');
+            $table->integer('name');
+            $table->boolean('state');
             $table->timestamps();
         });
     }
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('places');
+        Schema::dropIfExists('coworks');
     }
 };

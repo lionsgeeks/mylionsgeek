@@ -30,12 +30,12 @@ const mainNavItems = [
         icon: Building2,
         chevron: true,
         children: [
-            { title: 'Studios', href: '/places/studios', icon: Building2 },
-            { title: 'Meeting room', href: '/places/meeting-room', icon: Building2 },
-            { title: 'Co-work', href: '/places/co-work', icon: Building2 },
+            { title: 'Studios', href: '/admin/places', icon: Building2 },
+            { title: 'Meeting room', href: '/admin/places', icon: Building2 },
+            { title: 'Co-work', href: '/admin/places', icon: Building2 },
         ],
     },
-    { title: 'Reservations', href: '/reservations', icon: Timer },
+    { title: 'Reservations', href: '/admin/reservations', icon: Timer },
     {
         title: 'Calendar',
         href: '/calendar',

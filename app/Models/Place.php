@@ -9,6 +9,8 @@ class Place extends Model
 {
     use HasFactory;
 
+    protected $table = 'places';
+
     protected $fillable = [
         'name',
         'place_type',

@@ -48,6 +48,7 @@ const PlaceIndex = ({ places = [], types = [] }) => {
     const confirmDelete = () => {
         if (deletingPlace) {
             router.delete(`/admin/places/${deletingPlace.id}`, {
+                data: { place_type: deletingPlace.place_type },
                 onSuccess: () => {
                     setIsDeleteOpen(false);
                     setDeletingPlace(null);
@@ -56,9 +57,10 @@ const PlaceIndex = ({ places = [], types = [] }) => {
         }
     };
 
-    const filteredPlaces = filterType === 'all' 
-        ? places 
-        : places.filter(e => e.place_type === filterType);
+    const normalizeType = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
+    const filteredPlaces = normalizeType(filterType) === 'all'
+        ? places
+        : places.filter(e => normalizeType(e.place_type) === normalizeType(filterType));
 
     return (
         <AppLayout>
@@ -114,7 +116,7 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
                             {filteredPlaces.map((e) => (
-                                <tr key={e.id} className="hover:bg-accent/30">
+                                <tr key={`${e.place_type}-${e.id}`} className="hover:bg-accent/30">
                                     <td className="px-4 py-3">
                                         {e.image ? (
                                             <button onClick={() => setPreviewSrc(e.image)} className="group rounded outline-hidden cursor-pointer">
