@@ -1,4 +1,5 @@
-import { PlusCircle, Code, ImageIcon } from 'lucide-react'
+import { useState } from 'react';
+import { PlusCircle, Code, ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -6,44 +7,49 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useForm } from '@inertiajs/react'
+} from "@/components/ui/select";
+import { useForm, router  } from '@inertiajs/react';
 
-export default function CreatTraining({ coaches  }) {
+export default function CreatTraining({ coaches }) {
+  const [open, setOpen] = useState(false); 
   const { data, setData, post, processing, reset, errors } = useForm({
     name: '',
     category: '',
-    starting_day: '',
-    coach_id: '',
+    start_time: '',
+    user_id: '',
     promo: ''
-  })
-  console.log(typeof data.coach_id)
-  function handleSubmit(e) {
-    e.preventDefault()
-    post('/admin/training', { ...data }, {
-  onSuccess: () => reset()
-})
+  });
 
+  function handleSubmit(e) {
+    e.preventDefault();
+    post('/admin/training', data, {
+      onSuccess: () => {
+        reset();
+        setOpen(false); 
+        router.reload({ only: ['trainings'] });
+      },
+    });
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+        <Button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white">
           <PlusCircle size={20} />
           Add Training
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add New Training</DialogTitle>
@@ -68,7 +74,10 @@ export default function CreatTraining({ coaches  }) {
           {/* Category */}
           <div>
             <Label>Category</Label>
-            <Select onValueChange={(value) => setData('category', value)}>
+            <Select
+              value={data.category}
+              onValueChange={(value) => setData('category', value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
@@ -94,16 +103,19 @@ export default function CreatTraining({ coaches  }) {
             <Input
               id="startDay"
               type="date"
-              value={data.starting_day}
-              onChange={(e) => setData('starting_day', e.target.value)}
+              value={data.start_time}
+              onChange={(e) => setData('start_time', e.target.value)}
             />
-            {errors.starting_day && <p className="text-red-600 text-sm">{errors.starting_day}</p>}
+            {errors.start_time && <p className="text-red-600 text-sm">{errors.start_time}</p>}
           </div>
 
           {/* Coach */}
           <div>
             <Label>Coach</Label>
-            <Select onValueChange={(value) => setData('coach_id', value)}>
+            <Select
+              value={data.user_id?.toString()}
+              onValueChange={(value) => setData('user_id', Number(value))}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select coach" />
               </SelectTrigger>
@@ -115,7 +127,7 @@ export default function CreatTraining({ coaches  }) {
                 ))}
               </SelectContent>
             </Select>
-            {errors.coach_id && <p className="text-red-600 text-sm">{errors.coach_id}</p>}
+            {errors.user_id && <p className="text-red-600 text-sm">{errors.user_id}</p>}
           </div>
 
           {/* Promo */}
@@ -132,12 +144,16 @@ export default function CreatTraining({ coaches  }) {
 
           {/* Submit Button */}
           <div className="flex justify-end">
-            <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={processing}>
+            <Button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700"
+              disabled={processing}
+            >
               Save
             </Button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
