@@ -73,18 +73,15 @@ export default function ComputerDetail({ computer }) {
                         <label className="block text-sm mb-1">Mark</label>
                         <Input name="mark" value={form.mark} onChange={handleChange} placeholder="Mark" />
                     </div>
-                    <div>
-                        <label className="block text-sm mb-1">Start Date</label>
-                        <Input type="date" name="start" value={form.start} onChange={handleChange} />
-                    </div>
-                    <div>
+                    
+                    {/* <div>
                         <label className="block text-sm mb-1">End Date</label>
                         <Input type="date" name="end" value={form.end} onChange={handleChange} />
-                    </div>
-                    <div className="flex gap-2 pt-2">
+                    </div> */}
+                    {/* <div className="flex gap-2 pt-2">
                         <Button variant="outline" onClick={() => window.history.back()}>Cancel</Button>
                         <Button onClick={save}>Save</Button>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </AppLayout>
