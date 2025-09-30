@@ -29,7 +29,7 @@ export default function Profile({ mustVerifyEmail, status }) {
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <HeadingSmall title="Profile information" description="Update your name and email address" />
+                    <HeadingSmall title="Profile" description="Update your information and account preferences" />
 
                     <Form
                         {...ProfileController.update.form()}
@@ -40,37 +40,71 @@ export default function Profile({ mustVerifyEmail, status }) {
                     >
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="name">Name</Label>
+                                {/* Avatar + Basic info */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="md:col-span-1">
+                                        <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                            <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
+                                                {auth.user.image ? (
+                                                    <img src={auth.user.image} alt={auth.user.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xl font-semibold">
+                                                        {auth.user.name?.charAt(0)?.toUpperCase()}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                    <Input
-                                        id="name"
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
-                                        defaultValue={auth.user.name}
-                                        name="name"
-                                        required
-                                        autoComplete="name"
-                                        placeholder="Full name"
-                                    />
+                                            <div className="w-full">
+                                                <Label htmlFor="image">Avatar</Label>
+                                                <Input id="image" name="image" type="file" accept="image/*" className="mt-1 block w-full" />
+                                                <InputError className="mt-2" message={errors.image} />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <InputError className="mt-2" message={errors.name} />
-                                </div>
+                                    <div className="md:col-span-2 grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="name">Name</Label>
+                                            <Input
+                                                id="name"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                defaultValue={auth.user.name}
+                                                name="name"
+                                                required
+                                                autoComplete="name"
+                                                placeholder="Full name"
+                                            />
+                                            <InputError className="mt-2" message={errors.name} />
+                                        </div>
 
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="email">Email address</Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                defaultValue={auth.user.email}
+                                                name="email"
+                                                required
+                                                autoComplete="username"
+                                                placeholder="Email address"
+                                            />
+                                            <InputError className="mt-2" message={errors.email} />
+                                        </div>
 
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
-                                        defaultValue={auth.user.email}
-                                        name="email"
-                                        required
-                                        autoComplete="username"
-                                        placeholder="Email address"
-                                    />
-
-                                    <InputError className="mt-2" message={errors.email} />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="phone">Phone</Label>
+                                                <Input id="phone" name="phone" defaultValue={auth.user.phone || ''} placeholder="e.g. +212 600 000 000" />
+                                                <InputError className="mt-2" message={errors.phone} />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="cin">CIN</Label>
+                                                <Input id="cin" name="cin" defaultValue={auth.user.cin || ''} placeholder="National ID" />
+                                                <InputError className="mt-2" message={errors.cin} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {mustVerifyEmail && auth.user.email_verified_at === null && (
@@ -93,6 +127,16 @@ export default function Profile({ mustVerifyEmail, status }) {
                                         )}
                                     </div>
                                 )}
+
+                                {/* Integrations / WakaTime */}
+                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="wakatime_api_key">WakaTime API Key</Label>
+                                        <Input id="wakatime_api_key" name="wakatime_api_key" defaultValue={auth.user.wakatime_api_key || ''} placeholder="Enter your WakaTime API key" />
+                                        <InputError className="mt-2" message={errors.wakatime_api_key} />
+                                        <p className="text-xs text-neutral-500">Used to compute your coding leaderboard stats.</p>
+                                    </div>
+                                </div>
 
                                 <div className="flex items-center gap-4">
                                     <Button disabled={processing} data-test="update-profile-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save</Button>

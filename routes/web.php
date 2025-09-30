@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Jobs\CreateInvitedUser;
+use App\Models\User;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -19,10 +20,15 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     })->name('dashboard');
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
-require __DIR__.'/users.php';
-require __DIR__.'/computers.php';
-require __DIR__.'/leaderboard.php';
-require __DIR__.'/training.php';
-require __DIR__.'/equipment.php';
+
+
+
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';
+require __DIR__ . '/users.php';
+require __DIR__ . '/computers.php';
+require __DIR__ . '/leaderboard.php';
+require __DIR__ . '/training.php';
+require __DIR__ . '/equipment.php';
+require __DIR__ . '/places.php';
+require __DIR__ . '/reservations.php';

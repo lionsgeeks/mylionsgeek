@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Pencil, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -8,16 +8,70 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EquipmentIndex = ({ equipment = [] }) => {
+const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [editingEquipment, setEditingEquipment] = useState(null);
+    const [deletingEquipment, setDeletingEquipment] = useState(null);
+    const [filterType, setFilterType] = useState('all');
     const { data, setData, post, processing, reset, errors } = useForm({
         mark: '',
         reference: '',
         equipment_type: '',
+        other_type: '',
         state: '',
         image: null,
     });
+    const { data: editData, setData: setEditData, put, processing: editProcessing, reset: resetEdit, errors: editErrors } = useForm({
+        mark: '',
+        reference: '',
+        equipment_type: '',
+        other_type: '',
+        state: '',
+        image: null,
+    });
+
+    const handleEdit = (equipment) => {
+        setEditingEquipment(equipment);
+        setEditData({
+            mark: equipment.mark,
+            reference: equipment.reference,
+            equipment_type: equipment.equipment_type,
+            other_type: '',
+            state: equipment.state ? '1' : '0',
+            image: null,
+        });
+        setIsEditOpen(true);
+    };
+
+    const handleDelete = (equipment) => {
+        setDeletingEquipment(equipment);
+        setIsDeleteOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (deletingEquipment) {
+            router.delete(`/admin/equipements/${deletingEquipment.id}`, {
+                onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    setDeletingEquipment(null);
+                }
+            });
+        }
+    };
+
+    // Ensure 'other' exists in the type list and build options
+    const baseTypes = Array.from(new Set([...(types || []), 'other'])).sort();
+    // For the Add modal, we want 'other' to always be last
+    const addModalTypes = [...baseTypes.filter((t) => t !== 'other'), 'other'];
+
+    // Filter equipment based on selected type
+    const filteredEquipment = filterType === 'all' 
+        ? equipment 
+        : equipment.filter(e => e.equipment_type === filterType);
+
     return (
         <AppLayout>
             <Head title="Equipment" />
@@ -25,11 +79,39 @@ const EquipmentIndex = ({ equipment = [] }) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Equipment</h1>
-                        <p className="text-sm text-muted-foreground">{equipment.length} items</p>
+                        <p className="text-sm text-muted-foreground">{filteredEquipment.length} items</p>
                     </div>
                     <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
                         Add equipment
                     </button>
+                </div>
+
+                {/* Filter section */}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
+                        <Select value={filterType} onValueChange={setFilterType}>
+                            <SelectTrigger className="w-48">
+                                <SelectValue placeholder="All types" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                {baseTypes.filter((t) => t !== 'other').map((t) => (
+                                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {filterType !== 'all' && (
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setFilterType('all')}
+                            className="text-xs"
+                        >
+                            Clear filter
+                        </Button>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
@@ -44,7 +126,7 @@ const EquipmentIndex = ({ equipment = [] }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
-                            {equipment.map((e) => (
+                            {filteredEquipment.map((e) => (
                                 <tr key={e.id} className="hover:bg-accent/30">
                                     <td className="px-4 py-3">
                                         {e.image ? (
@@ -67,13 +149,14 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                                 title="Edit"
+                                                onClick={() => handleEdit(e)}
                                             >
                                                 <Pencil size={18} className="h-4 w-4" />
                                             </button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
                                                 title="Delete"
-                                                onClick={() => { /* TODO: hook delete */ }}
+                                                onClick={() => handleDelete(e)}
                                             >
                                                 <Trash size={18} className="h-4 w-4" />
                                             </button>
@@ -81,10 +164,10 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                     </td>
                                 </tr>
                             ))}
-                            {equipment.length === 0 && (
+                            {filteredEquipment.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                        No equipment yet.
+                                        {filterType === 'all' ? 'No equipment yet.' : `No ${filterType} equipment found.`}
                                     </td>
                                 </tr>
                             )}
@@ -123,15 +206,19 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                             <SelectValue placeholder="Choose Equipment Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="camera">Camera</SelectItem>
-                                            <SelectItem value="son">Son</SelectItem>
-                                            <SelectItem value="lumiere">Lumière</SelectItem>
-                                            <SelectItem value="data/stockage">Data/Stockage</SelectItem>
-                                            <SelectItem value="podcast">Podcast</SelectItem>
-                                            <SelectItem value="other">Other</SelectItem>
+                                            {addModalTypes.map((t) => (
+                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                {data.equipment_type === 'other' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="other-type">Specify Equipment Type</Label>
+                                        <Input id="other-type" placeholder="e.g. tripod" value={data.other_type} onChange={(e) => setData('other_type', e.target.value)} />
+                                        {errors.other_type && <p className="text-xs text-destructive">{errors.other_type}</p>}
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <Label htmlFor="image">Upload Image</Label>
                                     <Input id="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
@@ -164,6 +251,155 @@ const EquipmentIndex = ({ equipment = [] }) => {
                                     }}
                                 >
                                     Add an Equipment
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Edit equipment modal */}
+                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                    <DialogContent className="max-w-lg">
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-medium">Edit Equipment</h2>
+                            <div className="grid gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-mark">Equipment Mark</Label>
+                                    <Input 
+                                        id="edit-mark" 
+                                        placeholder="mark" 
+                                        value={editData.mark} 
+                                        onChange={(e) => setEditData('mark', e.target.value)} 
+                                    />
+                                    {editErrors.mark && <p className="text-xs text-destructive">{editErrors.mark}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-reference">Equipment Reference</Label>
+                                    <Input 
+                                        id="edit-reference" 
+                                        placeholder="reference" 
+                                        value={editData.reference} 
+                                        onChange={(e) => setEditData('reference', e.target.value)} 
+                                    />
+                                    {editErrors.reference && <p className="text-xs text-destructive">{editErrors.reference}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Equipment Type</Label>
+                                    <Select value={editData.equipment_type} onValueChange={(v) => setEditData('equipment_type', v)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Choose Equipment Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {baseTypes.map((t) => (
+                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {editData.equipment_type === 'other' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-other-type">Specify Equipment Type</Label>
+                                        <Input 
+                                            id="edit-other-type" 
+                                            placeholder="e.g. tripod" 
+                                            value={editData.other_type} 
+                                            onChange={(e) => setEditData('other_type', e.target.value)} 
+                                        />
+                                        {editErrors.other_type && <p className="text-xs text-destructive">{editErrors.other_type}</p>}
+                                    </div>
+                                )}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-image">Upload New Image (optional)</Label>
+                                    <Input 
+                                        id="edit-image" 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)} 
+                                    />
+                                    {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Equipment State</Label>
+                                    <Select value={editData.state === '' ? '' : String(editData.state)} onValueChange={(v) => setEditData('state', v)}>
+                                        <SelectTrigger className={editData.state === '' ? 'text-muted-foreground' : ''}>
+                                            <SelectValue placeholder="Choose an option" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="1">Working</SelectItem>
+                                            <SelectItem value="0">Not working</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {editErrors.state && <p className="text-xs text-destructive">{editErrors.state}</p>}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                                <Button
+                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                    disabled={editProcessing}
+                                    onClick={() => {
+                                        put(`/admin/equipements/${editingEquipment.id}`, {
+                                            forceFormData: true,
+                                            onSuccess: () => { resetEdit(); setIsEditOpen(false); setEditingEquipment(null); },
+                                        });
+                                    }}
+                                >
+                                    Update Equipment
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete confirmation modal */}
+                <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                    <DialogContent className="max-w-md">
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                                    <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-semibold">Delete Equipment</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        This action cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {deletingEquipment && (
+                                <div className="rounded-lg border bg-muted/50 p-4">
+                                    <div className="flex items-center gap-3">
+                                        {deletingEquipment.image && (
+                                            <img 
+                                                src={deletingEquipment.image} 
+                                                alt={deletingEquipment.reference}
+                                                className="h-10 w-10 rounded object-cover"
+                                            />
+                                        )}
+                                        <div>
+                                            <p className="font-medium">{deletingEquipment.reference}</p>
+                                            <p className="text-sm text-muted-foreground">{deletingEquipment.mark}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        setIsDeleteOpen(false);
+                                        setDeletingEquipment(null);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    variant="destructive"
+                                    onClick={confirmDelete}
+                                >
+                                    Delete Equipment
                                 </Button>
                             </div>
                         </div>

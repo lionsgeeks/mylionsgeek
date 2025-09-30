@@ -1,7 +1,7 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings } from 'lucide-react';
+import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems = [
@@ -16,6 +16,13 @@ const mainNavItems = [
         href: '/admin/users',
         icon: Users
     },
+    ,
+
+    {
+        title: 'LeaderBoard',
+        href: '/students/leaderboard',
+        icon: AwardIcon
+    },
 
     {
         title: 'Places',
@@ -23,12 +30,12 @@ const mainNavItems = [
         icon: Building2,
         chevron: true,
         children: [
-            { title: 'Studios', href: '/places/studios', icon: Building2 },
-            { title: 'Meeting room', href: '/places/meeting-room', icon: Building2 },
-            { title: 'Co-work', href: '/places/co-work', icon: Building2 },
+            { title: 'Studios', href: '/admin/places', icon: Building2 },
+            { title: 'Meeting room', href: '/admin/places', icon: Building2 },
+            { title: 'Co-work', href: '/admin/places', icon: Building2 },
         ],
     },
-    { title: 'Reservations', href: '/reservations', icon: Timer },
+    { title: 'Reservations', href: '/admin/reservations', icon: Timer },
     {
         title: 'Calendar',
         href: '/calendar',
