@@ -70,7 +70,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
             },
             onError: (err) => {
                 setErrors(err);
-                console.log('Validation errors:', err);
+                // console.log('Validation errors:', err);
             },
         });
     };

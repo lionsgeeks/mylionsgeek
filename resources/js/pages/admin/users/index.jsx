@@ -13,7 +13,7 @@ const Users = ({ users, trainings }) => {
         date: ""
     });
     const allRoles = [...new Set(users.map((user) => user.role))]
-    console.log(users);
+    // console.log(users);
     
     const filteredUsers = useMemo(() => {
         const list = users
@@ -31,13 +31,13 @@ const Users = ({ users, trainings }) => {
     }, [users, filters]);
     const allStatus = [...new Set(users.map((user)=>user.status))]
     // console.log(status);
-    console.log(filteredUsers.length);
+    // console.log(filteredUsers.length);
     
     
     return (
         <AppLayout>
             <div className="p-10 flex flex-col gap-10">
-                <Header allmembers={users.length} />
+                <Header trainings={trainings}  members={users.length} roles={allRoles} status={allStatus} />
                 <FilterPart
                     filters={filters}
                     setFilters={setFilters}
