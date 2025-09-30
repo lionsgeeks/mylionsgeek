@@ -67,9 +67,9 @@ class User extends Authenticatable
         return $this->hasOne(Access::class);
     }
     public function formation()
-    {
-        return $this->hasOne(Formation::class);
-    }
+{
+    return $this->belongsTo(Formation::class);
+}
     public function scopeActive($query)
     {
         return $query->where('account_state', 0);
