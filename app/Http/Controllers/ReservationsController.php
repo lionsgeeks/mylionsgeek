@@ -132,6 +132,32 @@ class ReservationsController extends Controller
             'studioReservations' => $studioReservations,
         ]);
     }
+
+    public function approve(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return back()->with('error', 'Reservations table missing');
+        }
+        DB::table('reservations')->where('id', $reservation)->update([
+            'approved' => 1,
+            'canceled' => 0,
+            'updated_at' => now(),
+        ]);
+        return back()->with('success', 'Reservation approved');
+    }
+
+    public function cancel(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return back()->with('error', 'Reservations table missing');
+        }
+        DB::table('reservations')->where('id', $reservation)->update([
+            'canceled' => 1,
+            'approved' => 0,
+            'updated_at' => now(),
+        ]);
+        return back()->with('success', 'Reservation canceled');
+    }
 }
 
 
