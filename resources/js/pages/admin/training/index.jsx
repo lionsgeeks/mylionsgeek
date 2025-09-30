@@ -13,10 +13,10 @@ export default function Training({ trainings, coaches }) {
         {/* Header with Button */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-4xl font-extrabold bg-black bg-clip-text text-transparent">
+            <h1 className="text-4xl font-extrabold bg-black dark:bg-white bg-clip-text text-transparent">
               Training Programs
             </h1>
-            <p className="text-gray-600 mt-2">Discover amazing coding and media courses</p>
+            <p className="text-gray-600 mt-2 dark:text-gray-300">Discover amazing coding and media courses</p>
           </div>
           <CreatTraining coaches={coaches} />
         </div>
