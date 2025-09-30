@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm } from '@inertiajs/react';
+import { useForm, router  } from '@inertiajs/react';
 
 export default function CreatTraining({ coaches }) {
   const [open, setOpen] = useState(false); 
@@ -36,6 +36,7 @@ export default function CreatTraining({ coaches }) {
       onSuccess: () => {
         reset();
         setOpen(false); 
+        router.reload({ only: ['trainings'] });
       },
     });
   }

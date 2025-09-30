@@ -12,8 +12,17 @@ class FormationController extends Controller
     public function index()
     {
         // $trainings = Formation::all();
-$trainings = Formation::with('coach')->withCount('users')->get();
-        
+        $trainings = Formation::with('coach')
+                            ->withCount('users')
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+
+        $coaches = User::where('role', 'coach')->get();
+
+        return Inertia::render('admin/training/index', [
+            'trainings' => $trainings,
+            'coaches'   => $coaches,
+        ]);
 
         $coaches = User::where('role', 'coach')->get();
         $formations = Formation::all();
@@ -51,8 +60,7 @@ $trainings = Formation::with('coach')->withCount('users')->get();
 
         Formation::create($validated);
 
-        return redirect()->route('training.index')
-                         ->with('success', 'Training added successfully!');
+        return back()->with('success', 'Training added successfully!');
     }
     /////////////////////
     public function addStudent(Formation $training, Request $request)
