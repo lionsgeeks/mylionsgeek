@@ -6,7 +6,7 @@ import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft
 import { router } from '@inertiajs/react';
 import { useInitials } from '@/hooks/use-initials';
 import EditModal from './EditModal';
-import User from '../[id]';
+import User from './ShowModal';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -135,6 +135,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     <Pencil size={20} className="text-alpha" />
                                 </Button>
                                 <Button
+                                    
                                     className="p-2 bg-transparent hover:bg-transparent duration-200 cursor-pointer"
                                     title={user.account_state ? 'Active' : 'Suspend'}
                                     onClick={() => changeAccountStatus(user)} // Open delete confirmation dialog

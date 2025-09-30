@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class UsersController extends Controller
 {
@@ -89,13 +90,26 @@ class UsersController extends Controller
     //! edit sunction
     public function show(User $user)
     {
-        // dd($user->id);
-        $user = User::where('id', $user->id);
+        if (Schema::hasTable('accesses')) {
+            $user->load(['access']);
+        }
         $allFormation = Formation::orderBy('created_at', 'desc')->get();
+
+        // Placeholder related datasets for UI sections; replace with real relations when available
+        $projects = [];
+        $posts = [];
+        $certificates = [];
+        $cv = null;
+        $notes = [];
 
         return Inertia::render('admin/users/[id]', [
             'user' => $user,
             'trainings' => $allFormation,
+            'projects' => $projects,
+            'posts' => $posts,
+            'certificates' => $certificates,
+            'cv' => $cv,
+            'notes' => $notes,
         ]);
     }
     public function update(Request $request, User $user)
