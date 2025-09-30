@@ -90,6 +90,8 @@ class ReservationsController extends Controller
                 'start' => $r->start ?? null,
                 'end' => $r->end ?? null,
                 'type' => $r->type ?? null,
+                'title' => $r->title ?? null,
+                'description' => $r->description ?? null,
                 'approved' => (bool) ($r->approved ?? 0),
                 'start_signed' => (bool) ($r->start_signed ?? 0),
                 'end_signed' => (bool) ($r->end_signed ?? 0),
