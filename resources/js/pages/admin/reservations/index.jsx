@@ -127,26 +127,44 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 {tab === 'coworks' && (
                     <div className="mt-6">
                         <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <table className="min-w-full divide-y divide-sidebar-border/70">
+                            <table className="min-w-full table-fixed divide-y divide-sidebar-border/70">
+                                <colgroup>
+                                    <col className="w-56" />
+                                    <col className="w-32" />
+                                    <col className="w-40" />
+                                    <col className="w-36" />
+                                    <col className="w-28" />
+                                    <col className="w-28" />
+                                </colgroup>
                                 <thead className="bg-secondary/50">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Table</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Day</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Start</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">End</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
                                     {coworkReservations.map((rc) => (
-                                        <tr key={rc.id} className="hover:bg-accent/30">
+                                        <tr key={rc.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected({
+                                            id: rc.id,
+                                            user_name: rc.user_name,
+                                            date: rc.day,
+                                            start: rc.start,
+                                            end: rc.end,
+                                            type: 'cowork',
+                                            approved: !!rc.approved,
+                                            title: `Table ${rc.table}`,
+                                            description: null,
+                                        })}>
                                             <td className="px-4 py-3 text-sm">{rc.user_name ?? '—'}</td>
-                                            <td className="px-4 py-3 text-sm">{rc.table}</td>
                                             <td className="px-4 py-3 text-sm">{rc.day}</td>
-                                            <td className="px-4 py-3 text-sm">{rc.start}</td>
-                                            <td className="px-4 py-3 text-sm">{rc.end}</td>
+                                            <td className="px-4 py-3 text-sm">{rc.start} - {rc.end}</td>
+                                            <td className="px-4 py-3 text-sm">cowork</td>
                                             <td className="px-4 py-3 text-sm"><StatusBadge yes={!!rc.approved} trueText="Approved" falseText="Pending" /></td>
+                                            <td className="px-4 py-3 text-sm">{rc.approved ? <Badge>Active</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</td>
                                         </tr>
                                     ))}
                                     {coworkReservations.length === 0 && (
@@ -165,25 +183,44 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 {tab === 'studios' && (
                     <div className="mt-6">
                         <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <table className="min-w-full divide-y divide-sidebar-border/70">
+                            <table className="min-w-full table-fixed divide-y divide-sidebar-border/70">
+                                <colgroup>
+                                    <col className="w-56" />
+                                    <col className="w-32" />
+                                    <col className="w-40" />
+                                    <col className="w-36" />
+                                    <col className="w-28" />
+                                    <col className="w-28" />
+                                </colgroup>
                                 <thead className="bg-secondary/50">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Studio</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Day</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Start</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">End</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
-                                    {studioReservations.map((r) => (
-                                        <tr key={r.id} className="hover:bg-accent/30">
-                                            <td className="px-4 py-3 text-sm">{r.user_name ?? '—'}</td>
-                                            <td className="px-4 py-3 text-sm">{r.studio_name ?? '—'}</td>
-                                            <td className="px-4 py-3 text-sm">{r.day ?? r.date}</td>
-                                            <td className="px-4 py-3 text-sm">{r.start}</td>
-                                            <td className="px-4 py-3 text-sm">{r.end}</td>
-                                            <td className="px-4 py-3 text-sm">{r.team_members ?? '—'}</td>
+                                    {studioReservations.map((sr) => (
+                                        <tr key={sr.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected({
+                                            id: sr.id,
+                                            user_name: sr.user_name,
+                                            date: sr.day ?? sr.date,
+                                            start: sr.start,
+                                            end: sr.end,
+        type: 'studio',
+                                            approved: !!sr.approved,
+                                            title: sr.studio_name,
+                                            description: sr.team_members,
+                                        })}>
+                                            <td className="px-4 py-3 text-sm">{sr.user_name ?? '—'}</td>
+                                            <td className="px-4 py-3 text-sm">{sr.day ?? sr.date}</td>
+                                            <td className="px-4 py-3 text-sm">{sr.start} - {sr.end}</td>
+                                            <td className="px-4 py-3 text-sm">studio</td>
+                                            <td className="px-4 py-3 text-sm"><StatusBadge yes={!!sr.approved} trueText="Approved" falseText="Pending" /></td>
+                                            <td className="px-4 py-3 text-sm"><Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge></td>
                                         </tr>
                                     ))}
                                     {studioReservations.length === 0 && (
@@ -255,6 +292,38 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         </div>
                                     )}
                                 </div>
+                                {!selected.approved && !selected.canceled && (
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Button
+                                            size="sm"
+                                            className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
+                                            disabled={loadingAction.id === selected.id}
+                                            onClick={() => {
+                                                setLoadingAction({ id: selected.id, type: 'approve' });
+                                                router.post(`/admin/reservations/${selected.id}/approve`, {}, {
+                                                    onFinish: () => setLoadingAction({ id: null, type: null })
+                                                });
+                                            }}
+                                        >
+                                            <Check className="h-4 w-4 mr-1" /> Approve
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="h-8 px-3 cursor-pointer"
+                                            disabled={loadingAction.id === selected.id}
+                                            onClick={() => {
+                                                if (!window.confirm('Cancel this reservation?')) return;
+                                                setLoadingAction({ id: selected.id, type: 'cancel' });
+                                                router.post(`/admin/reservations/${selected.id}/cancel`, {}, {
+                                                    onFinish: () => setLoadingAction({ id: null, type: null })
+                                                });
+                                            }}
+                                        >
+                                            <X className="h-4 w-4 mr-1" /> Cancel
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </DialogContent>
