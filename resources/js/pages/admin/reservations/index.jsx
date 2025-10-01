@@ -267,7 +267,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     </div>
                                     {((selected.type || selected.place_type) === 'studio') && (
                                         <div>
-                                            <div className="text-muted-foreground">Studio</div>
+                                            <div className="text-muted-foreground">Studio Name</div>
                                             <div className="font-medium">{selected.studio_name || '—'}</div>
                                         </div>
                                     )}
@@ -283,7 +283,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <>
                                             <div className="col-span-2">
                                                 <div className="text-muted-foreground">Title</div>
-                                                <div className="font-medium">{((selected.type || selected.place_type) === 'studio' ? (selected.studio_name || selected.title) : selected.title) || '—'}</div>
+                                                <div className="font-medium">{selected.title || '—'}</div>
                                             </div>
                                             <div className="col-span-2">
                                                 <div className="text-muted-foreground">Description</div>
