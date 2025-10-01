@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Search } from 'lucide-react';
+import { Pencil, Route, Search } from 'lucide-react';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -137,6 +137,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             <TableHead className="w-[180px]">Serial number</TableHead>
                             <TableHead>CPU/GPU</TableHead>
                             <TableHead>Assign</TableHead>
+                            <TableHead>	Start Contract</TableHead>
                             <TableHead>Menu</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -147,12 +148,26 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 <TableRow key={c.id}>
                                     <TableCell className="font-medium">{c.cpu}</TableCell>
                                     <TableCell>{c.gpu}</TableCell>
+
                                     <TableCell>
                                         {user ? (
                                             <span className="text-sm font-medium">{user.name}</span>
                                         ) : (
                                             <span className="text-sm text-gray-500">Not assigned</span>
                                         )}
+                                    </TableCell>
+                                    <TableCell>
+                                        {user ? (
+                                            <span className="text-sm font-medium">
+                                                <Button onClick={() => {
+                                                    window.location.href = `/admin/computers/${c.id}/contract`; 
+                                                }}>
+                                                    Download
+                                                </Button></span>
+                                        ) : (
+                                            <span className="text-sm text-gray-500">Not assigned</span>
+                                        )}
+
                                     </TableCell>
                                     <TableCell className="flex gap-2 items-center">
                                         <button
