@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash } from 'lucide-react';
+import { Pencil, Trash, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,19 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         ? places
         : places.filter(e => normalizeType(e.place_type) === normalizeType(filterType));
 
+    // Pagination (same pattern as Members)
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pagedPlaces = filteredPlaces.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(filteredPlaces.length / itemsPerPage) || 1;
+
+    useEffect(() => {
+        // Reset page when filter changes or places change
+        setCurrentPage(1);
+    }, [filterType, places]);
+
     useEffect(() => {
         if (!calendarFor) return;
         setLoadingEvents(true);
@@ -136,7 +149,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
-                            {filteredPlaces.map((e) => (
+                            {pagedPlaces.map((e) => (
                                 <tr key={`${e.place_type}-${e.id}`} className="hover:bg-accent/30">
                                     <td className="px-4 py-3">
                                         {e.image ? (
@@ -191,6 +204,29 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                    <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50"
+                        aria-label="Previous page"
+                    >
+                        <ChevronsLeft />
+                    </button>
+                    <span>
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50"
+                        aria-label="Next page"
+                    >
+                        <ChevronsRight />
+                    </button>
                 </div>
 
                 {/* Galleries from storage/img folders */}
