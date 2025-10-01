@@ -9,29 +9,34 @@ use Inertia\Inertia;
 
 class FormationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // $trainings = Formation::all();
-        $trainings = Formation::with('coach')
-                            ->withCount('users')
-                            ->orderBy('created_at', 'desc')
-                            ->get();
+        $coachId = $request->query('coach');
+        $track = $request->query('track');
+
+        $query = Formation::with('coach')->withCount('users');
+
+        if (!empty($coachId)) {
+            $query->where('user_id', $coachId);
+        }
+
+        if (!empty($track)) {
+            $query->where('category', $track);
+        }
+
+        $trainings = $query->orderBy('created_at', 'desc')->get();
 
         $coaches = User::where('role', 'coach')->get();
+        $tracks = Formation::select('category')->distinct()->pluck('category');
 
         return Inertia::render('admin/training/index', [
             'trainings' => $trainings,
             'coaches'   => $coaches,
-        ]);
-
-        $coaches = User::where('role', 'coach')->get();
-        $formations = Formation::all();
-
-           
-
-        return Inertia::render('admin/training/index', [
-            'trainings' => $trainings,
-            'coaches'   => $coaches,
+            'filters'   => [
+                'coach' => $coachId,
+                'track' => $track,
+            ],
+            'tracks'    => $tracks,
         ]);
     }
 
@@ -64,14 +69,27 @@ class FormationController extends Controller
     }
     /////////////////////
     public function addStudent(Formation $training, Request $request)
-{
-    $user = User::find($request->student_id);
-    if ($user) {
-        $user->formation_id = $training->id;
-        $user->save();
+    {
+        $validated = $request->validate([
+            'student_id' => 'required|exists:users,id'
+        ]);
+
+        $user = User::find($validated['student_id']);
+        if ($user) {
+            $user->formation_id = $training->id;
+            $user->save();
+        }
+
+        return back()->with('success', 'Student added');
     }
 
-    return response()->json(['success' => true]);
-}
+    public function removeStudent(Formation $training, User $user)
+    {
+        if ($user->formation_id === $training->id) {
+            $user->formation_id = null;
+            $user->save();
+        }
+        return back()->with('success', 'Student removed');
+    }
 
 }
