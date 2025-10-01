@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class PlacesController extends Controller
@@ -19,12 +20,13 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/cowork/'.ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
                         'name' => 'Table '.($row->table ?? ''),
                         'place_type' => 'cowork',
                         'state' => (bool) ($row->state ?? 0),
-                        'image' => $row->image ? asset($row->image) : null,
+                        'image' => $img ? asset($img) : null,
                         'created_at' => $row->created_at,
                     ];
                 });
@@ -37,12 +39,13 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/studio/'.ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
                         'place_type' => 'studio',
                         'state' => (bool) ($row->state ?? 0),
-                        'image' => $row->image ? asset($row->image) : null,
+                        'image' => $img ? asset($img) : null,
                         'created_at' => $row->created_at,
                     ];
                 });
@@ -55,12 +58,13 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/meeting_room/'.ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
                         'place_type' => 'meeting_room',
                         'state' => (bool) ($row->state ?? 0),
-                        'image' => $row->image ? asset($row->image) : null,
+                        'image' => $img ? asset($img) : null,
                         'created_at' => $row->created_at,
                     ];
                 });
@@ -74,9 +78,19 @@ class PlacesController extends Controller
 
         $types = $places->pluck('place_type')->unique()->values();
 
+        // Collect gallery images from storage/img/* folders
+        $studioImages = $this->listPublicImages('img/studio');
+        $meetingRoomImages = $this->listPublicImages('img/meeting_room');
+        $coworkImages = $this->listPublicImages('img/cowork');
+        $equipmentImages = $this->listPublicImages('img/equipment');
+
         return Inertia::render('admin/places/index', [
             'places' => $places->map(function ($p) { unset($p['created_at']); return $p; }),
             'types' => $types,
+            'studioImages' => $studioImages,
+            'meetingRoomImages' => $meetingRoomImages,
+            'coworkImages' => $coworkImages,
+            'equipmentImages' => $equipmentImages,
         ]);
     }
 
@@ -188,5 +202,28 @@ class PlacesController extends Controller
             'meeting_room' => 'meeting_rooms',
             default => null,
         };
+    }
+
+    /**
+     * List image URLs under storage/app/public/{folder} as asset('storage/...')
+     */
+    private function listPublicImages(string $folder): array
+    {
+        $diskPath = 'public/'.trim($folder, '/');
+        if (!Storage::exists($diskPath)) {
+            return [];
+        }
+        $files = Storage::files($diskPath);
+        $images = [];
+        foreach ($files as $path) {
+            $lower = strtolower($path);
+            if (!str_ends_with($lower, '.jpg') && !str_ends_with($lower, '.jpeg') && !str_ends_with($lower, '.png') && !str_ends_with($lower, '.gif') && !str_ends_with($lower, '.webp') && !str_ends_with($lower, '.svg')) {
+                continue;
+            }
+            // Convert public/... to storage/...
+            $publicUrl = asset(str_replace('public/', 'storage/', $path));
+            $images[] = $publicUrl;
+        }
+        return $images;
     }
 }

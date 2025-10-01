@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
+use Illuminate\Support\Str;
 
 class ReservationsController extends Controller
 {
@@ -34,49 +35,58 @@ class ReservationsController extends Controller
         }
 
         $equipmentsByReservation = [];
-        if (Schema::hasTable('reservation_equipements') && Schema::hasTable('equipment')) {
-            DB::table('reservation_equipements as re')
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasTable('equipment') && Schema::hasColumn('equipment', 'image');
+            $query = DB::table('reservation_equipment as re')
                 ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
-                ->select('re.reservation_id', DB::raw("group_concat(trim(coalesce(e.reference, e.mark, 'equipment')), ', ') as equipments"))
-                ->groupBy('re.reservation_id')
-                ->get()
-                ->each(function ($row) use (&$equipmentsByReservation) {
-                    $equipmentsByReservation[$row->reservation_id] = $row->equipments;
-                });
+                ->select('re.reservation_id', 'e.id as equipment_id', 'e.reference', 'e.mark');
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            $rows = $query->get();
+            foreach ($rows as $row) {
+                $img = isset($row->image) ? $row->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/'.ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+                $equipmentsByReservation[$row->reservation_id] = $equipmentsByReservation[$row->reservation_id] ?? [];
+                $equipmentsByReservation[$row->reservation_id][] = [
+                    'id' => $row->equipment_id,
+                    'reference' => $row->reference,
+                    'mark' => $row->mark,
+                    'image' => $img,
+                ];
+            }
         }
 
         $teamsByReservation = [];
-        if (Schema::hasTable('reservation_teams') && Schema::hasTable('teams')) {
-            // Try to collect team name and members via team_user pivot if present
-            $hasTeamUser = Schema::hasTable('team_user');
-            $query = DB::table('reservation_teams as rt')
-                ->leftJoin('teams as t', 't.id', '=', 'rt.team_id')
-                ->select('rt.reservation_id', 't.name as team_name');
-            $rows = $query->get();
-            foreach ($rows as $row) {
-                $teamsByReservation[$row->reservation_id] = [
-                    'team_name' => $row->team_name,
-                    'members' => null,
-                ];
+        if (Schema::hasTable('reservation_teams') && Schema::hasTable('users')) {
+            // In this schema, reservation_teams links users directly to reservations
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $memberQuery = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->select('rt.reservation_id', 'u.id as user_id', 'u.name');
+            if ($userImageColumn) {
+                $memberQuery->addSelect('u.' . $userImageColumn . ' as image');
             }
-            if ($hasTeamUser && Schema::hasTable('users')) {
-                $memberRows = DB::table('reservation_teams as rt')
-                    ->leftJoin('teams as t', 't.id', '=', 'rt.team_id')
-                    ->leftJoin('team_user as tu', 'tu.team_id', '=', 't.id')
-                    ->leftJoin('users as u', 'u.id', '=', 'tu.user_id')
-                    ->select('rt.reservation_id', DB::raw("group_concat(u.name, ', ') as members"))
-                    ->groupBy('rt.reservation_id')
-                    ->get();
-                foreach ($memberRows as $mr) {
-                    if (!isset($teamsByReservation[$mr->reservation_id])) {
-                        $teamsByReservation[$mr->reservation_id] = [
-                            'team_name' => null,
-                            'members' => $mr->members,
-                        ];
-                    } else {
-                        $teamsByReservation[$mr->reservation_id]['members'] = $mr->members;
+            $members = $memberQuery->get();
+            foreach ($members as $m) {
+                $uimg = isset($m->image) ? $m->image : null;
+                if ($uimg) {
+                    if (!Str::startsWith($uimg, ['http://', 'https://', 'storage/'])) {
+                        $uimg = 'storage/img/profile/'.ltrim($uimg, '/');
                     }
+                    $uimg = asset($uimg);
                 }
+                $teamsByReservation[$m->reservation_id] = $teamsByReservation[$m->reservation_id] ?? [ 'team_name' => null, 'members' => [] ];
+                $teamsByReservation[$m->reservation_id]['members'][] = [
+                    'id' => $m->user_id,
+                    'name' => $m->name,
+                    'image' => $uimg,
+                ];
             }
         }
 
@@ -112,9 +122,9 @@ class ReservationsController extends Controller
                 'passed' => (bool) ($r->passed ?? 0),
                 'place_name' => $place['place_name'] ?? null,
                 'place_type' => $place['place_type'] ?? null,
-                'equipments' => $equipmentsByReservation[$r->id] ?? null,
+                'equipments' => $equipmentsByReservation[$r->id] ?? [],
                 'team_name' => $team['team_name'] ?? null,
-                'team_members' => $team['members'] ?? null,
+                'team_members' => $team['members'] ?? [],
             ];
         });
 
@@ -182,6 +192,100 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
         return back()->with('success', 'Reservation canceled');
+    }
+
+    public function info(int $reservation)
+    {
+        $result = [
+            'reservation_id' => $reservation,
+            'team_name' => null,
+            'team_members' => [],
+            'equipments' => [],
+        ];
+
+        // Team name and members with images
+        if (Schema::hasTable('reservation_teams') && Schema::hasTable('teams')) {
+            $team = DB::table('reservation_teams as rt')
+                ->leftJoin('teams as t', 't.id', '=', 'rt.team_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('t.id as team_id', 't.name as team_name')
+                ->first();
+            if ($team) {
+                $result['team_name'] = $team->team_name;
+                if (Schema::hasTable('team_user') && Schema::hasTable('users')) {
+                    $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+                    $q = DB::table('team_user as tu')
+                        ->leftJoin('users as u', 'u.id', '=', 'tu.user_id')
+                        ->where('tu.team_id', $team->team_id)
+                        ->select('u.id as user_id', 'u.name');
+                    if ($userImageColumn) {
+                        $q->addSelect('u.' . $userImageColumn . ' as image');
+                    }
+                    $members = $q->get()->map(function ($u) {
+                        return [
+                            'id' => $u->user_id,
+                            'name' => $u->name,
+                            'image' => isset($u->image) && $u->image ? asset($u->image) : null,
+                        ];
+                    })->values()->all();
+                    $result['team_members'] = $members;
+                }
+            }
+        } elseif (Schema::hasTable('reservation_teams') && Schema::hasTable('users')) {
+            // Fallback schema: reservation_teams links users directly to reservations
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $q = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('u.id as user_id', 'u.name');
+            if ($userImageColumn) {
+                $q->addSelect('u.' . $userImageColumn . ' as image');
+            }
+            $members = $q->get()->map(function ($u) {
+                $img = isset($u->image) ? $u->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/profile/'.ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+                return [
+                    'id' => $u->user_id,
+                    'name' => $u->name,
+                    'image' => $img,
+                ];
+            })->values()->all();
+            $result['team_members'] = $members;
+        }
+
+        // Equipments with image, reference, mark
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $eq = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id as equipment_id', 'e.reference', 'e.mark');
+            if ($hasEquipmentImage) {
+                $eq->addSelect('e.image');
+            }
+            $result['equipments'] = $eq->get()->map(function ($e) {
+                $img = isset($e->image) ? $e->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/'.ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+                return [
+                    'id' => $e->equipment_id,
+                    'reference' => $e->reference,
+                    'mark' => $e->mark,
+                    'image' => $img,
+                ];
+            })->values()->all();
+        }
+
+        return response()->json($result);
     }
 
     public function byPlace(string $type, int $id)

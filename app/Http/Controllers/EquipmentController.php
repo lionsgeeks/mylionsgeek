@@ -24,13 +24,30 @@ class EquipmentController extends Controller
         $query->with('equipmentType');
 
         $equipment = $query->orderByDesc('created_at')->get()->map(function ($e) {
+            // Normalize image to storage/img/equipment/{filename}
+            $img = $e->image ?? '';
+            if ($img) {
+                $isAbsolute = str_starts_with($img, 'http://') || str_starts_with($img, 'https://');
+                $alreadyPublic = str_starts_with($img, 'storage/img/');
+                if (!$isAbsolute && !$alreadyPublic) {
+                    $stripped = ltrim($img, '/');
+                    if (str_starts_with($stripped, 'storage/')) {
+                        $stripped = substr($stripped, strlen('storage/'));
+                    }
+                    $basename = basename($stripped);
+                    $img = 'storage/img/equipment/'.$basename;
+                }
+                $img = asset($img);
+            } else {
+                $img = null;
+            }
             return [
                 'id' => $e->id,
                 'reference' => $e->reference,
                 'mark' => $e->mark,
                 'state' => (bool) $e->state,
                 'equipment_type' => optional($e->equipmentType)->name ?? 'other',
-                'image' => $e->image ? asset($e->image) : null, // Convert path to full URL
+                'image' => $img,
             ];
         });
 
@@ -59,8 +76,9 @@ class EquipmentController extends Controller
         // Handle image upload
         $imagePath = '';
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('equipment', 'public');
-            $imagePath = 'storage/'.$path; // Remove leading slash for proper URL
+            // Store under storage/app/public/img/equipment
+            $path = $request->file('image')->store('img/equipment', 'public');
+            $imagePath = 'storage/'.$path; // public URL path
         }
 
         // Resolve or create type
@@ -96,8 +114,9 @@ class EquipmentController extends Controller
         // Handle image upload
         $imagePath = $equipment->image; // Keep existing image by default
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('equipment', 'public');
-            $imagePath = 'storage/'.$path; // Remove leading slash for proper URL
+            // Store under storage/app/public/img/equipment
+            $path = $request->file('image')->store('img/equipment', 'public');
+            $imagePath = 'storage/'.$path; // public URL path
         }
 
         // Resolve or create type
