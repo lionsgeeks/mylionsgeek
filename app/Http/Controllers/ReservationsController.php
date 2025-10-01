@@ -80,6 +80,19 @@ class ReservationsController extends Controller
             }
         }
 
+        // Studio name by reservation (for base list where type=studio)
+        $studioByReservation = [];
+        if (Schema::hasTable('reservations') && Schema::hasTable('studios')) {
+            DB::table('reservations as r')
+                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+                ->where('r.type', 'studio')
+                ->select('r.id as reservation_id', 's.name as studio_name')
+                ->get()
+                ->each(function ($row) use (&$studioByReservation) {
+                    $studioByReservation[$row->reservation_id] = $row->studio_name;
+                });
+        }
+
         $enriched = $reservations->map(function ($r) use ($placeByReservation, $equipmentsByReservation, $teamsByReservation) {
             $place = $placeByReservation[$r->id] ?? null;
             $team = $teamsByReservation[$r->id] ?? null;
@@ -104,6 +117,16 @@ class ReservationsController extends Controller
                 'team_members' => $team['members'] ?? null,
             ];
         });
+
+        // Attach studio_name for studio reservations
+        if (!empty($studioByReservation)) {
+            $enriched = $enriched->map(function ($row) use ($studioByReservation) {
+                if (($row['type'] ?? null) === 'studio') {
+                    $row['studio_name'] = $studioByReservation[$row['id']] ?? null;
+                }
+                return $row;
+            });
+        }
 
         // Places reservations (pivot)
         // Cowork reservations (own table)
@@ -159,6 +182,103 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
         return back()->with('success', 'Reservation canceled');
+    }
+
+    public function byPlace(string $type, int $id)
+    {
+        // Normalize events to FullCalendar format
+        $events = [];
+
+        if ($type === 'cowork' && Schema::hasTable('reservation_coworks')) {
+            $rows = DB::table('reservation_coworks as rc')
+                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+                ->select('rc.*', 'u.name as user_name')
+                ->where('rc.table', $id)
+                ->where('rc.canceled', 0)
+                ->get();
+
+            foreach ($rows as $r) {
+                $events[] = [
+                    'title' => 'Cowork — Table ' . $r->table . ($r->user_name ? ' — ' . $r->user_name : ''),
+                    'start' => trim(($r->day ?? '') . 'T' . ($r->start ?? '')),
+                    'end' => trim(($r->day ?? '') . 'T' . ($r->end ?? '')),
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'approved' => (bool) ($r->approved ?? 0),
+                        'canceled' => (bool) ($r->canceled ?? 0),
+                        'passed' => (bool) ($r->passed ?? 0),
+                        'user_name' => $r->user_name,
+                        'type' => 'cowork',
+                    ],
+                ];
+            }
+        }
+
+        if ($type === 'studio' && Schema::hasTable('reservations')) {
+            $rows = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+                ->select('r.*', 'u.name as user_name', 's.name as studio_name')
+                ->where('r.type', 'studio')
+                ->where('r.studio_id', $id)
+                ->where('r.canceled', 0)
+                ->get();
+
+            foreach ($rows as $r) {
+                $date = $r->date ?? $r->day ?? null;
+                $events[] = [
+                    'title' => ($r->title ?: 'Studio') . ($r->studio_name ? ' — ' . $r->studio_name : '') . ($r->user_name ? ' — ' . $r->user_name : ''),
+                    'start' => $date ? trim($date . 'T' . ($r->start ?? '')) : null,
+                    'end' => $date ? trim($date . 'T' . ($r->end ?? '')) : null,
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'approved' => (bool) ($r->approved ?? 0),
+                        'canceled' => (bool) ($r->canceled ?? 0),
+                        'passed' => (bool) ($r->passed ?? 0),
+                        'user_name' => $r->user_name,
+                        'type' => 'studio',
+                        'description' => $r->description,
+                        'studio_name' => $r->studio_name,
+                    ],
+                ];
+            }
+        }
+
+        if ($type === 'meeting_room' && Schema::hasTable('reservations')) {
+            $hasMeetingRooms = Schema::hasTable('meeting_rooms');
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('r.*', 'u.name as user_name');
+            if ($hasMeetingRooms) {
+                $query->leftJoin('meeting_rooms as m', 'm.id', '=', 'r.meeting_room_id')
+                    ->addSelect('m.name as room_name');
+            }
+            $rows = $query
+                ->where('r.type', 'meeting_room')
+                ->where('r.meeting_room_id', $id)
+                ->where('r.canceled', 0)
+                ->get();
+
+            foreach ($rows as $r) {
+                $date = $r->date ?? $r->day ?? null;
+                $events[] = [
+                    'title' => ($r->title ?: 'Meeting') . ((isset($r->room_name) && $r->room_name) ? ' — ' . $r->room_name : '') . ($r->user_name ? ' — ' . $r->user_name : ''),
+                    'start' => $date ? trim($date . 'T' . ($r->start ?? '')) : null,
+                    'end' => $date ? trim($date . 'T' . ($r->end ?? '')) : null,
+                    'allDay' => false,
+                    'extendedProps' => [
+                        'approved' => (bool) ($r->approved ?? 0),
+                        'canceled' => (bool) ($r->canceled ?? 0),
+                        'passed' => (bool) ($r->passed ?? 0),
+                        'user_name' => $r->user_name,
+                        'type' => 'meeting_room',
+                        'description' => $r->description,
+                    ],
+                ];
+            }
+        }
+
+        return response()->json($events);
     }
 }
 

@@ -50,7 +50,6 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     <col className="w-40" />
                                     <col className="w-36" />
                                     <col className="w-28" />
-                                    <col className="w-28" />
                                     <col className="w-40" />
                                 </colgroup>
                                 <thead className="bg-secondary/50">
@@ -60,7 +59,6 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                         <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
                                     </tr>
                                 </thead>
@@ -71,44 +69,47 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.start} - {r.end}</td>
                                         <td className="px-4 py-3 text-sm capitalize">{(r.type || r.place_type)?.replace('_',' ') ?? '—'}</td>
-                                        <td className="px-4 py-3 text-sm"><StatusBadge yes={!!r.approved} trueText="Approved" falseText="Pending" /></td>
-                                        <td className="py-3 text-sm">
-                                                {r.canceled ? <Badge variant="destructive">Canceled</Badge> : r.passed ? <Badge>Passed</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}
-                                            </td>
+                                        <td className="px-4 py-3 text-sm">
+                                            {r.canceled ? (
+                                                <Badge variant="destructive">Canceled</Badge>
+                                            ) : r.approved ? (
+                                                <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
+                                            ) : (
+                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
+                                            )}
+                                        </td>
                                         <td className="py-3 text-right text-sm" onClick={(e) => e.stopPropagation()}>
-                                                {!r.approved && !r.canceled && (
-                                                <div className="inline-flex gap-2 justify-end w-full">
-                                                        <Button
-                                                            size="sm"
-                                                        className="h-7 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600"
-                                                            disabled={loadingAction.id === r.id}
-                                                            onClick={() => {
-                                                                setLoadingAction({ id: r.id, type: 'approve' });
-                                                                router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                        >
-                                                        <Check className="h-4 w-4 mr-1" /> Approve
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="destructive"
-                                                        className="h-7 px-2 cursor-pointer"
-                                                            disabled={loadingAction.id === r.id}
-                                                            onClick={() => {
-                                                                if (!window.confirm('Cancel this reservation?')) return;
-                                                                setLoadingAction({ id: r.id, type: 'cancel' });
-                                                                router.post(`/admin/reservations/${r.id}/cancel`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                        >
-                                                        <X className="h-4 w-4 mr-1" /> Cancel
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </td>
+                                            <div className="inline-flex items-center justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                                                    disabled={!!r.approved || !!r.canceled || loadingAction.id === r.id}
+                                                    onClick={() => {
+                                                        setLoadingAction({ id: r.id, type: 'approve' });
+                                                        router.post(`/admin/reservations/${r.id}/approve`, {}, {
+                                                            onFinish: () => setLoadingAction({ id: null, type: null })
+                                                        });
+                                                    }}
+                                                >
+                                                    Approve
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    className="h-8 px-3 cursor-pointer disabled:opacity-50"
+                                                    disabled={!!r.approved || !!r.canceled || loadingAction.id === r.id}
+                                                    onClick={() => {
+                                                        if (!window.confirm('Cancel this reservation?')) return;
+                                                        setLoadingAction({ id: r.id, type: 'cancel' });
+                                                        router.post(`/admin/reservations/${r.id}/cancel`, {}, {
+                                                            onFinish: () => setLoadingAction({ id: null, type: null })
+                                                        });
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </td>
                                         </tr>
                                     ))}
                                     {reservations.length === 0 && (
@@ -143,7 +144,6 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
@@ -163,13 +163,20 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                             <td className="px-4 py-3 text-sm">{rc.day}</td>
                                             <td className="px-4 py-3 text-sm">{rc.start} - {rc.end}</td>
                                             <td className="px-4 py-3 text-sm">cowork</td>
-                                            <td className="px-4 py-3 text-sm"><StatusBadge yes={!!rc.approved} trueText="Approved" falseText="Pending" /></td>
-                                            <td className="px-4 py-3 text-sm">{rc.approved ? <Badge>Active</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</td>
+                                            <td className="px-4 py-3 text-sm">
+                                                {rc.canceled ? (
+                                                    <Badge variant="destructive">Canceled</Badge>
+                                                ) : rc.approved ? (
+                                                    <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
+                                                ) : (
+                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {coworkReservations.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                            <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
                                                 No cowork reservations yet.
                                             </td>
                                         </tr>
@@ -199,7 +206,6 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
@@ -212,20 +218,28 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                             end: sr.end,
         type: 'studio',
                                             approved: !!sr.approved,
-                                            title: sr.studio_name,
+                                            title: sr.title,
+                                            studio_name: sr.studio_name,
                                             description: sr.team_members,
                                         })}>
                                             <td className="px-4 py-3 text-sm">{sr.user_name ?? '—'}</td>
                                             <td className="px-4 py-3 text-sm">{sr.day ?? sr.date}</td>
                                             <td className="px-4 py-3 text-sm">{sr.start} - {sr.end}</td>
                                             <td className="px-4 py-3 text-sm">studio</td>
-                                            <td className="px-4 py-3 text-sm"><StatusBadge yes={!!sr.approved} trueText="Approved" falseText="Pending" /></td>
-                                            <td className="px-4 py-3 text-sm"><Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge></td>
+                                            <td className="px-4 py-3 text-sm">
+                                                {sr.canceled ? (
+                                                    <Badge variant="destructive">Canceled</Badge>
+                                                ) : sr.approved ? (
+                                                    <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
+                                                ) : (
+                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                     {studioReservations.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                            <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
                                                 No studio reservations yet.
                                             </td>
                                         </tr>
@@ -251,6 +265,12 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <div className="text-muted-foreground">Type</div>
                                         <div className="font-medium capitalize">{(selected.type || selected.place_type)?.replace('_',' ') ?? '—'}</div>
                                     </div>
+                                    {((selected.type || selected.place_type) === 'studio') && (
+                                        <div>
+                                            <div className="text-muted-foreground">Studio Name</div>
+                                            <div className="font-medium">{selected.studio_name || '—'}</div>
+                                        </div>
+                                    )}
                                     <div>
                                         <div className="text-muted-foreground">Date</div>
                                         <div className="font-medium">{selected.date}</div>
