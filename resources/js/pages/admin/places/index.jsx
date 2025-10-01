@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, Trash } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 const PlaceIndex = ({ places = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
@@ -16,6 +20,10 @@ const PlaceIndex = ({ places = [], types = [] }) => {
     const [editingPlace, setEditingPlace] = useState(null);
     const [deletingPlace, setDeletingPlace] = useState(null);
     const [filterType, setFilterType] = useState('all');
+    const [calendarFor, setCalendarFor] = useState(null); // { id, place_type, name }
+    const [events, setEvents] = useState([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const { data, setData, post, processing, reset, errors } = useForm({
         name: '',
         place_type: '',
@@ -62,6 +70,19 @@ const PlaceIndex = ({ places = [], types = [] }) => {
         ? places
         : places.filter(e => normalizeType(e.place_type) === normalizeType(filterType));
 
+    useEffect(() => {
+        if (!calendarFor) return;
+        setLoadingEvents(true);
+        fetch(`/admin/places/${calendarFor.place_type}/${calendarFor.id}/reservations`, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+        })
+            .then((r) => r.json())
+            .then((data) => setEvents(Array.isArray(data) ? data : []))
+            .catch(() => setEvents([]))
+            .finally(() => setLoadingEvents(false));
+    }, [calendarFor]);
+
     return (
         <AppLayout>
             <Head title="Places" />
@@ -92,8 +113,8 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                         </Select>
                     </div>
                     {filterType !== 'all' && (
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => setFilterType('all')}
                             className="text-xs"
@@ -135,19 +156,27 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                                     </td>
                                     <td className="px-4 py-3 text-right text-sm">
                                         <div className="inline-flex items-center gap-1.5">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 px-3 cursor-pointer"
+                                                onClick={() => setCalendarFor({ id: e.id, place_type: e.place_type, name: e.name })}
+                                            >
+                                                View Calendar
+                                            </Button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={18} className="h-4 w-4" />
+                                                <Pencil size={18} className="h-4 w-4 text-alpha" />
                                             </button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={18} className="h-4 w-4" />
+                                                <Trash size={18} className="h-4 w-4 text-red-600" />
                                             </button>
                                         </div>
                                     </td>
@@ -168,6 +197,111 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                     <DialogContent className="max-w-3xl p-0">
                         {previewSrc && (
                             <img src={previewSrc} alt="Place" className="max-h-[80vh] w-full object-contain" />
+                        )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Calendar modal */}
+                <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
+                    <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
+                        {calendarFor && (
+                            <div className="flex flex-col w-full h-full">
+                                <div className="shrink-0 px-5 py-3 border-b border-sidebar-border/70 flex items-center justify-between">
+                                    <h2 className="text-base font-medium">{calendarFor.name} — Calendar</h2>
+                                </div>
+                                <div className="relative grow overflow-hidden">
+                                    {loadingEvents && (
+                                        <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading events…</div>
+                                    )}
+                                    <div className="absolute inset-0 px-4 pb-4">
+                                        <FullCalendar
+                                            plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
+                                            initialView="timeGridWeek"
+                                            headerToolbar={{
+                                                left: 'prev,next today',
+                                                center: 'title',
+                                                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                                            }}
+                                            allDaySlot={true}
+                                            slotMinTime="08:00:00"
+                                            slotMaxTime="22:00:00"
+                                            expandRows={true}
+                                            selectable={false}
+                                            editable={false}
+                                            events={events}
+                                            eventClick={(info) => {
+                                                const ev = info.event;
+                                                const props = ev.extendedProps || {};
+                                                setSelectedEvent({
+                                                    title: ev.title,
+                                                    type: props.type || calendarFor?.place_type,
+                                                    date: ev.start ? ev.start.toISOString().slice(0,10) : undefined,
+                                                    start: ev.start ? ev.start.toTimeString().slice(0,5) : undefined,
+                                                    end: ev.end ? ev.end.toTimeString().slice(0,5) : undefined,
+                                                    approved: !!props.approved,
+                                                    canceled: !!props.canceled,
+                                                    passed: !!props.passed,
+                                                    user_name: props.user_name,
+                                                    description: props.description,
+                                                    studio_name: props.studio_name,
+                                                });
+                                            }}
+                                            height="100%"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Event details modal */}
+                <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
+                    <DialogContent className="max-w-2xl">
+                        {selectedEvent && (
+                            <div className="space-y-4">
+                                <DialogHeader>
+                                    <DialogTitle className="text-lg">Reservation details</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <div className="text-muted-foreground">Title</div>
+                                        <div className="font-medium break-words">{selectedEvent.title || '—'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-muted-foreground">Type</div>
+                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_',' ') || '—'}</div>
+                                    </div>
+                                    {selectedEvent.type === 'studio' && (
+                                        <div>
+                                            <div className="text-muted-foreground">Studio</div>
+                                            <div className="font-medium">{selectedEvent.studio_name || '—'}</div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div className="text-muted-foreground">Date</div>
+                                        <div className="font-medium">{selectedEvent.date || '—'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-muted-foreground">Time</div>
+                                        <div className="font-medium">{selectedEvent.start || '—'}{selectedEvent.end ? ` - ${selectedEvent.end}` : ''}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-muted-foreground">User</div>
+                                        <div className="font-medium">{selectedEvent.user_name || '—'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-muted-foreground">Status</div>
+                                        <div className="font-medium">
+                                            {selectedEvent.canceled ? 'Canceled' : selectedEvent.approved ? 'Approved' : 'Pending'}
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <div className="text-muted-foreground">Description</div>
+                                        <div className="font-medium whitespace-pre-wrap break-words">{selectedEvent.description || '—'}</div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </DialogContent>
                 </Dialog>
@@ -242,12 +376,12 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-name">Place Name</Label>
-                                    <Input 
-                                        id="edit-name" 
+                                    <Input
+                                        id="edit-name"
                                         name="name"
-                                        placeholder="name" 
-                                        value={editData.name} 
-                                        onChange={(e) => setEditData('name', e.target.value)} 
+                                        placeholder="name"
+                                        value={editData.name}
+                                        onChange={(e) => setEditData('name', e.target.value)}
                                     />
                                     {editErrors.name && <p className="text-xs text-destructive">{editErrors.name}</p>}
                                 </div>
@@ -266,11 +400,11 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-image">Upload New Image (optional)</Label>
-                                    <Input 
-                                        id="edit-image" 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)} 
+                                    <Input
+                                        id="edit-image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)}
                                         name="image"
                                     />
                                     {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
@@ -326,13 +460,13 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                                     </p>
                                 </div>
                             </div>
-                            
+
                             {deletingPlace && (
                                 <div className="rounded-lg border bg-muted/50 p-4">
                                     <div className="flex items-center gap-3">
                                         {deletingPlace.image && (
-                                            <img 
-                                                src={deletingPlace.image} 
+                                            <img
+                                                src={deletingPlace.image}
                                                 alt={deletingPlace.name}
                                                 className="h-10 w-10 rounded object-cover"
                                             />
@@ -346,8 +480,8 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                             )}
 
                             <div className="flex justify-end gap-3">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={() => {
                                         setIsDeleteOpen(false);
                                         setDeletingPlace(null);
@@ -355,7 +489,7 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                                 >
                                     Cancel
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="destructive"
                                     onClick={confirmDelete}
                                 >

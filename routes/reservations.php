@@ -9,6 +9,8 @@ Route::middleware(['auth','verified','role:admin'])->prefix('admin')->group(func
         ->name('admin.reservations.approve');
     Route::post('/reservations/{reservation}/cancel', [ReservationsController::class, 'cancel'])
         ->name('admin.reservations.cancel');
+    Route::get('/places/{type}/{id}/reservations', [ReservationsController::class, 'byPlace'])
+        ->name('admin.places.reservations');
 });
 
 
