@@ -44,6 +44,9 @@ Route::middleware(['auth','role:admin'])->group(function () {
     // Update existing computer
     Route::put('/admin/computers/{computer}', [ComputersController::class, 'update'])
         ->name('admin.computers.update');
+    
+    Route::get('/admin/computers/{computer}/contract', [ComputersController::class, 'computerStartContract'])
+    ->name('computers.contract');
 });
 
 

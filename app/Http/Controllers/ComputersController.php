@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Computer;
+use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
@@ -30,11 +32,11 @@ class ComputersController extends Controller
 
         $computer = Computer::create([
             'id' => (string) Str::uuid(),
-            'reference'=>$validated['reference'],
-            'cpu'=>$validated['cpu'],
-            'gpu'=>$validated['gpu'],
-            'state'=>$validated['state'],
-            'mark'=>$validated['mark'],
+            'reference' => $validated['reference'],
+            'cpu' => $validated['cpu'],
+            'gpu' => $validated['gpu'],
+            'state' => $validated['state'],
+            'mark' => $validated['mark'],
         ]);
 
         return redirect()->route('admin.computers')
@@ -60,15 +62,29 @@ class ComputersController extends Controller
         ]);
 
         $computer->update($validated);
-        
+
         // Debug: Log the updated computer
         Log::info('Updated computer:', [
             'id' => $computer->id,
             'user_id' => $computer->user_id,
             'validated_data' => $validated
         ]);
-        
+
         return redirect()->route('admin.computers')
             ->with('success', 'Computer updated successfully');
+    }
+
+    public function computerStartContract(Computer $computer)
+    {
+        $user = User::where('id', $computer->user_id)->first();
+        $data = compact('user', 'computer');
+        // dd($user->id);
+
+
+        $name = $user->name;
+
+        $pdf = Pdf::loadView("pdf.computer_start", $data);
+
+        return $pdf->download("$name Start.pdf");
     }
 }
