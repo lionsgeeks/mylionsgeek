@@ -415,11 +415,13 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="image">Upload Image</Label>
-                                    <Input id="image" name="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
-                                    {errors.image && <p className="text-xs text-destructive">{errors.image}</p>}
-                                </div>
+                                {data.place_type !== 'cowork' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="image">Upload Image</Label>
+                                        <Input id="image" name="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
+                                        {errors.image && <p className="text-xs text-destructive">{errors.image}</p>}
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <Label>State</Label>
                                     <Select value={data.state === '' ? '' : String(data.state)} onValueChange={(v) => setData('state', v)}>
@@ -483,17 +485,19 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="edit-image">Upload New Image (optional)</Label>
-                                    <Input
-                                        id="edit-image"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)}
-                                        name="image"
-                                    />
-                                    {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
-                                </div>
+                                {editData.place_type !== 'cowork' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="edit-image">Upload New Image (optional)</Label>
+                                        <Input
+                                            id="edit-image"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)}
+                                            name="image"
+                                        />
+                                        {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <Label>State</Label>
                                     <Select value={editData.state === '' ? '' : String(editData.state)} onValueChange={(v) => setEditData('state', v)}>

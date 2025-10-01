@@ -102,7 +102,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                     className="h-8 px-3 cursor-pointer"
                                                     onClick={() => setInfoFor(r)}
                                                 >
-                                                    Info
+                                                    team / equipement
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -328,50 +328,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <div className="text-muted-foreground">Description</div>
                                         <div className="font-medium whitespace-pre-wrap break-words">{selected.description || '—'}</div>
                                     </div>
-                                    {(selected.team_name || (Array.isArray(selected.team_members) && selected.team_members.length) || (Array.isArray(selected.equipments) && selected.equipments.length)) && (
-                                        <div className="col-span-2 grid grid-cols-2 gap-4">
-                                            {(selected.team_name || (Array.isArray(selected.team_members) && selected.team_members.length)) && (
-                                                <div>
-                                                    <div className="text-muted-foreground">Team</div>
-                                                    <div className="font-medium">{selected.team_name || '—'}</div>
-                                                    {Array.isArray(selected.team_members) && selected.team_members.length > 0 && (
-                                                        <div className="mt-2 grid grid-cols-2 gap-2">
-                                                            {selected.team_members.map((m, idx) => (
-                                                                <div key={idx} className="flex items-center gap-2">
-                                                                    {m?.image ? (
-                                                                        <img src={m.image} alt={m.name || 'member'} className="h-6 w-6 rounded-full object-cover" />
-                                                                    ) : (
-                                                                        <div className="h-6 w-6 rounded-full bg-muted" />
-                                                                    )}
-                                                                    <span className="text-sm break-words">{m?.name || '—'}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {Array.isArray(selected.equipments) && selected.equipments.length > 0 && (
-                                                <div>
-                                                    <div className="text-muted-foreground">Equipments</div>
-                                                    <div className="mt-2 grid grid-cols-2 gap-3">
-                                                        {selected.equipments.map((e, idx) => (
-                                                            <div key={idx} className="flex items-center gap-2">
-                                                                {e?.image ? (
-                                                                    <img src={e.image} alt={e.reference || e.mark || 'equipment'} className="h-8 w-8 rounded object-cover" />
-                                                                ) : (
-                                                                    <div className="h-8 w-8 rounded bg-muted" />
-                                                                )}
-                                                                <div className="text-sm">
-                                                                    <div className="font-medium break-words">{e?.reference || '—'}</div>
-                                                                    <div className="text-muted-foreground break-words">{e?.mark || '—'}</div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+
                                         </>
                                     )}
                                     <div>
@@ -382,18 +339,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <div className="text-muted-foreground">Status</div>
                                         <div>{selected.canceled ? <Badge variant="destructive">Canceled</Badge> : selected.passed ? <Badge>Passed</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</div>
                                     </div>
-                                    {selected.team_name && (
-                                        <div className="col-span-2">
-                                            <div className="text-muted-foreground">Team</div>
-                                            <div className="font-medium">{selected.team_name}{selected.team_members ? ` — ${selected.team_members}` : ''}</div>
-                                        </div>
-                                    )}
-                                    {selected.equipments && (
-                                        <div className="col-span-2">
-                                            <div className="text-muted-foreground">Equipments</div>
-                                            <div className="font-medium break-words">{selected.equipments}</div>
-                                        </div>
-                                    )}
+
                                 </div>
                                 {!selected.approved && !selected.canceled && (
                                     <div className="flex justify-end gap-2 pt-2">

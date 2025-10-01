@@ -109,7 +109,10 @@ class PlacesController extends Controller
         }
 
         $imagePath = null;
-        if ($request->hasFile('image')) {
+        if ($data['place_type'] === 'cowork') {
+            // Always use default cowork image
+            $imagePath = 'storage/img/cowork/cowork.jpg';
+        } else if ($request->hasFile('image')) {
             $imagePath = 'storage/'.$request->file('image')->store('places', 'public');
         }
 
@@ -171,7 +174,7 @@ class PlacesController extends Controller
 
 
 
-        if ($request->hasFile('image')) {
+        if ($table !== 'coworks' && $request->hasFile('image')) {
             $update['image'] = 'storage/'.$request->file('image')->store('places', 'public');
         }
 
