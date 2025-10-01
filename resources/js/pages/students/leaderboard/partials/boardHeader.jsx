@@ -1,7 +1,7 @@
-import { RefreshCw, Trophy } from 'lucide-react';
+import { Calendar, RefreshCw, Trophy } from 'lucide-react';
 import React from 'react';
 
-const BoardHeader = ({fetchLeaderboardData , isRefreshing}) => {
+const BoardHeader = ({ fetchLeaderboardData, isRefreshing , fetchPreviousWeekPodium }) => {
     return (
         <>
 
@@ -30,6 +30,16 @@ const BoardHeader = ({fetchLeaderboardData , isRefreshing}) => {
                             {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
                         </button>
                     </div> */}
+
+                    <div className="flex justify-end mb-4">
+                        <button
+                            onClick={fetchPreviousWeekPodium}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-dark text-light hover:bg-dark/90 dark:bg-light dark:text-dark dark:hover:bg-light/90 transition-colors"
+                        >
+                            <Calendar className="w-4 h-4" />
+                            Previous week podium
+                        </button>
+                    </div>
                 </div>
             </div>
         </>
