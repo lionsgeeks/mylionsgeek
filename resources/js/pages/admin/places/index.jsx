@@ -12,7 +12,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
-const PlaceIndex = ({ places = [], types = [] }) => {
+const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -191,6 +191,50 @@ const PlaceIndex = ({ places = [], types = [] }) => {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Galleries from storage/img folders */}
+                <div className="grid gap-8">
+                    {studioImages.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-medium mb-3">Studios — Gallery</h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {studioImages.map((src, i) => (
+                                    <img key={`studio-${i}`} src={src} alt="Studio" className="h-28 w-full rounded object-cover" />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {meetingRoomImages.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-medium mb-3">Meeting Rooms — Gallery</h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {meetingRoomImages.map((src, i) => (
+                                    <img key={`room-${i}`} src={src} alt="Meeting room" className="h-28 w-full rounded object-cover" />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {coworkImages.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-medium mb-3">Coworks — Gallery</h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {coworkImages.map((src, i) => (
+                                    <img key={`cowork-${i}`} src={src} alt="Cowork" className="h-28 w-full rounded object-cover" />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {equipmentImages.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-medium mb-3">Equipments — Gallery</h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {equipmentImages.map((src, i) => (
+                                    <img key={`equipment-${i}`} src={src} alt="Equipment" className="h-28 w-full rounded object-cover" />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>

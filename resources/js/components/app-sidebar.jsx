@@ -26,27 +26,16 @@ const mainNavItems = [
 
     {
         title: 'Places',
-        href: '/places',
+        href: '/admin/places',
         icon: Building2,
-        chevron: true,
-        children: [
-            { title: 'Studios', href: '/admin/places', icon: Building2 },
-            { title: 'Meeting room', href: '/admin/places', icon: Building2 },
-            { title: 'Co-work', href: '/admin/places', icon: Building2 },
-        ],
+
     },
     { title: 'Reservations', href: '/admin/reservations', icon: Timer },
     {
         title: 'Calendar',
         href: '/calendar',
         icon: CalendarDays,
-        chevron: true,
-        children: [
-            { title: 'Studio', href: '/calendar/studio', icon: CalendarDays },
-            { title: 'Meeting Room', href: '/calendar/meeting-room', icon: CalendarDays },
-            { title: 'Co-work', href: '/calendar/co-work', icon: CalendarDays },
-            { title: 'Exterior', href: '/calendar/exterior', icon: CalendarDays },
-        ],
+
     },
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
     { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
