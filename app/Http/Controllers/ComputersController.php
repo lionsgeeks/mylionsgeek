@@ -30,11 +30,11 @@ class ComputersController extends Controller
 
         $computer = Computer::create([
             'id' => (string) Str::uuid(),
-            'reference'=>$validated['reference'],
-            'cpu'=>$validated['cpu'],
-            'gpu'=>$validated['gpu'],
-            'state'=>$validated['state'],
-            'mark'=>$validated['mark'],
+            'reference' => $validated['reference'],
+            'cpu' => $validated['cpu'],
+            'gpu' => $validated['gpu'],
+            'state' => $validated['state'],
+            'mark' => $validated['mark'],
         ]);
 
         return redirect()->route('admin.computers')
@@ -60,14 +60,14 @@ class ComputersController extends Controller
         ]);
 
         $computer->update($validated);
-        
+
         // Debug: Log the updated computer
         Log::info('Updated computer:', [
             'id' => $computer->id,
             'user_id' => $computer->user_id,
             'validated_data' => $validated
         ]);
-        
+
         return redirect()->route('admin.computers')
             ->with('success', 'Computer updated successfully');
     }
