@@ -145,7 +145,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium">State</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                                <th className="px-4 py-3 text-center text-sm font-medium">Calender</th>
+                                <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
@@ -167,25 +168,29 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                             {e.state ? 'Available' : 'Unavailable'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm">
+                                    <td className="px-4 py-3 text-center text-sm">
                                         <div className="inline-flex items-center gap-1.5">
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-8 px-3 cursor-pointer"
+                                                className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
                                                 onClick={() => setCalendarFor({ id: e.id, place_type: e.place_type, name: e.name })}
                                             >
                                                 View Calendar
                                             </Button>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-sm">
+                                        <div className="inline-flex items-center gap-2">
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
                                                 <Pencil size={18} className="h-4 w-4 text-alpha" />
                                             </button>
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
