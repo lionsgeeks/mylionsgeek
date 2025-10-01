@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,21 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         coworks: coworkReservations.length,
         studios: studioReservations.length,
     }), [reservations, coworkReservations, studioReservations]);
+
+    // Pagination (same UX as Members) per tab
+    const [pageAll, setPageAll] = useState(1);
+    const [pageCowork, setPageCowork] = useState(1);
+    const [pageStudio, setPageStudio] = useState(1);
+    const perPage = 10;
+    const pagedAll = reservations.slice((pageAll - 1) * perPage, (pageAll - 1) * perPage + perPage);
+    const pagedCowork = coworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
+    const pagedStudio = studioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
+    const totalPagesAll = Math.ceil(reservations.length / perPage) || 1;
+    const totalPagesCowork = Math.ceil(coworkReservations.length / perPage) || 1;
+    const totalPagesStudio = Math.ceil(studioReservations.length / perPage) || 1;
+    useEffect(() => { setPageAll(1); }, [reservations]);
+    useEffect(() => { setPageCowork(1); }, [coworkReservations]);
+    useEffect(() => { setPageStudio(1); }, [studioReservations]);
 
     return (
         <AppLayout>
@@ -64,7 +79,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
-                                    {reservations.map((r) => (
+                                    {pagedAll.map((r) => (
                                         <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
                                         <td className="px-4 py-3 text-sm truncate">{r.user_name ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
@@ -130,6 +145,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     )}
                                 </tbody>
                             </table>
+                            <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                                <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
+                                <span>Page {pageAll} of {totalPagesAll}</span>
+                                <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -156,7 +176,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
-                                    {coworkReservations.map((rc) => (
+                                    {pagedCowork.map((rc) => (
                                         <tr key={rc.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected({
                                             id: rc.id,
                                             user_name: rc.user_name,
@@ -192,6 +212,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     )}
                                 </tbody>
                             </table>
+                            <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                                <button disabled={pageCowork === 1} onClick={() => setPageCowork((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
+                                <span>Page {pageCowork} of {totalPagesCowork}</span>
+                                <button disabled={pageCowork === totalPagesCowork} onClick={() => setPageCowork((p) => Math.min(totalPagesCowork, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -218,7 +243,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-sidebar-border/70">
-                                    {studioReservations.map((sr) => (
+                                    {pagedStudio.map((sr) => (
                                         <tr key={sr.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected({
                                             id: sr.id,
                                             user_name: sr.user_name,
@@ -255,6 +280,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     )}
                                 </tbody>
                             </table>
+                            <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                                <button disabled={pageStudio === 1} onClick={() => setPageStudio((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
+                                <span>Page {pageStudio} of {totalPagesStudio}</span>
+                                <button disabled={pageStudio === totalPagesStudio} onClick={() => setPageStudio((p) => Math.min(totalPagesStudio, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
+                            </div>
                         </div>
                     </div>
                 )}
