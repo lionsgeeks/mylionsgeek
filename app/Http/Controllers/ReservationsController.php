@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Equipment;
+use App\Models\Reservation;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -386,130 +390,157 @@ class ReservationsController extends Controller
         return response()->json($events);
     }
 
-    public function generatePdf(int $reservation)
+    /**
+     * Get all users for team member selector modal
+     */
+    public function getUsers()
     {
+        $users = User::select('id', 'name', 'image')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                $img = $user->image;
+                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                    $img = 'storage/img/profile/' . ltrim($img, '/');
+                }
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'image' => $img ? asset($img) : null,
+                ];
+            });
+
+        return response()->json($users);
+    }
+
+    /**
+     * Get all equipment for equipment selector modal
+     */
+    public function getEquipment()
+    {
+        $equipment = Equipment::with('equipmentType')
+            ->where('state', 1) // Only available equipment
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($e) {
+                $img = $e->image;
+                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                    $img = 'storage/img/equipment/' . ltrim($img, '/');
+                }
+                return [
+                    'id' => $e->id,
+                    'reference' => $e->reference,
+                    'mark' => $e->mark,
+                    'type' => $e->equipmentType->name ?? 'other',
+                    'image' => $img ? asset($img) : null,
+                ];
+            });
+
+        return response()->json($equipment);
+    }
+
+    /**
+     * Store new reservation with teams and equipment
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'studio_id' => 'required|integer|exists:studios,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+            'team_members' => 'nullable|array',
+            'team_members.*' => 'integer|exists:users,id',
+            'equipment' => 'nullable|array',
+            'equipment.*' => 'integer|exists:equipment,id',
+        ]);
+
         try {
-            // Get reservation details with all related data
-            $reservationData = $this->getReservationDetails($reservation);
-            
-            if (!$reservationData) {
-                return response()->json(['error' => 'Reservation not found'], 404);
-            }
+            DB::transaction(function () use ($validated) {
+                // Generate next ID
+                $nextId = (int) (DB::table('reservations')->lockForUpdate()->max('id') ?? 0) + 1;
 
-            if (!$reservationData['approved']) {
-                return response()->json(['error' => 'Only approved reservations can generate PDFs'], 400);
-            }
-
-            // Generate both pages as a single PDF
-            $userName = str_replace(' ', '_', $reservationData['user_name'] ?? 'User');
-            $date = $reservationData['date'] ?? date('Y-m-d');
-            
-            // Generate PDF with proper options for better rendering and full page usage
-            $pdf = Pdf::loadView('pdf.reservation_combined', ['reservation' => $reservationData])
-                ->setPaper('a4', 'portrait')
-                ->setOptions([
-                    'dpi' => 96,
-                    'defaultFont' => 'Arial',
-                    'isRemoteEnabled' => false,
-                    'isHtml5ParserEnabled' => true,
-                    'isPhpEnabled' => false,
-                    'chroot' => public_path(),
-                    'enable_font_subsetting' => true,
-                    'font_height_ratio' => 1.1
+                // Insert reservation
+                DB::table('reservations')->insert([
+                    'id' => $nextId,
+                    'studio_id' => $validated['studio_id'],
+                    'user_id' => auth()->id(),
+                    'title' => $validated['title'],
+                    'description' => $validated['description'] ?? '',
+                    'day' => $validated['day'],
+                    'start' => $validated['start'],
+                    'end' => $validated['end'],
+                    'type' => 'studio',
+                    'approved' => 0,
+                    'canceled' => 0,
+                    'passed' => 0,
+                    'start_signed' => 0,
+                    'end_signed' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
-            
-            // Generate filename
-            $filename = "Reservation_PDF_{$userName}_{$date}.pdf";
-            
-            // Force download without opening in new tab
-            return response($pdf->output(), 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-                'Cache-Control' => 'no-cache, no-store, must-revalidate',
-                'Pragma' => 'no-cache',
-                'Expires' => '0'
-            ]);
-            
+
+                // Insert team members
+                if (!empty($validated['team_members'])) {
+                    $teamData = array_map(function ($userId) use ($nextId) {
+                        return [
+                            'reservation_id' => $nextId,
+                            'user_id' => $userId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }, $validated['team_members']);
+                    
+                    DB::table('reservation_teams')->insert($teamData);
+                }
+
+                // Insert equipment
+                if (!empty($validated['equipment'])) {
+                    $equipmentData = array_map(function ($equipmentId) use ($validated, $nextId) {
+                        return [
+                            'reservation_id' => $nextId,
+                            'equipment_id' => $equipmentId,
+                            'day' => $validated['day'],
+                            'start' => $validated['start'],
+                            'end' => $validated['end'],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }, $validated['equipment']);
+                    
+                    DB::table('reservation_equipment')->insert($equipmentData);
+                }
+            });
+
+            return back()->with('success', 'Reservation created successfully');
         } catch (\Exception $e) {
-            // Return error details for debugging
-            return response()->json([
-                'error' => 'PDF generation failed',
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
+            return back()->with('error', 'Failed to create reservation: ' . $e->getMessage());
         }
     }
 
-    private function getReservationDetails(int $reservationId): ?array
+
+    /**
+     * Show studio calendar page
+     */
+    public function studioCalendar(int $studio)
     {
-        // Get basic reservation data
-        $reservation = DB::table('reservations as r')
-            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-            ->where('r.id', $reservationId)
-            ->select('r.*', 'u.name as user_name')
-            ->first();
-
-        if (!$reservation) {
-            return null;
+        $studioData = DB::table('studios')->where('id', $studio)->first();
+        
+        if (!$studioData) {
+            return redirect()->route('admin.places')->with('error', 'Studio not found');
         }
 
-        // Get equipment data
-        $equipments = [];
-        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
-            $equipments = DB::table('reservation_equipment as re')
-                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
-                ->where('re.reservation_id', $reservationId)
-                ->select('e.id', 'e.reference', 'e.mark', 'e.image')
-                ->get()
-                ->map(function ($e) {
-                    return [
-                        'id' => $e->id,
-                        'reference' => $e->reference,
-                        'mark' => $e->mark,
-                        'image' => $e->image,
-                    ];
-                })
-                ->toArray();
-        }
-
-        // Get team members
-        $teamMembers = [];
-        if (Schema::hasTable('reservation_teams') && Schema::hasTable('users')) {
-            $teamMembers = DB::table('reservation_teams as rt')
-                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
-                ->where('rt.reservation_id', $reservationId)
-                ->select('u.id', 'u.name', 'u.image')
-                ->get()
-                ->map(function ($u) {
-                    return [
-                        'id' => $u->id,
-                        'name' => $u->name,
-                        'image' => $u->image,
-                    ];
-                })
-                ->toArray();
-        }
-
-        // Get approver information (you may need to add this to your reservation table)
-        $approver = DB::table('users')
-            ->where('role', 'admin')
-            ->first();
-
-        return [
-            'id' => $reservation->id,
-            'user_name' => $reservation->user_name,
-            'date' => $reservation->date ?? $reservation->day,
-            'start' => $reservation->start,
-            'end' => $reservation->end,
-            'end_time' => $reservation->end, // For return form
-            'title' => $reservation->title,
-            'description' => $reservation->description,
-            'approved' => (bool) $reservation->approved,
-            'approver_name' => $approver->name ?? 'Bassam Rafiq',
-            'equipments' => $equipments,
-            'team_members' => $teamMembers,
-        ];
+        return Inertia::render('admin/places/studios/calendar', [
+            'studio' => [
+                'id' => $studioData->id,
+                'name' => $studioData->name,
+                'image' => $studioData->image ?? null,
+            ],
+        ]);
     }
+
 }
 
 

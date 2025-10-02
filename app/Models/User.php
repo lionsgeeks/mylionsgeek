@@ -74,4 +74,21 @@ class User extends Authenticatable
     {
         return $query->where('account_state', 0);
     }
+
+    /**
+     * User has many reservations as creator
+     */
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class, 'user_id');
+    }
+
+    /**
+     * User can be in many reservation teams (Many-to-Many)
+     */
+    public function reservationTeams()
+    {
+        return $this->belongsToMany(Reservation::class, 'reservation_teams', 'user_id', 'reservation_id')->withTimestamps();
+    }
+
 }
