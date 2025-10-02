@@ -170,14 +170,20 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </td>
                                     <td className="px-4 py-3 text-center text-sm">
                                         <div className="inline-flex items-center gap-1.5">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-                                                onClick={() => setCalendarFor({ id: e.id, place_type: e.place_type, name: e.name })}
-                                            >
-                                                View Calendar
-                                            </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                            onClick={() => {
+                                                if (e.place_type === 'studio') {
+                                                    router.visit(`/admin/studios/${e.id}/calendar`);
+                                                } else {
+                                                    setCalendarFor({ id: e.id, place_type: e.place_type, name: e.name });
+                                                }
+                                            }}
+                                        >
+                                            View Calendar
+                                        </Button>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center text-sm">
@@ -311,9 +317,11 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                             slotMinTime="08:00:00"
                                             slotMaxTime="22:00:00"
                                             expandRows={true}
-                                            selectable={false}
-                                            editable={false}
+                                            selectable={true}
+                                            selectMirror={true}
+                                            editable={true}
                                             events={events}
+                                            selectOverlap={false}
                                             eventClick={(info) => {
                                                 const ev = info.event;
                                                 const props = ev.extendedProps || {};
@@ -332,6 +340,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                                 });
                                             }}
                                             height="100%"
+                                            eventColor="#FFC801"
+                                            eventTextColor="#000000"
                                         />
                                     </div>
                                 </div>

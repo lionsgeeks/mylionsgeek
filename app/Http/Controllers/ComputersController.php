@@ -101,4 +101,10 @@ class ComputersController extends Controller
 
         return $pdf->download("$name Start.pdf");
     }
+    public function destroy(Computer $computer)
+    {
+        $computer->delete();
+        return redirect()->route('admin.computers');
+        // ->with('success', 'Computer deleted');
+    }
 }

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Route, Search } from 'lucide-react';
+import { Pencil, Route, Search, Trash } from 'lucide-react';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -26,6 +26,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [editTargetId, setEditTargetId] = useState(null);
     const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
     const [userSearch, setUserSearch] = useState('');
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [deletingComputer, setDeletingComputer] = useState(null);
 
     const filteredComputers = useMemo(() => {
         let list = computers;
@@ -126,6 +128,22 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             }
         });
     }
+    function handleDelete(computer) {
+        setDeletingComputer(computer);
+        setIsDeleteOpen(true);
+    };
+    function deleteComputer() {
+        if (deletingComputer) {
+            router.delete(`/admin/computers/${deletingComputer.id}`, {
+                onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    setComputers(prev => prev.filter(c => c.id !== deletingComputer.id));
+                    setDeletingComputer(null);
+                    console.log("Deleted successfully")
+                }
+            })
+        }
+    }
 
 
     function renderAllTable() {
@@ -177,6 +195,14 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             title="Edit"
                                         >
                                             <Pencil size={18} className="text-alpha" />
+                                        </button>
+
+                                        <button
+                                            className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                            title="Delete"
+                                            variant="destructive" onClick={() => handleDelete(c)}
+                                        >
+                                            <Trash size={18} className="text-error"/>
                                         </button>
                                     </TableCell>
                                 </TableRow>
@@ -479,6 +505,58 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
                             <Button onClick={updateComputer}>Update Computer</Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+
+
+            {/* Delete confirmation modal */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                            <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                            <div>
+                                <h2 className="text-lg font-semibold">Delete Computer</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    This action cannot be undone.
+                                </p>
+                            </div></DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                        {deletingComputer && (
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center gap-3">
+
+                                    <div>
+                                        <p className="font-medium">{deletingComputer.reference}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.mark}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.cpu}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.gpu}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsDeleteOpen(false);
+                                    setDeletingComputer(null);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={deleteComputer}
+                            >
+                                Delete Computer
+                            </Button>
                         </div>
                     </div>
                 </DialogContent>

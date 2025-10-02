@@ -35,6 +35,15 @@ class Equipment extends Model
     {
         return $this->belongsTo(EquipmentType::class, 'equipment_type_id');
     }
+
+    /**
+     * Equipment can be in many reservations (Many-to-Many)
+     */
+    public function reservations()
+    {
+        return $this->belongsToMany(Reservation::class, 'reservation_equipment', 'equipment_id', 'reservation_id')->withPivot('day', 'start', 'end')->withTimestamps();
+    }
+
 }
 
 
