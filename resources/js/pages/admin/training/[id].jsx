@@ -8,8 +8,9 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import axios from 'axios';
 
-export default function Show({ training, usersNull }) {
+export default function Show({ training, usersNull}) {
   const [students, setStudents] = useState(training.users || []);
   const [availableUsers, setAvailableUsers] = useState(usersNull || []);
   const [filter, setFilter] = useState('');
@@ -25,7 +26,42 @@ export default function Show({ training, usersNull }) {
     // placeholder events; wire real data later
     // { date: '2025-10-05', title: 'Session', type: 'session' }
   ]);
+  const [currentAttendanceId, setCurrentAttendanceId] = useState(null);
 
+//   attendance
+
+
+function AddAttendance(dateStr) {
+  axios.post("/attendances", {
+    formation_id: training.id,
+    attendance_day: dateStr,
+  })
+  .then(res => {
+    // juste save ID f state
+    setCurrentAttendanceId(res.data.attendance_id);
+    setShowAttendanceList(true);
+  })
+  .catch(err => console.error(err));
+}
+
+
+//   atteandacelist
+function handleSave() {
+  const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
+    const studentId = key.split('-')[1];
+    return {
+      user_id: studentId,
+      attendance_day: selectedDate,
+      attendance_id: currentAttendanceId,
+      morning: value.morning,
+      lunch: value.lunch,
+      evening: value.evening,
+      note: value.notes || null,
+    };
+  });
+
+  router.post('/admin/attendance/save', { attendance: dataToSave });
+}
   // Filter enrolled students
   const filteredStudents = students.filter(
     s =>
@@ -300,12 +336,23 @@ export default function Show({ training, usersNull }) {
 
 {/* Attendance Modal with FullCalendar */}
 <Dialog open={showAttendance} onOpenChange={setShowAttendance}>
-  <DialogContent className="max-w-7xl bg-light dark:bg-dark border border-alpha/20">
+  <DialogContent className="max-w-[95vw] w-full lg:max-w-[1200px] bg-light dark:bg-dark border border-alpha/20 flex flex-col gap-6 p-8 rounded-3xl shadow-2xl">
+    
+    {/* Header */}
     <DialogHeader>
-      <DialogTitle className="text-3xl font-extrabold text-dark dark:text-light">Training Attendance Calendar</DialogTitle>
-      <p className="text-dark/70 dark:text-light/70 text-lg">Click on any day to manage attendance for that date</p>
+      <DialogTitle className="text-3xl lg:text-4xl font-extrabold text-dark dark:text-light">
+        Training Attendance Calendar
+      </DialogTitle>
+      <p className="text-dark/70 dark:text-light/70 text-lg lg:text-xl">
+        Click on any day to manage attendance for that date
+      </p>
     </DialogHeader>
-    <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 p-6 shadow-xl" style={{ height: '75vh' }}>
+
+    {/* Calendar */}
+    <div
+      className="bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 p-4 shadow-xl overflow-y-auto "
+      style={{ height: 'calc(100vh - 350px)' }}
+    >
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
@@ -315,15 +362,17 @@ export default function Show({ training, usersNull }) {
         events={events}
         eventClick={(info) => alert(`Event: ${info.event.title}`)}
         dateClick={(info) => {
-          setSelectedDate(info.dateStr);
-          setShowAttendance(false);
-          setShowAttendanceList(true);
-        }}
+  setSelectedDate(info.dateStr);
+  AddAttendance(info.dateStr);
+  setShowAttendance(false);
+  setShowAttendanceList(true);
+}}
+
         height="100%"
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth"
+          right: "dayGridMonth",
         }}
         dayMaxEvents={true}
         moreLinkClick="popover"
@@ -331,24 +380,22 @@ export default function Show({ training, usersNull }) {
         dayCellClassNames="hover:bg-alpha/20 cursor-pointer transition-all duration-300 rounded-lg"
         dayHeaderClassNames="bg-alpha/20 text-dark dark:text-light font-bold text-sm"
         todayClassNames="bg-alpha/30 border-2 border-alpha"
-        dayCellContent={(info) => {
-          return (
-            <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
-              {info.dayNumberText}
-            </div>
-          );
-        }}
-        dayHeaderContent={(info) => {
-          return (
-            <div className="text-center font-bold text-dark dark:text-light">
-              {info.text}
-            </div>
-          );
-        }}
+        dayCellContent={(info) => (
+          <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
+            {info.dayNumberText}
+          </div>
+        )}
+        dayHeaderContent={(info) => (
+          <div className="text-center font-bold text-dark dark:text-light">
+            {info.text}
+          </div>
+        )}
       />
     </div>
-    <div className="mt-8 flex justify-between items-center">
-      <div className="flex items-center space-x-6 text-sm text-dark/70 dark:text-light/70">
+
+    {/* Legend & Close Button */}
+    <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+      <div className="flex flex-wrap items-center gap-4 text-sm lg:text-base text-dark/70 dark:text-light/70">
         <div className="flex items-center space-x-2">
           <span className="inline-block w-4 h-4 bg-green-500 rounded-full"></span>
           <span className="font-semibold">Present</span>
@@ -366,14 +413,19 @@ export default function Show({ training, usersNull }) {
           <span className="font-semibold">Excused</span>
         </div>
       </div>
-      <button onClick={() => setShowAttendance(false)} className="px-8 py-3 rounded-xl border border-alpha/30 hover:bg-alpha/10 font-bold text-lg transition-all duration-300 hover:scale-105">Close</button>
+      <button
+        onClick={() => setShowAttendance(false)}
+        className="px-10 py-3 rounded-xl border border-alpha/30 hover:bg-alpha/10 font-bold text-lg lg:text-xl transition-all duration-300 hover:scale-105 hover:opacity-80"
+      >
+        Close
+      </button>
     </div>
   </DialogContent>
 </Dialog>
 
 {/* Attendance List Modal */}
 <Dialog open={showAttendanceList} onOpenChange={setShowAttendanceList}>
-  <DialogContent className="max-w-6xl bg-light dark:bg-dark border border-alpha/20">
+    <DialogContent className="max-w-[95vw] w-full lg:max-w-[1200px]    bg-light dark:bg-dark border border-alpha/20">
     <DialogHeader>
       <DialogTitle className="text-3xl font-extrabold text-dark dark:text-light">
         Attendance for {selectedDate && new Date(selectedDate).toLocaleDateString('en-US', { 
@@ -385,85 +437,114 @@ export default function Show({ training, usersNull }) {
       </DialogTitle>
       <p className="text-dark/70 dark:text-light/70 text-lg">Mark attendance for each student</p>
     </DialogHeader>
-    
-    <div className="mt-8">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 overflow-hidden shadow-xl">
+    <div className="mt-8 ">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 h-[50vh] overflow-y-scroll shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-alpha/20">
-              <tr>
-                <th className="px-8 py-6 text-left text-lg font-bold text-dark dark:text-light">Student</th>
-                <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">Status</th>
-                <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">Time</th>
-                <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-alpha/20">
-              {students.map((student, index) => {
-                const studentKey = `${selectedDate}-${student.id}`;
-                const currentData = attendanceData[studentKey] || { status: 'present', time: '09:00', notes: '' };
-                
-                return (
-                  <tr key={student.id} className="hover:bg-alpha/10 transition-all duration-300">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-alpha text-light flex items-center justify-center font-bold text-lg">
-                          {student.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-lg text-dark dark:text-light">{student.name}</p>
-                          <p className="text-sm text-dark/70 dark:text-light/70">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <select 
-                        className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
-                        value={currentData.status}
-                        onChange={(e) => {
-                          const newData = { ...currentData, status: e.target.value };
-                          setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                        }}
-                      >
-                        <option value="present">Present</option>
-                        <option value="absent">Absent</option>
-                        <option value="late">Late</option>
-                        <option value="excused">Excused</option>
-                      </select>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <input 
-                        type="time" 
-                        className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold"
-                        value={currentData.time}
-                        onChange={(e) => {
-                          const newData = { ...currentData, time: e.target.value };
-                          setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                        }}
-                      />
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <input 
-                        type="text" 
-                        placeholder="Optional notes..."
-                        className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold w-full min-w-[200px]"
-                        value={currentData.notes}
-                        onChange={(e) => {
-                          const newData = { ...currentData, notes: e.target.value };
-                          setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                        }}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <table className="w-full ">
+  <thead className="bg-alpha/20">
+    <tr>
+      <th className="px-8 py-6 text-left text-lg font-bold text-dark dark:text-light">Student</th>
+      <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">9:30 - 11:00</th>
+      <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">11:30 - 13:00</th>
+      <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">14:00 - 17:00</th>
+      <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">Notes</th>
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-alpha/20 ">
+    {students.map((student) => {
+      const studentKey = `${selectedDate}-${student.id}`;
+      const currentData = attendanceData[studentKey] || {
+        status: 'present',
+        time: '09:00',
+        notes: '',
+        slot930: false,
+        slot1130: false,
+        slot1400: false,
+      };
+      return (
+        <tr key={student.id} className="hover:bg-alpha/10 transition-all duration-300">
+          <td className="px-8 py-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-full bg-alpha text-light flex items-center justify-center font-bold text-lg">
+                {student.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="font-bold text-lg text-dark dark:text-light">{student.name}</p>
+                <p className="text-sm text-dark/70 dark:text-light/70">{student.email}</p>
+              </div>
+            </div>
+          </td>
+          <td className="px-8 py-6 text-center">
+            <select
+              className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
+              value={currentData.morning}
+              onChange={(e) => {
+                const newData = { ...currentData, morning: e.target.value };
+                setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+              }}
+            >
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="late">Late</option>
+              <option value="excused">Excused</option>
+            </select>
+          </td>
+          <td className="px-8 py-6 text-center">
+            <select
+              className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
+              value={currentData.l}
+              onChange={(e) => {
+                const newData = { ...currentData, lunch: e.target.value };
+                setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+              }}
+            >
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="late">Late</option>
+              <option value="excused">Excused</option>
+            </select>
+          </td>
+          <td className="px-8 py-6 text-center">
+            <select
+              className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
+              value={currentData.evening}
+              onChange={(e) => {
+                const newData = { ...currentData, evening: e.target.value };
+                setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+              }}
+            >
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="late">Late</option>
+              <option value="excused">Excused</option>
+            </select>
+          </td>
+          
+          <td className="px-8 py-6 text-center">
+            <input
+              type="text"
+              placeholder="Optional notes..."
+              className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold w-full min-w-[200px]"
+              value={currentData.notes}
+              onChange={(e) => {
+                const newData = { ...currentData, notes: e.target.value };
+                setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+              }}
+            />
+          </td>
+
+         
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
+
         </div>
       </div>
     </div>
     
-    <div className="mt-8 flex justify-between items-center">
+    <div className=" mt-8 flex justify-between items-center">
       <div className="text-lg text-dark/70 dark:text-light/70">
         Total Students: <span className="font-bold text-xl">{students.length}</span>
       </div>
@@ -477,7 +558,7 @@ export default function Show({ training, usersNull }) {
         <button 
           onClick={() => {
             // Save attendance logic here
-            console.log('Saving attendance data:', attendanceData);
+            handleSave();
             setShowAttendanceList(false);
           }}
           className="px-8 py-3 rounded-xl bg-alpha text-light hover:bg-alpha/90 font-bold text-lg transition-all duration-300 hover:scale-105"
@@ -486,6 +567,7 @@ export default function Show({ training, usersNull }) {
         </button>
       </div>
     </div>
+    
   </DialogContent>
 </Dialog>
 
