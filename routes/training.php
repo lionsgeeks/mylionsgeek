@@ -12,6 +12,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/trainings/{training}/students/{user}', [FormationController::class, 'removeStudent'])->name('trainings.students.remove');
     Route::post('/admin/attendance/save', [FormationController::class, 'save'])->name('attendance.save');
 Route::post('/attendances', [FormationController::class, 'attendance'])->name('attendances');
+Route::delete('/trainings/{training}', [FormationController::class, 'destroy'])->name('trainings.destroy');
+Route::put('/trainings/{training}', [FormationController::class, 'update'])->name('trainings.update');
+
+
 
 
 
