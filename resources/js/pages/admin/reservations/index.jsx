@@ -4,7 +4,8 @@ import { Head, router } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Check, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Check, X, Search, FileText, Download } from 'lucide-react';
 
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
@@ -17,27 +18,64 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [loadingAction, setLoadingAction] = useState({ id: null, type: null });
     const [selected, setSelected] = useState(null);
     const [infoFor, setInfoFor] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter reservations based on search term
+    const filteredReservations = useMemo(() => {
+        if (!searchTerm) return reservations;
+        const term = searchTerm.toLowerCase();
+        return reservations.filter(r => 
+            r.user_name?.toLowerCase().includes(term) ||
+            r.title?.toLowerCase().includes(term) ||
+            r.description?.toLowerCase().includes(term) ||
+            r.type?.toLowerCase().includes(term) ||
+            r.place_type?.toLowerCase().includes(term) ||
+            r.date?.includes(term)
+        );
+    }, [reservations, searchTerm]);
+
+    const filteredCoworkReservations = useMemo(() => {
+        if (!searchTerm) return coworkReservations;
+        const term = searchTerm.toLowerCase();
+        return coworkReservations.filter(r => 
+            r.user_name?.toLowerCase().includes(term) ||
+            r.day?.includes(term) ||
+            `table ${r.table}`?.toLowerCase().includes(term)
+        );
+    }, [coworkReservations, searchTerm]);
+
+    const filteredStudioReservations = useMemo(() => {
+        if (!searchTerm) return studioReservations;
+        const term = searchTerm.toLowerCase();
+        return studioReservations.filter(r => 
+            r.user_name?.toLowerCase().includes(term) ||
+            r.title?.toLowerCase().includes(term) ||
+            r.studio_name?.toLowerCase().includes(term) ||
+            r.team_members?.toLowerCase().includes(term) ||
+            (r.day || r.date)?.includes(term)
+        );
+    }, [studioReservations, searchTerm]);
 
     const total = useMemo(() => ({
-        reservations: reservations.length,
-        coworks: coworkReservations.length,
-        studios: studioReservations.length,
-    }), [reservations, coworkReservations, studioReservations]);
+        reservations: filteredReservations.length,
+        coworks: filteredCoworkReservations.length,
+        studios: filteredStudioReservations.length,
+    }), [filteredReservations, filteredCoworkReservations, filteredStudioReservations]);
 
     // Pagination (same UX as Members) per tab
     const [pageAll, setPageAll] = useState(1);
     const [pageCowork, setPageCowork] = useState(1);
     const [pageStudio, setPageStudio] = useState(1);
     const perPage = 10;
-    const pagedAll = reservations.slice((pageAll - 1) * perPage, (pageAll - 1) * perPage + perPage);
-    const pagedCowork = coworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
-    const pagedStudio = studioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
-    const totalPagesAll = Math.ceil(reservations.length / perPage) || 1;
-    const totalPagesCowork = Math.ceil(coworkReservations.length / perPage) || 1;
-    const totalPagesStudio = Math.ceil(studioReservations.length / perPage) || 1;
-    useEffect(() => { setPageAll(1); }, [reservations]);
-    useEffect(() => { setPageCowork(1); }, [coworkReservations]);
-    useEffect(() => { setPageStudio(1); }, [studioReservations]);
+    const pagedAll = filteredReservations.slice((pageAll - 1) * perPage, (pageAll - 1) * perPage + perPage);
+    const pagedCowork = filteredCoworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
+    const pagedStudio = filteredStudioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
+    const totalPagesAll = Math.ceil(filteredReservations.length / perPage) || 1;
+    const totalPagesCowork = Math.ceil(filteredCoworkReservations.length / perPage) || 1;
+    const totalPagesStudio = Math.ceil(filteredStudioReservations.length / perPage) || 1;
+    useEffect(() => { setPageAll(1); }, [filteredReservations]);
+    useEffect(() => { setPageCowork(1); }, [filteredCoworkReservations]);
+    useEffect(() => { setPageStudio(1); }, [filteredStudioReservations]);
 
     return (
         <AppLayout>
@@ -47,6 +85,16 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     <div>
                         <h1 className="text-2xl font-medium">Reservations</h1>
                         <p className="text-sm text-muted-foreground">{total.reservations} base, {total.coworks} coworks, {total.studios} studios</p>
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                            type="text"
+                            placeholder="Search reservations..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 w-64"
+                        />
                     </div>
                 </div>
 
@@ -99,47 +147,70 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    className="h-8 px-3 cursor-pointer"
+                                                    className="h-8 px-2 cursor-pointer"
                                                     onClick={() => setInfoFor(r)}
+                                                    title="View team & equipment"
                                                 >
-                                                    team / equipement
+                                                    <FileText className="h-4 w-4" />
                                                 </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                    disabled={!!r.approved || !!r.canceled || loadingAction.id === r.id}
-                                                    onClick={() => {
-                                                        setLoadingAction({ id: r.id, type: 'approve' });
-                                                        router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                            onFinish: () => setLoadingAction({ id: null, type: null })
-                                                        });
-                                                    }}
-                                                >
-                                                    Approve
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="destructive"
-                                                    className="h-8 px-3 cursor-pointer disabled:opacity-50"
-                                                    disabled={!!r.approved || !!r.canceled || loadingAction.id === r.id}
-                                                    onClick={() => {
-                                                        if (!window.confirm('Cancel this reservation?')) return;
-                                                        setLoadingAction({ id: r.id, type: 'cancel' });
-                                                        router.post(`/admin/reservations/${r.id}/cancel`, {}, {
-                                                            onFinish: () => setLoadingAction({ id: null, type: null })
-                                                        });
-                                                    }}
-                                                >
-                                                    Cancel
-                                                </Button>
+                                                {r.approved && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 px-2 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
+                                                        onClick={() => {
+                                                            window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
+                                                        }}
+                                                        title="Download PDF"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                {!r.canceled && !r.approved && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                                                        disabled={loadingAction.id === r.id}
+                                                        onClick={() => {
+                                                            setLoadingAction({ id: r.id, type: 'approve' });
+                                                            router.post(`/admin/reservations/${r.id}/approve`, {}, {
+                                                                onFinish: () => setLoadingAction({ id: null, type: null })
+                                                            });
+                                                        }}
+                                                        title="Approve reservation"
+                                                    >
+                                                        <Check className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                {!r.canceled && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        className="h-8 px-2 cursor-pointer disabled:opacity-50"
+                                                        disabled={loadingAction.id === r.id}
+                                                        onClick={() => {
+                                                            const confirmMsg = r.approved ? 
+                                                                'Cancel this approved reservation?' : 
+                                                                'Cancel this reservation?';
+                                                            if (!window.confirm(confirmMsg)) return;
+                                                            setLoadingAction({ id: r.id, type: 'cancel' });
+                                                            router.post(`/admin/reservations/${r.id}/cancel`, {}, {
+                                                                onFinish: () => setLoadingAction({ id: null, type: null })
+                                                            });
+                                                        }}
+                                                        title="Cancel reservation"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </td>
                                         </tr>
                                     ))}
-                                    {reservations.length === 0 && (
+                                    {filteredReservations.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No reservations yet.
+                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                                No reservations found.
                                             </td>
                                         </tr>
                                     )}
@@ -203,10 +274,10 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                             </td>
                                         </tr>
                                     ))}
-                                    {coworkReservations.length === 0 && (
+                                    {filteredCoworkReservations.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No cowork reservations yet.
+                                                No cowork reservations found.
                                             </td>
                                         </tr>
                                     )}
@@ -271,10 +342,10 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                             </td>
                                         </tr>
                                     ))}
-                                    {studioReservations.length === 0 && (
+                                    {filteredStudioReservations.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No studio reservations yet.
+                                                No studio reservations found.
                                             </td>
                                         </tr>
                                     )}
@@ -341,8 +412,20 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     </div>
 
                                 </div>
-                                {!selected.approved && !selected.canceled && (
-                                    <div className="flex justify-end gap-2 pt-2">
+                                <div className="flex justify-end gap-2 pt-2">
+                                    {selected.approved && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-8 px-3 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
+                                            onClick={() => {
+                                                window.open(`/admin/reservations/${selected.id}/pdf`, '_blank');
+                                            }}
+                                        >
+                                            <Download className="h-4 w-4 mr-1" /> Download PDF
+                                        </Button>
+                                    )}
+                                    {!selected.approved && !selected.canceled && (
                                         <Button
                                             size="sm"
                                             className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
@@ -356,13 +439,18 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         >
                                             <Check className="h-4 w-4 mr-1" /> Approve
                                         </Button>
+                                    )}
+                                    {!selected.canceled && (
                                         <Button
                                             size="sm"
                                             variant="destructive"
                                             className="h-8 px-3 cursor-pointer"
                                             disabled={loadingAction.id === selected.id}
                                             onClick={() => {
-                                                if (!window.confirm('Cancel this reservation?')) return;
+                                                const confirmMsg = selected.approved ? 
+                                                    'Cancel this approved reservation?' : 
+                                                    'Cancel this reservation?';
+                                                if (!window.confirm(confirmMsg)) return;
                                                 setLoadingAction({ id: selected.id, type: 'cancel' });
                                                 router.post(`/admin/reservations/${selected.id}/cancel`, {}, {
                                                     onFinish: () => setLoadingAction({ id: null, type: null })
@@ -371,8 +459,8 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         >
                                             <X className="h-4 w-4 mr-1" /> Cancel
                                         </Button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         )}
                     </DialogContent>
