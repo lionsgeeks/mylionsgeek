@@ -21,7 +21,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         reference: '',
         equipment_type: '',
         other_type: '',
-        state: '',
+        state: 1,
         image: null,
     });
     const { data: editData, setData: setEditData, put, processing: editProcessing, reset: resetEdit, errors: editErrors } = useForm({
@@ -29,26 +29,62 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         reference: '',
         equipment_type: '',
         other_type: '',
-        state: '',
+        state: 1,
         image: null,
     });
 
     const handleEdit = (equipment) => {
+        // Set the equipment being edited
         setEditingEquipment(equipment);
+        
+        // Populate form with current equipment data
         setEditData({
-            mark: equipment.mark,
-            reference: equipment.reference,
-            equipment_type: equipment.equipment_type,
+            mark: equipment.mark || '',
+            reference: equipment.reference || '',
+            equipment_type: equipment.equipment_type || '',
             other_type: '',
-            state: equipment.state ? '1' : '0',
+            state: equipment.state ? 1 : 0,
             image: null,
         });
+        
+        // Open the modal
         setIsEditOpen(true);
     };
 
     const handleDelete = (equipment) => {
         setDeletingEquipment(equipment);
         setIsDeleteOpen(true);
+    };
+
+    const handleUpdateEquipment = () => {
+        put(`/admin/equipements/${editingEquipment.id}`, {
+            onSuccess: () => { 
+                resetEdit(); 
+                setIsEditOpen(false); 
+                setEditingEquipment(null); 
+            },
+            onError: (errors) => {
+                console.log('Validation errors:', errors);
+            }
+        });
+    };
+
+    const handleAddEquipment = () => {
+        // Validate required fields on frontend first
+        if (!data.mark || !data.reference || !data.equipment_type) {
+            return;
+        }
+
+        post('/admin/equipements', {
+            forceFormData: true,
+            onSuccess: () => { 
+                reset(); 
+                setIsAddOpen(false); 
+            },
+            onError: (errors) => {
+                console.log('Validation errors:', errors);
+            }
+        });
     };
 
     const confirmDelete = () => {
@@ -226,8 +262,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Equipment State</Label>
-                                    <Select value={data.state === '' ? '' : String(data.state)} onValueChange={(v) => setData('state', v)}>
-                                        <SelectTrigger className={data.state === '' ? 'text-muted-foreground' : ''}>
+                                    <Select value={String(data.state)} onValueChange={(v) => setData('state', parseInt(v))}>
+                                        <SelectTrigger>
                                             <SelectValue placeholder="Choose an option" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -243,12 +279,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 <Button
                                     className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                     disabled={processing}
-                                    onClick={() => {
-                                        post('/admin/equipements', {
-                                            forceFormData: true,
-                                            onSuccess: () => { reset(); setIsAddOpen(false); },
-                                        });
-                                    }}
+                                    onClick={handleAddEquipment}
                                 >
                                     Add an Equipment
                                 </Button>
@@ -258,7 +289,13 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </Dialog>
 
                 {/* Edit equipment modal */}
-                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <Dialog open={isEditOpen} onOpenChange={(open) => {
+                    setIsEditOpen(open);
+                    if (!open) {
+                        resetEdit(); // Clear errors when closing modal
+                        setEditingEquipment(null);
+                    }
+                }}>
                     <DialogContent className="max-w-lg">
                         <div className="space-y-6">
                             <h2 className="text-xl font-medium">Edit Equipment</h2>
@@ -320,8 +357,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label>Equipment State</Label>
-                                    <Select value={editData.state === '' ? '' : String(editData.state)} onValueChange={(v) => setEditData('state', v)}>
-                                        <SelectTrigger className={editData.state === '' ? 'text-muted-foreground' : ''}>
+                                    <Select value={String(editData.state)} onValueChange={(v) => setEditData('state', parseInt(v))}>
+                                        <SelectTrigger>
                                             <SelectValue placeholder="Choose an option" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -333,16 +370,15 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                                <Button variant="outline" className="cursor-pointer" onClick={() => {
+                                    resetEdit();
+                                    setIsEditOpen(false);
+                                    setEditingEquipment(null);
+                                }}>Cancel</Button>
                                 <Button
                                     className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                     disabled={editProcessing}
-                                    onClick={() => {
-                                        put(`/admin/equipements/${editingEquipment.id}`, {
-                                            forceFormData: true,
-                                            onSuccess: () => { resetEdit(); setIsEditOpen(false); setEditingEquipment(null); },
-                                        });
-                                    }}
+                                    onClick={handleUpdateEquipment}
                                 >
                                     Update Equipment
                                 </Button>

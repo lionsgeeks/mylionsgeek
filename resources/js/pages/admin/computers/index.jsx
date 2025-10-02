@@ -109,7 +109,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         if (c.id === editTargetId) {
                             return {
                                 ...c,
-                                assignedUserId: editForm.user_id,
+                                assignedUserId: editForm.user_id || null,
                                 reference: editForm.reference,
                                 cpu: editForm.cpu,
                                 gpu: editForm.gpu,
@@ -126,6 +126,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             }
         });
     }
+
 
     function renderAllTable() {
         return (
@@ -160,7 +161,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         {user ? (
                                             <span className="text-sm font-medium">
                                                 <Button onClick={() => {
-                                                    window.location.href = `/admin/computers/${c.id}/contract`; 
+                                                    window.location.href = `/admin/computers/${c.id}/contract`;
                                                 }}>
                                                     Download
                                                 </Button></span>
@@ -386,24 +387,43 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         value={userSearch}
                                         onChange={e => setUserSearch(e.target.value)}
                                     />
+
+                                    {/* Dissociate button */}
                                     {editForm.user_id && (
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setEditForm(f => ({ ...f, user_id: null }))}
+                                            onClick={() => {
+                                                if (!editTargetId) return;
+                                                setEditForm(f => ({ ...f, user_id: null }));
+                                                setComputers(prev =>
+                                                    prev.map(c =>
+                                                        c.id === editTargetId ? { ...c, assignedUserId: null } : c
+                                                    )
+                                                );
+                                                router.put(`/admin/computers/${editTargetId}`, { ...editForm, user_id: null }, {
+                                                    onSuccess: () => {
+                                                        setShowEditModal(false);
+                                                    },
+                                                    onError: err => console.error('Failed to dissociate:', err)
+                                                });
+                                            }}
                                         >
                                             Dissociate
                                         </Button>
+
                                     )}
                                 </div>
 
+                                {/* Show selected user */}
                                 {editForm.user_id && (
                                     <p className="text-xs text-muted-foreground">
                                         Selected: {findUserById(users, editForm.user_id)?.name || 'Unknown'}
                                     </p>
                                 )}
 
+                                {/* Search results */}
                                 {userSearch.trim() && (
                                     <div className="max-h-48 overflow-auto border rounded">
                                         {users
@@ -420,7 +440,16 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     key={u.id}
                                                     type="button"
                                                     onClick={() => {
+                                                        if (!editTargetId) return;
                                                         setEditForm(f => ({ ...f, user_id: u.id }));
+                                                        setComputers(prev =>
+                                                            prev.map(c =>
+                                                                c.id === editTargetId ? { ...c, assignedUserId: u.id } : c
+                                                            )
+                                                        );
+                                                        router.put(`/admin/computers/${editTargetId}`, { user_id: u.id }, {
+                                                            onError: err => console.error('Failed to assign user:', err)
+                                                        });
                                                         setUserSearch(u.name);
                                                     }}
                                                     className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted ${editForm.user_id === u.id ? 'bg-muted' : ''
@@ -434,7 +463,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             ))}
                                     </div>
                                 )}
-
                             </div>
                         </div>
 
