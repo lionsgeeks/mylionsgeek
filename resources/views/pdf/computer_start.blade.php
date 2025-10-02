@@ -196,7 +196,7 @@
             </p>
             <br>
             <p class="topm">Fait en deux exemplaires, à Casablanca, le</p>
-            <h1>{{$computer->start}}</h1>
+            <h1>{{ optional($computer->start)->format('Y-m-d') }}</h1>
             <br>
             <p>Signature du Bénéficiaire:</p>
         </div>
