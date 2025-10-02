@@ -103,11 +103,12 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                     </div>
 
                     {/* Bouton pour réinitialiser les filtres */}
-                    {(selectedCoach || selectedTrack) && (
+                    {(selectedCoach || selectedTrack || selectedPromo) && (
                         <button
                             onClick={() => {
                                 setSelectedCoach('');
                                 setSelectedTrack('');
+                                setSelectedPromo('');
                                 router.visit('/training');
                             }}
                             className="rounded-lg bg-yellow-500 px-4 py-2 text-white transition-colors hover:bg-yellow-600"
@@ -152,15 +153,18 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                 <div className="relative h-40 overflow-hidden">
                                     <img
                                         src={
-                                            training.category?.toLowerCase() === 'coding'
-                                                ? '/assets/images/training/coding.jpg'
-                                                : training.category?.toLowerCase() === 'media'
-                                                  ? '/assets/images/training/media.jpg'
-                                                  : training.img || '/assets/images/training/default.jpg'
+                                            training.category?.toLowerCase() === "coding"
+                                            ? "/assets/images/training/coding.jpg"
+                                            : training.category?.toLowerCase() === "media"
+                                            ? "/assets/images/training/media.jpg"
+                                            : training.img
+                                            ? `/storage/img/training/${training.img}`
+                                            : "/assets/images/training/default.jpg"
                                         }
                                         alt={training.name}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    />
+                                        />
+
 
                                     {/* Status Badge */}
                                     {training.status && (
