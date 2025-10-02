@@ -125,33 +125,57 @@ public function attendance(Request $request)
 public function save(Request $request)
 {
     foreach ($request->attendance as $data) {
+    AttendanceListe::create([
+        'id'            => Str::uuid(),
+        'user_id'       => $data['user_id'] ?? null,
+        'attendance_id' => $data['attendance_id'] ?? null,
+        'attendance_day'=> $data['attendance_day'] ?? null,
+        'morning'       => $data['morning'] ?? false, 
+        'lunch'         => $data['lunch'] ?? false,
+        'evening'       => $data['evening'] ?? false,
+    ]);
 
-        // Attendance list
-        AttendanceListe::create([
-            'id'            => Str::uuid(),
-            'user_id'       => $data['user_id'],
-            'attendance_id' => $data['attendance_id'],
-            'attendance_day'=> $data['attendance_day'],
-            'morning'       => $data['morning'],
-            'lunch'         => $data['lunch'],
-            'evening'       => $data['evening'],
+    if (!empty($data['note'])) {
+        Note::create([
+            'id'     => Str::uuid(),
+            'user_id'=> $data['user_id'],
+            'note'   => $data['note'],
+            'author' => Auth::user()->name,
         ]);
-
-        // Notes
-        if (!empty($data['note'])) {
-            Note::create([
-                'id'     => Str::uuid(),
-                'user_id'=> $data['user_id'],
-                'note'   => $data['note'],
-                'author' => Auth::user()->name,
-            ]);
-        }
     }
+}
+
 
     return back()->with('success', 'Attendance list and notes saved successfully!');
 }
 
+// Update formation
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name'       => 'required|string|max:255',
+            'img'        => 'nullable|string|max:255',
+            'category'   => 'required|string|max:100',
+            'start_time' => 'required|date',
+            'end_time'   => 'nullable|date',
+            'user_id'    => 'required|exists:users,id',
+            'promo'      => 'nullable|string|max:50',
+        ]);
 
+        $formation = Formation::findOrFail($id);
+        $formation->update($validated);
+
+        return back()->with('success', 'Formation deleted successfully!');
+    }
+
+    // Delete formation
+    public function destroy($id)
+    {
+        $formation = Formation::findOrFail($id);
+        $formation->delete();
+
+        return back()->with('success', 'Formation deleted successfully!');
+    }
 
 
 
