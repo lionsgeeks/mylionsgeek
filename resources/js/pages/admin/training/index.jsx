@@ -1,13 +1,35 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Timer, User } from 'lucide-react';
+import { Timer, User ,Trash2 ,Edit3 } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
+import UpdateTraining from './partials/UpdateTraining';
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [],promos=[]}) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
     const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [trainingToDelete, setTrainingToDelete] = useState(null);
+
+    const openDeleteModal = (training) => {
+        setTrainingToDelete(training);
+        setDeleteModalOpen(true);
+    };
+
+    const closeDeleteModal = () => {
+        setTrainingToDelete(null);
+        setDeleteModalOpen(false);
+    };
+
+    const confirmDelete = () => {
+        if (trainingToDelete) {
+            router.delete(`/trainings/${trainingToDelete.id}`, {
+                onSuccess: () => closeDeleteModal()
+            });
+        }
+    };
 
     const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach , promoValue = selectedPromo) => {
         const params = new URLSearchParams();
@@ -151,6 +173,27 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                             >
                                 {/* Training Image */}
                                 <div className="relative h-40 overflow-hidden">
+                                    <div className="absolute top-3 right-3 z-50 flex gap-2">
+            {/* Edit Button */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation(); 
+                }}
+            >
+                <UpdateTraining training={training} coaches={coaches} />
+            </button>
+
+            {/* Delete Button */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation(); 
+                    openDeleteModal(training);
+                }}
+                className="rounded bg-red-500 p-1 text-white hover:bg-red-600 px-3"
+            >
+                <Trash2 size={16} />
+            </button>
+            </div>
                                     <img
                                         src={
                                             training.category?.toLowerCase() === "coding"
@@ -232,6 +275,33 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                     )}
                 </div>
             </div>
+            {deleteModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
+            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">
+                Confirm Deletion
+            </h3>
+            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
+                Are you sure you want to delete "{trainingToDelete?.name}"?
+            </p>
+            <div className="flex justify-end space-x-3">
+                <button
+                    onClick={closeDeleteModal}
+                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={confirmDelete}
+                    className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
+                >
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+)}
+
         </AppLayout>
     );
 }
