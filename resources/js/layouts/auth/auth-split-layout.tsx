@@ -14,17 +14,17 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div className="relative hidden h-full flex-col p-10 text-white lg:flex dark:border-r">
-                <div className="absolute inset-0 dark:hidden" style={{ background: 'var(--color-alpha)' }} />
-                <div className="absolute inset-0 hidden dark:block bg-black" />
+            <div className="relative hidden h-full flex-col p-10  lg:flex dark:border-r">
+                <div className="absolute inset-0 dark:hidden"  />
+                <div className="absolute inset-0  dark:block dark:bg-black j" />
                 <div className="absolute inset-0 hidden dark:block" aria-hidden>
                     <div className="pointer-events-none absolute -left-40 -top-40 size-[520px] rounded-full bg-[var(--color-alpha)]/20 blur-3xl" />
                     <div className="pointer-events-none absolute -left-10 top-32 size-[420px] rounded-full bg-[var(--color-alpha)]/25 blur-3xl" />
                 </div>
-                <Link href={home()} className="relative z-20 flex items-center text-lg font-medium">
+                <a href="https://lionsgeek.ma/" target='_blank' className="relative z-20 flex items-center text-lg font-medium">
                     <img src="/assets/images/logolionsgeek.png" alt="LionsGeek" className="mr-2 h-8 w-8" />
                     LionsGeek
-                </Link>
+                </a>
                 <div className="relative z-20 my-auto flex w-full items-center justify-center">
                     <div
                         aria-label="LionsGeek graphic"
