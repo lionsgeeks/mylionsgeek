@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash } from 'lucide-react';
+import { Pencil, Trash, Settings } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [editingEquipment, setEditingEquipment] = useState(null);
     const [deletingEquipment, setDeletingEquipment] = useState(null);
     const [filterType, setFilterType] = useState('all');
+    
+    // Type management state
+    const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
+    const [equipmentTypes, setEquipmentTypes] = useState([]);
+    const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+    const [editingType, setEditingType] = useState(null);
+    const [deletingType, setDeletingType] = useState(null);
+    const [isTypeDeleteOpen, setIsTypeDeleteOpen] = useState(false);
     const { data, setData, post, processing, reset, errors } = useForm({
         mark: '',
         reference: '',
@@ -31,6 +39,11 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         other_type: '',
         state: 1,
         image: null,
+    });
+
+    // Type management form
+    const { data: typeData, setData: setTypeData, post: postType, put: putType, processing: typeProcessing, reset: resetType, errors: typeErrors } = useForm({
+        name: '',
     });
 
     const handleEdit = (equipment) => {
@@ -87,6 +100,79 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         });
     };
 
+    // Type management functions
+    const loadEquipmentTypes = async () => {
+        setIsLoadingTypes(true);
+        try {
+            const response = await fetch('/admin/equipment-types');
+            const data = await response.json();
+            setEquipmentTypes(data);
+        } catch (error) {
+            console.error('Failed to load equipment types:', error);
+        } finally {
+            setIsLoadingTypes(false);
+        }
+    };
+
+    const openTypeManager = () => {
+        setIsTypeManagerOpen(true);
+        loadEquipmentTypes();
+    };
+
+    const handleAddType = () => {
+        if (!typeData.name.trim()) return;
+
+        postType('/admin/equipment-types', {
+            onSuccess: () => {
+                resetType();
+                loadEquipmentTypes(); // Refresh the list
+            },
+            onError: (errors) => {
+                console.log('Type validation errors:', errors);
+            }
+        });
+    };
+
+    const handleEditType = (type) => {
+        setEditingType(type);
+        setTypeData('name', type.name);
+    };
+
+    const handleUpdateType = () => {
+        if (!typeData.name.trim() || !editingType) return;
+
+        putType(`/admin/equipment-types/${editingType.id}`, {
+            onSuccess: () => {
+                resetType();
+                setEditingType(null);
+                loadEquipmentTypes(); // Refresh the list
+            },
+            onError: (errors) => {
+                console.log('Type validation errors:', errors);
+            }
+        });
+    };
+
+    const handleDeleteType = (type) => {
+        setDeletingType(type);
+        setIsTypeDeleteOpen(true);
+    };
+
+    const confirmDeleteType = () => {
+        if (!deletingType) return;
+
+        router.delete(`/admin/equipment-types/${deletingType.id}`, {
+            onSuccess: () => {
+                loadEquipmentTypes(); // Refresh the list
+                setIsTypeDeleteOpen(false);
+                setDeletingType(null);
+            },
+            onError: (errors) => {
+                console.error('Failed to delete type:', errors);
+            }
+        });
+    };
+
     const confirmDelete = () => {
         if (deletingEquipment) {
             router.delete(`/admin/equipements/${deletingEquipment.id}`, {
@@ -137,6 +223,15 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 ))}
                             </SelectContent>
                         </Select>
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={openTypeManager}
+                            className="text-xs p-2"
+                            title="Manage Equipment Types"
+                        >
+                            <Settings className="h-4 w-4" />
+                        </Button>
                     </div>
                     {filterType !== 'all' && (
                         <Button 
@@ -436,6 +531,158 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     onClick={confirmDelete}
                                 >
                                     Delete Equipment
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Type Management Modal */}
+                <Dialog open={isTypeManagerOpen} onOpenChange={setIsTypeManagerOpen}>
+                    <DialogContent className="max-w-2xl">
+                        <div className="space-y-6">
+                            <div>
+                                <h2 className="text-xl font-medium">Manage Equipment Types</h2>
+                            </div>
+
+                            {/* Add new type section */}
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <h3 className="text-sm font-medium mb-3">Add New Type</h3>
+                                <div className="flex gap-3">
+                                    <div className="flex-1">
+                                        <Input 
+                                            placeholder="Enter type name (e.g., camera, microphone)" 
+                                            value={typeData.name}
+                                            onChange={(e) => setTypeData('name', e.target.value)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    if (editingType) {
+                                                        handleUpdateType();
+                                                    } else {
+                                                        handleAddType();
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        {typeErrors.name && <p className="text-xs text-destructive mt-1">{typeErrors.name}</p>}
+                                    </div>
+                                    <Button 
+                                        onClick={editingType ? handleUpdateType : handleAddType}
+                                        disabled={typeProcessing || !typeData.name.trim()}
+                                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                    >
+                                        {editingType ? 'Update' : 'Add'} Type
+                                    </Button>
+                                    {editingType && (
+                                        <Button 
+                                            variant="outline"
+                                            onClick={() => {
+                                                setEditingType(null);
+                                                resetType();
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Types list */}
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-medium">Existing Types</h3>
+                                {isLoadingTypes ? (
+                                    <div className="text-center py-4 text-muted-foreground">Loading types...</div>
+                                ) : equipmentTypes.length === 0 ? (
+                                    <div className="text-center py-4 text-muted-foreground">No types found.</div>
+                                ) : (
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                        {equipmentTypes.map((type) => (
+                                            <div key={type.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-medium">{type.name.charAt(0).toUpperCase() + type.name.slice(1)}</span>
+                                                        <span className="text-xs bg-muted px-2 py-1 rounded">
+                                                            {type.equipment_count} equipment
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleEditType(type)}
+                                                        className="p-2"
+                                                        title="Edit type"
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteType(type)}
+                                                        className="p-2 hover:text-red-600 hover:border-red-600"
+                                                        title="Delete type"
+                                                    >
+                                                        <Trash className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="text-xs text-muted-foreground border-t pt-3">
+                                <p><strong>Note:</strong> When you delete a type that's being used by equipment, those equipment items will be automatically reassigned to the "other" type.</p>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Type Delete Confirmation Modal */}
+                <Dialog open={isTypeDeleteOpen} onOpenChange={setIsTypeDeleteOpen}>
+                    <DialogContent className="max-w-md">
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                                    <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-semibold">Delete Equipment Type</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        This action cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {deletingType && (
+                                <div className="rounded-lg border bg-muted/50 p-4">
+                                    <div>
+                                        <p className="font-medium">{deletingType.name.charAt(0).toUpperCase() + deletingType.name.slice(1)}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {deletingType.equipment_count === 0 
+                                                ? 'No equipment using this type' 
+                                                : `${deletingType.equipment_count} equipment items using this type will be reassigned to "other"`}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        setIsTypeDeleteOpen(false);
+                                        setDeletingType(null);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    variant="destructive"
+                                    onClick={confirmDeleteType}
+                                >
+                                    Delete Type
                                 </Button>
                             </div>
                         </div>
