@@ -47,6 +47,8 @@ Route::middleware(['auth','role:admin'])->group(function () {
     
     Route::get('/admin/computers/{computer}/contract', [ComputersController::class, 'computerStartContract'])
     ->name('computers.contract');
+    Route::delete('/admin/computers/{computer}', [ComputersController::class, 'destroy'])->name('admin.computers.destroy');
+
 });
 
 
