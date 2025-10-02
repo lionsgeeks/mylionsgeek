@@ -39,40 +39,54 @@ class ComputersController extends Controller
             'mark' => $validated['mark'],
         ]);
 
-        return redirect()->route('admin.computers')
-            ->with('success', 'Computer added successfully');
+        return redirect()->route('admin.computers');
+            // ->with('success', 'Computer added successfully');
     }
 
     /**
      * Update the specified computer in storage.
      */
-    public function update(Request $request, $computer)
-    {
-        $computer = Computer::where('id', $computer)->firstOrFail();
+   public function update(Request $request, $computerId)
+{
+    $computer = Computer::findOrFail($computerId);
 
-        $validated = $request->validate([
-            'reference' => 'required|string|max:255',
-            'cpu'       => 'required|string|max:255',
-            'gpu'       => 'required|string|max:255',
-            'state'     => ['required', Rule::in(['working', 'not_working', 'damaged'])],
-            'mark'      => ['nullable', 'string', 'max:255'],
-            'user_id'   => ['nullable', 'integer', 'exists:users,id'],
-            'start'     => ['nullable', 'date'],
-            'end'       => ['nullable', 'date'],
-        ]);
+    $validated = $request->validate([
+        'reference' => 'required|string|max:255',
+        'cpu'       => 'required|string|max:255',
+        'gpu'       => 'required|string|max:255',
+        'state'     => ['required', Rule::in(['working', 'not_working', 'damaged'])],
+        'mark'      => ['nullable', 'string', 'max:255'],
+        'user_id'   => ['nullable', 'integer', 'exists:users,id'],
+    ]);
 
-        $computer->update($validated);
+    $oldUserId = $computer->user_id;
+    $newUserId = $request->input('user_id') ?: null;
+    $validated['user_id'] = $newUserId;
 
-        // Debug: Log the updated computer
-        Log::info('Updated computer:', [
-            'id' => $computer->id,
-            'user_id' => $computer->user_id,
-            'validated_data' => $validated
-        ]);
-
-        return redirect()->route('admin.computers')
-            ->with('success', 'Computer updated successfully');
+    if ($oldUserId && !$newUserId) {
+        //Dissociate: user_id → null
+        $validated['end'] = now();
     }
+
+    if ($oldUserId && $newUserId && $oldUserId !== $newUserId) {
+        //Reassign: change user
+        $validated['end'] = now();            
+        $validated['start'] = now()->addSecond(); 
+    }
+
+    if (!$oldUserId && $newUserId) {
+        //First assign
+        $validated['start'] = now();
+    }
+
+    $computer->update($validated);
+
+    return redirect()->route('admin.computers');
+        // ->with('success', 'Computer updated successfully');
+}
+
+
+
 
     public function computerStartContract(Computer $computer)
     {
