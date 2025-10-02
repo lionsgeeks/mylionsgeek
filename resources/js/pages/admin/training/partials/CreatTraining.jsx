@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm, router  } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
 
 export default function CreatTraining({ coaches }) {
   const [open, setOpen] = useState(false); 
@@ -30,19 +30,30 @@ export default function CreatTraining({ coaches }) {
     promo: ''
   });
 
+  const handleOpenChange = (newOpen) => {
+    if (!newOpen) {
+      reset();
+    }
+    setOpen(newOpen);
+  };
+
   function handleSubmit(e) {
     e.preventDefault();
-    post('/admin/training', data, {
+    
+    post('/admin/training', {
       onSuccess: () => {
         reset();
-        setOpen(false); 
-        router.reload({ only: ['trainings'] });
+        setOpen(false);
+        router.reload({ only: ['trainings'], preserveState: false });
       },
+      onError: (errors) => {
+        console.log('Form errors:', errors);
+      }
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white">
           <PlusCircle size={20} />
@@ -50,7 +61,7 @@ export default function CreatTraining({ coaches }) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
         <DialogHeader>
           <DialogTitle>Add New Training</DialogTitle>
           <DialogDescription>
@@ -59,7 +70,6 @@ export default function CreatTraining({ coaches }) {
         </DialogHeader>
 
         <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
-          {/* Training Name */}
           <div>
             <Label htmlFor="title">Training Name</Label>
             <Input
@@ -71,7 +81,6 @@ export default function CreatTraining({ coaches }) {
             {errors.name && <p className="text-red-600 text-sm">{errors.name}</p>}
           </div>
 
-          {/* Category */}
           <div>
             <Label>Category</Label>
             <Select
@@ -97,7 +106,6 @@ export default function CreatTraining({ coaches }) {
             {errors.category && <p className="text-red-600 text-sm">{errors.category}</p>}
           </div>
 
-          {/* Starting Day */}
           <div>
             <Label htmlFor="startDay">Starting Day</Label>
             <Input
@@ -109,7 +117,6 @@ export default function CreatTraining({ coaches }) {
             {errors.start_time && <p className="text-red-600 text-sm">{errors.start_time}</p>}
           </div>
 
-          {/* Coach */}
           <div>
             <Label>Coach</Label>
             <Select
@@ -130,7 +137,6 @@ export default function CreatTraining({ coaches }) {
             {errors.user_id && <p className="text-red-600 text-sm">{errors.user_id}</p>}
           </div>
 
-          {/* Promo */}
           <div>
             <Label htmlFor="promo">Promo</Label>
             <Input
@@ -142,14 +148,13 @@ export default function CreatTraining({ coaches }) {
             {errors.promo && <p className="text-red-600 text-sm">{errors.promo}</p>}
           </div>
 
-          {/* Submit Button */}
           <div className="flex justify-end">
             <Button
               type="submit"
               className="bg-green-600 hover:bg-green-700"
               disabled={processing}
             >
-              Save
+              {processing ? 'Saving...' : 'Save'}
             </Button>
           </div>
         </form>
