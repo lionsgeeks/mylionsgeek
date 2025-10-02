@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReservationsController extends Controller
 {
@@ -383,6 +384,131 @@ class ReservationsController extends Controller
         }
 
         return response()->json($events);
+    }
+
+    public function generatePdf(int $reservation)
+    {
+        try {
+            // Get reservation details with all related data
+            $reservationData = $this->getReservationDetails($reservation);
+            
+            if (!$reservationData) {
+                return response()->json(['error' => 'Reservation not found'], 404);
+            }
+
+            if (!$reservationData['approved']) {
+                return response()->json(['error' => 'Only approved reservations can generate PDFs'], 400);
+            }
+
+            // Generate both pages as a single PDF
+            $userName = str_replace(' ', '_', $reservationData['user_name'] ?? 'User');
+            $date = $reservationData['date'] ?? date('Y-m-d');
+            
+            // Generate PDF with proper options for better rendering and full page usage
+            $pdf = Pdf::loadView('pdf.reservation_combined', ['reservation' => $reservationData])
+                ->setPaper('a4', 'portrait')
+                ->setOptions([
+                    'dpi' => 96,
+                    'defaultFont' => 'Arial',
+                    'isRemoteEnabled' => false,
+                    'isHtml5ParserEnabled' => true,
+                    'isPhpEnabled' => false,
+                    'chroot' => public_path(),
+                    'enable_font_subsetting' => true,
+                    'font_height_ratio' => 1.1
+                ]);
+            
+            // Generate filename
+            $filename = "Reservation_PDF_{$userName}_{$date}.pdf";
+            
+            // Force download without opening in new tab
+            return response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+            
+        } catch (\Exception $e) {
+            // Return error details for debugging
+            return response()->json([
+                'error' => 'PDF generation failed',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    private function getReservationDetails(int $reservationId): ?array
+    {
+        // Get basic reservation data
+        $reservation = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservationId)
+            ->select('r.*', 'u.name as user_name')
+            ->first();
+
+        if (!$reservation) {
+            return null;
+        }
+
+        // Get equipment data
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->where('re.reservation_id', $reservationId)
+                ->select('e.id', 'e.reference', 'e.mark', 'e.image')
+                ->get()
+                ->map(function ($e) {
+                    return [
+                        'id' => $e->id,
+                        'reference' => $e->reference,
+                        'mark' => $e->mark,
+                        'image' => $e->image,
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Get team members
+        $teamMembers = [];
+        if (Schema::hasTable('reservation_teams') && Schema::hasTable('users')) {
+            $teamMembers = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservationId)
+                ->select('u.id', 'u.name', 'u.image')
+                ->get()
+                ->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'image' => $u->image,
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Get approver information (you may need to add this to your reservation table)
+        $approver = DB::table('users')
+            ->where('role', 'admin')
+            ->first();
+
+        return [
+            'id' => $reservation->id,
+            'user_name' => $reservation->user_name,
+            'date' => $reservation->date ?? $reservation->day,
+            'start' => $reservation->start,
+            'end' => $reservation->end,
+            'end_time' => $reservation->end, // For return form
+            'title' => $reservation->title,
+            'description' => $reservation->description,
+            'approved' => (bool) $reservation->approved,
+            'approver_name' => $approver->name ?? 'Bassam Rafiq',
+            'equipments' => $equipments,
+            'team_members' => $teamMembers,
+        ];
     }
 }
 
