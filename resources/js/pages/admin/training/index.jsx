@@ -103,11 +103,12 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                     </div>
 
                     {/* Bouton pour réinitialiser les filtres */}
-                    {(selectedCoach || selectedTrack) && (
+                    {(selectedCoach || selectedTrack || selectedPromo) && (
                         <button
                             onClick={() => {
                                 setSelectedCoach('');
                                 setSelectedTrack('');
+                                setSelectedPromo('');
                                 router.visit('/training');
                             }}
                             className="rounded-lg bg-yellow-500 px-4 py-2 text-white transition-colors hover:bg-yellow-600"
