@@ -29,6 +29,7 @@ require __DIR__ . '/users.php';
 require __DIR__ . '/computers.php';
 require __DIR__ . '/leaderboard.php';
 require __DIR__ . '/training.php';
+require __DIR__ . '/geeko.php';
 require __DIR__ . '/equipment.php';
 require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';

@@ -168,7 +168,7 @@ export default function Show({ training, usersNull }) {
   });
 
   // Delete student
-
+  
 
   // Add student from modal
   const handleAddStudent = (user) => {
@@ -188,7 +188,7 @@ export default function Show({ training, usersNull }) {
   const confirmDelete = () => {
     if (studentToDelete) {
       router.delete(`/trainings/${training.id}/students/${studentToDelete.id}`, {
-        onSuccess: () => {
+      onSuccess: () => {
           setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
           setAvailableUsers(prev => [...prev, studentToDelete]);
           setShowDeleteConfirm(false);
@@ -212,19 +212,19 @@ export default function Show({ training, usersNull }) {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
-            >
-              <Plus size={16} />
-              <span>Add Student</span>
-            </button>
-            <button
-              onClick={() => setShowAttendance(true)}
-              className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
-            >
-              <CalendarCheck size={16} />
-              <span>Attendance</span>
-            </button>
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
+          >
+            <Plus size={16} />
+            <span>Add Student</span>
+          </button>
+          <button
+            onClick={() => setShowAttendance(true)}
+            className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
+          >
+            <CalendarCheck size={16} />
+            <span>Attendance</span>
+          </button>
 
             {/* Play Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -248,11 +248,11 @@ export default function Show({ training, usersNull }) {
                   <button
                     onClick={() => {
                       setShowPlayDropdown(false);
-                      // Add The Geek functionality later
+                      router.visit(`/training/${training.id}/geeko`);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-b-xl transition-colors text-dark dark:text-light font-semibold"
                   >
-                    The Geek
+                    Geeko
                   </button>
                 </div>
               )}
@@ -268,8 +268,8 @@ export default function Show({ training, usersNull }) {
                 training.category?.toLowerCase() === 'coding'
                   ? '/assets/images/training/coding.jpg'
                   : training.category?.toLowerCase() === 'media'
-                    ? '/assets/images/training/media.jpg'
-                    : training.img
+                  ? '/assets/images/training/media.jpg'
+                  : training.img
               }
               alt={training.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
@@ -288,8 +288,8 @@ export default function Show({ training, usersNull }) {
               <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">
-                    Enrolled Students ({students.length})
-                  </h2>
+                  Enrolled Students ({students.length})
+                </h2>
                 </div>
 
                 {/* Filter Input */}
@@ -383,12 +383,12 @@ export default function Show({ training, usersNull }) {
         </div>
 
         {/* Modal for adding students */}
-
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+       
+<Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-lg bg-light dark:bg-dark border border-alpha/20">
-            <DialogHeader>
-              <DialogTitle className="text-2xl">Add Student</DialogTitle>
-            </DialogHeader>
+    <DialogHeader>
+      <DialogTitle className="text-2xl">Add Student</DialogTitle>
+    </DialogHeader>
 
             {/* Search Filter */}
             <div className="mt-4">
@@ -405,7 +405,7 @@ export default function Show({ training, usersNull }) {
               <div className="space-y-2">
                 {filteredAvailableUsers.length === 0 ? (
                   <div className="px-4 py-6 text-center text-dark/50 dark:text-light/60">
-                    No available students
+                No available students
                   </div>
                 ) : (
                   filteredAvailableUsers.map(user => (
@@ -422,7 +422,7 @@ export default function Show({ training, usersNull }) {
                           <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                         </div>
                       </div>
-                      <button
+                  <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAddStudent(user);
@@ -430,32 +430,32 @@ export default function Show({ training, usersNull }) {
                         className="inline-flex items-center gap-2 border border-alpha/30 hover:bg-alpha/10 text-dark dark:text-light px-3 py-1 rounded-lg font-semibold transition text-sm"
                       >
                         <UserPlus size={16} />
-                        Add
-                      </button>
+                    Add
+                  </button>
                     </div>
-                  ))
-                )}
+            ))
+          )}
               </div>
-            </div>
-            <div className="mt-4 text-right">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10">Close</button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    </div>
+    <div className="mt-4 text-right">
+      <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10">Close</button>
+    </div>
+  </DialogContent>
+</Dialog>
 
         {/* Attendance Modal with FullCalendar */}
-        <Dialog open={showAttendance} onOpenChange={setShowAttendance}>
+<Dialog open={showAttendance} onOpenChange={setShowAttendance}>
           <DialogContent className="max-w-[95vw] w-full lg:max-w-[1200px] bg-light dark:bg-dark border border-alpha/20 flex flex-col gap-6 p-8 rounded-3xl shadow-2xl">
 
             {/* Header */}
-            <DialogHeader>
+    <DialogHeader>
               <DialogTitle className="text-3xl lg:text-4xl font-extrabold text-dark dark:text-light">
                 Training Attendance Calendar
               </DialogTitle>
               <p className="text-dark/70 dark:text-light/70 text-lg lg:text-xl">
                 Click on any day to manage attendance for that date
               </p>
-            </DialogHeader>
+    </DialogHeader>
 
             {/* Calendar */}
             <div
@@ -492,12 +492,12 @@ export default function Show({ training, usersNull }) {
                 dayCellContent={(info) => (
                   <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
                     {info.dayNumberText}
-                  </div>
+    </div>
                 )}
                 dayHeaderContent={(info) => (
                   <div className="text-center font-bold text-dark dark:text-light">
                     {info.text}
-                  </div>
+    </div>
                 )}
               />
             </div>
@@ -675,7 +675,7 @@ export default function Show({ training, usersNull }) {
                   Save Attendance
                 </button>
               </div>
-            </div>
+        </div>
 
           </DialogContent>
         </Dialog>
@@ -705,7 +705,7 @@ export default function Show({ training, usersNull }) {
               <p className="text-dark/70 dark:text-light/70">
                 Are you sure you want to remove <strong>{studentToDelete?.name}</strong> from this training?
               </p>
-            </div>
+    </div>
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
@@ -719,9 +719,9 @@ export default function Show({ training, usersNull }) {
               >
                 Remove Student
               </button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    </div>
+  </DialogContent>
+</Dialog>
 
       </div>
     </AppLayout>

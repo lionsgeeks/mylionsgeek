@@ -33,11 +33,21 @@ class Formation extends Model
     ];
 
     public function users()
-{
-    return $this->hasMany(User::class, 'formation_id');
-}
-public function coach() {
-    return $this->belongsTo(User::class, 'user_id');
-}
+    {
+        return $this->hasMany(User::class, 'formation_id');
+    }
+
+    public function coach() 
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get Geekos for this formation.
+     */
+    public function geekos()
+    {
+        return $this->hasMany(Geeko::class, 'formation_id');
+    }
 
 }

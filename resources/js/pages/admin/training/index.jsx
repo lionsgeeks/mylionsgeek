@@ -6,8 +6,8 @@ import CreatTraining from './partials/CreatTraining';
 import UpdateTraining from './partials/UpdateTraining';
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [],promos=[]}) {
-    const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
-    const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
+  const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
+  const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -32,14 +32,14 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     };
 
     const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach , promoValue = selectedPromo) => {
-        const params = new URLSearchParams();
+    const params = new URLSearchParams();
         if (coachValue) params.set('coach', coachValue);
         if (trackValue) params.set('track', trackValue);
         if (promoValue) params.set('promo', promoValue);
         
         
-        router.visit(`/training?${params.toString()}`);
-    };
+    router.visit(`/training?${params.toString()}`);
+  };
     const handleCoachChange = (e) => {
         const value = e.target.value;
         setSelectedCoach(value);
@@ -58,45 +58,45 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
         applyFilters(value, selectedCoach);
     };
 
-    return (
-        <AppLayout>
-            <Head title="Training" />
+  return (
+    <AppLayout>
+      <Head title="Training" />
 
             <div className="min-h-screen p-6">
-                {/* Header with Button */}
+        {/* Header with Button */}
                 <div className="mb-8 flex items-center justify-between">
-                    <div>
+          <div>
                         <h1 className="bg-dark bg-clip-text text-4xl font-extrabold text-transparent dark:bg-light">Training Programs</h1>
                         <p className="mt-2 text-dark/70 dark:text-light/70">Discover amazing coding and media courses</p>
-                    </div>
-                    <CreatTraining coaches={coaches} />
-                </div>
+          </div>
+          <CreatTraining coaches={coaches} />
+        </div>
 
-                {/* Filters */}
+        {/* Filters */}
                 <div className="mb-6 flex flex-wrap items-end gap-3">
-                    <div>
+          <div>
                         <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Coach</label>
                         <select
                             value={selectedCoach}
                             onChange={handleCoachChange}
                             className="rounded-lg border border-alpha/30 bg-light px-3 py-2 dark:bg-dark"
                         >
-                            <option value="">All</option>
+              <option value="">All</option>
                             {coaches.map((c) => (
                                 <option key={c.id} value={c.id}>
                                     {c.name}
                                 </option>
                             ))}
-                        </select>
-                    </div>
-                    <div>
+            </select>
+          </div>
+          <div>
                         <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Track</label>
                         <select
                             value={selectedTrack}
                             onChange={handleTrackChange}
                             className="rounded-lg border border-alpha/30 bg-light px-3 py-2 dark:bg-dark"
                         >
-                            <option value="">All</option>
+              <option value="">All</option>
                             {tracks
                                 .filter((t) => t !== null && t !== '')
                                 .map((t) => (
@@ -104,8 +104,8 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         {t}
                                     </option>
                                 ))}
-                        </select>
-                    </div>
+            </select>
+          </div>
                     <div>
                         <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Promo</label>
                         <select
@@ -122,7 +122,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     </option>
                                 ))}
                         </select>
-                    </div>
+                </div>
 
                     {/* Bouton pour réinitialiser les filtres */}
                     {(selectedCoach || selectedTrack || selectedPromo) && (
@@ -147,27 +147,27 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                             <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
                                 <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
                                 <div className="text-lg font-bold text-yellow-700">Total Programs</div>
-                            </div>
+              </div>
                             <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
                                 <div className="mb-2 text-4xl font-black text-yellow-600">
                                     {trainings.filter((t) => t.status === 'active').length}
-                                </div>
+                </div>
                                 <div className="text-lg font-bold text-yellow-700">Active Now</div>
-                            </div>
+                </div>
                             <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
                                 <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
                                 <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
-                {/* Training Cards Grid */}
+        {/* Training Cards Grid */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-                    {trainings && trainings.length > 0 ? (
-                        trainings.map((training) => (
-                            <div
-                                key={training.id}
+          {trainings && trainings.length > 0 ? (
+            trainings.map((training) => (
+              <div
+                key={training.id}
                                 className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
                                 onClick={() => router.visit(`/trainings/${training.id}`)}
                             >
@@ -194,17 +194,17 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 <Trash2 size={16} />
             </button>
             </div>
-                                    <img
-                                        src={
-                                            training.category?.toLowerCase() === "coding"
-                                            ? "/assets/images/training/coding.jpg"
-                                            : training.category?.toLowerCase() === "media"
-                                            ? "/assets/images/training/media.jpg"
+                  <img
+                    src={
+                      training.category?.toLowerCase() === "coding"
+                        ? "/assets/images/training/coding.jpg"
+                        : training.category?.toLowerCase() === "media"
+                          ? "/assets/images/training/media.jpg"
                                             : training.img
                                             ? `/storage/img/training/${training.img}`
-                                            : "/assets/images/training/default.jpg"
-                                        }
-                                        alt={training.name}
+                          : "/assets/images/training/default.jpg"
+                    }
+                    alt={training.name}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                         />
 
@@ -223,18 +223,18 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                             >
                                                 {training.status}
                                             </span>
-                                        </div>
+                  </div>
                                     )}
-                                </div>
+                </div>
 
                                 {/* Card Content */}
                                 <div className="space-y-3 p-4">
                                     <div>
                                         <span className="text-xs font-medium tracking-wide text-alpha uppercase">{training.category}</span>
                                         <h3 className="mt-1 line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
-                                    </div>
+                  </div>
 
-                                    {training.description && (
+                  {training.description && (
                                         <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">{training.description}</p>
                                     )}
 
@@ -242,38 +242,38 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
                                             {training.coach
                                                 ? training.coach.name
-                                                      .split(' ')
+                              .split(' ')
                                                       .map((n) => n[0])
                                                       .join('')
-                                                      .toUpperCase()
+                              .toUpperCase()
                                                 : 'C'}
-                                        </div>
+                      </div>
                                         <span className="text-sm text-dark/70 dark:text-light/70">{training.coach?.name || 'Expert Instructor'}</span>
-                                    </div>
+                  </div>
 
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
                                             <Timer size={14} />
                                             <span>{training.start_time || 'N/A'}</span>
-                                        </div>
+                      </div>
                                         <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
                                             <User size={14} />
                                             <span>{training.users_count ?? 0}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="col-span-full flex flex-col items-center justify-center py-20">
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-20">
                             <h3 className="mb-3 text-2xl font-bold text-gray-800">Ready to Create Something Amazing?</h3>
                             <p className="mb-8 max-w-md text-center leading-relaxed text-gray-600">
-                                Start your journey by adding your first coding or media training program.
-                            </p>
-                            <CreatTraining coaches={coaches} />
-                        </div>
-                    )}
-                </div>
+                Start your journey by adding your first coding or media training program.
+              </p>
+              <CreatTraining coaches={coaches} />
+            </div>
+          )}
+        </div>
             </div>
             {deleteModalOpen && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -299,9 +299,9 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 </button>
             </div>
         </div>
-    </div>
+      </div>
 )}
 
-        </AppLayout>
+    </AppLayout>
     );
 }
