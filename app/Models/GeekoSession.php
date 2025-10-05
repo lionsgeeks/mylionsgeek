@@ -79,7 +79,8 @@ class GeekoSession extends Model
      */
     public function currentQuestion()
     {
-        return $this->geeko->questions()->skip($this->current_question_index)->first();
+        $questions = $this->geeko->questions()->get();
+        return $questions->skip($this->current_question_index)->first();
     }
 
     /**

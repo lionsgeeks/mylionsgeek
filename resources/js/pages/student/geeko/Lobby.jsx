@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Users, Clock, Play, LogOut } from 'lucide-react';
+import { Users, Clock, Play, LogOut, QrCode, Copy, Check } from 'lucide-react';
+import QRCode from 'react-qr-code';
 
 export default function GeekoLobby({ session, participant, participantsCount }) {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -9,6 +10,9 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
         participants_count: participantsCount,
         session_status: session.status
     });
+    const [showQR, setShowQR] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [sessionUrl, setSessionUrl] = useState('');
 
     // Update time every second
     useEffect(() => {
@@ -18,6 +22,14 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
 
         return () => clearInterval(timer);
     }, []);
+
+    // Generate session control URL
+    useEffect(() => {
+        if (session && session.geeko && session.geeko.formation) {
+            const url = `${window.location.origin}/training/${session.geeko.formation.id}/geeko/${session.geeko.id}/session/${session.id}/control`;
+            setSessionUrl(url);
+        }
+    }, [session]);
 
     // Poll for live updates
     useEffect(() => {
@@ -50,6 +62,16 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
             minute: '2-digit',
             second: '2-digit'
         });
+    };
+
+    const copyToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(sessionUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+        }
     };
 
     return (
@@ -170,6 +192,51 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                             Current time: {formatTime(currentTime)}
                         </p>
                     </div>
+
+                    {/* QR Code Section for Instructors */}
+                    {sessionUrl && (
+                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-dark dark:text-light">
+                                    Session Control
+                                </h3>
+                                <button
+                                    onClick={() => setShowQR(!showQR)}
+                                    className="flex items-center space-x-2 text-sm text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors"
+                                >
+                                    <QrCode size={16} />
+                                    <span>{showQR ? 'Hide' : 'Show'} QR</span>
+                                </button>
+                            </div>
+                            
+                            {showQR && (
+                                <div className="text-center">
+                                    <div className="bg-white p-4 rounded-lg inline-block mb-4">
+                                        <QRCode
+                                            value={sessionUrl}
+                                            size={120}
+                                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <input
+                                            type="text"
+                                            value={sessionUrl}
+                                            readOnly
+                                            className="flex-1 text-xs bg-light dark:bg-dark border border-alpha/20 rounded px-2 py-1 text-dark dark:text-light"
+                                        />
+                                        <button
+                                            onClick={copyToClipboard}
+                                            className="flex items-center space-x-1 text-xs text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors px-2 py-1"
+                                        >
+                                            {copied ? <Check size={14} /> : <Copy size={14} />}
+                                            <span>{copied ? 'Copied' : 'Copy'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Instructions */}
                     <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">

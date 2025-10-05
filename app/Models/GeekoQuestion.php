@@ -51,6 +51,15 @@ class GeekoQuestion extends Model
     {
         $correctAnswers = $this->correct_answers;
         
+        // Ensure correct_answers is always an array
+        if (is_string($correctAnswers)) {
+            $correctAnswers = json_decode($correctAnswers, true) ?: [];
+        }
+        
+        if (!is_array($correctAnswers)) {
+            $correctAnswers = [];
+        }
+        
         if ($this->type === 'multiple_choice') {
             return in_array($answer, $correctAnswers);
         } elseif ($this->type === 'true_false') {

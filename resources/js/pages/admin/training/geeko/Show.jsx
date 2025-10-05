@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-    Plus, Play, Settings, Trash2, Edit3, ArrowLeft,
-    Clock, Users, Trophy, CheckCircle, XCircle,
+import { 
+    Plus, Play, Settings, Trash2, Edit3, ArrowLeft, 
+    Clock, Users, Trophy, CheckCircle, XCircle, 
     Eye, ChevronUp, ChevronDown, Save, X, Upload,
     Copy, ExternalLink, GripVertical
 } from 'lucide-react';
@@ -187,13 +187,13 @@ export default function ShowGeeko({ formation, geeko }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        const url = editingQuestion
+        
+        const url = editingQuestion 
             ? `/training/${formation.id}/geeko/${geeko.id}/questions/${editingQuestion}`
             : `/training/${formation.id}/geeko/${geeko.id}/questions`;
 
         const method = editingQuestion ? 'put' : 'post';
-
+        
         router[method](url, data, {
             onSuccess: () => {
                 resetForm();
@@ -226,19 +226,29 @@ export default function ShowGeeko({ formation, geeko }) {
     };
 
     const handleConfirmAndCreateSession = () => {
-        // First update basic info if changed, then create session
-        router.put(`/training/${formation.id}/geeko/${geeko.id}`, {
+        // Close modal first
+        setShowDetailsModal(false);
+        
+        // Create session directly - skip the quiz update for now
+        console.log('Creating session with params:', {
+            formationId: formation.id,
+            geekoId: geeko.id,
             title: meta.title,
-            description: meta.description,
-            // keep existing values untouched on backend (time_limit etc.)
+            description: meta.description
+        });
+        
+        router.post(`/training/${formation.id}/geeko/${geeko.id}/session/create`, {
+            title: meta.title,
+            description: meta.description
         }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowDetailsModal(false);
-                router.post(`/training/${formation.id}/geeko/${geeko.id}/session/create`);
+            onSuccess: (page) => {
+                console.log('Session created successfully:', page);
+                // The backend should redirect automatically to control page
             },
-            onError: () => {
-                // If update fails, do not proceed to create session
+            onError: (errors) => {
+                console.error('Failed to create session:', errors);
+                console.error('Error details:', JSON.stringify(errors, null, 2));
+                alert('Failed to create session. Please check the console for details.');
             }
         });
     };
@@ -246,7 +256,7 @@ export default function ShowGeeko({ formation, geeko }) {
     const handleTypeChange = (type) => {
         setData('type', type);
         setData('correct_answers', []);
-
+        
         if (type === 'true_false') {
             setData('options', ['True', 'False']);
         } else if (type === 'multiple_choice') {
@@ -440,12 +450,12 @@ export default function ShowGeeko({ formation, geeko }) {
                             </button>
                             
                             <div className="flex items-center space-x-4">
-                                <button
+                            <button
                                     onClick={() => router.visit(`/training/${formation.id}/geeko/${geeko.id}/edit`)}
                                     className="p-2 rounded-lg hover:bg-alpha/10 transition-colors"
                                 >
                                     <Settings size={18} />
-                                </button>
+                            </button>
                                 <button
                                     onClick={handleToggleStatus}
                                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
@@ -463,64 +473,16 @@ export default function ShowGeeko({ formation, geeko }) {
                                     >
                                         <Play size={16} />
                                         <span>Start Game</span>
-                                    </button>
-                                )}
-                            </div>
+                                </button>
+                            )}
+                                </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Minimalist Lobby */}
                 <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6">
-                    {/* Quiz Overview */}
-                    <div className="bg-white dark:bg-dark/80 border border-alpha/20 rounded-xl p-6 mb-8">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-semibold text-dark dark:text-light mb-2">{meta.title || 'Untitled Quiz'}</h2>
-                                <p className="text-dark/60 dark:text-light/60 mb-4">{meta.description || 'No description provided'}</p>
-                                <div className="flex items-center space-x-4 text-sm text-dark/50 dark:text-light/50">
-                                    <span>{questions?.length || 0} questions</span>
-                                    <span>•</span>
-                                    <span>{geeko.time_limit || 20}s per question</span>
-                                    <span>•</span>
-                                    <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                                        geeko.status === 'ready' 
-                                            ? 'bg-good/10 text-good' 
-                                            : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        {geeko.status === 'ready' ? 'Ready' : 'Draft'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                                <button
-                                    onClick={() => router.visit(`/training/${formation.id}/geeko/${geeko.id}/edit`)}
-                                    className="p-2 rounded-lg hover:bg-alpha/10 transition-colors"
-                                >
-                                    <Settings size={18} />
-                                </button>
-                                <button
-                                    onClick={handleToggleStatus}
-                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                                        geeko.status === 'ready'
-                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            : 'bg-alpha/20 text-alpha hover:bg-alpha/30'
-                                    }`}
-                                >
-                                    {geeko.status === 'ready' ? 'Set Draft' : 'Mark Ready'}
-                                </button>
-                                {geeko.status === 'ready' && (geeko.questions?.length || 0) > 0 && (
-                                    <button
-                                        onClick={handleStartSession}
-                                        className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-lg hover:bg-alpha/90 transition-colors font-medium"
-                                    >
-                                        <Play size={16} />
-                                        <span>Start Game</span>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                  
 
                     {/* Questions Section */}
                     <div className="flex items-center justify-between mb-6">
@@ -546,7 +508,7 @@ export default function ShowGeeko({ formation, geeko }) {
                             <h3 className="text-xl font-bold text-dark dark:text-light mb-6">
                                 {editingQuestion ? 'Edit Question' : 'Add New Question'}
                             </h3>
-
+                            
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Question Text */}
                                 <div>
@@ -599,7 +561,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                                 className={`p-3 rounded-full border transition-all ${data.type === type.value
                                                         ? 'border-alpha bg-alpha/10'
                                                         : 'border-white/20 hover:border-alpha/40'
-                                                    }`}
+                                                }`}
                                             >
                                                 <div className="text-xs font-semibold">{type.label}</div>
                                             </button>
@@ -630,7 +592,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                                     className={`px-3 py-2 rounded-lg border text-sm font-semibold ${data.correct_answers.includes(index)
                                                             ? 'bg-good/20 border-good text-good'
                                                             : 'border-white/20 hover:border-alpha/40'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     Correct
                                                 </button>
@@ -678,7 +640,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                             className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
                                         />
                                     </div>
-
+                                    
                                     <div>
                                         <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
                                             Time Limit (seconds)
@@ -705,7 +667,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                         <X size={16} />
                                         <span>Cancel</span>
                                     </button>
-
+                                    
                                     <button
                                         type="submit"
                                         disabled={processing}
@@ -797,57 +759,51 @@ export default function ShowGeeko({ formation, geeko }) {
                     </div>
                 )}
 
-                {/* Main Info Modal - Title & Description (Create button triggers this) */}
+                {/* Minimalist Game Info Modal */}
                 <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-                    <DialogContent className="sm:max-w-lg bg-light dark:bg-dark border border-alpha/20">
+                    <DialogContent className="sm:max-w-lg bg-white dark:bg-dark border border-alpha/20">
                         <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-dark dark:text-light">Game Info</DialogTitle>
-                            <p className="text-dark/70 dark:text-light/70">
-                                Confirm or update the title and description before creating a session.
+                            <DialogTitle className="text-xl font-semibold text-dark dark:text-light">Start Game Session</DialogTitle>
+                            <p className="text-dark/60 dark:text-light/60 text-sm">
+                                Update quiz details before starting the game.
                             </p>
                         </DialogHeader>
-                        <div className="space-y-6 mt-6">
+                        <div className="space-y-4 mt-4">
                             <div>
-                                <label className="text-sm font-bold text-dark dark:text-light mb-3 block">Title</label>
+                                <label className="text-sm font-medium text-dark dark:text-light mb-2 block">Quiz Title</label>
                                 <input
                                     type="text"
-                                    placeholder="Enter a compelling title for your quiz..."
+                                    placeholder="Enter quiz title..."
                                     value={meta.title}
                                     onChange={(e) => setMeta(prev => ({ ...prev, title: e.target.value }))}
-                                    className="w-full p-4 border border-alpha/30 rounded-xl bg-light dark:bg-dark text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-all duration-300"
+                                    className="w-full p-3 border border-alpha/20 rounded-lg bg-white dark:bg-dark/80 text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-colors"
                                     maxLength={95}
                                 />
-                                <div className="text-right text-sm text-dark/60 dark:text-light/60 mt-2">
-                                    {95 - (meta.title?.length || 0)} characters remaining
-                                </div>
                             </div>
                             <div>
-                                <label className="text-sm font-bold text-dark dark:text-light mb-3 block">Description (Optional)</label>
+                                <label className="text-sm font-medium text-dark dark:text-light mb-2 block">Description (Optional)</label>
                                 <textarea
-                                    placeholder="Describe what this quiz covers and what students will learn..."
+                                    placeholder="Brief description of the quiz..."
                                     value={meta.description}
                                     onChange={(e) => setMeta(prev => ({ ...prev, description: e.target.value }))}
-                                    className="w-full p-4 border border-alpha/30 rounded-xl bg-light dark:bg-dark text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-all duration-300 resize-none"
-                                    rows={4}
-                                    maxLength={500}
+                                    className="w-full p-3 border border-alpha/20 rounded-lg bg-white dark:bg-dark/80 text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-colors resize-none"
+                                    rows={3}
+                                    maxLength={200}
                                 />
-                                <div className="text-right text-sm text-dark/60 dark:text-light/60 mt-2">
-                                    {500 - (meta.description?.length || 0)} characters remaining
-                                </div>
                             </div>
-                            <div className="flex justify-end space-x-4 pt-6">
+                            <div className="flex justify-end space-x-3 pt-4">
                                 <button
                                     onClick={() => setShowDetailsModal(false)}
-                                    className="px-8 py-3 bg-dark/10 dark:bg-light/10 text-dark dark:text-light rounded-xl font-semibold hover:bg-dark/20 dark:hover:bg-light/20 transition-all duration-300"
+                                    className="px-4 py-2 text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirmAndCreateSession}
                                     disabled={!meta.title?.trim()}
-                                    className="px-8 py-3 bg-alpha text-dark rounded-xl font-bold hover:bg-alpha/90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                                    className="px-6 py-2 bg-alpha text-dark rounded-lg font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Continue
+                                    Start Game
                                 </button>
                             </div>
                         </div>

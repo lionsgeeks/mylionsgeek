@@ -16,13 +16,21 @@ class GeekoSessionController extends Controller
     /**
      * Create a new game session.
      */
-    public function create($formationId, $geekoId)
+    public function create(Request $request, $formationId, $geekoId)
     {
         $geeko = Geeko::with(['formation', 'questions'])->findOrFail($geekoId);
 
         // Check if Geeko is ready
         if (!$geeko->isReady()) {
             return back()->withErrors(['error' => 'This Geeko is not ready to be played!']);
+        }
+
+        // Update Geeko title and description if provided
+        if ($request->has('title') || $request->has('description')) {
+            $geeko->update([
+                'title' => $request->input('title', $geeko->title),
+                'description' => $request->input('description', $geeko->description),
+            ]);
         }
 
         // Check if there's already an active session
@@ -38,6 +46,15 @@ class GeekoSessionController extends Controller
             'started_by' => Auth::id(),
             'status' => 'waiting',
         ]);
+
+        // For AJAX requests, return JSON with session info
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'session_id' => $session->id,
+                'redirect_url' => route('geeko.session.control', [$formationId, $geekoId, $session->id])
+            ]);
+        }
 
         return redirect()->route('geeko.session.control', [$formationId, $geekoId, $session->id])
             ->with('success', 'Game session created! Share the PIN with students.');
@@ -83,6 +100,15 @@ class GeekoSessionController extends Controller
             'started_at' => now(),
             'current_question_started_at' => now(),
         ]);
+
+        // For AJAX requests, return JSON
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Game started!',
+                'session_status' => 'in_progress'
+            ]);
+        }
 
         return back()->with('success', 'Game started!');
     }

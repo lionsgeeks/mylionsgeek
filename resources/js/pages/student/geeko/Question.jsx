@@ -7,31 +7,63 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [timeLeft, setTimeLeft] = useState(question.time_limit || session.geeko.time_limit);
     const [timeTaken, setTimeTaken] = useState(0);
+    const [isReadingPhase, setIsReadingPhase] = useState(true);
     const [hasSubmitted, setHasSubmitted] = useState(hasAnswered);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showResult, setShowResult] = useState(false);
     const [result, setResult] = useState(null);
 
-    // Timer effect
+    // Ensure options is always an array
+    const safeOptions = (() => {
+        if (Array.isArray(question.options)) {
+            return question.options;
+        }
+        if (typeof question.options === 'string') {
+            try {
+                return JSON.parse(question.options);
+            } catch (e) {
+                console.error('Failed to parse options JSON:', e);
+                return [];
+            }
+        }
+        return [];
+    })();
+
+
+
+
+
+    // Apply 3s reading phase based on current_question_started_at
     useEffect(() => {
-        if (hasSubmitted || timeLeft <= 0) return;
+        const startedAt = session.current_question_started_at ? new Date(session.current_question_started_at) : new Date();
+        const now = new Date();
+        const msSinceStart = now.getTime() - startedAt.getTime();
+        const remaining = 3000 - msSinceStart;
+        if (remaining <= 0) {
+            setIsReadingPhase(false);
+            return;
+        }
+        const t = setTimeout(() => setIsReadingPhase(false), remaining);
+        return () => clearTimeout(t);
+    }, [session.current_question_started_at]);
+
+    // Timer effect (students no longer show timer, but we keep timeTaken for scoring). Only start after reading phase
+    useEffect(() => {
+        if (isReadingPhase || hasSubmitted || timeLeft <= 0) return;
 
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 const newTime = prev - 1;
                 setTimeTaken(prev => prev + 1);
-                
                 if (newTime <= 0) {
-                    // Time's up - auto submit
                     handleSubmit(true);
                     return 0;
                 }
                 return newTime;
             });
         }, 1000);
-
         return () => clearInterval(timer);
-    }, [hasSubmitted, timeLeft]);
+    }, [isReadingPhase, hasSubmitted, timeLeft]);
 
     // Poll for game state changes
     useEffect(() => {
@@ -56,6 +88,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
 
     const handleAnswerSelect = (answer) => {
         if (hasSubmitted) return;
+        
         
         if (question.type === 'multiple_choice') {
             // For multiple choice, we can select multiple answers
@@ -83,20 +116,34 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         setIsSubmitting(true);
 
         try {
+            const requestData = {
+                question_id: question.id,
+                selected_answer: selectedAnswer || (question.type === 'multiple_choice' ? [] : ''),
+                time_taken: timeTaken,
+            };
+
+            console.log('=== FRONTEND SUBMISSION DEBUG ===');
+            console.log('Request data:', requestData);
+            console.log('Question type:', question.type);
+            console.log('Selected answer:', selectedAnswer);
+            console.log('Time taken:', timeTaken);
+            console.log('================================');
+
             const response = await fetch(`/geeko/play/${session.id}/answer`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
-                body: JSON.stringify({
-                    question_id: question.id,
-                    selected_answer: selectedAnswer || (question.type === 'multiple_choice' ? [] : ''),
-                    time_taken: timeTaken,
-                }),
+                body: JSON.stringify(requestData),
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
             const data = await response.json();
+            console.log('Response data:', data);
+            
             
             if (data.success) {
                 setHasSubmitted(true);
@@ -108,7 +155,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                     router.visit(`/geeko/play/${session.id}/waiting`);
                 }, 3000);
             } else {
-                alert('Failed to submit answer. Please try again.');
+                alert(`Failed to submit answer: ${data.error || 'Unknown error'}`);
                 setIsSubmitting(false);
             }
         } catch (error) {
@@ -142,6 +189,8 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
     const isAnswerSelected = (answer, index) => {
         if (question.type === 'multiple_choice') {
             return Array.isArray(selectedAnswer) && selectedAnswer.includes(index);
+        } else if (question.type === 'true_false') {
+            return selectedAnswer === answer;
         } else {
             return selectedAnswer === index;
         }
@@ -186,7 +235,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                                     {Array.isArray(result.correct_answer) ? 
                                         result.correct_answer.map((answerIndex, idx) => (
                                             <div key={idx} className="text-dark dark:text-light font-semibold">
-                                                {formatAnswer(question.options[answerIndex], answerIndex)}
+                                                {safeOptions && safeOptions[answerIndex] ? formatAnswer(safeOptions[answerIndex], answerIndex) : `Answer ${answerIndex + 1}`}
                                             </div>
                                         )) :
                                         <div className="text-dark dark:text-light font-semibold">
@@ -242,10 +291,13 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
 
                 {/* Question */}
                 <div className="max-w-4xl mx-auto">
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 text-center shadow-xl">
-                        <h1 className="text-2xl md:text-3xl font-bold text-dark dark:text-light mb-6">
-                            {question.question}
-                        </h1>
+                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 text-center shadow-xl">
+                        {/* Students: do not show question text; only options. Show a short reading phase overlay */}
+                        {isReadingPhase && (
+                            <div className="mb-6 text-dark/70 dark:text-light/70 font-semibold">
+                                Get ready... The question is displayed on the instructor screen.
+                            </div>
+                        )}
                         
                         {question.question_image && (
                             <img 
@@ -265,7 +317,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                                         onChange={(e) => setSelectedAnswer(e.target.value)}
                                         className="w-full text-center text-xl border border-alpha/30 rounded-xl px-6 py-4 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
                                         placeholder="Type your answer here..."
-                                        disabled={hasSubmitted}
+                                        disabled={hasSubmitted || isReadingPhase}
                                         onKeyPress={(e) => {
                                             if (e.key === 'Enter' && selectedAnswer && selectedAnswer.trim()) {
                                                 handleSubmit();
@@ -275,11 +327,11 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                                 </div>
                             ) : (
                                 <div className="grid gap-4 md:grid-cols-2">
-                                    {question.options.map((option, index) => (
+                                    {safeOptions && safeOptions.length > 0 ? safeOptions.map((option, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => handleAnswerSelect(index)}
-                                            disabled={hasSubmitted}
+                                            onClick={() => handleAnswerSelect(question.type === 'true_false' ? option : index)}
+                                            disabled={hasSubmitted || isReadingPhase}
                                             className={`p-6 rounded-2xl border-2 transition-all duration-300 text-left backdrop-blur ${
                                                 isAnswerSelected(option, index)
                                                     ? 'border-alpha bg-alpha/20 scale-105'
@@ -302,7 +354,11 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                                                 </span>
                                             </div>
                                         </button>
-                                    ))}
+                                    )) : (
+                                        <div className="col-span-2 text-center py-8">
+                                            <p className="text-dark/60 dark:text-light/60">No options available for this question.</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -311,7 +367,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                         {!hasSubmitted && (
                             <button
                                 onClick={() => handleSubmit()}
-                                disabled={isSubmitting || !selectedAnswer || (Array.isArray(selectedAnswer) && selectedAnswer.length === 0)}
+                                disabled={isReadingPhase || isSubmitting || !selectedAnswer || (Array.isArray(selectedAnswer) && selectedAnswer.length === 0)}
                                 className="mt-8 bg-gradient-to-r from-alpha to-yellow-400 text-dark text-xl font-bold py-4 px-8 rounded-xl hover:from-alpha/90 hover:to-yellow-400/90 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
                             >
                                 {isSubmitting ? (

@@ -132,22 +132,16 @@ class GeekoController extends Controller
                 }
             }
             
-            $question['options'] = json_encode($options);
-            $question['correct_answers'] = json_encode($correctAnswers);
+            $question['options'] = $options;
+            $question['correct_answers'] = $correctAnswers;
         } elseif ($questionData['type'] === 'true_false') {
             $options = ['True', 'False'];
             $correctAnswers = [];
 
             foreach ($questionData['options'] as $option) {
-                if (!empty($option['text'])) {
-                    // normalize to canonical True/False labels
-                    $normalized = strtolower($option['text']) === 'true' ? 'True' : (strtolower($option['text']) === 'false' ? 'False' : $option['text']);
-                } else {
-                    $normalized = '';
-                }
-
                 if ($option['isCorrect']) {
-                    $correctAnswers[] = $normalized ?: 'True';
+                    // For True/False, the text should already be "True" or "False"
+                    $correctAnswers[] = $option['text'];
                 }
             }
 
@@ -156,12 +150,12 @@ class GeekoController extends Controller
                 $correctAnswers = ['True'];
             }
 
-            $question['options'] = json_encode($options);
-            $question['correct_answers'] = json_encode($correctAnswers);
+            $question['options'] = $options;
+            $question['correct_answers'] = $correctAnswers;
         } elseif ($questionData['type'] === 'type_answer') {
             $correctAnswer = $questionData['options'][0]['text'] ?? '';
-            $question['options'] = json_encode([]);
-            $question['correct_answers'] = json_encode([$correctAnswer]);
+            $question['options'] = [];
+            $question['correct_answers'] = [$correctAnswer];
         }
 
         Log::info("Final question data to save:", ['question' => $question]);

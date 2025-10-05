@@ -45,7 +45,8 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
     };
 
     const handleNextQuestion = () => {
-        router.post(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/next-question`);
+        // first show round results page for players
+        router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/end-question`);
     };
 
     const handleEndQuestion = () => {
@@ -107,173 +108,122 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
         <AppLayout>
             <Head title={`Control Panel - ${session.geeko.title}`} />
 
-            <div className="min-h-screen p-6 bg-gradient-to-br from-alpha/5 to-transparent dark:from-alpha/10 dark:to-transparent">
-                {/* Header */}
-                <div className="mb-8">
-                    <button 
-                        onClick={() => router.visit(`/training/${formationId}/geeko/${geekoId}`)}
-                        className="flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold mb-4"
-                    >
-                        <ArrowLeft size={20} />
-                        <span>Back to Geeko</span>
-                    </button>
-                    
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-4xl font-extrabold text-dark dark:text-light">
-                                Game Control Panel
-                            </h1>
-                            <p className="mt-2 text-dark/70 dark:text-light/70">
-                                {session.geeko.title} - {getStatusText(session.status)}
-                            </p>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3">
-                            <button
-                                onClick={() => setAutoRefresh(!autoRefresh)}
-                                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                                    autoRefresh 
-                                        ? 'bg-good text-light' 
-                                        : 'border border-alpha/30 text-dark dark:text-light hover:bg-alpha/10'
-                                }`}
+            <div className="min-h-screen bg-gray-50/50 dark:bg-dark/30">
+                {/* Ultra Minimalist Header */}
+                <div className="bg-white/80 dark:bg-dark/80 backdrop-blur-sm border-b border-alpha/5">
+                    <div className="max-w-6xl mx-auto px-4">
+                        <div className="flex items-center justify-between h-14">
+                            <button 
+                                onClick={() => router.visit(`/training/${formationId}/geeko/${geekoId}`)}
+                                className="flex items-center space-x-1 text-dark/50 dark:text-light/50 hover:text-alpha transition-colors text-sm"
                             >
-                                <RefreshCw size={16} className={autoRefresh ? 'animate-spin' : ''} />
-                                <span>Auto Refresh</span>
+                                <ArrowLeft size={16} />
+                                <span>Back</span>
                             </button>
                             
-                            {session.status === 'completed' && (
+                            <div className="flex items-center space-x-2">
                                 <button
-                                    onClick={handleViewResults}
-                                    className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-lg hover:bg-alpha/90 transition-colors font-semibold"
+                                    onClick={() => setAutoRefresh(!autoRefresh)}
+                                    className={`p-2 rounded-md text-xs transition-colors ${
+                                        autoRefresh 
+                                            ? 'bg-good text-light' 
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                    title={autoRefresh ? 'Auto-refresh enabled' : 'Click to enable auto-refresh'}
                                 >
-                                    <Trophy size={16} />
-                                    <span>View Results</span>
+                                    <RefreshCw size={12} className={autoRefresh ? 'animate-spin' : ''} />
                                 </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Game PIN Section */}
-                <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 dark:border-white/10 rounded-2xl p-6 shadow-xl mb-8">
-                    <h2 className="text-xl font-bold text-dark dark:text-light mb-4">Game Information</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center">
-                            <div className="backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 rounded-xl p-4 shadow">
-                                <p className="text-dark/70 dark:text-light/70 font-semibold mb-2">Game PIN</p>
-                                <p className="text-3xl font-bold text-alpha tracking-wider mb-3">
-                                    {session.session_code}
-                                </p>
-                                <div className="flex space-x-2">
+                                
+                                {session.status === 'completed' && (
                                     <button
-                                        onClick={copyGamePin}
-                                        className="flex-1 bg-alpha text-dark px-3 py-2 rounded-lg hover:bg-alpha/90 transition-colors font-semibold text-sm"
+                                        onClick={handleViewResults}
+                                        className="p-2 bg-alpha text-dark rounded-md hover:bg-alpha/90 transition-colors text-xs"
+                                        title="View game results"
                                     >
-                                        Copy PIN
+                                        <Trophy size={12} />
                                     </button>
-                                    <button
-                                        onClick={copyGameLink}
-                                        className="flex-1 border border-alpha/30 text-dark dark:text-light px-3 py-2 rounded-lg hover:bg-alpha/10 transition-colors font-semibold text-sm"
-                                    >
-                                        <Share2 size={14} className="inline mr-1" />
-                                        Link
-                                    </button>
-                                </div>
+                                )}
                             </div>
                         </div>
-                        
-                        <div className="text-center">
-                            <div className="backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 rounded-xl p-4 shadow">
-                                <p className="text-dark/70 dark:text-light/70 font-semibold mb-2">Status</p>
-                                <p className={`text-2xl font-bold mb-3 ${getStatusColor(session.status)}`}>
+                        <div className="pb-3">
+                            <h1 className="text-lg font-medium text-dark dark:text-light">
+                                {session.geeko.title}
+                            </h1>
+                            <div className="flex items-center space-x-3 text-xs text-dark/50 dark:text-light/50">
+                                <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                    session.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                                    session.status === 'in_progress' ? 'bg-green-100 text-green-700' :
+                                    session.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-700'
+                                }`}>
                                     {getStatusText(session.status)}
-                                </p>
-                                <p className="text-sm text-dark/60 dark:text-light/60">
-                                    {session.status === 'waiting' && 'Share the PIN with students'}
-                                    {session.status === 'in_progress' && 'Game is running'}
-                                    {session.status === 'completed' && 'Game finished'}
-                                    {session.status === 'cancelled' && 'Game was cancelled'}
-                                </p>
+                                </span>
+                                <span>{session.geeko.questions?.length || 0} questions</span>
+                                <span>•</span>
+                                <span>{liveData.participants_count} participants</span>
                             </div>
                         </div>
-                        
-                        <div className="text-center">
-                            <div className="backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 rounded-xl p-4 shadow">
-                                <p className="text-dark/70 dark:text-light/70 font-semibold mb-2">Progress</p>
-                                <p className="text-2xl font-bold text-blue-500 mb-3">
-                                    {liveData.progress.current} / {liveData.progress.total}
-                                </p>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                                        style={{ width: `${(liveData.progress.current / liveData.progress.total) * 100}%` }}
-                                    ></div>
+                    </div>
+                </div>
+
+                {/* Ultra Compact Layout */}
+                <div className="max-w-6xl mx-auto px-4 py-4">
+                    {/* Game PIN Bar */}
+                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4 mb-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-alpha">{session.session_code}</div>
+                                    <div className="text-xs text-dark/50 dark:text-light/50">Game PIN</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-lg font-semibold text-blue-500">
+                                        {liveData.progress.current}/{liveData.progress.total}
+                                    </div>
+                                    <div className="text-xs text-dark/50 dark:text-light/50">Progress</div>
                                 </div>
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={copyGamePin}
+                                    className="flex items-center space-x-1 bg-alpha text-dark px-3 py-1.5 rounded-md hover:bg-alpha/90 transition-colors text-xs font-medium"
+                                >
+                                    <Share2 size={12} />
+                                    <span>Copy PIN</span>
+                                </button>
+                                <button
+                                    onClick={copyGameLink}
+                                    className="flex items-center space-x-1 border border-alpha/30 text-dark dark:text-light px-3 py-1.5 rounded-md hover:bg-alpha/10 transition-colors text-xs font-medium"
+                                >
+                                    <Share2 size={12} />
+                                    <span>Link</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 text-center shadow">
-                        <Users className="mx-auto text-alpha mb-3" size={32} />
-                        <div className="text-3xl font-bold text-dark dark:text-light mb-2">
-                            {liveData.participants_count}
-                        </div>
-                        <div className="text-dark/70 dark:text-light/70 font-semibold">Participants</div>
-                    </div>
-                    
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 text-center shadow">
-                        <Clock className="mx-auto text-alpha mb-3" size={32} />
-                        <div className="text-3xl font-bold text-dark dark:text-light mb-2">
-                            {session.geeko.time_limit}s
-                        </div>
-                        <div className="text-dark/70 dark:text-light/70 font-semibold">Per Question</div>
-                    </div>
-                    
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 text-center shadow">
-                        <Play className="mx-auto text-alpha mb-3" size={32} />
-                        <div className="text-3xl font-bold text-dark dark:text-light mb-2">
-                            {session.geeko.questions?.length || 0}
-                        </div>
-                        <div className="text-dark/70 dark:text-light/70 font-semibold">Questions</div>
-                    </div>
-                    
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 text-center shadow">
-                        <Eye className="mx-auto text-alpha mb-3" size={32} />
-                        <div className="text-3xl font-bold text-dark dark:text-light mb-2">
-                            {liveData.current_answer_count}
-                        </div>
-                        <div className="text-dark/70 dark:text-light/70 font-semibold">Answered</div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Game Controls */}
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 shadow-xl">
-                        <h2 className="text-xl font-bold text-dark dark:text-light mb-6">Game Controls</h2>
-                        
+                    {/* Minimalist Controls */}
+                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4 mb-4">
                         {/* Current Question Info */}
                         {currentQuestion && (
-                            <div className="bg-alpha/10 border border-alpha/20 rounded-xl p-4 mb-6">
-                                <h3 className="font-semibold text-dark dark:text-light mb-2">
-                                    Current Question ({session.current_question_index + 1}/{session.geeko.questions?.length})
-                                </h3>
-                                <p className="text-dark/70 dark:text-light/70 text-sm line-clamp-2">
+                            <div className="bg-gray-50 dark:bg-dark/60 rounded-md p-3 mb-3">
+                                <div className="text-sm font-medium text-dark dark:text-light mb-1">
+                                    Question {session.current_question_index + 1}/{session.geeko.questions?.length}
+                                </div>
+                                <p className="text-sm text-dark/70 dark:text-light/70 line-clamp-2">
                                     {currentQuestion.question}
                                 </p>
                             </div>
                         )}
 
                         {/* Control Buttons */}
-                        <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2">
                             {session.status === 'waiting' && (
                                 <button
                                     onClick={handleStartGame}
-                                    className="w-full flex items-center justify-center space-x-2 bg-good text-light px-6 py-4 rounded-xl hover:bg-good/90 transition-colors font-bold text-lg"
+                                    className="flex items-center space-x-2 bg-good text-light px-4 py-2 rounded-md hover:bg-good/90 transition-colors font-medium text-sm"
                                 >
-                                    <Play size={20} />
+                                    <Play size={14} />
                                     <span>Start Game</span>
                                 </button>
                             )}
@@ -282,26 +232,26 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
                                 <>
                                     <button
                                         onClick={handleEndQuestion}
-                                        className="w-full flex items-center justify-center space-x-2 bg-alpha text-dark px-6 py-4 rounded-xl hover:bg-alpha/90 transition-colors font-bold text-lg"
+                                        className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-md hover:bg-alpha/90 transition-colors font-medium text-sm"
                                     >
-                                        <Eye size={20} />
-                                        <span>Show Question Results</span>
+                                        <Eye size={14} />
+                                        <span>Show Results</span>
                                     </button>
                                     
                                     <button
                                         onClick={handleNextQuestion}
-                                        className="w-full flex items-center justify-center space-x-2 bg-blue-500 text-light px-6 py-4 rounded-xl hover:bg-blue-600 transition-colors font-bold text-lg"
+                                        className="flex items-center space-x-2 bg-blue-500 text-light px-4 py-2 rounded-md hover:bg-blue-600 transition-colors font-medium text-sm"
                                     >
-                                        <SkipForward size={20} />
-                                        <span>Next Question</span>
+                                        <SkipForward size={14} />
+                                        <span>Next</span>
                                     </button>
                                     
                                     <button
                                         onClick={handleCompleteGame}
-                                        className="w-full flex items-center justify-center space-x-2 border border-purple-300 text-purple-600 px-6 py-3 rounded-xl hover:bg-purple-50 transition-colors font-semibold"
+                                        className="flex items-center space-x-2 border border-purple-300 text-purple-600 px-4 py-2 rounded-md hover:bg-purple-50 transition-colors font-medium text-sm"
                                     >
-                                        <Trophy size={16} />
-                                        <span>Complete Game</span>
+                                        <Trophy size={12} />
+                                        <span>Complete</span>
                                     </button>
                                 </>
                             )}
@@ -309,58 +259,64 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
                             {(session.status === 'waiting' || session.status === 'in_progress') && (
                                 <button
                                     onClick={handleCancelGame}
-                                    className="w-full flex items-center justify-center space-x-2 border border-error text-error px-6 py-3 rounded-xl hover:bg-error/10 transition-colors font-semibold"
+                                    className="flex items-center space-x-2 border border-error text-error px-4 py-2 rounded-md hover:bg-error/10 transition-colors font-medium text-sm"
                                 >
-                                    <StopCircle size={16} />
-                                    <span>Cancel Game</span>
+                                    <StopCircle size={12} />
+                                    <span>Cancel</span>
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Live Leaderboard */}
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 shadow-xl">
-                        <h2 className="text-xl font-bold text-dark dark:text-light mb-6">Live Leaderboard</h2>
+                    {/* Live Leaderboard - Prominent */}
+                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-base font-semibold text-dark dark:text-light">Live Leaderboard</h3>
+                            <div className="flex items-center space-x-2 text-xs text-dark/50 dark:text-light/50">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span>Live</span>
+                            </div>
+                        </div>
                         
                         {leaderboard && leaderboard.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-1">
                                 {leaderboard.slice(0, 10).map((participant, index) => (
-                                    <div key={participant.id} className="flex items-center justify-between p-3 bg-alpha/5 rounded-lg">
+                                    <div key={participant.id} className="flex items-center justify-between p-2 bg-gray-50/50 dark:bg-dark/40 rounded-md hover:bg-gray-100 dark:hover:bg-dark/60 transition-colors">
                                         <div className="flex items-center space-x-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                                                index === 0 ? 'bg-good text-light' :
-                                                index === 1 ? 'bg-gray-400 text-light' :
-                                                index === 2 ? 'bg-amber-600 text-light' :
-                                                'bg-alpha text-dark'
+                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
+                                                index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                                index === 1 ? 'bg-gray-300 text-gray-700' :
+                                                index === 2 ? 'bg-amber-500 text-amber-900' :
+                                                'bg-alpha/20 text-alpha'
                                             }`}>
                                                 {index + 1}
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-dark dark:text-light">
+                                                <p className="font-medium text-dark dark:text-light text-sm">
                                                     {participant.nickname || participant.user?.name}
                                                 </p>
-                                                <p className="text-xs text-dark/60 dark:text-light/60">
+                                                <p className="text-xs text-dark/50 dark:text-light/50">
                                                     {participant.correct_answers}/{participant.correct_answers + participant.wrong_answers} correct
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-bold text-alpha">{participant.total_score}</p>
+                                        <div className="flex items-center space-x-2">
+                                            <p className="font-bold text-alpha text-sm">{participant.total_score}</p>
                                             <button
                                                 onClick={() => handleRemoveParticipant(participant.id)}
-                                                className="text-xs text-error hover:text-error/80"
+                                                className="text-xs text-error hover:text-error/80 p-1 rounded hover:bg-error/10 transition-colors"
+                                                title="Remove participant"
                                             >
-                                                <UserMinus size={12} className="inline mr-1" />
-                                                Remove
+                                                <UserMinus size={10} />
                                             </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8">
-                                <Users className="mx-auto text-alpha/60 mb-4" size={48} />
-                                <p className="text-dark/60 dark:text-light/60">
+                            <div className="text-center py-4">
+                                <Users className="mx-auto text-alpha/40 mb-2" size={24} />
+                                <p className="text-sm text-dark/50 dark:text-light/50">
                                     No participants yet. Share the game PIN!
                                 </p>
                             </div>
@@ -368,32 +324,15 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
                     </div>
                 </div>
 
-                {/* Instructions */}
-                {session.status === 'waiting' && (
-                    <div className="mt-8 bg-alpha/10 border border-alpha/20 rounded-2xl p-6">
-                        <h3 className="text-lg font-bold text-dark dark:text-light mb-4">
-                            📋 Instructions
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-dark/70 dark:text-light/70">
-                            <div className="flex items-start space-x-3">
-                                <span className="text-alpha font-bold">1.</span>
-                                <span>Share the game PIN <strong>{session.session_code}</strong> with your students</span>
-                            </div>
-                            <div className="flex items-start space-x-3">
-                                <span className="text-alpha font-bold">2.</span>
-                                <span>Students join at <strong>/geeko/join</strong> using the PIN</span>
-                            </div>
-                            <div className="flex items-start space-x-3">
-                                <span className="text-alpha font-bold">3.</span>
-                                <span>Wait for students to join and click "Start Game"</span>
-                            </div>
-                            <div className="flex items-start space-x-3">
-                                <span className="text-alpha font-bold">4.</span>
-                                <span>Control the pace of questions and view live results</span>
+                    {/* Quick Instructions */}
+                    {session.status === 'waiting' && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                            <div className="flex items-start space-x-2 text-xs text-blue-700 dark:text-blue-300">
+                                <span className="font-bold">💡</span>
+                                <span>Share PIN <strong>{session.session_code}</strong> with students • They join at <strong>/geeko/join</strong> • Click "Start Game" when ready</span>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
             </div>
         </AppLayout>
     );

@@ -377,33 +377,22 @@ export default function Create({ formation, coach, coachId }) {
                   />
                 </div>
 
-                {/* Media Upload Card */}
+                {/* Logo Display */}
                 <div className="bg-light dark:bg-dark border-2 border-dashed border-alpha/30 rounded-2xl p-12 text-center hover:border-alpha/50 transition-colors duration-300">
                   <div className="max-w-sm mx-auto">
                     <div className="space-y-6">
-                      <div className="flex justify-center space-x-6">
-                        <div className="w-12 h-12 bg-alpha/20 rounded-xl flex items-center justify-center hover:bg-alpha/30 transition-colors cursor-pointer">
-                          <span className="text-sm font-bold text-dark dark:text-light">IMG</span>
-                        </div>
-                        <div className="w-12 h-12 bg-alpha/20 rounded-xl flex items-center justify-center hover:bg-alpha/30 transition-colors cursor-pointer">
-                          <span className="text-sm font-bold text-dark dark:text-light">VID</span>
-                        </div>
-                        <div className="w-12 h-12 bg-alpha/20 rounded-xl flex items-center justify-center hover:bg-alpha/30 transition-colors cursor-pointer">
-                          <span className="text-sm font-bold text-dark dark:text-light">AUD</span>
-                        </div>
-                        <div className="w-12 h-12 bg-alpha/20 rounded-xl flex items-center justify-center hover:bg-alpha/30 transition-colors cursor-pointer">
-                          <span className="text-sm font-bold text-dark dark:text-light">GIF</span>
+                      <div className="flex justify-center">
+                        <div className="w-24 h-24 bg-alpha/20 rounded-2xl flex items-center justify-center">
+                          <div className="text-4xl font-bold text-alpha">Q</div>
                         </div>
                       </div>
                       
-                      <div className="text-8xl text-alpha/30">+</div>
-                      
                       <div className="space-y-3">
-                        <button className="text-alpha font-bold hover:text-alpha/80 transition-colors text-lg">
-                          Upload file
-                        </button>
+                        <div className="text-2xl font-bold text-alpha">
+                          Geeko Quiz
+                        </div>
                         <div className="text-sm text-dark/60 dark:text-light/60">
-                          or drag and drop here to upload
+                          Interactive learning experience
                         </div>
                       </div>
                     </div>
