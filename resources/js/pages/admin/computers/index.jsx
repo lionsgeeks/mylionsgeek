@@ -13,7 +13,6 @@ function findUserById(users, id) {
 }
 
 export default function ComputersIndex({ computers: computersProp = [], users: usersProp = [] }) {
-    const [activeTab, setActiveTab] = useState('all');
     const [query, setQuery] = useState('');
     const [computers, setComputers] = useState(computersProp);
     const [users] = useState(usersProp);
@@ -28,6 +27,11 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [userSearch, setUserSearch] = useState('');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingComputer, setDeletingComputer] = useState(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState('');
+    const [selectedComputer, setSelectedComputer] = useState(null);
+    const [assignmentHistory, setAssignmentHistory] = useState([]);
 
     const filteredComputers = useMemo(() => {
         let list = computers;
@@ -146,6 +150,22 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     }
 
 
+    function openHistoryModal(computer) {
+        setSelectedComputer(computer);
+        setShowHistoryModal(true);
+        setHistoryLoading(true);
+        setHistoryError('');
+        setAssignmentHistory([]);
+        fetch(`/admin/computers/${computer.id}/history`, { headers: { 'Accept': 'application/json' } })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Failed to load history');
+                const data = await res.json();
+                setAssignmentHistory(Array.isArray(data.history) ? data.history : []);
+            })
+            .catch((e) => setHistoryError(e.message || 'Failed to load history'))
+            .finally(() => setHistoryLoading(false));
+    }
+
     function renderAllTable() {
         return (
             <div className="overflow-x-auto">
@@ -165,7 +185,16 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             const user = findUserById(users, c.assignedUserId);
                             return (
                                 <TableRow key={c.id}>
-                                    <TableCell className="font-medium">{c.cpu}</TableCell>
+                                    <TableCell className="font-medium">
+                                        <button
+                                            type="button"
+                                            className="underline underline-offset-2 hover:text-primary"
+                                            onClick={() => openHistoryModal(c)}
+                                            title="View assignment history"
+                                        >
+                                            {c.cpu}
+                                        </button>
+                                    </TableCell>
                                     <TableCell>{c.gpu}</TableCell>
 
                                     <TableCell>
@@ -211,12 +240,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </TableBody>
                 </Table>
             </div>
-        );
-    }
-
-    function renderHistoryTable() {
-        return (
-            <div className="border rounded p-6 text-sm text-gray-600"></div>
         );
     }
 
@@ -275,12 +298,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                 </div>
                 {/* End Header */}
 
-                <div className="flex items-center gap-2 mb-6">
-                    <Button variant={activeTab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('all')}>All Computers</Button>
-                    <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')}>Computers History</Button>
-                </div>
-
-                {activeTab === 'history' ? renderHistoryTable() : renderAllTable()}
+                {renderAllTable()}
             </div>
 
             {/* Add Modal */}
@@ -558,6 +576,58 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 Delete Computer
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* History Modal */}
+            <Dialog className="" open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                    <DialogHeader>
+                        <DialogTitle>Assignment history{selectedComputer ? ` - ${selectedComputer.cpu}` : ''}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {historyLoading && (
+                            <p className="text-sm text-muted-foreground">Loading history…</p>
+                        )}
+                        {historyError && (
+                            <p className="text-sm text-red-600">{historyError}</p>
+                        )}
+                        {!historyLoading && !historyError && (
+                            assignmentHistory.length ? (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>User</TableHead>
+                                                <TableHead>Start</TableHead>
+                                                <TableHead>End</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {assignmentHistory.map((h) => (
+                                                <TableRow key={h.id}>
+                                                    <TableCell>
+                                                        {h.user ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-sm">{h.user.name}</span>
+                                                                <span className="text-xs text-muted-foreground">{h.user.email}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-muted-foreground">Unassigned</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-sm">{new Date(h.start).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-sm">{h.end ? new Date(h.end).toLocaleString() : '—'}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No assignment history yet.</p>
+                            )
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
