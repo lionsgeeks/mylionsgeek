@@ -207,7 +207,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell>
                                         {user ? (
                                             <span className="text-sm font-medium">
-                                                <Button onClick={() => {
+                                                <Button className="text-black hover:text-white dark:hover:text-black" onClick={() => {
                                                     window.location.href = `/admin/computers/${c.id}/contract`;
                                                 }}>
                                                     Download
@@ -264,7 +264,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                             <Input
-                                className="pl-9"
+                                className="pl-9 bg-neutral-200 dark:bg-neutral-800 "
                                 placeholder="Search"
                                 ref={searchInputRef}
                                 onChange={e => setQuery(e.target.value)}
@@ -272,7 +272,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div>
 
                         <Select value={damaged} onValueChange={setDamaged}>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
                                 <SelectValue placeholder="Damaged" />
                             </SelectTrigger>
                             <SelectContent>
@@ -283,7 +283,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </Select>
 
                         <Select value={assigned} onValueChange={setAssigned}>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
                                 <SelectValue placeholder="Assigned" />
                             </SelectTrigger>
                             <SelectContent>
@@ -293,7 +293,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             </SelectContent>
                         </Select>
 
-                        <Button variant="outline" onClick={resetFilters}>Reset</Button>
+                        <Button className="bg-neutral-200 dark:bg-neutral-800 " variant="outline" onClick={resetFilters}>Reset</Button>
                     </div>
                 </div>
                 {/* End Header */}
@@ -378,7 +378,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Edit Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent>
+                <DialogContent  className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
                     <DialogHeader>
                         <DialogTitle>Update Computer</DialogTitle>
                     </DialogHeader>
@@ -532,7 +532,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Delete confirmation modal */}
             <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
                             <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
