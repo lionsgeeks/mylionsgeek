@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use App\Models\Equipment;
 use App\Models\Reservation;
 use App\Models\User;
@@ -459,12 +460,11 @@ class ReservationsController extends Controller
 
         try {
             DB::transaction(function () use ($validated) {
-                // Generate next ID
-                $nextId = (int) (DB::table('reservations')->lockForUpdate()->max('id') ?? 0) + 1;
+                $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
+                $reservationId = $lastId + 1;
 
-                // Insert reservation
                 DB::table('reservations')->insert([
-                    'id' => $nextId,
+                    'id' => $reservationId,
                     'studio_id' => $validated['studio_id'],
                     'user_id' => auth()->id(),
                     'title' => $validated['title'],
@@ -478,18 +478,18 @@ class ReservationsController extends Controller
                     'passed' => 0,
                     'start_signed' => 0,
                     'end_signed' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
                 ]);
 
                 // Insert team members
                 if (!empty($validated['team_members'])) {
-                    $teamData = array_map(function ($userId) use ($nextId) {
+                    $teamData = array_map(function ($userId) use ($reservationId) {
                         return [
-                            'reservation_id' => $nextId,
+                            'reservation_id' => $reservationId,
                             'user_id' => $userId,
-                            'created_at' => now(),
-                            'updated_at' => now(),
+                            'created_at' => now()->toDateTimeString(),
+                            'updated_at' => now()->toDateTimeString(),
                         ];
                     }, $validated['team_members']);
                     
@@ -498,15 +498,15 @@ class ReservationsController extends Controller
 
                 // Insert equipment
                 if (!empty($validated['equipment'])) {
-                    $equipmentData = array_map(function ($equipmentId) use ($validated, $nextId) {
+                    $equipmentData = array_map(function ($equipmentId) use ($validated, $reservationId) {
                         return [
-                            'reservation_id' => $nextId,
+                            'reservation_id' => $reservationId,
                             'equipment_id' => $equipmentId,
                             'day' => $validated['day'],
                             'start' => $validated['start'],
                             'end' => $validated['end'],
-                            'created_at' => now(),
-                            'updated_at' => now(),
+                            'created_at' => now()->toDateTimeString(),
+                            'updated_at' => now()->toDateTimeString(),
                         ];
                     }, $validated['equipment']);
                     
