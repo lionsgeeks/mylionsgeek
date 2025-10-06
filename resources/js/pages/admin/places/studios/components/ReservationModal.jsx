@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,14 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
             setCurrentStep(currentStep - 1);
         }
     };
+
+    useEffect(() => {
+        setData('team_members', selectedMembers.map(m => m.id));
+    }, [selectedMembers]);
+
+    useEffect(() => {
+        setData('equipment', selectedEquipment.map(e => e.id));
+    }, [selectedEquipment]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
