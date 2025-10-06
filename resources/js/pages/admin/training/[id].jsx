@@ -4,6 +4,9 @@ import { Head, router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown } from 'lucide-react';
 import { Users, CalendarDays, User, Trash2, Plus, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -36,6 +39,9 @@ export default function Show({ training, usersNull }) {
   const [wheelRotation, setWheelRotation] = useState(0);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const dropdownRef = useRef(null);
+  const calendarRef = useRef(null);
+  const [calendarApi, setCalendarApi] = useState(null);
+  const [calendarTitle, setCalendarTitle] = useState('');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -50,6 +56,13 @@ export default function Show({ training, usersNull }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Initialize FullCalendar API once mounted
+  useEffect(() => {
+    if (calendarRef.current && typeof calendarRef.current.getApi === 'function') {
+      setCalendarApi(calendarRef.current.getApi());
+    }
+  }, [calendarRef]);
 
   //   attendance
 
@@ -203,42 +216,44 @@ export default function Show({ training, usersNull }) {
     <AppLayout>
       <Head title={training.name} />
 
-      <div className="p-6 min-h-screen bg-light dark:bg-dark">
+      <div className="p-6 min-h-screen">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-extrabold text-dark dark:text-light">{training.name}</h1>
-            <p className="text-dark/70 mt-2 dark:text-light/70">{training.category}</p>
+        <div className="mb-6 sm:mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-dark dark:text-light leading-tight break-words">
+              {training.name}
+            </h1>
+            <p className="text-dark/70 mt-1 sm:mt-2 dark:text-light/70">{training.category}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <Button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
+              className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
             >
               <Plus size={16} />
               <span>Add Student</span>
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setShowAttendance(true)}
-              className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10"
+              className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
             >
               <CalendarCheck size={16} />
               <span>Attendance</span>
-            </button>
+            </Button>
 
             {/* Play Dropdown */}
-            <div className="relative" ref={dropdownRef}>
-              <button
+            <div className="relative flex-1 sm:flex-initial" ref={dropdownRef}>
+              <Button
                 onClick={() => setShowPlayDropdown(!showPlayDropdown)}
-                className="flex items-center space-x-2 border border-alpha/30 text-dark dark:text-light px-4 py-2 rounded-lg hover:bg-alpha/10 transition-all duration-300"
+                className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] transition-all duration-300 w-full sm:w-auto"
               >
                 <Play size={16} />
                 <span className="hidden sm:inline">Play</span>
                 <ChevronDown size={16} className={`transform transition-transform duration-300 ${showPlayDropdown ? 'rotate-180' : ''}`} />
-              </button>
+              </Button>
 
               {showPlayDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-light dark:bg-dark border border-alpha/20 rounded-xl shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-2 w-full sm:w-48 bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 rounded-xl shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
                   <button
                     onClick={openGeekyWheel}
                     className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-t-xl transition-colors text-dark dark:text-light font-semibold"
@@ -261,7 +276,7 @@ export default function Show({ training, usersNull }) {
         </div>
 
         {/* Hero Image */}
-        <div className="w-full h-72 rounded-2xl overflow-hidden border border-alpha/20 mb-8">
+        <div className="w-full h-64 rounded-2xl overflow-hidden border border-alpha/20 mb-8">
           {training.img ? (
             <img
               src={
@@ -285,7 +300,7 @@ export default function Show({ training, usersNull }) {
           {/* Left Side – Students List */}
           <div className="lg:col-span-2 space-y-6">
             {students.length > 0 && (
-              <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-6">
+              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">
                     Enrolled Students ({students.length})
@@ -293,12 +308,12 @@ export default function Show({ training, usersNull }) {
                 </div>
 
                 {/* Filter Input */}
-                <input
+                <Input
                   type="text"
                   placeholder="Filter by name or email..."
                   value={filter}
                   onChange={e => setFilter(e.target.value)}
-                  className="mb-6 w-full border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark"
+                  className="mb-6"
                 />
 
                 <ul className="space-y-3">
@@ -314,14 +329,24 @@ export default function Show({ training, usersNull }) {
                         <div>
                           <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                           <p className="text-sm text-dark/70 dark:text-light/70">{user.email}</p>
+                          <button
+                            className="mt-1 inline-block text-red-600 hover:text-red-700 text-xs md:hidden"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(user.id);
+                            }}
+                          >
+                            Remove
+                          </button>
                         </div>
                       </div>
-                      <button
+                      <Button
+                        variant="outline"
                         onClick={() => handleDelete(user.id)}
-                        className="border border-alpha/30 text-dark dark:text-light p-2 rounded-lg hover:bg-alpha/10"
+                        className="hidden md:inline-flex gap-1 px-3 py-1 text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
                       >
-                        <Trash2 size={16} />
-                      </button>
+                        Remove
+                      </Button>
                     </li>
                   ))}
                 </ul>
@@ -385,19 +410,18 @@ export default function Show({ training, usersNull }) {
         {/* Modal for adding students */}
 
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-lg bg-light dark:bg-dark border border-alpha/20">
+          <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
             <DialogHeader>
               <DialogTitle className="text-2xl">Add Student</DialogTitle>
             </DialogHeader>
 
             {/* Search Filter */}
             <div className="mt-4">
-              <input
+              <Input
                 type="text"
                 placeholder="Search by name..."
                 value={modalFilter}
                 onChange={e => setModalFilter(e.target.value)}
-                className="w-full border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark"
               />
             </div>
 
@@ -422,30 +446,31 @@ export default function Show({ training, usersNull }) {
                           <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                         </div>
                       </div>
-                      <button
+                      <Button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAddStudent(user);
                         }}
-                        className="inline-flex items-center gap-2 border border-alpha/30 hover:bg-alpha/10 text-dark dark:text-light px-3 py-1 rounded-lg font-semibold transition text-sm"
+                        variant="outline"
+                        className="inline-flex items-center gap-2 px-3 py-1 font-semibold text-sm"
                       >
                         <UserPlus size={16} />
                         Add
-                      </button>
+                      </Button>
                     </div>
                   ))
                 )}
               </div>
             </div>
             <div className="mt-4 text-right">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10">Close</button>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Attendance Modal with FullCalendar */}
         <Dialog open={showAttendance} onOpenChange={setShowAttendance}>
-          <DialogContent className="max-w-[95vw] w-full lg:max-w-[1200px] bg-light dark:bg-dark border border-alpha/20 flex flex-col gap-6 p-8 rounded-3xl shadow-2xl">
+          <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 flex flex-col gap-4 sm:gap-5 p-4 sm:p-6 md:p-8 rounded-none sm:rounded-2xl shadow-xl">
 
             {/* Header */}
             <DialogHeader>
@@ -458,17 +483,59 @@ export default function Show({ training, usersNull }) {
             </DialogHeader>
 
             {/* Calendar */}
+            {/* Custom calendar toolbar */}
+            <div className="flex flex-col gap-3">
+              <div className="text-center text-sm sm:text-base md:text-lg font-semibold">{calendarTitle}</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => calendarApi && calendarApi.prev()} className="p-2">
+                    <ChevronLeft size={16} />
+                  </Button>
+                  <Button variant="outline" onClick={() => calendarApi && calendarApi.today()} className="px-3">
+                    Today
+                  </Button>
+                  <Button variant="outline" onClick={() => calendarApi && calendarApi.next()} className="p-2">
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                    onClick={() => {
+                      const api = calendarApi || (calendarRef.current && typeof calendarRef.current.getApi === 'function' ? calendarRef.current.getApi() : null);
+                      if (api && typeof api.changeView === 'function') {
+                        api.changeView('dayGridMonth');
+                        if (typeof api.today === 'function') {
+                          api.today();
+                        }
+                      }
+                    }}
+                  >
+                    Month
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             <div
-              className="bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 p-4 shadow-xl overflow-y-auto "
-              style={{ height: 'calc(100vh - 350px)' }}
+              className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-hidden"
+              style={{ height: 'calc(100svh - 360px)' }}
             >
               <FullCalendar
+                ref={(el) => {
+                  calendarRef.current = el;
+                  if (el && typeof el.getApi === 'function') {
+                    const api = el.getApi();
+                    if (api !== calendarApi) setCalendarApi(api);
+                  }
+                }}
                 plugins={[dayGridPlugin, interactionPlugin]}
                 initialView="dayGridMonth"
                 selectable={true}
                 selectMirror={true}
                 editable={true}
                 events={events}
+                datesSet={(arg) => setCalendarTitle(arg.view.title)}
                 eventClick={(info) => alert(`Event: ${info.event.title}`)}
                 dateClick={(info) => {
                   setSelectedDate(info.dateStr);
@@ -478,17 +545,13 @@ export default function Show({ training, usersNull }) {
                 }}
 
                 height="100%"
-                headerToolbar={{
-                  left: "prev,next today",
-                  center: "title",
-                  right: "dayGridMonth",
-                }}
+                headerToolbar={{ left: '', center: '', right: '' }}
                 dayMaxEvents={true}
                 moreLinkClick="popover"
                 eventDisplay="block"
-                dayCellClassNames="hover:bg-alpha/20 cursor-pointer transition-all duration-300 rounded-lg"
-                dayHeaderClassNames="bg-alpha/20 text-dark dark:text-light font-bold text-sm"
-                todayClassNames="bg-alpha/30 border-2 border-alpha"
+                dayCellClassNames="hover:bg-alpha/10 cursor-pointer transition-colors duration-200 rounded-md"
+                dayHeaderClassNames="bg-secondary/50 text-dark dark:text-light font-semibold text-[13px]"
+                todayClassNames="bg-alpha/20 border border-alpha/60"
                 dayCellContent={(info) => (
                   <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
                     {info.dayNumberText}
@@ -522,21 +585,16 @@ export default function Show({ training, usersNull }) {
                   <span className="font-semibold">Excused</span>
                 </div>
               </div>
-              <button
-                onClick={() => setShowAttendance(false)}
-                className="px-10 py-3 rounded-xl border border-alpha/30 hover:bg-alpha/10 font-bold text-lg lg:text-xl transition-all duration-300 hover:scale-105 hover:opacity-80"
-              >
-                Close
-              </button>
+              {/* Close button removed per request; use the top-right X */}
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Attendance List Modal */}
         <Dialog open={showAttendanceList} onOpenChange={setShowAttendanceList}>
-          <DialogContent className="max-w-[95vw] w-full lg:max-w-[1200px]    bg-light dark:bg-dark border border-alpha/20">
+          <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 p-4 sm:p-5 md:p-6 rounded-none sm:rounded-2xl">
             <DialogHeader>
-              <DialogTitle className="text-3xl font-extrabold text-dark dark:text-light">
+              <DialogTitle className="text-2xl md:text-3xl font-extrabold text-dark dark:text-light">
                 Attendance for {selectedDate && new Date(selectedDate).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
@@ -544,22 +602,117 @@ export default function Show({ training, usersNull }) {
                   day: 'numeric'
                 })}
               </DialogTitle>
-              <p className="text-dark/70 dark:text-light/70 text-lg">Mark attendance for each student</p>
+              <p className="text-dark/70 dark:text-light/70 text-sm md:text-base">Mark attendance for each student</p>
             </DialogHeader>
-            <div className="mt-8 ">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-alpha/20 h-[50vh] overflow-y-scroll shadow-xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full ">
-                    <thead className="bg-alpha/20">
+            <div className="mt-4">
+              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm ml-0">
+                {/* Mobile cards layout */}
+                <div className="block md:hidden p-3 pr-4 space-y-3">
+                  {students.map((student) => {
+                    const studentKey = `${selectedDate}-${student.id}`;
+                    const currentData = attendanceData[studentKey] || {
+                      status: 'present',
+                      time: '09:00',
+                      notes: '',
+                      slot930: false,
+                      slot1130: false,
+                      slot1400: false,
+                    };
+                    return (
+                      <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-9 h-9 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                            {student.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-dark dark:text-light truncate">{student.name}</p>
+                            <p className="text-xs text-dark/70 dark:text-light/70 truncate">{student.email}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          <Select
+                            value={currentData.morning}
+                            onValueChange={(val) => {
+                              const newData = { ...currentData, morning: val };
+                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                              <SelectValue placeholder="9:30 - 11:00" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="present">Present</SelectItem>
+                              <SelectItem value="absent">Absent</SelectItem>
+                              <SelectItem value="late">Late</SelectItem>
+                              <SelectItem value="excused">Excused</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <Select
+                            value={currentData.lunch}
+                            onValueChange={(val) => {
+                              const newData = { ...currentData, lunch: val };
+                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                              <SelectValue placeholder="11:30 - 13:00" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="present">Present</SelectItem>
+                              <SelectItem value="absent">Absent</SelectItem>
+                              <SelectItem value="late">Late</SelectItem>
+                              <SelectItem value="excused">Excused</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <Select
+                            value={currentData.evening}
+                            onValueChange={(val) => {
+                              const newData = { ...currentData, evening: val };
+                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                              <SelectValue placeholder="14:00 - 17:00" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="present">Present</SelectItem>
+                              <SelectItem value="absent">Absent</SelectItem>
+                              <SelectItem value="late">Late</SelectItem>
+                              <SelectItem value="excused">Excused</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <Input
+                            type="text"
+                            placeholder="Optional notes..."
+                            value={currentData.notes}
+                            onChange={(e) => {
+                              const newData = { ...currentData, notes: e.target.value };
+                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Desktop table */}
+                <div className="hidden md:block">
+                <div className="overflow-x-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary/50 sticky top-0 z-10">
                       <tr>
-                        <th className="px-8 py-6 text-left text-lg font-bold text-dark dark:text-light">Student</th>
-                        <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">9:30 - 11:00</th>
-                        <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">11:30 - 13:00</th>
-                        <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">14:00 - 17:00</th>
-                        <th className="px-8 py-6 text-center text-lg font-bold text-dark dark:text-light">Notes</th>
+                        <th className="px-4 py-3 text-left font-semibold text-dark dark:text-light">Student</th>
+                        <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">9:30 - 11:00</th>
+                        <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">11:30 - 13:00</th>
+                        <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">14:00 - 17:00</th>
+                        <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">Notes</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-alpha/20 ">
+                    <tbody className="divide-y divide-alpha/10">
                       {students.map((student) => {
                         const studentKey = `${selectedDate}-${student.id}`;
                         const currentData = attendanceData[studentKey] || {
@@ -571,69 +724,87 @@ export default function Show({ training, usersNull }) {
                           slot1400: false,
                         };
                         return (
-                          <tr key={student.id} className="hover:bg-alpha/10 transition-all duration-300">
-                            <td className="px-8 py-6">
-                              <div className="flex items-center space-x-4">
-                                <div className="w-12 h-12 rounded-full bg-alpha text-light flex items-center justify-center font-bold text-lg">
+                          <tr key={student.id} className="hover:bg-accent/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
                                   {student.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-lg text-dark dark:text-light">{student.name}</p>
-                                  <p className="text-sm text-dark/70 dark:text-light/70">{student.email}</p>
+                                  <p className="font-bold text-base text-dark dark:text-light">{student.name}</p>
+                                  <p className="text-xs md:text-sm text-dark/70 dark:text-light/70">{student.email}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-8 py-6 text-center">
-                              <select
-                                className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
+                            <td className="px-4 py-3 text-center">
+                              <div className="inline-block min-w-[150px]">
+                                <Select
                                 value={currentData.morning}
-                                onChange={(e) => {
-                                  const newData = { ...currentData, morning: e.target.value };
+                                  onValueChange={(val) => {
+                                    const newData = { ...currentData, morning: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                <option value="present">Present</option>
-                                <option value="absent">Absent</option>
-                                <option value="late">Late</option>
-                                <option value="excused">Excused</option>
-                              </select>
+                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                    <SelectValue placeholder="Morning" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="present">Present</SelectItem>
+                                    <SelectItem value="absent">Absent</SelectItem>
+                                    <SelectItem value="late">Late</SelectItem>
+                                    <SelectItem value="excused">Excused</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </td>
-                            <td className="px-8 py-6 text-center">
-                              <select
-                                className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
-                                value={currentData.l}
-                                onChange={(e) => {
-                                  const newData = { ...currentData, lunch: e.target.value };
+                            <td className="px-4 py-3 text-center">
+                              <div className="inline-block min-w-[150px]">
+                                <Select
+                                  value={currentData.lunch}
+                                  onValueChange={(val) => {
+                                    const newData = { ...currentData, lunch: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                <option value="present">Present</option>
-                                <option value="absent">Absent</option>
-                                <option value="late">Late</option>
-                                <option value="excused">Excused</option>
-                              </select>
+                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                    <SelectValue placeholder="11:30 - 13:00" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="present">Present</SelectItem>
+                                    <SelectItem value="absent">Absent</SelectItem>
+                                    <SelectItem value="late">Late</SelectItem>
+                                    <SelectItem value="excused">Excused</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </td>
-                            <td className="px-8 py-6 text-center">
-                              <select
-                                className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold min-w-[120px]"
+                            <td className="px-4 py-3 text-center">
+                              <div className="inline-block min-w-[150px]">
+                                <Select
                                 value={currentData.evening}
-                                onChange={(e) => {
-                                  const newData = { ...currentData, evening: e.target.value };
+                                  onValueChange={(val) => {
+                                    const newData = { ...currentData, evening: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                <option value="present">Present</option>
-                                <option value="absent">Absent</option>
-                                <option value="late">Late</option>
-                                <option value="excused">Excused</option>
-                              </select>
+                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                    <SelectValue placeholder="14:00 - 17:00" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="present">Present</SelectItem>
+                                    <SelectItem value="absent">Absent</SelectItem>
+                                    <SelectItem value="late">Late</SelectItem>
+                                    <SelectItem value="excused">Excused</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </td>
 
-                            <td className="px-8 py-6 text-center">
+                            <td className="px-4 py-3 text-center">
                               <input
                                 type="text"
                                 placeholder="Optional notes..."
-                                className="border border-alpha/30 rounded-xl px-4 py-3 bg-light dark:bg-dark text-lg font-semibold w-full min-w-[200px]"
+                                className="border border-alpha/30 rounded-xl px-3 py-2 bg-light dark:bg-dark text-sm w-full min-w-[180px]"
                                 value={currentData.notes}
                                 onChange={(e) => {
                                   const newData = { ...currentData, notes: e.target.value };
@@ -649,31 +820,33 @@ export default function Show({ training, usersNull }) {
                     </tbody>
                   </table>
 
+                 </div>
                 </div>
               </div>
             </div>
 
-            <div className=" mt-8 flex justify-between items-center">
-              <div className="text-lg text-dark/70 dark:text-light/70">
+            <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-alpha/20 mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center pr-3 md:pr-6 py-3">
+              <div className="text-sm md:text-base text-dark/70 dark:text-light/70">
                 Total Students: <span className="font-bold text-xl">{students.length}</span>
               </div>
-              <div className="flex space-x-4">
-                <button
+              <div className="flex flex-col sm:flex-row sm:space-x-4 gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
                   onClick={() => setShowAttendanceList(false)}
-                  className="px-8 py-3 rounded-xl border border-alpha/30 hover:bg-alpha/10 font-bold text-lg transition-all duration-300 hover:scale-105"
+                  className="px-6 py-2 w-full sm:w-auto"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     // Save attendance logic here
                     handleSave();
                     setShowAttendanceList(false);
                   }}
-                  className="px-8 py-3 rounded-xl bg-alpha text-light hover:bg-alpha/90 font-bold text-lg transition-all duration-300 hover:scale-105"
+                  className="px-6 py-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] w-full sm:w-auto"
                 >
                   Save Attendance
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -697,7 +870,7 @@ export default function Show({ training, usersNull }) {
            />
         {/* Delete Confirmation Modal */}
         <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <DialogContent className="max-w-md bg-light dark:bg-dark border border-alpha/20">
+          <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
             <DialogHeader>
               <DialogTitle className="text-lg">Confirm Deletion</DialogTitle>
             </DialogHeader>
@@ -707,18 +880,8 @@ export default function Show({ training, usersNull }) {
               </p>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
-              >
-                Remove Student
-              </button>
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+              <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmDelete}>Remove Student</Button>
             </div>
           </DialogContent>
         </Dialog>
