@@ -307,7 +307,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </div>
 
                 <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>
-                    <DialogContent className="max-w-3xl p-0">
+                    <DialogContent className="max-w-3xl p-0 bg-light text-dark dark:bg-dark dark:text-light">
                         {previewSrc && (
                             <img src={previewSrc} alt="Equipment" className="max-h-[80vh] w-full object-contain" />
                         )}
@@ -316,7 +316,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Add equipment modal */}
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                    <DialogContent className="max-w-lg">
+                    <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <h2 className="text-xl font-medium">Add an Equipment</h2>
                             <div className="grid gap-4">
@@ -391,7 +391,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                         setEditingEquipment(null);
                     }
                 }}>
-                    <DialogContent className="max-w-lg">
+                    <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <h2 className="text-xl font-medium">Edit Equipment</h2>
                             <div className="grid gap-4">
@@ -484,7 +484,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Delete confirmation modal */}
                 <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
@@ -539,7 +539,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Type Management Modal */}
                 <Dialog open={isTypeManagerOpen} onOpenChange={setIsTypeManagerOpen}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <div>
                                 <h2 className="text-xl font-medium">Manage Equipment Types</h2>
@@ -641,7 +641,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Type Delete Confirmation Modal */}
                 <Dialog open={isTypeDeleteOpen} onOpenChange={setIsTypeDeleteOpen}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">

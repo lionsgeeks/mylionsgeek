@@ -5,14 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Computer extends Model
 {
     use HasFactory;
-    public $incrementing = false;       
-    protected $keyType = 'string';
-    // We store UUIDs in the `id` column, so make it the primary key
-    protected $primaryKey = 'id';
+    // Use default auto-increment integer ID
     protected $fillable = [
         'id',
         'reference', 
@@ -33,6 +31,11 @@ class Computer extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(ComputerHistory::class, 'computer_id', 'id')->orderBy('start', 'desc');
     }
 }
 

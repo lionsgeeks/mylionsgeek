@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\ComputerHistory;
 
 class ComputersController extends Controller
 {
@@ -31,7 +32,6 @@ class ComputersController extends Controller
 
 
         $computer = Computer::create([
-            'id' => (string) Str::uuid(),
             'reference' => $validated['reference'],
             'cpu' => $validated['cpu'],
             'gpu' => $validated['gpu'],
@@ -63,20 +63,44 @@ class ComputersController extends Controller
     $newUserId = $request->input('user_id') ?: null;
     $validated['user_id'] = $newUserId;
 
+    // Update current assignment timestamps on Computer and write to history table
     if ($oldUserId && !$newUserId) {
-        //Dissociate: user_id → null
+        // Dissociate: close active history
         $validated['end'] = now();
+        ComputerHistory::where('computer_id', $computer->id)
+            ->where('user_id', $oldUserId)
+            ->whereNull('end')
+            ->update(['end' => now()]);
     }
 
     if ($oldUserId && $newUserId && $oldUserId !== $newUserId) {
-        //Reassign: change user
-        $validated['end'] = now();            
-        $validated['start'] = now()->addSecond(); 
+        // Reassign: close previous and start new
+        $validated['end'] = now();
+        ComputerHistory::where('computer_id', $computer->id)
+            ->where('user_id', $oldUserId)
+            ->whereNull('end')
+            ->update(['end' => now()]);
+
+        $startAt = now();
+        $validated['start'] = $startAt; 
+        ComputerHistory::create([
+            'computer_id' => $computer->id,
+            'user_id' => $newUserId,
+            'start' => $startAt,
+            'end' => null,
+        ]);
     }
 
     if (!$oldUserId && $newUserId) {
-        //First assign
-        $validated['start'] = now();
+        // First assign: open a new history row
+        $startAt = now();
+        $validated['start'] = $startAt;
+        ComputerHistory::create([
+            'computer_id' => $computer->id,
+            'user_id' => $newUserId,
+            'start' => $startAt,
+            'end' => null,
+        ]);
     }
 
     $computer->update($validated);
