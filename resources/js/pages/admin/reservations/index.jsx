@@ -149,6 +149,15 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const baseStudio = useMemo(() => (rangeActive ? studioReservations.filter(inRange) : studioReservations), [studioReservations, rangeActive, inRange]);
     const baseRooms = useMemo(() => (rangeActive ? meetingRoomReservations.filter(inRange) : meetingRoomReservations), [meetingRoomReservations, rangeActive, inRange]);
 
+    // Exterior detection and lists
+    const isExterior = React.useCallback((r) => {
+        const t = (r?.type || '').toLowerCase();
+        const pt = (r?.place_type || '').toLowerCase();
+        const pn = (r?.place_name || '').toLowerCase();
+        return t === 'exterior' || pt === 'exterior' || pt === 'outside' || pn === 'exterior' || pn === 'outside';
+    }, []);
+    const baseExterior = useMemo(() => baseAll.filter(isExterior), [baseAll, isExterior]);
+
     const filteredReservations = useMemo(() => {
         if (!searchTerm) return baseAll;
         const term = searchTerm.toLowerCase();
@@ -227,15 +236,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         return merged;
     }, [perStudioDynamic, perRoomDynamic]);
 
-    const exteriorCount = useMemo(() => {
-        const isExterior = (r) => {
-            const t = (r?.type || '').toLowerCase();
-            const pt = (r?.place_type || '').toLowerCase();
-            const pn = (r?.place_name || '').toLowerCase();
-            return t === 'exterior' || pt === 'exterior' || pt === 'outside' || pn === 'exterior' || pn === 'outside';
-        };
-        return baseAll.reduce((n, r) => n + (isExterior(r) ? 1 : 0), 0);
-    }, [baseAll]);
+    const exteriorCount = useMemo(() => baseExterior.length, [baseExterior]);
 
     const total = useMemo(() => ({
         reservations: filteredReservations.length,
@@ -259,6 +260,13 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     useEffect(() => { setPageAll(1); }, [filteredReservations]);
     useEffect(() => { setPageCowork(1); }, [filteredCoworkReservations, showAllCowork]);
     useEffect(() => { setPageStudio(1); }, [filteredStudioReservations, showAllStudio]);
+
+    // Time snapshots for Studio + Exterior when no range is active
+    const timeStudioPlusExterior = useMemo(() => {
+        if (rangeActive) return { today: 0, week: 0, month: 0 };
+        const exteriorFromAll = reservations.filter(r => isExterior(r));
+        return buildTimeStats([...studioReservations, ...exteriorFromAll]);
+    }, [rangeActive, reservations, studioReservations, isExterior]);
 
     return (
         <AppLayout>
@@ -319,15 +327,24 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     </Card>
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">Studio reservations</CardTitle>
+                            <CardTitle className="text-sm text-muted-foreground">Studio reservations (incl. Exterior)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-semibold">{baseStudio.length}</div>
-                            <div className="mt-2 text-sm text-muted-foreground">Approved {filteredStatus.studio.approved} • Canceled {filteredStatus.studio.canceled} • Pending {filteredStatus.studio.pending}</div>
+                            <div className="text-3xl font-semibold">{baseStudio.length + baseExterior.length}</div>
+                            <div className="mt-2 text-sm text-muted-foreground">Approved {(() => {
+                                const list = [...baseStudio, ...baseExterior];
+                                return list.reduce((n, r) => n + (r.approved && !r.canceled ? 1 : 0), 0);
+                            })()} • Canceled {(() => {
+                                const list = [...baseStudio, ...baseExterior];
+                                return list.reduce((n, r) => n + (r.canceled ? 1 : 0), 0);
+                            })()} • Pending {(() => {
+                                const list = [...baseStudio, ...baseExterior];
+                                return list.reduce((n, r) => n + (!r.approved && !r.canceled ? 1 : 0), 0);
+                            })()}</div>
                             {rangeActive ? (
-                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseStudio.length} — A {filteredStatus.studio.approved} • C {filteredStatus.studio.canceled} • P {filteredStatus.studio.pending}</div>
+                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseStudio.length + baseExterior.length}</div>
                             ) : (
-                                <div className="mt-2 text-sm text-muted-foreground">Today {stats.timeStudio.today} • This week {stats.timeStudio.week} • This month {stats.timeStudio.month}</div>
+                                <div className="mt-2 text-sm text-muted-foreground">Today {timeStudioPlusExterior.today} • This week {timeStudioPlusExterior.week} • This month {timeStudioPlusExterior.month}</div>
                             )}
                         </CardContent>
                     </Card>

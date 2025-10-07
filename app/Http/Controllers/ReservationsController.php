@@ -456,6 +456,91 @@ class ReservationsController extends Controller
     }
 
     /**
+     * Generate PDF using the reservation_combined.blade view
+     */
+    public function generatePdf(int $reservation)
+    {
+        try {
+            $reservationData = $this->getReservationDetails($reservation);
+            if (!$reservationData) {
+                return response()->json(['error' => 'Reservation not found'], 404);
+            }
+
+            $pdf = Pdf::loadView('pdf.reservation_combined', ['reservation' => $reservationData])
+                ->setPaper('a4', 'portrait');
+
+            $userName = str_replace(' ', '_', $reservationData['user_name'] ?? 'User');
+            $date = $reservationData['date'] ?? date('Y-m-d');
+            $filename = "Reservation_{$userName}_{$date}.pdf";
+
+            return $pdf->download($filename);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'PDF generation failed', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function getReservationDetails(int $reservationId): ?array
+    {
+        $reservation = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservationId)
+            ->select('r.*', 'u.name as user_name')
+            ->first();
+
+        if (!$reservation) {
+            return null;
+        }
+
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->where('re.reservation_id', $reservationId)
+                ->select('e.id', 'e.reference', 'e.mark', 'e.image')
+                ->get()
+                ->map(function ($e) {
+                    return [
+                        'id' => $e->id,
+                        'reference' => $e->reference,
+                        'mark' => $e->mark,
+                        'image' => $e->image,
+                    ];
+                })
+                ->toArray();
+        }
+
+        $teamMembers = [];
+        if (Schema::hasTable('reservation_teams') && Schema::hasTable('users')) {
+            $teamMembers = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservationId)
+                ->select('u.id', 'u.name', 'u.image')
+                ->get()
+                ->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'image' => $u->image,
+                    ];
+                })
+                ->toArray();
+        }
+
+        return [
+            'id' => $reservation->id,
+            'user_name' => $reservation->user_name,
+            'date' => $reservation->date ?? $reservation->day,
+            'start' => $reservation->start,
+            'end' => $reservation->end,
+            'title' => $reservation->title,
+            'description' => $reservation->description,
+            'approved' => (bool) ($reservation->approved ?? 0),
+            'equipments' => $equipments,
+            'team_members' => $teamMembers,
+        ];
+    }
+
+    /**
      * Store new reservation with teams and equipment
      */
     public function store(Request $request)
