@@ -218,6 +218,29 @@ class GeekoPlayController extends Controller
             }
 
             $question = $session->geeko->questions()->findOrFail($request->question_id);
+
+            // Reject answers if session not in progress or time is up
+            if ($session->status !== 'in_progress') {
+                return response()->json(['error' => 'Answering is closed.'], 400);
+            }
+
+            // Determine time limit and elapsed seconds; also stop when all participants have answered
+            $timeLimit = $question->time_limit ?: $session->geeko->time_limit;
+            if ($timeLimit !== null && $session->current_question_started_at) {
+                $elapsedSeconds = now()->diffInSeconds($session->current_question_started_at);
+                if ($elapsedSeconds >= $timeLimit) {
+                    return response()->json(['error' => 'Time is up for this question.'], 400);
+                }
+            }
+
+            // Stop if all participants have answered already
+            $participantsCount = $session->participants()->count();
+            $answersCount = GeekoAnswer::where('session_id', $sessionId)
+                ->where('question_id', $question->id)
+                ->count();
+            if ($participantsCount > 0 && $answersCount >= $participantsCount) {
+                return response()->json(['error' => 'Answering closed.'], 400);
+            }
             
             // Ensure options and correct_answers are arrays for logging
             $options = $question->options;

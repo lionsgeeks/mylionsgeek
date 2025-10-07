@@ -82,27 +82,32 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                 <div className="w-full max-w-2xl">
                     {/* Header */}
                     <div className="text-center mb-12">
-                        <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha shadow">
+                        {/* <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha shadow">
                             QUIZ
-                        </div>
-                        <h1 className="text-4xl font-extrabold text-dark dark:text-light mb-2">
+                        </div> */}
+                        {/* <h1 className="text-4xl font-extrabold text-dark dark:text-light mb-2">
                             {session.geeko.title}
-                        </h1>
-                        <p className="text-xl text-dark/70 dark:text-light/70 mb-4">
-                            Waiting for game to start...
-                        </p>
-                        
-                        {/* Game PIN Display */}
-                        <div className="inline-flex items-center space-x-3 backdrop-blur bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl px-6 py-3 shadow">
-                            <span className="text-dark/70 dark:text-light/70 font-semibold">Game PIN:</span>
-                            <span className="text-2xl font-bold text-alpha tracking-wider">
-                                {session.session_code}
-                            </span>
+                        </h1> */}
+                      {/* Waiting Animation */}
+                      <div className="text-center mb-8">
+                        <div className="flex items-center justify-center space-x-2 mb-4">
+                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce"></div>
+                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
+                        <p className="text-lg text-dark/70 dark:text-light/70">
+                            Waiting for instructor to start the game...
+                        </p>
+                        {/* <p className="text-sm text-dark/50 dark:text-light/50 mt-2">
+                            Current time: {formatTime(currentTime)}
+                        </p> */}
+                    </div>
+                        
+                       
                     </div>
 
                     {/* Status Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                    {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                         <div className="bg-light dark:bg-dark border border-alpha/20 rounded-2xl p-6 text-center">
                             <Users className="mx-auto text-alpha mb-3" size={32} />
                             <div className="text-3xl font-bold text-dark dark:text-light mb-2">
@@ -126,7 +131,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                             </div>
                             <div className="text-dark/70 dark:text-light/70 font-semibold">Per Question</div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Player Info */}
                     <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 text-center shadow-xl">
@@ -155,7 +160,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                     </div>
 
                     {/* Participants List */}
-                    {session.participants && session.participants.length > 0 && (
+                    {/* {session.participants && session.participants.length > 0 && (
                         <div className="bg-light dark:bg-dark border border-alpha/20 rounded-2xl p-6 mb-8">
                             <h3 className="text-lg font-bold text-dark dark:text-light mb-4 text-center">
                                 Other Players ({session.participants.length - 1})
@@ -176,70 +181,14 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                                 }
                             </div>
                         </div>
-                    )}
+                    )} */}
 
-                    {/* Waiting Animation */}
-                    <div className="text-center mb-8">
-                        <div className="flex items-center justify-center space-x-2 mb-4">
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce"></div>
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
-                        <p className="text-lg text-dark/70 dark:text-light/70">
-                            Waiting for instructor to start the game...
-                        </p>
-                        <p className="text-sm text-dark/50 dark:text-light/50 mt-2">
-                            Current time: {formatTime(currentTime)}
-                        </p>
-                    </div>
+                  
 
-                    {/* QR Code Section for Instructors */}
-                    {sessionUrl && (
-                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-bold text-dark dark:text-light">
-                                    Session Control
-                                </h3>
-                                <button
-                                    onClick={() => setShowQR(!showQR)}
-                                    className="flex items-center space-x-2 text-sm text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors"
-                                >
-                                    <QrCode size={16} />
-                                    <span>{showQR ? 'Hide' : 'Show'} QR</span>
-                                </button>
-                            </div>
-                            
-                            {showQR && (
-                                <div className="text-center">
-                                    <div className="bg-white p-4 rounded-lg inline-block mb-4">
-                                        <QRCode
-                                            value={sessionUrl}
-                                            size={120}
-                                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-center space-x-2">
-                                        <input
-                                            type="text"
-                                            value={sessionUrl}
-                                            readOnly
-                                            className="flex-1 text-xs bg-light dark:bg-dark border border-alpha/20 rounded px-2 py-1 text-dark dark:text-light"
-                                        />
-                                        <button
-                                            onClick={copyToClipboard}
-                                            className="flex items-center space-x-1 text-xs text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors px-2 py-1"
-                                        >
-                                            {copied ? <Check size={14} /> : <Copy size={14} />}
-                                            <span>{copied ? 'Copied' : 'Copy'}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                 
 
                     {/* Instructions */}
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">
+                    {/* <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">
                         <h3 className="text-lg font-bold text-dark dark:text-light mb-4 text-center">
                             How to Play
                         </h3>
@@ -257,7 +206,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                                 <span>Keep this window open and stay connected</span>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Leave Button */}
                     <div className="text-center">

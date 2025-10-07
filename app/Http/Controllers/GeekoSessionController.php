@@ -48,13 +48,13 @@ class GeekoSessionController extends Controller
         ]);
 
         // For AJAX requests, return JSON with session info
-        if (request()->ajax() || request()->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'session_id' => $session->id,
-                'redirect_url' => route('geeko.session.control', [$formationId, $geekoId, $session->id])
-            ]);
-        }
+        // if (request()->ajax() || request()->wantsJson()) {
+        //     return response()->json([
+        //         'success' => true,
+        //         'session_id' => $session->id,
+        //         'redirect_url' => route('geeko.session.control', [$formationId, $geekoId, $session->id])
+        //     ]);
+        // }
 
         return redirect()->route('geeko.session.control', [$formationId, $geekoId, $session->id])
             ->with('success', 'Game session created! Share the PIN with students.');
@@ -74,6 +74,7 @@ class GeekoSessionController extends Controller
 
         $currentQuestion = $session->currentQuestion();
         $leaderboard = $session->getLeaderboard();
+        $optionCounts = [];
 
         return Inertia::render('admin/training/geeko/SessionControl', [
             'session' => $session,
@@ -102,13 +103,13 @@ class GeekoSessionController extends Controller
         ]);
 
         // For AJAX requests, return JSON
-        if (request()->ajax() || request()->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Game started!',
-                'session_status' => 'in_progress'
-            ]);
-        }
+        // if (request()->ajax() || request()->wantsJson()) {
+        //     return response()->json([
+        //         'success' => true,
+        //         'message' => 'Game started!',
+        //         'session_status' => 'in_progress'
+        //     ]);
+        // }
 
         return back()->with('success', 'Game started!');
     }
@@ -245,6 +246,47 @@ class GeekoSessionController extends Controller
             $currentAnswerCount = GeekoAnswer::where('session_id', $sessionId)
                 ->where('question_id', $currentQuestion->id)
                 ->count();
+
+            // Build per-option counts
+            $options = $currentQuestion->options;
+            if (is_string($options)) {
+                $options = json_decode($options, true) ?: [];
+            }
+            if (!is_array($options)) {
+                $options = [];
+            }
+            $optionCounts = array_fill(0, count($options), 0);
+
+            $answersForCounts = GeekoAnswer::where('session_id', $sessionId)
+                ->where('question_id', $currentQuestion->id)
+                ->get();
+
+            foreach ($answersForCounts as $ans) {
+                $selected = $ans->selected_answer;
+                if (is_string($selected)) {
+                    $decoded = json_decode($selected, true);
+                    if ($decoded !== null) {
+                        $selected = $decoded;
+                    }
+                }
+
+                $selectedValues = is_array($selected) ? $selected : [$selected];
+
+                foreach ($selectedValues as $val) {
+                    if (is_numeric($val)) {
+                        $idx = (int)$val;
+                        if ($idx >= 0 && $idx < count($optionCounts)) {
+                            $optionCounts[$idx]++;
+                        }
+                    } elseif (is_string($val)) {
+                        // Try to match by text value
+                        $idx = array_search($val, $options, true);
+                        if ($idx !== false && $idx >= 0 && $idx < count($optionCounts)) {
+                            $optionCounts[$idx]++;
+                        }
+                    }
+                }
+            }
         }
 
         // Determine if question should auto end
@@ -276,6 +318,7 @@ class GeekoSessionController extends Controller
             'participants_count' => $session->participants()->count(),
             'current_question' => $currentQuestion,
             'current_answer_count' => $currentAnswerCount,
+            'option_counts' => $optionCounts,
             'leaderboard' => $leaderboard,
             'progress' => [
                 'current' => $session->current_question_index + 1,
@@ -283,6 +326,7 @@ class GeekoSessionController extends Controller
             ],
             'should_end_question' => $shouldEndQuestion,
             'end_reason' => $endReason,
+            'current_question_started_at' => $session->current_question_started_at,
         ]);
     }
 

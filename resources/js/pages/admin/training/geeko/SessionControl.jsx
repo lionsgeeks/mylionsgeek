@@ -1,21 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { 
-    Play, Pause, StopCircle, SkipForward, Users, Clock, 
-    Trophy, ArrowLeft, Eye, RefreshCw, UserMinus, Share2
-} from 'lucide-react';
+import { Play, StopCircle, Users, ArrowLeft, RefreshCw, Share2, Check, SkipForward } from 'lucide-react';
 
-export default function SessionControl({ session, currentQuestion, leaderboard, formationId, geekoId }) {
+export default function SessionControl({ session, formationId, geekoId }) {
     const [liveData, setLiveData] = useState({
         participants_count: session.participants?.length || 0,
-        current_answer_count: 0,
-        progress: {
-            current: session.current_question_index + 1,
-            total: session.geeko.questions?.length || 0
-        }
+        participants: session.participants || [],
+        session_status: session.status,
+        current_question: null,
     });
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [copiedPin, setCopiedPin] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [showCountdown, setShowCountdown] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+    const [frozenLeaderboard, setFrozenLeaderboard] = useState([]);
+    const [timeLeft, setTimeLeft] = useState(null);
+    const [questionEnded, setQuestionEnded] = useState(false);
+    const [showEndAlerts, setShowEndAlerts] = useState(false);
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const lastQuestionIdRef = useRef(null);
 
     // Poll for live updates
     useEffect(() => {
@@ -25,12 +30,55 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
             try {
                 const response = await fetch(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/live-data`);
                 const data = await response.json();
-                setLiveData(data);
+                const inProgress = (data.session?.status || session.status) === 'in_progress';
+                setLiveData({
+                    participants_count: data.participants_count,
+                    participants: data.session?.participants || [],
+                    session_status: data.session?.status || session.status,
+                    current_question: data.current_question || null,
+                    should_end_question: data.should_end_question || false,
+                    option_counts: data.option_counts || [],
+                    current_answer_count: data.current_answer_count || 0,
+                });
 
-                // Auto end question when conditions met (time up or all answered)
+                // Reset end alerts and leaderboard toggle when question changes
+                const currentQuestionId = data.current_question ? data.current_question.id : null;
+                if (currentQuestionId !== lastQuestionIdRef.current) {
+                    lastQuestionIdRef.current = currentQuestionId;
+                    setShowEndAlerts(false);
+                    setShowLeaderboard(false);
+                }
+
+                // Timer calculation: derive time left using server timestamps
+                if (inProgress && data.current_question && (data.session?.current_question_started_at || data.current_question_started_at)) {
+                    const startedAt = new Date(data.session?.current_question_started_at || data.current_question_started_at);
+                    const limit = data.current_question.time_limit ?? data.session?.geeko?.time_limit;
+                    if (limit != null) {
+                        const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
+                        let remaining = Math.max(0, limit - elapsed);
+                        // If server indicates all answered, force timer to 0 immediately
                 if (data.should_end_question) {
-                    router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/end-question`);
-                    return;
+                            remaining = 0;
+                        }
+                        setTimeLeft(remaining);
+                        const allAnswered = (data.current_answer_count || 0) >= (data.participants_count || 0) && (data.participants_count || 0) > 0;
+                        const ended = remaining === 0 || !!data.should_end_question || allAnswered;
+                        setQuestionEnded(ended);
+                        if (ended) {
+                            if (!showEndAlerts) setShowEndAlerts(true);
+                        }
+                    } else {
+                        setTimeLeft(null);
+                        const allAnswered = (data.current_answer_count || 0) >= (data.participants_count || 0) && (data.participants_count || 0) > 0;
+                        const ended = !!data.should_end_question || allAnswered;
+                        setQuestionEnded(ended);
+                        if (ended) {
+                            if (!showEndAlerts) setShowEndAlerts(true);
+                        }
+                    }
+                } else {
+                    setTimeLeft(null);
+                    setQuestionEnded(false);
                 }
             } catch (error) {
                 console.error('Failed to fetch live data:', error);
@@ -41,57 +89,64 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
     }, [autoRefresh, formationId, geekoId, session.id]);
 
     const handleStartGame = () => {
+        runCountdownThen(5, () => {
         router.post(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/start`);
+        });
     };
 
     const handleNextQuestion = () => {
-        // first show round results page for players
-        router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/end-question`);
-    };
-
-    const handleEndQuestion = () => {
-        router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/end-question`);
-    };
-
-    const handleCompleteGame = () => {
-        router.post(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/complete`);
+        runCountdownThen(5, () => {
+            router.post(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/next-question`);
+        });
     };
 
     const handleCancelGame = () => {
-        if (confirm('Are you sure you want to cancel this game session? This cannot be undone.')) {
+        if (confirm('Stop and cancel this game?')) {
             router.post(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/cancel`);
         }
     };
 
-    const handleViewResults = () => {
-        router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/results`);
+    const copyGamePin = async () => {
+        try {
+            await navigator.clipboard.writeText(session.session_code);
+            setCopiedPin(true);
+            setTimeout(() => setCopiedPin(false), 1500);
+        } catch (e) {}
     };
 
-    const handleRemoveParticipant = (participantId) => {
-        if (confirm('Are you sure you want to remove this participant?')) {
-            router.delete(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/participants/${participantId}`);
-        }
-    };
-
-    const copyGamePin = () => {
-        navigator.clipboard.writeText(session.session_code);
-        alert('Game PIN copied to clipboard!');
-    };
-
-    const copyGameLink = () => {
+    const copyGameLink = async () => {
+        try {
         const link = `${window.location.origin}/geeko/${session.session_code}`;
-        navigator.clipboard.writeText(link);
-        alert('Game link copied to clipboard!');
+            await navigator.clipboard.writeText(link);
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 1500);
+        } catch (e) {}
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'waiting': return 'text-alpha';
-            case 'in_progress': return 'text-good';
-            case 'completed': return 'text-blue-500';
-            case 'cancelled': return 'text-error';
-            default: return 'text-gray-500';
-        }
+    const refreshLeaderboardOnce = async () => {
+        try {
+            const response = await fetch(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/live-data`);
+            const data = await response.json();
+            if (Array.isArray(data.leaderboard)) {
+                setFrozenLeaderboard(data.leaderboard);
+            }
+        } catch (e) {}
+    };
+
+    // Countdown helper to show overlay and execute action after N seconds
+    const runCountdownThen = (seconds, action) => {
+        setShowCountdown(true);
+        setCountdown(seconds);
+        const timer = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setShowCountdown(false);
+                    action?.();
+                }
+                return prev - 1;
+            });
+        }, 1000);
     };
 
     const getStatusText = (status) => {
@@ -109,7 +164,7 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
             <Head title={`Control Panel - ${session.geeko.title}`} />
 
             <div className="min-h-screen bg-gray-50/50 dark:bg-dark/30">
-                {/* Ultra Minimalist Header */}
+                {liveData.session_status !== 'in_progress' && (
                 <div className="bg-white/80 dark:bg-dark/80 backdrop-blur-sm border-b border-alpha/5">
                     <div className="max-w-6xl mx-auto px-4">
                         <div className="flex items-center justify-between h-14">
@@ -121,218 +176,301 @@ export default function SessionControl({ session, currentQuestion, leaderboard, 
                                 <span>Back</span>
                             </button>
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-3 text-xs text-dark/60 dark:text-light/60">
+                                <span className={`px-2 py-1 rounded-md ${session.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
+                                        session.status === 'in_progress' ? 'bg-green-100 text-green-700' :
+                                            session.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-gray-100 text-gray-700'
+                                    }`}>
+                                    {getStatusText(session.status)}
+                                </span>
                                 <button
                                     onClick={() => setAutoRefresh(!autoRefresh)}
-                                    className={`p-2 rounded-md text-xs transition-colors ${
-                                        autoRefresh 
-                                            ? 'bg-good text-light' 
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                    title={autoRefresh ? 'Auto-refresh enabled' : 'Click to enable auto-refresh'}
+                                    className={`p-2 rounded-md ${autoRefresh ? 'bg-good text-light' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                    title={autoRefresh ? 'Auto-refresh enabled' : 'Enable auto-refresh'}
                                 >
                                     <RefreshCw size={12} className={autoRefresh ? 'animate-spin' : ''} />
                                 </button>
-                                
-                                {session.status === 'completed' && (
-                                    <button
-                                        onClick={handleViewResults}
-                                        className="p-2 bg-alpha text-dark rounded-md hover:bg-alpha/90 transition-colors text-xs"
-                                        title="View game results"
-                                    >
-                                        <Trophy size={12} />
-                                    </button>
-                                )}
                             </div>
                         </div>
                         <div className="pb-3">
-                            <h1 className="text-lg font-medium text-dark dark:text-light">
-                                {session.geeko.title}
-                            </h1>
-                            <div className="flex items-center space-x-3 text-xs text-dark/50 dark:text-light/50">
-                                <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                                    session.status === 'waiting' ? 'bg-yellow-100 text-yellow-700' :
-                                    session.status === 'in_progress' ? 'bg-green-100 text-green-700' :
-                                    session.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
-                                }`}>
-                                    {getStatusText(session.status)}
-                                </span>
-                                <span>{session.geeko.questions?.length || 0} questions</span>
-                                <span>•</span>
-                                <span>{liveData.participants_count} participants</span>
-                            </div>
+                            <h1 className="text-lg font-medium text-dark dark:text-light">{session.geeko.title}</h1>
+                            <div className="text-xs text-dark/50 dark:text-light/50">{liveData.participants_count} participants</div>
                         </div>
                     </div>
                 </div>
+                )}
 
-                {/* Ultra Compact Layout */}
-                <div className="max-w-6xl mx-auto px-4 py-4">
-                    {/* Game PIN Bar */}
-                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4 mb-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-alpha">{session.session_code}</div>
-                                    <div className="text-xs text-dark/50 dark:text-light/50">Game PIN</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-lg font-semibold text-blue-500">
-                                        {liveData.progress.current}/{liveData.progress.total}
-                                    </div>
-                                    <div className="text-xs text-dark/50 dark:text-light/50">Progress</div>
-                                </div>
+                <div className="max-w-6xl mx-auto px-4 py-6">
+                    {/* PIN + Share */}
+                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-5 mb-6">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <button onClick={copyGamePin} className="text-3xl font-extrabold tracking-widest text-alpha cursor-pointer select-none">
+                                    {session.session_code}
+                                </button>
+                                {copiedPin && (
+                                    <span className="inline-flex items-center gap-1 text-good text-xs font-semibold">
+                                        <Check size={12} /> Copied
+                                    </span>
+                                )}
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center gap-3">
                                 <button
                                     onClick={copyGamePin}
-                                    className="flex items-center space-x-1 bg-alpha text-dark px-3 py-1.5 rounded-md hover:bg-alpha/90 transition-colors text-xs font-medium"
+                                    className="inline-flex items-center gap-1 bg-alpha text-dark px-3 py-2 rounded-md hover:bg-alpha/90 text-xs font-semibold"
                                 >
                                     <Share2 size={12} />
                                     <span>Copy PIN</span>
                                 </button>
                                 <button
                                     onClick={copyGameLink}
-                                    className="flex items-center space-x-1 border border-alpha/30 text-dark dark:text-light px-3 py-1.5 rounded-md hover:bg-alpha/10 transition-colors text-xs font-medium"
+                                    className="inline-flex items-center gap-1 border border-alpha/30 text-dark dark:text-light px-3 py-2 rounded-md hover:bg-alpha/10 text-xs font-semibold"
                                 >
                                     <Share2 size={12} />
-                                    <span>Link</span>
+                                    <span>Copy Link</span>
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Minimalist Controls */}
-                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4 mb-4">
-                        {/* Current Question Info */}
-                        {currentQuestion && (
-                            <div className="bg-gray-50 dark:bg-dark/60 rounded-md p-3 mb-3">
-                                <div className="text-sm font-medium text-dark dark:text-light mb-1">
-                                    Question {session.current_question_index + 1}/{session.geeko.questions?.length}
+                                {copiedLink && (
+                                    <span className="inline-flex items-center gap-1 text-good text-xs font-semibold">
+                                        <Check size={12} /> Copied
+                                    </span>
+                                )}
+                                <div className="flex flex-wrap gap-3">
+                                    {session.status === 'waiting' && (
+                                        <button
+                                            onClick={handleStartGame}
+                                            className="inline-flex items-center gap-2 bg-good text-light px-5 py-2 rounded-lg hover:bg-good/90 font-semibold"
+                                        >
+                                            <Play size={16} />
+                                            <span>Start</span>
+                                        </button>
+                                    )}
+                                    {(session.status === 'waiting' || session.status === 'in_progress') && (
+                                        <button
+                                            onClick={handleCancelGame}
+                                            className="inline-flex items-center gap-2 border border-error/30 text-error px-5 py-2 rounded-lg hover:bg-error/10 font-semibold"
+                                        >
+                                            <StopCircle size={16} />
+                                            <span>Stop</span>
+                                        </button>
+                                    )}
                                 </div>
-                                <p className="text-sm text-dark/70 dark:text-light/70 line-clamp-2">
-                                    {currentQuestion.question}
-                                </p>
                             </div>
-                        )}
-
-                        {/* Control Buttons */}
-                        <div className="flex flex-wrap gap-2">
-                            {session.status === 'waiting' && (
-                                <button
-                                    onClick={handleStartGame}
-                                    className="flex items-center space-x-2 bg-good text-light px-4 py-2 rounded-md hover:bg-good/90 transition-colors font-medium text-sm"
-                                >
-                                    <Play size={14} />
-                                    <span>Start Game</span>
-                                </button>
-                            )}
-
-                            {session.status === 'in_progress' && (
-                                <>
-                                    <button
-                                        onClick={handleEndQuestion}
-                                        className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-md hover:bg-alpha/90 transition-colors font-medium text-sm"
-                                    >
-                                        <Eye size={14} />
-                                        <span>Show Results</span>
-                                    </button>
-                                    
-                                    <button
-                                        onClick={handleNextQuestion}
-                                        className="flex items-center space-x-2 bg-blue-500 text-light px-4 py-2 rounded-md hover:bg-blue-600 transition-colors font-medium text-sm"
-                                    >
-                                        <SkipForward size={14} />
-                                        <span>Next</span>
-                                    </button>
-                                    
-                                    <button
-                                        onClick={handleCompleteGame}
-                                        className="flex items-center space-x-2 border border-purple-300 text-purple-600 px-4 py-2 rounded-md hover:bg-purple-50 transition-colors font-medium text-sm"
-                                    >
-                                        <Trophy size={12} />
-                                        <span>Complete</span>
-                                    </button>
-                                </>
-                            )}
-
-                            {(session.status === 'waiting' || session.status === 'in_progress') && (
-                                <button
-                                    onClick={handleCancelGame}
-                                    className="flex items-center space-x-2 border border-error text-error px-4 py-2 rounded-md hover:bg-error/10 transition-colors font-medium text-sm"
-                                >
-                                    <StopCircle size={12} />
-                                    <span>Cancel</span>
-                                </button>
-                            )}
                         </div>
                     </div>
 
-                    {/* Live Leaderboard - Prominent */}
-                    <div className="bg-white dark:bg-dark border border-alpha/10 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-base font-semibold text-dark dark:text-light">Live Leaderboard</h3>
-                            <div className="flex items-center space-x-2 text-xs text-dark/50 dark:text-light/50">
+                    {/* Current Question (TV view) */}
+                    {liveData.session_status === 'in_progress' && liveData.current_question && !showLeaderboard && (
+                        <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-8 mb-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="text-sm text-dark/60 dark:text-light/60">Question</div>
+                                <div className="flex items-center gap-2">
+                                    {timeLeft !== null && !questionEnded && (
+                                        <div className={`text-sm font-semibold px-3 py-1 rounded-md ${timeLeft <= 5 ? 'bg-error/10 text-error' : 'bg-alpha/10 text-alpha'}`}>
+                                            {timeLeft}s
+                                        </div>
+                                    )}
+                                    <div className="text-xs font-semibold px-2 py-1 rounded-md bg-alpha/10 text-alpha">
+                                        {liveData.current_answer_count}/{liveData.participants_count}
+                                    </div>
+                                </div>
+                            </div>
+                            {questionEnded && (
+                                <div className="mb-4 flex items-center gap-2 text-sm">
+                                    <span className="px-2 py-1 rounded-md bg-good/10 text-good font-semibold">Done</span>
+                                    <button onClick={async () => {
+                                        setShowLeaderboard(true);
+                                        // wait 2s then refresh and animate scores
+                                        setTimeout(async () => {
+                                            try {
+                                                const data = await fetch(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/live-data`).then(r => r.json());
+                                                if (Array.isArray(data.leaderboard)) {
+                                                    // set initial 0 scores for animation
+                                                    const initial = {};
+                                                    data.leaderboard.forEach(p => { initial[p.id] = 0; });
+                                                    // animate to target scores
+                                                    const targets = {};
+                                                    data.leaderboard.forEach(p => { targets[p.id] = p.total_score || 0; });
+                                                    setFrozenLeaderboard(data.leaderboard);
+                                                    const duration = 1000;
+                                                    const start = performance.now();
+                                                    const step = (t) => {
+                                                        const progress = Math.min(1, (t - start) / duration);
+                                                        const current = {};
+                                                        Object.keys(targets).forEach(id => {
+                                                            current[id] = Math.round(targets[id] * progress);
+                                                        });
+                                                        // store animated values on each row as a prop-like map
+                                                        window.__animatedScores = current;
+                                                        if (progress < 1) requestAnimationFrame(step);
+                                                        else window.__animatedScores = targets;
+                                                    };
+                                                    requestAnimationFrame(step);
+                                                }
+                                            } catch(e) {}
+                                        }, 2000);
+                                    }} className="px-2 py-1 rounded-md border border-alpha/30 hover:bg-alpha/10">Show leaderboard</button>
+                                </div>
+                            )}
+                            <div className="text-4xl md:text-5xl font-extrabold text-dark dark:text-light mb-6 leading-tight">
+                                {liveData.current_question.question}
+                            </div>
+                            {Array.isArray(liveData.current_question.options) && !showLeaderboard && (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {liveData.current_question.options.map((opt, idx) => {
+      // 🎨 Harmonized color palette — no alpha, visually balanced
+      const palette = [
+        'bg-alpha/5 border-amber-300/60',
+      ];
+      const baseColor = palette[idx % palette.length];
+
+      const correctAnswers = liveData.current_question.correct_answers;
+      const isCorrect =
+        Array.isArray(correctAnswers) &&
+        (correctAnswers.includes(idx) ||
+          correctAnswers.includes(opt) ||
+          correctAnswers.includes(String(opt)));
+
+      // ✅ Visual logic:
+      // - Before end → soft colored background
+      // - After end → highlight correct, fade wrong
+      const endedClass = questionEnded
+        ? isCorrect
+          ? 'bg-alpha border-alpha text-black ring-2 ring-alpha' // ✅ full alpha highlight, black text for contrast
+          : 'opacity-50'
+        : '';
+
+      const count = Array.isArray(liveData.option_counts)
+        ? (liveData.option_counts[idx] || 0)
+        : 0;
+      const showCount = questionEnded;
+
+      return (
+        <div
+          key={idx}
+          className={`p-5 rounded-2xl border text-dark dark:text-light text-lg md:text-xl font-semibold transition-all duration-300
+            ${questionEnded ? endedClass : baseColor}`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`mr-2 font-bold ${isCorrect && questionEnded ? 'text-black' : 'text-alpha'}`}>
+                {String.fromCharCode(65 + idx)}.
+              </span>
+              <span className={`${isCorrect && questionEnded ? 'text-black' : ''}`}>
+                {typeof opt === 'string' ? opt : JSON.stringify(opt)}
+              </span>
+            </div>
+            {showCount && (
+              <span
+                className={`text-sm font-bold ${
+                  isCorrect && questionEnded ? 'text-black' : 'text-dark/60 dark:text-light/60'
+                }`}
+              >
+                {count}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+{questionEnded && !showLeaderboard && (
+  <div className="mt-4 text-sm text-dark/60 dark:text-light/60">
+    <span className="font-semibold">Correct answer: </span>
+    {Array.isArray(liveData.current_question.correct_answers)
+      ? liveData.current_question.correct_answers.join(', ')
+      : String(liveData.current_question.correct_answers ?? '')}
+  </div>
+)}
+
+                        </div>
+                    )}
+
+
+
+                    {/* Participants / Leaderboard Panel */}
+                    {liveData.session_status !== 'in_progress' ? (
+                        <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-base font-semibold text-dark dark:text-light flex items-center gap-2">
+                                    <Users size={16} className="text-alpha" /> Participants
+                                    <span className="text-xs text-dark/50 dark:text-light/50">({liveData.participants_count})</span>
+                                </h3>
+                                <div className="flex items-center gap-2 text-xs text-dark/50 dark:text-light/50">
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span>Live</span>
                             </div>
                         </div>
                         
-                        {leaderboard && leaderboard.length > 0 ? (
-                            <div className="space-y-1">
-                                {leaderboard.slice(0, 10).map((participant, index) => (
-                                    <div key={participant.id} className="flex items-center justify-between p-2 bg-gray-50/50 dark:bg-dark/40 rounded-md hover:bg-gray-100 dark:hover:bg-dark/60 transition-colors">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
-                                                index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                                index === 1 ? 'bg-gray-300 text-gray-700' :
-                                                index === 2 ? 'bg-amber-500 text-amber-900' :
-                                                'bg-alpha/20 text-alpha'
-                                            }`}>
-                                                {index + 1}
+                            {liveData.participants && liveData.participants.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    {liveData.participants.map((p) => (
+                                        <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-alpha/5 hover:bg-alpha/10 transition-colors">
+                                            <div className="w-9 h-9 rounded-full bg-alpha text-dark flex items-center justify-center font-bold">
+                                                {(p.nickname || p.user?.name || '?').charAt(0).toUpperCase()}
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-dark dark:text-light text-sm">
-                                                    {participant.nickname || participant.user?.name}
-                                                </p>
-                                                <p className="text-xs text-dark/50 dark:text-light/50">
-                                                    {participant.correct_answers}/{participant.correct_answers + participant.wrong_answers} correct
-                                                </p>
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-semibold text-dark dark:text-light truncate">
+                                                    {p.nickname || p.user?.name}
+                                                </div>
+                                                <div className="text-[11px] text-dark/50 dark:text-light/50">ready</div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <p className="font-bold text-alpha text-sm">{participant.total_score}</p>
-                                            <button
-                                                onClick={() => handleRemoveParticipant(participant.id)}
-                                                className="text-xs text-error hover:text-error/80 p-1 rounded hover:bg-error/10 transition-colors"
-                                                title="Remove participant"
-                                            >
-                                                <UserMinus size={10} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Users className="mx-auto text-alpha/40 mb-2" size={28} />
+                                    <p className="text-sm text-dark/60 dark:text-light/60">No participants yet. Share the PIN!</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : showLeaderboard ? (
+                        <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-base font-semibold text-dark dark:text-light">Leaderboard</h3>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={refreshLeaderboardOnce} className={`text-xs border px-3 py-1.5 rounded-md hover:bg-alpha/10 border-alpha/30`}>Refresh</button>
+                                    {questionEnded && (
+                                        <button onClick={handleNextQuestion} className="text-xs inline-flex items-center gap-1 bg-blue-500 text-light px-3 py-1.5 rounded-md hover:bg-blue-600">
+                                            <SkipForward size={12} /> Next
                                             </button>
+                                    )}
+                                </div>
+                            </div>
+                            {questionEnded && frozenLeaderboard && frozenLeaderboard.length > 0 ? (
+                                <div className="space-y-2">
+                                    {frozenLeaderboard.slice(0, 10).map((p, idx) => (
+                                        <div key={p.id || idx} className="flex items-center justify-between p-3 rounded-lg bg-white/70 dark:bg-dark/60 border border-alpha/10 transition-all duration-500" style={{ transform: 'translateY(0)' }}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold ${idx===0?'bg-yellow-300 text-yellow-900':idx===1?'bg-gray-300 text-gray-800':idx===2?'bg-amber-500 text-amber-900':'bg-alpha/20 text-alpha'}`}>{idx+1}</div>
+                                                <div className="text-sm font-semibold text-dark dark:text-light">{p.nickname || p.user?.name}</div>
                                         </div>
+                                            <div className="text-base font-extrabold text-alpha tabular-nums">{(window.__animatedScores && window.__animatedScores[p.id] !== undefined) ? window.__animatedScores[p.id] : p.total_score}</div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-4">
-                                <Users className="mx-auto text-alpha/40 mb-2" size={24} />
-                                <p className="text-sm text-dark/50 dark:text-light/50">
-                                    No participants yet. Share the game PIN!
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                                <div className="text-center py-8 text-sm text-dark/60 dark:text-light/60">Leaderboard will appear when time is up</div>
+                            )}
+                        </div>
+                    ) : null}
                 </div>
 
-                    {/* Quick Instructions */}
-                    {session.status === 'waiting' && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                            <div className="flex items-start space-x-2 text-xs text-blue-700 dark:text-blue-300">
-                                <span className="font-bold">💡</span>
-                                <span>Share PIN <strong>{session.session_code}</strong> with students • They join at <strong>/geeko/join</strong> • Click "Start Game" when ready</span>
+                {/* Countdown Overlay */}
+                {showCountdown && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-dark/70 backdrop-blur-sm"></div>
+                        <div className="relative z-10 select-none">
+                            <div className="text-8xl md:text-9xl font-extrabold text-light drop-shadow-xl">
+                                {Math.max(countdown, 1)}
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
+
             </div>
         </AppLayout>
     );
