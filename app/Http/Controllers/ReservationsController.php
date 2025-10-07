@@ -167,10 +167,25 @@ class ReservationsController extends Controller
                 ->get();
         }
 
+        // Meeting room reservations (type=meeting_room with meeting_room_id)
+        $meetingRoomReservations = [];
+        if (Schema::hasTable('reservations')) {
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('r.*', 'u.name as user_name')
+                ->where('r.type', 'meeting_room');
+            if (Schema::hasTable('meeting_rooms') && Schema::hasColumn('reservations', 'meeting_room_id')) {
+                $query->leftJoin('meeting_rooms as m', 'm.id', '=', 'r.meeting_room_id')
+                    ->addSelect('m.name as room_name');
+            }
+            $meetingRoomReservations = $query->orderByDesc('r.created_at')->get();
+        }
+
         return Inertia::render('admin/reservations/index', [
             'reservations' => $enriched,
             'coworkReservations' => $coworkReservations,
             'studioReservations' => $studioReservations,
+            'meetingRoomReservations' => $meetingRoomReservations,
         ]);
     }
 
