@@ -359,7 +359,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             )}
                         </CardContent>
                     </Card>
-                           <Card>
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-sm text-muted-foreground">Cowork reservations</CardTitle>
                         </CardHeader>
@@ -374,7 +374,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </CardContent>
                     </Card>
                     {/* Removed Cowork card per request */}
-                             <Card>
+                    <Card>
                         <CardHeader>
                             <CardTitle className="text-sm text-muted-foreground">Studios (Podcast + Image)</CardTitle>
                         </CardHeader>
@@ -420,35 +420,30 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
                 </div>
 
-                {tab === 'all' && (
-                    <div className="mt-6">
-                        <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <table className="min-w-ful table-fixed divide-y divide-sidebar-border/70">
-                                <colgroup>
-                                    <col className="w-56" />
-                                    <col className="w-32" />
-                                    <col className="w-60" />
-                                    <col className="w-36" />
-                                    <col className="w-28" />
-                                    <col className="w-40" />
-                                </colgroup>
-                                <thead className="bg-secondary/50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                <div className="mt-6">
+                    <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
+                        <table className="min-w-full table-auto divide-y divide-sidebar-border/70">
+                            <thead className="bg-secondary/50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">User</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                                    {pagedAll.some(r => r.type !== "cowork") && (
                                         <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-sidebar-border/70">
-                                    {pagedAll.map((r) => (
-                                        <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
+                                    )}
+
+
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-sidebar-border/70">
+                                {pagedAll.map((r) => (
+                                    <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
                                         <td className="px-4 py-3 text-sm truncate">{r.user_name ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.start} - {r.end}</td>
-                                        <td className="px-4 py-3 text-sm capitalize">{(r.type || r.place_type)?.replace('_',' ') ?? '—'}</td>
+                                        <td className="px-4 py-3 text-sm capitalize">{(r.type || r.place_type)?.replace('_', ' ') ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm">
                                             {r.canceled ? (
                                                 <Badge variant="destructive">Canceled</Badge>
@@ -458,277 +453,32 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
                                             )}
                                         </td>
-                                        <td className="py-3 text-right text-sm" onClick={(e) => e.stopPropagation()}>
-                                            <div className="inline-flex items-center justify-end gap-2">
+                                        {r.type != "cowork" && (
 
-                                                {r.approved && ((r.type || r.place_type) !== 'cowork') && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer hover:bg-alpha  dark:hover:bg-alpha dark:text-white"
-                                                        onClick={() => {
-                                                            window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
-                                                        }}
-                                                        title="Download PDF"
-                                                    >
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {!r.canceled && !r.approved && (
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            setLoadingAction({ id: r.id, type: 'approve' });
-                                                            router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
-                                                        }}
-                                                        title="Approve reservation"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {!r.canceled && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="destructive"
-                                                        className="h-8 px-2 cursor-pointer disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            const confirmMsg = r.approved ?
-                                                                'Cancel this approved reservation?' :
-                                                                'Cancel this reservation?';
-                                                            if (!window.confirm(confirmMsg)) return;
-                                                            setLoadingAction({ id: r.id, type: 'cancel' });
-                                                            router.post(`/admin/reservations/${r.id}/cancel`, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
-                                                        }}
-                                                        title="Cancel reservation"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                        </tr>
-                                    ))}
-                                    {filteredReservations.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No reservations found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                            <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                                <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                                <span>Page {pageAll} of {totalPagesAll}</span>
-                                <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                                            <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
+                                                <div className="inline-flex items-center justify-center gap-2">
 
-                {tab === 'coworks' && (
-                    <div className="mt-6">
-                        <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <div className="flex items-center justify-between px-4 py-3">
-                                <div className="text-sm text-muted-foreground">{filteredCoworkReservations.length} cowork reservations</div>
-                                <Button size="sm" variant="outline" onClick={() => setShowAllCowork(v => !v)} className="h-8">
-                                    {showAllCowork ? 'Show 10 per page' : 'Show all'}
-                                </Button>
-                            </div>
-                            <table className="min-w-full table-fixed divide-y divide-sidebar-border/70">
-                                <colgroup>
-                                    <col className="w-56" />
-                                    <col className="w-32" />
-                                    <col className="w-40" />
-                                    <col className="w-36" />
-                                    <col className="w-28" />
-                                    <col className="w-32" />
-                                </colgroup>
-                                <thead className="bg-secondary/50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Table</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-sidebar-border/70">
-                                    {pagedCowork.map((rc) => (
-                                        <tr key={rc.id} className="hover:bg-accent/30">
-                                            <td className="px-4 py-3 text-sm font-medium">{rc.user_name ?? '—'}</td>
-                                            <td className="px-4 py-3 text-sm">{rc.day}</td>
-                                            <td className="px-4 py-3 text-sm">{rc.start} - {rc.end}</td>
-                                            <td className="px-4 py-3 text-sm">Table {rc.table}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {rc.canceled ? (
-                                                    <Badge variant="destructive">Canceled</Badge>
-                                                ) : rc.passed ? (
-                                                    <Badge>Passed</Badge>
-                                                ) : (
-                                                    <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>
-                                                )}
-                                                <div className="mt-1">
-                                                    <StatusBadge yes={!!rc.approved} trueText="Approved" falseText="Pending" />
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer"
-                                                        onClick={() => setSelected({
-                                                            ...rc,
-                                                            date: rc.day,
-                                                            type: 'cowork',
-                                                            title: `Cowork - Table ${rc.table}`,
-                                                            place_type: 'cowork'
-                                                        })}
-                                                        title="View details"
-                                                    >
-                                                        <FileText className="h-4 w-4" />
-                                                    </Button>
-                                                    {!rc.approved && !rc.canceled && (
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                            disabled={loadingAction.id === rc.id}
-                                                            onClick={() => {
-                                                                setLoadingAction({ id: rc.id, type: 'approve' });
-                                                                router.post(`/admin/reservations/${rc.id}/approve`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                            title="Approve reservation"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                    {!rc.canceled && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="destructive"
-                                                            className="h-8 px-2 cursor-pointer disabled:opacity-50"
-                                                            disabled={loadingAction.id === rc.id}
-                                                            onClick={() => {
-                                                                const confirmMsg = rc.approved ?
-                                                                    'Cancel this approved reservation?' :
-                                                                    'Cancel this reservation?';
-                                                                if (!window.confirm(confirmMsg)) return;
-                                                                setLoadingAction({ id: rc.id, type: 'cancel' });
-                                                                router.post(`/admin/reservations/${rc.id}/cancel`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                            title="Cancel reservation"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filteredCoworkReservations.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No cowork reservations found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                            {!showAllCowork && (
-                                <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                                    <button disabled={pageCowork === 1} onClick={() => setPageCowork((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                                    <span>Page {pageCowork} of {totalPagesCowork}</span>
-                                    <button disabled={pageCowork === totalPagesCowork} onClick={() => setPageCowork((p) => Math.min(totalPagesCowork, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {tab === 'studios' && (
-                    <div className="mt-6">
-                        <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <div className="flex items-center justify-between px-4 py-3">
-                                <div className="text-sm text-muted-foreground">{filteredStudioReservations.length} studio reservations</div>
-                                <Button size="sm" variant="outline" onClick={() => setShowAllStudio(v => !v)} className="h-8">
-                                    {showAllStudio ? 'Show 10 per page' : 'Show all'}
-                                </Button>
-                            </div>
-                            <table className="min-w-full table-fixed divide-y divide-sidebar-border/70">
-                                <colgroup>
-                                    <col className="w-56" />
-                                    <col className="w-32" />
-                                    <col className="w-40" />
-                                    <col className="w-36" />
-                                    <col className="w-28" />
-                                    <col className="w-32" />
-                                </colgroup>
-                                <thead className="bg-secondary/50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Studio</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-sidebar-border/70">
-                                    {pagedStudio.map((sr) => (
-                                        <tr key={sr.id} className="hover:bg-accent/30">
-                                            <td className="px-4 py-3 text-sm font-medium">{sr.user_name ?? '—'}</td>
-                                            <td className="px-4 py-3 text-sm">{sr.day ?? sr.date}</td>
-                                            <td className="px-4 py-3 text-sm">{sr.start} - {sr.end}</td>
-                                            <td className="px-4 py-3 text-sm">{sr.studio_name || '—'}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {sr.canceled ? (
-                                                    <Badge variant="destructive">Canceled</Badge>
-                                                ) : sr.passed ? (
-                                                    <Badge>Passed</Badge>
-                                                ) : (
-                                                    <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>
-                                                )}
-                                                <div className="mt-1">
-                                                    <StatusBadge yes={!!sr.approved} trueText="Approved" falseText="Pending" />
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-1">
-
-                                                    {sr.approved && (
+                                                    {r.approved && ((r.type || r.place_type) !== 'cowork') && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="h-8 px-2 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
+                                                            className="h-8 px-2 cursor-pointer hover:bg-alpha  dark:hover:bg-alpha dark:text-white"
                                                             onClick={() => {
-                                                                window.open(`/admin/reservations/${sr.id}/pdf`, '_blank');
+                                                                window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
                                                             }}
                                                             title="Download PDF"
                                                         >
                                                             <Download className="h-4 w-4" />
                                                         </Button>
                                                     )}
-                                                    {!sr.approved && !sr.canceled && (
+                                                    {!r.canceled && !r.approved && (
                                                         <Button
                                                             size="sm"
                                                             className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                            disabled={loadingAction.id === sr.id}
+                                                            disabled={loadingAction.id === r.id}
                                                             onClick={() => {
-                                                                setLoadingAction({ id: sr.id, type: 'approve' });
-                                                                router.post(`/admin/reservations/${sr.id}/approve`, {}, {
+                                                                setLoadingAction({ id: r.id, type: 'approve' });
+                                                                router.post(`/admin/reservations/${r.id}/approve`, {}, {
                                                                     onFinish: () => setLoadingAction({ id: null, type: null })
                                                                 });
                                                             }}
@@ -737,19 +487,19 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                             <Check className="h-4 w-4" />
                                                         </Button>
                                                     )}
-                                                    {!sr.canceled && (
+                                                    {!r.canceled && (
                                                         <Button
                                                             size="sm"
                                                             variant="destructive"
                                                             className="h-8 px-2 cursor-pointer disabled:opacity-50"
-                                                            disabled={loadingAction.id === sr.id}
+                                                            disabled={loadingAction.id === r.id}
                                                             onClick={() => {
-                                                                const confirmMsg = sr.approved ?
+                                                                const confirmMsg = r.approved ?
                                                                     'Cancel this approved reservation?' :
                                                                     'Cancel this reservation?';
                                                                 if (!window.confirm(confirmMsg)) return;
-                                                                setLoadingAction({ id: sr.id, type: 'cancel' });
-                                                                router.post(`/admin/reservations/${sr.id}/cancel`, {}, {
+                                                                setLoadingAction({ id: r.id, type: 'cancel' });
+                                                                router.post(`/admin/reservations/${r.id}/cancel`, {}, {
                                                                     onFinish: () => setLoadingAction({ id: null, type: null })
                                                                 });
                                                             }}
@@ -760,27 +510,27 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                     )}
                                                 </div>
                                             </td>
-                                        </tr>
-                                    ))}
-                                    {filteredStudioReservations.length === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                No studio reservations found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                            {!showAllStudio && (
-                                <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                                    <button disabled={pageStudio === 1} onClick={() => setPageStudio((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                                    <span>Page {pageStudio} of {totalPagesStudio}</span>
-                                    <button disabled={pageStudio === totalPagesStudio} onClick={() => setPageStudio((p) => Math.min(totalPagesStudio, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
-                                </div>
-                            )}
+                                        )
+                                        }
+                                    </tr>
+                                ))}
+                                {filteredReservations.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                            No reservations found.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                        <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                            <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
+                            <span>Page {pageAll} of {totalPagesAll}</span>
+                            <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
                         </div>
                     </div>
-                )}
+                </div>
+
                 {/* Combined Details & Info Modal with Tabs */}
                 <Dialog open={!!selected || !!infoFor} onOpenChange={() => { setSelected(null); setInfoFor(null); }}>
                     <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -821,7 +571,7 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                         </div>
                         <div>
                             <div className="text-muted-foreground">Type</div>
-                            <div className="font-medium capitalize">{(reservation.type || reservation.place_type)?.replace('_',' ') ?? '—'}</div>
+                            <div className="font-medium capitalize">{(reservation.type || reservation.place_type)?.replace('_', ' ') ?? '—'}</div>
                         </div>
                         {((reservation.type || reservation.place_type) === 'studio') && (
                             <div>
