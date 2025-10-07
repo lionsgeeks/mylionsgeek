@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, X, Search, FileText, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -73,6 +74,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [selected, setSelected] = useState(null);
     const [infoFor, setInfoFor] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState(''); // '', 'cowork', 'studio', 'meeting_room', 'exterior'
+    const [filterStatus, setFilterStatus] = useState(''); // '', 'approved', 'canceled', 'pending'
+
+    const onTypeChange = (v) => setFilterType(v === 'all' ? '' : v);
+    const onStatusChange = (v) => setFilterStatus(v === 'all' ? '' : v);
 
     // Date range filter state
     const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
@@ -159,18 +165,33 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const baseExterior = useMemo(() => baseAll.filter(isExterior), [baseAll, isExterior]);
 
     const filteredReservations = useMemo(() => {
-        if (!searchTerm) return baseAll;
+        const typeMatch = (r) => {
+            if (!filterType) return true;
+            if (filterType === 'exterior') return isExterior(r);
+            return (r?.type || '').toLowerCase() === filterType;
+        };
+        const statusMatch = (r) => {
+            if (!filterStatus) return true;
+            if (filterStatus === 'approved') return !!r.approved && !r.canceled;
+            if (filterStatus === 'canceled') return !!r.canceled;
+            if (filterStatus === 'pending') return !r.approved && !r.canceled;
+            return true;
+        };
         const term = searchTerm.toLowerCase();
-        return baseAll.filter(r =>
-            r.user_name?.toLowerCase().includes(term) ||
-            r.title?.toLowerCase().includes(term) ||
-            r.description?.toLowerCase().includes(term) ||
-            r.type?.toLowerCase().includes(term) ||
-            r.place_type?.toLowerCase().includes(term) ||
-            r.date?.includes(term) ||
-            `table ${r.table}`?.toLowerCase().includes(term)
-        );
-    }, [baseAll, searchTerm]);
+        const searchMatch = (r) => {
+            if (!term) return true;
+            return (
+                r.user_name?.toLowerCase().includes(term) ||
+                r.title?.toLowerCase().includes(term) ||
+                r.description?.toLowerCase().includes(term) ||
+                r.type?.toLowerCase().includes(term) ||
+                r.place_type?.toLowerCase().includes(term) ||
+                r.date?.includes(term) ||
+                `table ${r.table}`?.toLowerCase().includes(term)
+            );
+        };
+        return baseAll.filter((r) => typeMatch(r) && statusMatch(r) && searchMatch(r));
+    }, [baseAll, searchTerm, filterType, filterStatus, isExterior]);
 
     const filteredCoworkReservations = useMemo(() => {
         if (!searchTerm) return baseCowork;
@@ -261,12 +282,20 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     useEffect(() => { setPageCowork(1); }, [filteredCoworkReservations, showAllCowork]);
     useEffect(() => { setPageStudio(1); }, [filteredStudioReservations, showAllStudio]);
 
-    // Time snapshots for Studio + Exterior when no range is active
-    const timeStudioPlusExterior = useMemo(() => {
+    // Studio Podcast + Studio Image filtered list
+    const baseStudioPI = useMemo(() => {
+        const accepted = new Set(['studio podcast', 'studio image']);
+        return baseStudio.filter(r => accepted.has((r.studio_name || r.studio || '').toLowerCase()));
+    }, [baseStudio]);
+
+    const timeStudioPI = useMemo(() => {
         if (rangeActive) return { today: 0, week: 0, month: 0 };
-        const exteriorFromAll = reservations.filter(r => isExterior(r));
-        return buildTimeStats([...studioReservations, ...exteriorFromAll]);
-    }, [rangeActive, reservations, studioReservations, isExterior]);
+        const allStudio = studioReservations.filter(r => {
+            const n = (r.studio_name || r.studio || '').toLowerCase();
+            return n === 'studio podcast' || n === 'studio image';
+        });
+        return buildTimeStats(allStudio);
+    }, [rangeActive, studioReservations]);
 
     return (
         <AppLayout>
@@ -288,6 +317,25 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                 className="pl-10 w-64"
                             />
                         </div>
+                        <Select value={filterType || 'all'} onValueChange={onTypeChange}>
+                            <SelectTrigger className="w-44"><SelectValue placeholder="Type (all)" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All types</SelectItem>
+                                <SelectItem value="cowork">Cowork</SelectItem>
+                                <SelectItem value="studio">Studio</SelectItem>
+                                <SelectItem value="meeting_room">Meeting room</SelectItem>
+                                <SelectItem value="exterior">Exterior</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterStatus || 'all'} onValueChange={onStatusChange}>
+                            <SelectTrigger className="w-44"><SelectValue placeholder="Status (all)" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All status</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="canceled">Canceled</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />
                         <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
                         <Button variant="outline" size="sm" onClick={() => { setFromDate(''); setToDate(''); }}>Clear</Button>
@@ -311,7 +359,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             )}
                         </CardContent>
                     </Card>
-                    <Card>
+                           <Card>
                         <CardHeader>
                             <CardTitle className="text-sm text-muted-foreground">Cowork reservations</CardTitle>
                         </CardHeader>
@@ -325,69 +373,61 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             )}
                         </CardContent>
                     </Card>
-                    <Card>
+                    {/* Removed Cowork card per request */}
+                             <Card>
                         <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">Studio reservations (incl. Exterior)</CardTitle>
+                            <CardTitle className="text-sm text-muted-foreground">Studios (Podcast + Image)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-semibold">{baseStudio.length + baseExterior.length}</div>
-                            <div className="mt-2 text-sm text-muted-foreground">Approved {(() => {
-                                const list = [...baseStudio, ...baseExterior];
-                                return list.reduce((n, r) => n + (r.approved && !r.canceled ? 1 : 0), 0);
-                            })()} • Canceled {(() => {
-                                const list = [...baseStudio, ...baseExterior];
-                                return list.reduce((n, r) => n + (r.canceled ? 1 : 0), 0);
-                            })()} • Pending {(() => {
-                                const list = [...baseStudio, ...baseExterior];
-                                return list.reduce((n, r) => n + (!r.approved && !r.canceled ? 1 : 0), 0);
-                            })()}</div>
+                            <div className="text-3xl font-semibold">{baseStudioPI.length}</div>
+                            <div className="mt-2 text-sm text-muted-foreground">Approved {(() => baseStudioPI.reduce((n, r) => n + (r.approved && !r.canceled ? 1 : 0), 0))()} • Canceled {(() => baseStudioPI.reduce((n, r) => n + (r.canceled ? 1 : 0), 0))()} • Pending {(() => baseStudioPI.reduce((n, r) => n + (!r.approved && !r.canceled ? 1 : 0), 0))()}</div>
                             {rangeActive ? (
-                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseStudio.length + baseExterior.length}</div>
+                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseStudioPI.length}</div>
                             ) : (
-                                <div className="mt-2 text-sm text-muted-foreground">Today {timeStudioPlusExterior.today} • This week {timeStudioPlusExterior.week} • This month {timeStudioPlusExterior.month}</div>
+                                <div className="mt-2 text-sm text-muted-foreground">Today {timeStudioPI.today} • This week {timeStudioPI.week} • This month {timeStudioPI.month}</div>
                             )}
                         </CardContent>
                     </Card>
+
                 </div>
 
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                         {Object.entries(perPlaceDynamic).map(([placeName, count]) => (
-                            <Card key={placeName}>
+                            <Card key={placeName} className="min-h-[120px]">
                                 <CardHeader>
                                     <CardTitle className="text-sm text-muted-foreground truncate">{placeName}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-semibold">{count}</div>
+                                    <div className="text-xl font-semibold">{count}</div>
                                 </CardContent>
                             </Card>
                         ))}
-                        <Card key="Exterior">
+                        <Card key="Exterior" className="min-h-[120px]">
                             <CardHeader>
                                 <CardTitle className="text-sm text-muted-foreground truncate">Exterior</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-semibold">{exteriorCount}</div>
+                                <div className="text-xl font-semibold">{exteriorCount}</div>
                             </CardContent>
                         </Card>
+
                     </div>
                 )}
 
                 <div className="flex items-center gap-2">
                     <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-                    <Button variant={tab === 'coworks' ? 'default' : 'outline'} size="sm" onClick={() => setTab('coworks')} className={tab === 'coworks' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>Cowork reservations</Button>
-                    <Button variant={tab === 'studios' ? 'default' : 'outline'} size="sm" onClick={() => setTab('studios')} className={tab === 'studios' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>Studio reservations</Button>
                 </div>
 
                 {tab === 'all' && (
                     <div className="mt-6">
                         <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                            <table className="min-w-full table-fixed divide-y divide-sidebar-border/70">
+                            <table className="min-w-ful table-fixed divide-y divide-sidebar-border/70">
                                 <colgroup>
                                     <col className="w-56" />
                                     <col className="w-32" />
-                                    <col className="w-40" />
+                                    <col className="w-60" />
                                     <col className="w-36" />
                                     <col className="w-28" />
                                     <col className="w-40" />
@@ -398,7 +438,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium">Approved</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
                                         <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
                                     </tr>
                                 </thead>
@@ -667,33 +707,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer"
-                                                        onClick={() => setSelected({
-                                                            ...sr,
-                                                            date: sr.day ?? sr.date,
-                                                            type: 'studio',
-                                                            place_type: 'studio'
-                                                        })}
-                                                        title="View details"
-                                                    >
-                                                        <FileText className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer"
-                                                        onClick={() => setInfoFor({
-                                                            ...sr,
-                                                            date: sr.day ?? sr.date,
-                                                            type: 'studio'
-                                                        })}
-                                                        title="View equipment & team"
-                                                    >
-                                                        <Search className="h-4 w-4" />
-                                                    </Button>
+
                                                     {sr.approved && (
                                                         <Button
                                                             size="sm"
