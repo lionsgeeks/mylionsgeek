@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 
 class FormationController extends Controller
@@ -109,15 +110,51 @@ class FormationController extends Controller
 // attendance
 public function attendance(Request $request)
 {
-    $attendance = Attendance::create([
-        'id' => Str::uuid(),
-        'formation_id'   => $request->formation_id,
-        'attendance_day' => $request->attendance_day,
-        'staff_name'     => Auth::user()->name,
-    ]);
+    // Find existing attendance for formation + day or create one
+    $attendance = Attendance::where('formation_id', $request->formation_id)
+        ->whereDate('attendance_day', $request->attendance_day)
+        ->first();
+
+    if (! $attendance) {
+        $attendance = Attendance::create([
+            'formation_id'   => $request->formation_id,
+            'attendance_day' => $request->attendance_day,
+            'staff_name'     => Auth::user()->name,
+        ]);
+    }
+
+    // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
+    if ($attendance && !is_numeric($attendance->id)) {
+        // Create proper record
+        $new = Attendance::create([
+            'formation_id'   => $request->formation_id,
+            'attendance_day' => $request->attendance_day,
+            'staff_name'     => Auth::user()->name,
+        ]);
+        $attendance = $new;
+    }
+
+    // Load existing list entries and attach notes per user (joined as one string)
+    $lists = AttendanceListe::where('attendance_id', $attendance->id)
+        ->get(['user_id', 'attendance_day', 'morning', 'lunch', 'evening']);
+
+    $userIds = $lists->pluck('user_id')->unique()->values();
+    $notesByUser = Note::whereIn('user_id', $userIds)
+        ->whereDate('created_at', $request->attendance_day)
+        ->get(['user_id', 'note'])
+        ->groupBy('user_id')
+        ->map(function ($group) {
+            return $group->pluck('note')->implode(' | ');
+        });
+
+    $lists = $lists->map(function ($row) use ($notesByUser) {
+        $row->note = $notesByUser[$row->user_id] ?? null;
+        return $row;
+    });
 
     return response()->json([
-        'attendance_id' => $attendance->id
+        'attendance_id' => $attendance->id,
+        'lists' => $lists,
     ]);
 }
 
@@ -125,28 +162,61 @@ public function attendance(Request $request)
 public function save(Request $request)
 {
     foreach ($request->attendance as $data) {
-    AttendanceListe::create([
-        'id'            => Str::uuid(),
-        'user_id'       => $data['user_id'] ?? null,
-        'attendance_id' => $data['attendance_id'] ?? null,
-        'attendance_day'=> $data['attendance_day'] ?? null,
-        'morning'       => $data['morning'] ?? false, 
-        'lunch'         => $data['lunch'] ?? false,
-        'evening'       => $data['evening'] ?? false,
-    ]);
+        // Update existing or create a new record per user/day/attendance
+        $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
+            ? (int) $data['attendance_id']
+            : null;
+        if ($attendanceId === null && !empty($data['attendance_day'])) {
+            $fallback = Attendance::whereDate('attendance_day', $data['attendance_day'])
+                ->orderByDesc('id')
+                ->first();
+            if ($fallback) {
+                $attendanceId = (int) $fallback->id;
+            }
+        }
+        if ($attendanceId === null) {
+            // cannot safely insert without valid attendance FK; skip this row
+            continue;
+        }
 
-    if (!empty($data['note'])) {
-        Note::create([
-            'id'     => Str::uuid(),
-            'user_id'=> $data['user_id'],
-            'note'   => $data['note'],
-            'author' => Auth::user()->name,
-        ]);
+        $existing = AttendanceListe::where('user_id', $data['user_id'] ?? null)
+            ->where('attendance_id', $attendanceId)
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'attendance_day' => $data['attendance_day'] ?? $existing->attendance_day,
+                'morning' => $data['morning'] ?? $existing->morning ?? 'present',
+                'lunch' => $data['lunch'] ?? $existing->lunch ?? 'present',
+                'evening' => $data['evening'] ?? $existing->evening ?? 'present',
+            ]);
+        } else {
+            // Some environments may have an incorrectly defined primary key; ensure an id is provided
+            $nextId = (int) (DB::table('attendance_lists')->max('id') ?? 0) + 1;
+            DB::table('attendance_lists')->insert([
+                'id' => $nextId,
+                'user_id' => $data['user_id'] ?? null,
+                'attendance_id' => $attendanceId,
+                'attendance_day' => $data['attendance_day'] ?? null,
+                'morning' => $data['morning'] ?? 'present',
+                'lunch' => $data['lunch'] ?? 'present',
+                'evening' => $data['evening'] ?? 'present',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        if (!empty($data['note'])) {
+            Note::create([
+                'id'     => Str::uuid(),
+                'user_id'=> $data['user_id'],
+                'note'   => $data['note'],
+                'author' => Auth::user()->name,
+            ]);
+        }
     }
-}
 
-
-    return back()->with('success', 'Attendance list and notes saved successfully!');
+    return response()->json(['status' => 'ok']);
 }
 
 // Update formation

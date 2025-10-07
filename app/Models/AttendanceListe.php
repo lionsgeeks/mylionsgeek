@@ -9,7 +9,6 @@ class AttendanceListe extends Model
     protected $table = 'attendance_lists'; 
 
     protected $fillable = [
-        'id',
         'user_id',
         'attendance_id',
         'attendance_day',
