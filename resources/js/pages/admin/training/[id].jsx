@@ -343,15 +343,17 @@ export default function Show({ training, usersNull }) {
         {/* Hero Image */}
         <div className="w-full h-64 rounded-2xl overflow-hidden border border-alpha/20 mb-8">
           {training.img ? (
-            <img
-              src={
-                training.category?.toLowerCase() === 'coding'
-                  ? '/assets/images/training/coding.jpg'
-                  : training.category?.toLowerCase() === 'media'
-                    ? '/assets/images/training/media.jpg'
-                    : training.img
-              }
-              alt={training.name}
+             <img
+                                        src={
+                                            training.category?.toLowerCase() === "coding"
+                                            ? "/assets/images/training/coding.jpg"
+                                            : training.category?.toLowerCase() === "media"
+                                            ? "/assets/images/training/media.jpg"
+                                            : training.img
+                                            ? `/storage/img/training/${training.img}`
+                                            : "/assets/images/training/default.jpg"
+                                        }
+                                        alt={training.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (

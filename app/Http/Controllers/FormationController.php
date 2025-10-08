@@ -228,7 +228,7 @@ public function save(Request $request)
             'category'   => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time'   => 'nullable|date',
-            'user_id'    => 'required|exists:users,id',
+            'user_id'    => 'nullable|exists:users,id',
             'promo'      => 'nullable|string|max:50',
         ]);
 
