@@ -20,7 +20,36 @@ export default function SessionControl({ session, formationId, geekoId }) {
     const [questionEnded, setQuestionEnded] = useState(false);
     const [showEndAlerts, setShowEndAlerts] = useState(false);
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [showPodium, setShowPodium] = useState(false);
+    const [podium, setPodium] = useState([]);
+    const [revealThird, setRevealThird] = useState(false);
+    const [revealSecond, setRevealSecond] = useState(false);
+    const [revealFirst, setRevealFirst] = useState(false);
     const lastQuestionIdRef = useRef(null);
+    const [animatedScores, setAnimatedScores] = useState({});
+
+    // Small inline odometer-style digit component
+    const DigitOdometer = ({ value }) => {
+        const digits = String(value ?? 0).split('');
+        return (
+            <div className="flex items-center gap-0.5">
+                {digits.map((d, i) => (
+                    <div key={i} className="overflow-hidden h-6 w-4 rounded-sm bg-alpha/10">
+                        <div
+                            className="transition-transform duration-500 ease-out will-change-transform text-center tabular-nums text-alpha font-extrabold"
+                            style={{ transform: `translateY(-${Number(d) * 24}px)` }}
+                        >
+                            {Array.from({ length: 10 }).map((_, n) => (
+                                <div key={n} className="h-6 leading-6">
+                                    {n}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     // Poll for live updates
     useEffect(() => {
@@ -39,6 +68,7 @@ export default function SessionControl({ session, formationId, geekoId }) {
                     should_end_question: data.should_end_question || false,
                     option_counts: data.option_counts || [],
                     current_answer_count: data.current_answer_count || 0,
+                    progress: data.progress || liveData.progress,
                 });
 
                 // Reset end alerts and leaderboard toggle when question changes
@@ -135,6 +165,13 @@ export default function SessionControl({ session, formationId, geekoId }) {
 
     // Countdown helper to show overlay and execute action after N seconds
     const runCountdownThen = (seconds, action) => {
+        // If last question, skip countdown
+        const total = liveData?.progress?.total || session.geeko?.questions?.length || 0;
+        const current = liveData?.progress?.current || (session.current_question_index + 1);
+        if (current >= total) {
+            action?.();
+            return;
+        }
         setShowCountdown(true);
         setCountdown(seconds);
         const timer = setInterval(() => {
@@ -202,7 +239,8 @@ export default function SessionControl({ session, formationId, geekoId }) {
                 )}
 
                 <div className="max-w-6xl mx-auto px-4 py-6">
-                    {/* PIN + Share */}
+                    {/* PIN + Share (hide when game in progress) */}
+                    {liveData.session_status !== 'in_progress' && (
                     <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-5 mb-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div className="flex items-center gap-3">
@@ -245,22 +283,27 @@ export default function SessionControl({ session, formationId, geekoId }) {
                                             <span>Start</span>
                                         </button>
                                     )}
-                                    {(session.status === 'waiting' || session.status === 'in_progress') && (
-                                        <button
-                                            onClick={handleCancelGame}
-                                            className="inline-flex items-center gap-2 border border-error/30 text-error px-5 py-2 rounded-lg hover:bg-error/10 font-semibold"
-                                        >
-                                            <StopCircle size={16} />
-                                            <span>Stop</span>
-                                        </button>
-                                    )}
                                 </div>
                             </div>
                         </div>
                     </div>
+                    )}
+
+                    {/* In-progress control: Stop only */}
+                    {liveData.session_status === 'in_progress' && (
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={handleCancelGame}
+                                className="inline-flex items-center gap-2 border border-error/30 text-error px-5 py-2 rounded-lg hover:bg-error/10 font-semibold"
+                            >
+                                <StopCircle size={16} />
+                                <span>Stop</span>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Current Question (TV view) */}
-                    {liveData.session_status === 'in_progress' && liveData.current_question && !showLeaderboard && (
+                    {liveData.session_status === 'in_progress' && liveData.current_question && !showLeaderboard && !showPodium &&  (
                         <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-8 mb-6">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="text-sm text-dark/60 dark:text-light/60">Question</div>
@@ -278,38 +321,61 @@ export default function SessionControl({ session, formationId, geekoId }) {
                             {questionEnded && (
                                 <div className="mb-4 flex items-center gap-2 text-sm">
                                     <span className="px-2 py-1 rounded-md bg-good/10 text-good font-semibold">Done</span>
-                                    <button onClick={async () => {
-                                        setShowLeaderboard(true);
-                                        // wait 2s then refresh and animate scores
-                                        setTimeout(async () => {
+                                    {(liveData?.progress?.current >= liveData?.progress?.total) ? (
+                                        <button onClick={async () => {
+                                            // Show podium after last question
+                                            setShowPodium(true);
+                                            setShowLeaderboard(false);
                                             try {
                                                 const data = await fetch(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/live-data`).then(r => r.json());
-                                                if (Array.isArray(data.leaderboard)) {
-                                                    // set initial 0 scores for animation
-                                                    const initial = {};
-                                                    data.leaderboard.forEach(p => { initial[p.id] = 0; });
-                                                    // animate to target scores
-                                                    const targets = {};
-                                                    data.leaderboard.forEach(p => { targets[p.id] = p.total_score || 0; });
-                                                    setFrozenLeaderboard(data.leaderboard);
-                                                    const duration = 1000;
-                                                    const start = performance.now();
-                                                    const step = (t) => {
-                                                        const progress = Math.min(1, (t - start) / duration);
-                                                        const current = {};
-                                                        Object.keys(targets).forEach(id => {
-                                                            current[id] = Math.round(targets[id] * progress);
-                                                        });
-                                                        // store animated values on each row as a prop-like map
-                                                        window.__animatedScores = current;
-                                                        if (progress < 1) requestAnimationFrame(step);
-                                                        else window.__animatedScores = targets;
-                                                    };
-                                                    requestAnimationFrame(step);
-                                                }
+                                                let lb = Array.isArray(data.leaderboard) ? data.leaderboard.slice() : [];
+                                                lb.sort((a,b)=> (b.total_score||0) - (a.total_score||0));
+                                                const top3 = lb.slice(0,3);
+                                                setPodium(top3);
+                                                // Reveal with suspense: 3rd, then 2nd, then 1st
+                                                setRevealThird(false); setRevealSecond(false); setRevealFirst(false);
+                                                setTimeout(()=> setRevealThird(true), 300);
+                                                setTimeout(()=> setRevealSecond(true), 1100);
+                                                setTimeout(()=> setRevealFirst(true), 1900);
                                             } catch(e) {}
-                                        }, 2000);
-                                    }} className="px-2 py-1 rounded-md border border-alpha/30 hover:bg-alpha/10">Show leaderboard</button>
+                                        }} className="px-2 py-1 rounded-md border border-alpha/30 hover:bg-alpha/10">Show podium</button>
+                                    ) : (
+                                        <button onClick={async () => {
+                                            setShowLeaderboard(true);
+                                            // wait 2s then refresh and animate scores (odometer-style digits) only for changed scores
+                                            const prevScores = {};
+                                            frozenLeaderboard.forEach(p => { prevScores[p.id] = p.total_score || 0; });
+                                            setTimeout(async () => {
+                                                try {
+                                                    const data = await fetch(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/live-data`).then(r => r.json());
+                                                    if (Array.isArray(data.leaderboard)) {
+                                                        const targets = {};
+                                                        data.leaderboard.forEach(p => { targets[p.id] = p.total_score || 0; });
+                                                        // Seed display with previous scores
+                                                        setAnimatedScores(prevScores);
+                                                        setFrozenLeaderboard(data.leaderboard);
+                                                        const duration = 1000;
+                                                        const start = performance.now();
+                                                        const animate = (t) => {
+                                                            const progress = Math.min(1, (t - start) / duration);
+                                                            const next = {};
+                                                            Object.keys(targets).forEach(id => {
+                                                                const from = prevScores[id] ?? 0;
+                                                                const to = targets[id];
+                                                                // Only animate if score changed; otherwise keep constant
+                                                                next[id] = (to !== from)
+                                                                    ? Math.round(from + (to - from) * progress)
+                                                                    : to;
+                                                            });
+                                                            setAnimatedScores(next);
+                                                            if (progress < 1) requestAnimationFrame(animate);
+                                                        };
+                                                        requestAnimationFrame(animate);
+                                                    }
+                                                } catch(e) {}
+                                            }, 2000);
+                                        }} className="px-2 py-1 rounded-md border border-alpha/30 hover:bg-alpha/10">Show leaderboard</button>
+                                    )}
                                 </div>
                             )}
                             <div className="text-4xl md:text-5xl font-extrabold text-dark dark:text-light mb-6 leading-tight">
@@ -320,7 +386,7 @@ export default function SessionControl({ session, formationId, geekoId }) {
     {liveData.current_question.options.map((opt, idx) => {
       // 🎨 Harmonized color palette — no alpha, visually balanced
       const palette = [
-        'bg-alpha/5 border-amber-300/60',
+        'bg-alpha/2.5 border-amber-300/60',
       ];
       const baseColor = palette[idx % palette.length];
 
@@ -427,6 +493,45 @@ export default function SessionControl({ session, formationId, geekoId }) {
                                 </div>
                             )}
                         </div>
+                    ) : showPodium ? (
+                        <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-8">
+                            <h3 className="text-lg font-bold text-dark dark:text-light mb-6">Podium</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                {/* 3rd */}
+                                <div className={`transform transition-all duration-700 ${revealThird ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                                    {podium[2] && (
+                                        <div className="rounded-2xl p-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-center shadow">
+                                            <div className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-2">3rd</div>
+                                            <div className="text-lg font-bold text-dark dark:text-light">{podium[2].nickname || podium[2].user?.name}</div>
+                                            <div className="text-alpha font-extrabold text-xl mt-2">{podium[2].total_score}</div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* 1st */}
+                                <div className={`transform transition-all duration-700 delay-200 ${revealFirst ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                                    {podium[0] && (
+                                        <div className="rounded-2xl p-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 text-center shadow-lg">
+                                            <div className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-2">1st</div>
+                                            <div className="text-xl font-extrabold text-dark dark:text-light">{podium[0].nickname || podium[0].user?.name}</div>
+                                            <div className="text-alpha font-black text-2xl mt-2">{podium[0].total_score}</div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* 2nd */}
+                                <div className={`transform transition-all duration-700 delay-100 ${revealSecond ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+                                    {podium[1] && (
+                                        <div className="rounded-2xl p-6 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 text-center shadow">
+                                            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">2nd</div>
+                                            <div className="text-lg font-bold text-dark dark:text-light">{podium[1].nickname || podium[1].user?.name}</div>
+                                            <div className="text-alpha font-extrabold text-xl mt-2">{podium[1].total_score}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-6 flex items-center justify-end gap-2">
+                                <button onClick={() => router.visit(`/training/${formationId}/geeko/${geekoId}/session/${session.id}/results`)} className="px-3 py-2 rounded-md border border-alpha/30 hover:bg-alpha/10 text-sm">View analytics</button>
+                            </div>
+                        </div>
                     ) : showLeaderboard ? (
                         <div className="bg-white dark:bg-dark border border-alpha/10 rounded-xl p-5">
                             <div className="flex items-center justify-between mb-4">
@@ -448,7 +553,9 @@ export default function SessionControl({ session, formationId, geekoId }) {
                                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold ${idx===0?'bg-yellow-300 text-yellow-900':idx===1?'bg-gray-300 text-gray-800':idx===2?'bg-amber-500 text-amber-900':'bg-alpha/20 text-alpha'}`}>{idx+1}</div>
                                                 <div className="text-sm font-semibold text-dark dark:text-light">{p.nickname || p.user?.name}</div>
                                         </div>
-                                            <div className="text-base font-extrabold text-alpha tabular-nums">{(window.__animatedScores && window.__animatedScores[p.id] !== undefined) ? window.__animatedScores[p.id] : p.total_score}</div>
+                                            <div className="text-base font-extrabold text-alpha tabular-nums">
+                                                <DigitOdometer value={animatedScores[p.id] ?? p.total_score} />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
