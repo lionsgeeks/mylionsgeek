@@ -75,6 +75,34 @@ export default function Show({ training, usersNull }) {
       .then(res => {
         // juste save ID f state
         setCurrentAttendanceId(res.data.attendance_id);
+        const initialized = {};
+        // If server returned existing lists, hydrate from them; otherwise default to 'present'
+        const existing = res.data.lists || [];
+        const byUserId = new Map(existing.map(l => [l.user_id, l]));
+        students.forEach((s) => {
+          const key = `${dateStr}-${s.id}`;
+          const saved = byUserId.get(s.id);
+          initialized[key] = {
+            morning: saved?.morning ?? 'present',
+            lunch: saved?.lunch ?? 'present',
+            evening: saved?.evening ?? 'present',
+            notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
+          };
+        });
+        setAttendanceData((prev) => ({ ...prev, ...initialized }));
+        // If nothing saved yet, prefill DB with present
+        if (existing.length === 0) {
+          const dataToSave = students.map((s) => ({
+            user_id: s.id,
+            attendance_day: dateStr,
+            attendance_id: Number(res.data.attendance_id),
+            morning: 'present',
+            lunch: 'present',
+            evening: 'present',
+            note: null,
+          }));
+          axios.post('/admin/attendance/save', { attendance: dataToSave });
+        }
         setShowAttendanceList(true);
       })
       .catch(err => console.error(err));
@@ -82,21 +110,26 @@ export default function Show({ training, usersNull }) {
 
 
   //   atteandacelist
-  function handleSave() {
+  async function handleSave() {
     const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
       const studentId = key.split('-')[1];
       return {
         user_id: studentId,
         attendance_day: selectedDate,
-        attendance_id: currentAttendanceId,
+        attendance_id: Number(currentAttendanceId),
         morning: value.morning,
         lunch: value.lunch,
         evening: value.evening,
-        note: value.notes || null,
+        note: Array.isArray(value.notes) ? value.notes.join(' | ') : (value.notes || null),
       };
     });
 
-    router.post('/admin/attendance/save', { attendance: dataToSave });
+    try {
+      await axios.post('/admin/attendance/save', { attendance: dataToSave });
+      setShowAttendanceList(false);
+    } catch (err) {
+      console.error('Failed to save attendance', err);
+    }
   }
 
   // Wheel functions
@@ -151,6 +184,38 @@ export default function Show({ training, usersNull }) {
   const continueSpinning = () => {
     setSelectedWinner(null);
     setShowWinnerModal(false);
+  };
+
+  // Notes helpers: add/remove chip-style notes per student
+  const addNote = (studentKey, noteText) => {
+    const text = (noteText || '').trim();
+    if (!text) return;
+    setAttendanceData(prev => {
+      const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+      const existingNotes = Array.isArray(prevForStudent.notes) ? prevForStudent.notes : (prevForStudent.notes ? [prevForStudent.notes] : []);
+      return {
+        ...prev,
+        [studentKey]: {
+          ...prevForStudent,
+          notes: [...existingNotes, text]
+        }
+      };
+    });
+  };
+
+  const removeNote = (studentKey, index) => {
+    setAttendanceData(prev => {
+      const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+      const existingNotes = Array.isArray(prevForStudent.notes) ? [...prevForStudent.notes] : (prevForStudent.notes ? [prevForStudent.notes] : []);
+      existingNotes.splice(index, 1);
+      return {
+        ...prev,
+        [studentKey]: {
+          ...prevForStudent,
+          notes: existingNotes
+        }
+      };
+    });
   };
   // Filter enrolled students
   const filteredStudents = students.filter(
@@ -518,8 +583,8 @@ export default function Show({ training, usersNull }) {
             </div>
 
             <div
-              className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-hidden"
-              style={{ height: 'calc(100svh - 360px)' }}
+              className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-2 sm:p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-auto"
+              style={{ height: 'calc(100svh - 260px)' }}
             >
               <FullCalendar
                 ref={(el) => {
@@ -565,28 +630,7 @@ export default function Show({ training, usersNull }) {
               />
             </div>
 
-            {/* Legend & Close Button */}
-            <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
-              <div className="flex flex-wrap items-center gap-4 text-sm lg:text-base text-dark/70 dark:text-light/70">
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-green-500 rounded-full"></span>
-                  <span className="font-semibold">Present</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-red-500 rounded-full"></span>
-                  <span className="font-semibold">Absent</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-yellow-500 rounded-full"></span>
-                  <span className="font-semibold">Late</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-blue-500 rounded-full"></span>
-                  <span className="font-semibold">Excused</span>
-                </div>
-              </div>
-              {/* Close button removed per request; use the top-right X */}
-            </div>
+            {/* Legend removed to allow calendar more vertical space */}
           </DialogContent>
         </Dialog>
 
@@ -605,19 +649,17 @@ export default function Show({ training, usersNull }) {
               <p className="text-dark/70 dark:text-light/70 text-sm md:text-base">Mark attendance for each student</p>
             </DialogHeader>
             <div className="mt-4">
-              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm ml-0">
+              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm -ml-3 md:-ml-4">
                 {/* Mobile cards layout */}
                 <div className="block md:hidden p-3 pr-4 space-y-3">
                   {students.map((student) => {
                     const studentKey = `${selectedDate}-${student.id}`;
-                    const currentData = attendanceData[studentKey] || {
-                      status: 'present',
-                      time: '09:00',
-                      notes: '',
-                      slot930: false,
-                      slot1130: false,
-                      slot1400: false,
-                    };
+                        const currentData = attendanceData[studentKey] || {
+                          morning: 'present',
+                          lunch: 'present',
+                          evening: 'present',
+                          notes: '',
+                        };
                     return (
                       <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
                         <div className="flex items-center gap-3 mb-3">
@@ -631,7 +673,7 @@ export default function Show({ training, usersNull }) {
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                           <Select
-                            value={currentData.morning}
+                            value={currentData.morning ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, morning: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -649,7 +691,7 @@ export default function Show({ training, usersNull }) {
                           </Select>
 
                           <Select
-                            value={currentData.lunch}
+                            value={currentData.lunch ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, lunch: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -667,7 +709,7 @@ export default function Show({ training, usersNull }) {
                           </Select>
 
                           <Select
-                            value={currentData.evening}
+                            value={currentData.evening ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, evening: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -684,15 +726,32 @@ export default function Show({ training, usersNull }) {
                             </SelectContent>
                           </Select>
 
-                          <Input
-                            type="text"
-                            placeholder="Optional notes..."
-                            value={currentData.notes}
-                            onChange={(e) => {
-                              const newData = { ...currentData, notes: e.target.value };
-                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                            }}
-                          />
+                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark p-2">
+                            {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
+                                {n}
+                                <button
+                                  type="button"
+                                  className="text-red-500 hover:text-red-600"
+                                  onClick={() => removeNote(studentKey, idx)}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              type="text"
+                              placeholder="Add note and press Enter"
+                              className="flex-1 bg-transparent text-sm outline-hidden"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  addNote(studentKey, e.currentTarget.value);
+                                  e.currentTarget.value = '';
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -716,12 +775,10 @@ export default function Show({ training, usersNull }) {
                       {students.map((student) => {
                         const studentKey = `${selectedDate}-${student.id}`;
                         const currentData = attendanceData[studentKey] || {
-                          status: 'present',
-                          time: '09:00',
+                          morning: 'present',
+                          lunch: 'present',
+                          evening: 'present',
                           notes: '',
-                          slot930: false,
-                          slot1130: false,
-                          slot1400: false,
                         };
                         return (
                           <tr key={student.id} className="hover:bg-accent/30 transition-colors">
@@ -738,8 +795,8 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                value={currentData.morning}
+                                  <Select
+                                    value={currentData.morning ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, morning: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -759,8 +816,8 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                  value={currentData.lunch}
+                                  <Select
+                                    value={currentData.lunch ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, lunch: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -780,8 +837,8 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                value={currentData.evening}
+                                  <Select
+                                    value={currentData.evening ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, evening: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
@@ -801,16 +858,32 @@ export default function Show({ training, usersNull }) {
                             </td>
 
                             <td className="px-4 py-3 text-center">
-                              <input
-                                type="text"
-                                placeholder="Optional notes..."
-                                className="border border-alpha/30 rounded-xl px-3 py-2 bg-light dark:bg-dark text-sm w-full min-w-[180px]"
-                                value={currentData.notes}
-                                onChange={(e) => {
-                                  const newData = { ...currentData, notes: e.target.value };
-                                  setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                                }}
-                              />
+                              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark px-2 py-2 text-sm">
+                                {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
+                                  <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
+                                    {n}
+                                    <button
+                                      type="button"
+                                      className="text-red-500 hover:text-red-600"
+                                      onClick={() => removeNote(studentKey, idx)}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                                <input
+                                  type="text"
+                                  placeholder="Add note and press Enter"
+                                  className="flex-1 bg-transparent outline-hidden"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      addNote(studentKey, e.currentTarget.value);
+                                      e.currentTarget.value = '';
+                                    }
+                                  }}
+                                />
+                              </div>
                             </td>
 
 
@@ -841,7 +914,6 @@ export default function Show({ training, usersNull }) {
                   onClick={() => {
                     // Save attendance logic here
                     handleSave();
-                    setShowAttendanceList(false);
                   }}
                   className="px-6 py-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] w-full sm:w-auto"
                 >
