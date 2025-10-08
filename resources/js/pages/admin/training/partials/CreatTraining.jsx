@@ -151,7 +151,7 @@ export default function CreatTraining({ coaches }) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-yellow-600 hover:bg-yellow-700 cursor-pointer"
               disabled={processing}
             >
               {processing ? 'Saving...' : 'Save'}

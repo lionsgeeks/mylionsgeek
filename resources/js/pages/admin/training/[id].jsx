@@ -246,7 +246,7 @@ export default function Show({ training, usersNull }) {
   });
 
   // Delete student
-
+  
 
   // Add student from modal
   const handleAddStudent = (user) => {
@@ -266,7 +266,7 @@ export default function Show({ training, usersNull }) {
   const confirmDelete = () => {
     if (studentToDelete) {
       router.delete(`/trainings/${training.id}/students/${studentToDelete.id}`, {
-        onSuccess: () => {
+      onSuccess: () => {
           setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
           setAvailableUsers(prev => [...prev, studentToDelete]);
           setShowDeleteConfirm(false);
@@ -328,11 +328,11 @@ export default function Show({ training, usersNull }) {
                   <button
                     onClick={() => {
                       setShowPlayDropdown(false);
-                      // Add The Geek functionality later
+                      router.visit(`/training/${training.id}/geeko`);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-b-xl transition-colors text-dark dark:text-light font-semibold"
                   >
-                    The Geek
+                    Geeko
                   </button>
                 </div>
               )}
@@ -370,8 +370,8 @@ export default function Show({ training, usersNull }) {
               <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">
-                    Enrolled Students ({students.length})
-                  </h2>
+                  Enrolled Students ({students.length})
+                </h2>
                 </div>
 
                 {/* Filter Input */}
@@ -496,7 +496,7 @@ export default function Show({ training, usersNull }) {
               <div className="space-y-2">
                 {filteredAvailableUsers.length === 0 ? (
                   <div className="px-4 py-6 text-center text-dark/50 dark:text-light/60">
-                    No available students
+                No available students
                   </div>
                 ) : (
                   filteredAvailableUsers.map(user => (
@@ -525,8 +525,8 @@ export default function Show({ training, usersNull }) {
                         Add
                       </Button>
                     </div>
-                  ))
-                )}
+            ))
+          )}
               </div>
             </div>
             <div className="mt-4 text-right">
@@ -540,14 +540,14 @@ export default function Show({ training, usersNull }) {
           <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 flex flex-col gap-4 sm:gap-5 p-4 sm:p-6 md:p-8 rounded-none sm:rounded-2xl shadow-xl">
 
             {/* Header */}
-            <DialogHeader>
+    <DialogHeader>
               <DialogTitle className="text-3xl lg:text-4xl font-extrabold text-dark dark:text-light">
                 Training Attendance Calendar
               </DialogTitle>
               <p className="text-dark/70 dark:text-light/70 text-lg lg:text-xl">
                 Click on any day to manage attendance for that date
               </p>
-            </DialogHeader>
+    </DialogHeader>
 
             {/* Calendar */}
             {/* Custom calendar toolbar */}
@@ -622,12 +622,12 @@ export default function Show({ training, usersNull }) {
                 dayCellContent={(info) => (
                   <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
                     {info.dayNumberText}
-                  </div>
+    </div>
                 )}
                 dayHeaderContent={(info) => (
                   <div className="text-center font-bold text-dark dark:text-light">
                     {info.text}
-                  </div>
+    </div>
                 )}
               />
             </div>
@@ -922,7 +922,7 @@ export default function Show({ training, usersNull }) {
                   Save Attendance
                 </Button>
               </div>
-            </div>
+        </div>
 
           </DialogContent>
         </Dialog>
@@ -952,7 +952,7 @@ export default function Show({ training, usersNull }) {
               <p className="text-dark/70 dark:text-light/70">
                 Are you sure you want to remove <strong>{studentToDelete?.name}</strong> from this training?
               </p>
-            </div>
+    </div>
             <div className="mt-6 flex justify-end space-x-3">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
               <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmDelete}>Remove Student</Button>

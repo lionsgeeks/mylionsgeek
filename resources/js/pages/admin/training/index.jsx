@@ -1,11 +1,11 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Timer, User ,Trash2 ,Edit3, BookOpen, TrendingUp } from 'lucide-react';
+import { BookOpen, Timer, Trash2, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
 import UpdateTraining from './partials/UpdateTraining';
 
-export default function Training({ trainings, coaches, filters = {}, tracks = [],promos=[]}) {
+export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
     const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
@@ -26,36 +26,36 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     const confirmDelete = () => {
         if (trainingToDelete) {
             router.delete(`/trainings/${trainingToDelete.id}`, {
-                onSuccess: () => closeDeleteModal()
+                onSuccess: () => closeDeleteModal(),
             });
         }
     };
 
-    const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach , promoValue = selectedPromo) => {
+    const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach, promoValue = selectedPromo) => {
         const params = new URLSearchParams();
         if (coachValue) params.set('coach', coachValue);
         if (trackValue) params.set('track', trackValue);
         if (promoValue) params.set('promo', promoValue);
-        
-        
+
         router.visit(`/training?${params.toString()}`);
     };
+
     const handleCoachChange = (e) => {
         const value = e.target.value;
         setSelectedCoach(value);
-        applyFilters(selectedTrack, value);
+        applyFilters(selectedTrack, value, selectedPromo);
     };
-    const handlePromoChange = (e) => {
-    const value = e.target.value;
-    setSelectedPromo(value);
-    applyFilters(selectedTrack, selectedCoach, value);
-};
-
 
     const handleTrackChange = (e) => {
         const value = e.target.value;
         setSelectedTrack(value);
-        applyFilters(value, selectedCoach);
+        applyFilters(value, selectedCoach, selectedPromo);
+    };
+
+    const handlePromoChange = (e) => {
+        const value = e.target.value;
+        setSelectedPromo(value);
+        applyFilters(selectedTrack, selectedCoach, value);
     };
 
     return (
@@ -156,183 +156,160 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 </div>
 
                 {/* Stats Cards */}
-                <div className="mb-8">
-                    {trainings && trainings.length > 0 && (
-                        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
-                                <div className="text-lg font-bold text-yellow-700">Total Programs</div>
-                            </div>
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">
-                                    {trainings.filter((t) => t.status === 'active').length}
+                {trainings && trainings.length > 0 && (
+                    <div className="mt-12 mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Total Programs</div>
+                        </div>
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.filter((t) => t.status === 'active').length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Active Now</div>
+                        </div>
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Training Cards */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                    {trainings && trainings.length > 0 ? (
+                        trainings.map((training) => (
+                            <div
+                                key={training.id}
+                                className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
+                                onClick={() => router.visit(`/trainings/${training.id}`)}
+                            >
+                                {/* Image */}
+                                <div className="relative h-40 overflow-hidden">
+                                    <img
+                                        src={
+                                            training.category?.toLowerCase() === 'coding'
+                                                ? '/assets/images/training/coding.jpg'
+                                                : training.category?.toLowerCase() === 'media'
+                                                  ? '/assets/images/training/media.jpg'
+                                                  : training.img
+                                                    ? `/storage/img/training/${training.img}`
+                                                    : '/assets/images/training/default.jpg'
+                                        }
+                                        alt={training.name}
+                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    {/* Status Badge */}
+                                    {training.status && (
+                                        <div className="absolute top-3 left-3">
+                                            <span
+                                                className={`rounded-md px-2 py-1 text-xs font-medium ${
+                                                    training.status === 'active'
+                                                        ? 'bg-green-500/90 text-white'
+                                                        : training.status === 'upcoming'
+                                                          ? 'bg-blue-500/90 text-white'
+                                                          : 'bg-gray-500/90 text-white'
+                                                }`}
+                                            >
+                                                {training.status}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="text-lg font-bold text-yellow-700">Active Now</div>
+
+                                {/* Card Content */}
+                                <div className="space-y-3 p-4">
+                                    {/* Category + Actions */}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium tracking-wide text-alpha uppercase">{training.category}</span>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                }}
+                                            >
+                                                <UpdateTraining training={training} coaches={coaches} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openDeleteModal(training);
+                                                }}
+                                                className="cursor-pointer rounded-lg border border-transparent p-1 px-3 text-red-600 hover:border-red-600"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
+
+                                    {/* Description */}
+                                    {training.description && (
+                                        <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">{training.description}</p>
+                                    )}
+
+                                    {/* Coach */}
+                                    <div className="flex items-center space-x-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
+                                            {training.coach
+                                                ? training.coach.name
+                                                      .split(' ')
+                                                      .map((n) => n[0])
+                                                      .join('')
+                                                      .toUpperCase()
+                                                : 'C'}
+                                        </div>
+                                        <span className="text-sm text-dark/70 dark:text-light/70">{training.coach?.name || 'Expert Instructor'}</span>
+                                    </div>
+
+                                    {/* Timer & Users */}
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                            <Timer size={14} />
+                                            <span>{training.start_time || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                            <User size={14} />
+                                            <span>{training.users_count ?? 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
-                                <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
-                            </div>
+                        ))
+                    ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-20">
+                            <h3 className="mb-3 text-2xl font-bold text-gray-800">Ready to Create Something Amazing?</h3>
+                            <p className="mb-8 max-w-md text-center leading-relaxed text-gray-600">
+                                Start your journey by adding your first coding or media training program.
+                            </p>
+                            <CreatTraining coaches={coaches} />
                         </div>
                     )}
                 </div>
 
-                {/* Training Cards Grid */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-  {trainings && trainings.length > 0 ? (
-    trainings.map((training) => (
-      <div
-        key={training.id}
-        className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
-        onClick={() => router.visit(`/trainings/${training.id}`)}
-      >
-        {/* Training Image */}
-        <div className="relative h-40 overflow-hidden">
-          <img
-            src={
-              training.category?.toLowerCase() === "coding"
-                ? "/assets/images/training/coding.jpg"
-                : training.category?.toLowerCase() === "media"
-                ? "/assets/images/training/media.jpg"
-                : training.img
-                ? `/storage/img/training/${training.img}`
-                : "/assets/images/training/default.jpg"
-            }
-            alt={training.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-
-          {/* Status Badge */}
-          {training.status && (
-            <div className="absolute top-3 left-3">
-              <span
-                className={`rounded-md px-2 py-1 text-xs font-medium ${
-                  training.status === "active"
-                    ? "bg-green-500/90 text-white"
-                    : training.status === "upcoming"
-                    ? "bg-blue-500/90 text-white"
-                    : "bg-gray-500/90 text-white"
-                }`}
-              >
-                {training.status}
-              </span>
+                {/* Delete Modal */}
+                {deleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
+                            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">Confirm Deletion</h3>
+                            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
+                                Are you sure you want to delete "{trainingToDelete?.name}"?
+                            </p>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={closeDeleteModal}
+                                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
+                                >
+                                    Cancel
+                                </button>
+                                <button onClick={confirmDelete} className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
-          )}
-        </div>
-
-        {/* Card Content */}
-        <div className="space-y-3 p-4">
-  {/* Category + Action Buttons */}
-  <div className="flex items-center justify-between">
-    <span className="text-xs font-medium tracking-wide text-alpha uppercase">
-      {training.category}
-    </span>
-
-    <div className="flex gap-2">
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        <UpdateTraining training={training} coaches={coaches} />
-      </button>
-
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          openDeleteModal(training);
-        }}
-        className="rounded-lg p-1 text-red-600 border border-transparent hover:border-red-600 px-3 cursor-pointer"
-      >
-        <Trash2 size={16} />
-      </button>
-    </div>
-  </div>
-
-  {/* Title */}
-  <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">
-    {training.name}
-  </h3>
-
-  {/* Description */}
-  {training.description && (
-    <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">
-      {training.description}
-    </p>
-  )}
-
-  {/* Coach */}
-  <div className="flex items-center space-x-2">
-    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
-      {training.coach
-        ? training.coach.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-        : "C"}
-    </div>
-    <span className="text-sm text-dark/70 dark:text-light/70">
-      {training.coach?.name || "Expert Instructor"}
-    </span>
-  </div>
-
-  {/* Timer & Users */}
-  <div className="flex items-center justify-between text-sm">
-    <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-      <Timer size={14} />
-      <span>{training.start_time || "N/A"}</span>
-    </div>
-    <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-      <User size={14} />
-      <span>{training.users_count ?? 0}</span>
-    </div>
-  </div>
-</div>
-
-      </div>
-    ))
-  ) : (
-    <div className="col-span-full flex flex-col items-center justify-center py-20">
-      <h3 className="mb-3 text-2xl font-bold text-gray-800">
-        Ready to Create Something Amazing?
-      </h3>
-      <p className="mb-8 max-w-md text-center leading-relaxed text-gray-600">
-        Start your journey by adding your first coding or media training program.
-      </p>
-      <CreatTraining coaches={coaches} />
-    </div>
-  )}
-</div>
-
-            </div>
-            {deleteModalOpen && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
-            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">
-                Confirm Deletion
-            </h3>
-            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
-                Are you sure you want to delete "{trainingToDelete?.name}"?
-            </p>
-            <div className="flex justify-end space-x-3">
-                <button
-                    onClick={closeDeleteModal}
-                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={confirmDelete}
-                    className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                >
-                    Delete
-                </button>
-            </div>
-        </div>
-    </div>
-)}
-
         </AppLayout>
     );
 }
