@@ -56,7 +56,7 @@ export default function UpdateTraining({ training, coaches }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white">
+        <Button className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-500 px-6 py-2.5 font-medium text-white shadow-md transition-all hover:from-yellow-600 hover:to-yellow-600 hover:shadow-lg active:scale-95">
           <Pencil size={18} />
         </Button>
       </DialogTrigger>
