@@ -219,7 +219,7 @@ public function save(Request $request)
             AttendanceListe::updateOrCreate(
                 [
                     'attendance_id' => $attendanceId,
-                    'user_id' => (string) $data['user_id'],
+                    'user_id' => (int) $data['user_id'],
                 ],
                 $payload
             );
@@ -229,8 +229,7 @@ public function save(Request $request)
                 $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
                 foreach ($notes as $noteText) {
                     Note::create([
-                        'id'            => Str::uuid(),
-                        'user_id'       => $data['user_id'],
+                        'user_id'       => (int) $data['user_id'],
                         'attendance_id' => $attendanceId,
                         'note'          => $noteText,
                         'author'        => Auth::user()->name,
