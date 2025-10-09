@@ -1,187 +1,315 @@
-import AppLayout from '@/layouts/app-layout'
-import { Head, router } from '@inertiajs/react'
-import React, { useState } from 'react'
-import CreatTraining from './partials/CreatTraining'
-import { Timer, User } from 'lucide-react'
+import AppLayout from '@/layouts/app-layout';
+import { Head, router } from '@inertiajs/react';
+import { BookOpen, Timer, Trash2, TrendingUp, User } from 'lucide-react';
+import { useState } from 'react';
+import CreatTraining from './partials/CreatTraining';
+import UpdateTraining from './partials/UpdateTraining';
 
-export default function Training({ trainings, coaches, filters = {}, tracks = [] }) {
-  const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
-  const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
+export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
+    const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
+    const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
+    const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
 
-  const applyFilters = () => {
-    const params = new URLSearchParams();
-    if (selectedCoach) params.set('coach', selectedCoach);
-    if (selectedTrack) params.set('track', selectedTrack);
-    router.visit(`/training?${params.toString()}`);
-  };
-  return (
-    <AppLayout>
-      <Head title="Training" />
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [trainingToDelete, setTrainingToDelete] = useState(null);
 
-      <div className="p-6 min-h-screen">
-        {/* Header with Button */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-extrabold bg-dark dark:bg-light bg-clip-text text-transparent">
-              Training Programs
-            </h1>
-            <p className="text-dark/70 mt-2 dark:text-light/70">Discover amazing coding and media courses</p>
-          </div>
-          <CreatTraining coaches={coaches} />
-        </div>
+    const openDeleteModal = (training) => {
+        setTrainingToDelete(training);
+        setDeleteModalOpen(true);
+    };
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-sm text-dark/70 dark:text-light/70 mb-1">Coach</label>
-            <select value={selectedCoach} onChange={e => setSelectedCoach(e.target.value)} className="border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark">
-              <option value="">All</option>
-              {coaches.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-dark/70 dark:text-light/70 mb-1">Track</label>
-            <select value={selectedTrack} onChange={e => setSelectedTrack(e.target.value)} className="border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark">
-              <option value="">All</option>
-              {tracks.map(t => (<option key={t} value={t}>{t}</option>))}
-            </select>
-          </div>
-          <button onClick={applyFilters} className="px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10">Apply</button>
-        </div>
-        <div className='mb-8'>
-          {/* Modern Stats Cards */}
-          {trainings && trainings.length > 0 && (
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-8 text-center border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="text-4xl font-black text-yellow-600 mb-2">
-                  {trainings.length}
-                </div>
-                <div className="text-yellow-700 font-bold text-lg">
-                  Total Programs
-                </div>
+    const closeDeleteModal = () => {
+        setTrainingToDelete(null);
+        setDeleteModalOpen(false);
+    };
 
-              </div>
-              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-8 text-center border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="text-4xl font-black text-yellow-600 mb-2">
-                  {trainings.filter(t => t.status === 'active').length}
-                </div>
-                <div className="text-yellow-700 font-bold text-lg">
-                  Active Now
-                </div>
+    const confirmDelete = () => {
+        if (trainingToDelete) {
+            router.delete(`/trainings/${trainingToDelete.id}`, {
+                onSuccess: () => closeDeleteModal(),
+            });
+        }
+    };
 
-              </div>
-              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-2xl p-8 text-center border border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="text-4xl font-black text-yellow-600 mb-2">
-                  {coaches.length}
-                </div>
-                <div className="text-yellow-700 font-bold text-lg">
-                  Expert Mentors
+    const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach, promoValue = selectedPromo) => {
+        const params = new URLSearchParams();
+        if (coachValue) params.set('coach', coachValue);
+        if (trackValue) params.set('track', trackValue);
+        if (promoValue) params.set('promo', promoValue);
+
+        router.visit(`/training?${params.toString()}`);
+    };
+
+    const handleCoachChange = (e) => {
+        const value = e.target.value;
+        setSelectedCoach(value);
+        applyFilters(selectedTrack, value, selectedPromo);
+    };
+
+    const handleTrackChange = (e) => {
+        const value = e.target.value;
+        setSelectedTrack(value);
+        applyFilters(value, selectedCoach, selectedPromo);
+    };
+
+    const handlePromoChange = (e) => {
+        const value = e.target.value;
+        setSelectedPromo(value);
+        applyFilters(selectedTrack, selectedCoach, value);
+    };
+
+    return (
+        <AppLayout>
+            <Head title="Training" />
+
+            <div className="min-h-screen p-6">
+                {/* Header with Button */}
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="bg-dark bg-clip-text text-4xl font-extrabold text-transparent dark:bg-light">Training Programs</h1>
+                        <p className="mt-2 text-dark/70 dark:text-light/70">Discover amazing coding and media courses</p>
+                    </div>
+                    <CreatTraining coaches={coaches} />
                 </div>
 
-              </div>
+                {/* Filters */}
+                <div className="mb-10 rounded-2xl border border-yellow-200 p-6 shadow-sm backdrop-blur-md transition-all duration-300 dark:bg-gray-950/50">
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
+                        {/* Coach */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
+                                <User size={16} /> Coach
+                            </label>
+                            <select
+                                value={selectedCoach}
+                                onChange={handleCoachChange}
+                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                            >
+                                <option value="">All Coaches</option>
+                                {coaches.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Track */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
+                                <BookOpen size={16} /> Track
+                            </label>
+                            <select
+                                value={selectedTrack}
+                                onChange={handleTrackChange}
+                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                            >
+                                <option value="">All Tracks</option>
+                                {tracks
+                                    .filter((t) => t)
+                                    .map((t) => (
+                                        <option key={t} value={t}>
+                                            {t}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+
+                        {/* Promo */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
+                                <TrendingUp size={16} /> Promo
+                            </label>
+                            <select
+                                value={selectedPromo}
+                                onChange={handlePromoChange}
+                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                            >
+                                <option value="">All Promos</option>
+                                {promos
+                                    .filter((p) => p)
+                                    .map((p) => (
+                                        <option key={p} value={p}>
+                                            {p}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Reset Button */}
+                    {(selectedCoach || selectedTrack || selectedPromo) && (
+                        <div className="mt-6 flex justify-center">
+                            <button
+                                onClick={() => {
+                                    setSelectedCoach('');
+                                    setSelectedTrack('');
+                                    setSelectedPromo('');
+                                    router.visit('/training');
+                                }}
+                                className="rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-400 px-6 py-2 font-semibold text-white shadow-md transition-all hover:from-yellow-600 hover:to-yellow-500"
+                            >
+                                Reset Filters
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Stats Cards */}
+                {trainings && trainings.length > 0 && (
+                    <div className="mt-12 mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Total Programs</div>
+                        </div>
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.filter((t) => t.status === 'active').length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Active Now</div>
+                        </div>
+                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
+                            <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
+                            <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Training Cards */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+                    {trainings && trainings.length > 0 ? (
+                        trainings.map((training) => (
+                            <div
+                                key={training.id}
+                                className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
+                                onClick={() => router.visit(`/trainings/${training.id}`)}
+                            >
+                                {/* Image */}
+                                <div className="relative h-40 overflow-hidden">
+                                    <img
+                                        src={
+                                            training.category?.toLowerCase() === 'coding'
+                                                ? '/assets/images/training/coding.jpg'
+                                                : training.category?.toLowerCase() === 'media'
+                                                  ? '/assets/images/training/media.jpg'
+                                                  : training.img
+                                                    ? `/storage/img/training/${training.img}`
+                                                    : '/assets/images/training/default.jpg'
+                                        }
+                                        alt={training.name}
+                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    {/* Status Badge */}
+                                    {training.status && (
+                                        <div className="absolute top-3 left-3">
+                                            <span
+                                                className={`rounded-md px-2 py-1 text-xs font-medium ${
+                                                    training.status === 'active'
+                                                        ? 'bg-green-500/90 text-white'
+                                                        : training.status === 'upcoming'
+                                                          ? 'bg-blue-500/90 text-white'
+                                                          : 'bg-gray-500/90 text-white'
+                                                }`}
+                                            >
+                                                {training.status}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Card Content */}
+                                <div className="space-y-3 p-4">
+                                    {/* Category + Actions */}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-medium tracking-wide text-alpha uppercase">{training.category}</span>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                }}
+                                            >
+                                                <UpdateTraining training={training} coaches={coaches} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openDeleteModal(training);
+                                                }}
+                                                className="cursor-pointer rounded-lg border border-transparent p-1 px-3 text-red-600 hover:border-red-600"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
+
+                                    {/* Description */}
+                                    {training.description && (
+                                        <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">{training.description}</p>
+                                    )}
+
+                                    {/* Coach */}
+                                    <div className="flex items-center space-x-2">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
+                                            {training.coach
+                                                ? training.coach.name
+                                                      .split(' ')
+                                                      .map((n) => n[0])
+                                                      .join('')
+                                                      .toUpperCase()
+                                                : 'C'}
+                                        </div>
+                                        <span className="text-sm text-dark/70 dark:text-light/70">{training.coach?.name || 'Expert Instructor'}</span>
+                                    </div>
+
+                                    {/* Timer & Users */}
+                                    <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                            <Timer size={14} />
+                                            <span>{training.start_time || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                            <User size={14} />
+                                            <span>{training.users_count ?? 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-20">
+                            <h3 className="mb-3 text-2xl font-bold text-gray-800">Ready to Create Something Amazing?</h3>
+                            <p className="mb-8 max-w-md text-center leading-relaxed text-gray-600">
+                                Start your journey by adding your first coding or media training program.
+                            </p>
+                            <CreatTraining coaches={coaches} />
+                        </div>
+                    )}
+                </div>
+
+                {/* Delete Modal */}
+                {deleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
+                            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">Confirm Deletion</h3>
+                            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
+                                Are you sure you want to delete "{trainingToDelete?.name}"?
+                            </p>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={closeDeleteModal}
+                                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
+                                >
+                                    Cancel
+                                </button>
+                                <button onClick={confirmDelete} className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
-          )}
-        </div>
-        {/* Training Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
-          {trainings && trainings.length > 0 ? (
-            trainings.map((training) => (
-              <div
-                key={training.id}
-                className="bg-light dark:bg-dark rounded-xl border border-alpha/20 hover:border-alpha/40 transition-all duration-300 overflow-hidden group cursor-pointer"
-                onClick={() => router.visit(`/trainings/${training.id}`)}
-              >
-                {/* Training Image */}
-                <div className="relative h-40 overflow-hidden">
-                  <img
-                    src={
-                      training.category?.toLowerCase() === "coding"
-                        ? "/assets/images/training/coding.jpg"
-                        : training.category?.toLowerCase() === "media"
-                          ? "/assets/images/training/media.jpg"
-                          : training.img || "/assets/images/training/default.jpg"
-                    }
-                    alt={training.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  
-                  {/* Status Badge */}
-                  {training.status && (
-                    <div className="absolute top-3 right-3">
-                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                        training.status === 'active'
-                          ? 'bg-green-500/90 text-white'
-                          : training.status === 'upcoming'
-                            ? 'bg-blue-500/90 text-white'
-                            : 'bg-gray-500/90 text-white'
-                      }`}>
-                        {training.status}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Card Content */}
-                <div className="p-4 space-y-3">
-                  {/* Category & Name */}
-                  <div>
-                    <span className="text-xs font-medium text-alpha uppercase tracking-wide">
-                      {training.category}
-                    </span>
-                    <h3 className="text-lg font-semibold text-dark dark:text-light mt-1 line-clamp-2">
-                      {training.name}
-                    </h3>
-                  </div>
-
-                  {/* Description */}
-                  {training.description && (
-                    <p className="text-sm text-dark/70 dark:text-light/70 line-clamp-2">
-                      {training.description}
-                    </p>
-                  )}
-
-                  {/* Coach */}
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-alpha flex items-center justify-center text-light text-xs font-bold">
-                      {training.coach ? training.coach.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'C'}
-                    </div>
-                    <span className="text-sm text-dark/70 dark:text-light/70">
-                      {training.coach?.name || 'Expert Instructor'}
-                    </span>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                      <Timer size={14} />
-                      <span>{training.start_time || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                      <User size={14} />
-                      <span>{training.users_count ?? 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            /* Modern Empty State */
-            <div className="col-span-full flex flex-col items-center justify-center py-20">
-              <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                Ready to Create Something Amazing?
-              </h3>
-              <p className="text-gray-600 text-center max-w-md mb-8 leading-relaxed">
-                Start your journey by adding your first coding or media training program.
-
-              </p>
-              <CreatTraining coaches={coaches} />
-            </div>
-          )}
-        </div>
-
-
-      </div>
-    </AppLayout>
-  )
+        </AppLayout>
+    );
 }
-

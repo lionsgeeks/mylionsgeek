@@ -7,6 +7,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
 
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/{user}', [UsersController::class, 'show']);
+    Route::get('/users/{user}/attendance-summary', [UsersController::class, 'attendanceSummary']);
     Route::post('/users/store', [UsersController::class, 'store']);
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);

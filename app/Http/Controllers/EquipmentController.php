@@ -61,80 +61,101 @@ class EquipmentController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'mark' => ['required', 'string', 'max:255'],
-            'reference' => ['required', 'string', 'max:255'],
-            'equipment_type' => ['required', 'string', 'max:255'],
-            'other_type' => ['nullable', 'string', 'max:255', 'required_if:equipment_type,other'],
-            'state' => ['required', 'boolean'],
-            'image' => ['nullable', 'image', 'max:4096'],
-        ]);
+        try {
+            // Clean and validate the request data
+            $rules = [
+                'mark' => 'required|string|max:255',
+                'reference' => 'required|string|max:255',
+                'equipment_type' => 'required|string|max:255',
+                'other_type' => 'nullable|string|max:255|required_if:equipment_type,other',
+                'state' => 'required|in:0,1,true,false',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:4096',
+            ];
 
-        // Generate ID manually because current DB schema has non-AI id
-        $nextId = (int) (DB::table('equipment')->max('id') ?? 0) + 1;
+            $validated = $request->validate($rules);
 
-        // Handle image upload
-        $imagePath = '';
-        if ($request->hasFile('image')) {
-            // Store under storage/app/public/img/equipment
-            $path = $request->file('image')->store('img/equipment', 'public');
-            $imagePath = 'storage/'.$path; // public URL path
+            // Generate ID manually because current DB schema has non-AI id
+            $nextId = (int) (DB::table('equipment')->max('id') ?? 0) + 1;
+
+            // Handle image upload
+            $imagePath = '';
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('img/equipment', 'public');
+                $imagePath = 'storage/'.$path;
+            }
+
+            // Resolve or create equipment type
+            $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
+                ? strtolower(trim($validated['other_type']))
+                : strtolower(trim($validated['equipment_type']));
+
+            $type = EquipmentType::firstOrCreate(['name' => $typeName]);
+
+            // Convert state to boolean
+            $state = in_array($validated['state'], [1, '1', 'true', true], true);
+
+            // Create equipment
+            $equipment = Equipment::create([
+                'id' => $nextId,
+                'mark' => trim($validated['mark']),
+                'reference' => trim($validated['reference']),
+                'equipment_type_id' => $type->id,
+                'state' => $state,
+                'image' => $imagePath,
+            ]);
+
+            return redirect()->back()->with('success', 'Equipment added successfully');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'An error occurred while adding the equipment')
+                ->withInput();
         }
-
-        // Resolve or create type
-        $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
-            ? strtolower(trim($validated['other_type']))
-            : strtolower(trim($validated['equipment_type']));
-
-        $type = EquipmentType::firstOrCreate(['name' => $typeName]);
-
-        $equipment = Equipment::create([
-            'id' => $nextId,
-            'mark' => $validated['mark'],
-            'reference' => $validated['reference'],
-            'equipment_type_id' => $type->id,
-            'state' => (string)$validated['state'] === '1' || $validated['state'] === 1 || $validated['state'] === true,
-            'image' => $imagePath, // Store the image path directly in the equipment table
-        ]);
-
-        return back()->with('success', 'Equipment added');
     }
 
     public function update(Request $request, Equipment $equipment)
     {
-        $validated = $request->validate([
-            'mark' => ['required', 'string', 'max:255'],
-            'reference' => ['required', 'string', 'max:255'],
-            'equipment_type' => ['required', 'string', 'max:255'],
-            'other_type' => ['nullable', 'string', 'max:255', 'required_if:equipment_type,other'],
-            'state' => ['required', 'boolean'],
-            'image' => ['nullable', 'image', 'max:4096'],
+        // Simple validation
+        $request->validate([
+            'mark' => 'required|string|max:255',
+            'reference' => 'required|string|max:255',
+            'equipment_type' => 'required|string|max:255',
+            'other_type' => 'nullable|string|max:255',
+            'state' => 'required',
+            'image' => 'nullable|image|max:4096',
         ]);
 
         // Handle image upload
-        $imagePath = $equipment->image; // Keep existing image by default
+        $imagePath = $equipment->image;
         if ($request->hasFile('image')) {
-            // Store under storage/app/public/img/equipment
             $path = $request->file('image')->store('img/equipment', 'public');
-            $imagePath = 'storage/'.$path; // public URL path
+            $imagePath = 'storage/'.$path;
         }
 
-        // Resolve or create type
-        $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
-            ? strtolower(trim($validated['other_type']))
-            : strtolower(trim($validated['equipment_type']));
+        // Handle equipment type
+        $typeName = $request->equipment_type === 'other' && $request->other_type
+            ? strtolower(trim($request->other_type))
+            : strtolower(trim($request->equipment_type));
 
         $type = EquipmentType::firstOrCreate(['name' => $typeName]);
 
+        // Convert state to boolean
+        $state = $request->state == 1 || $request->state === '1' || $request->state === 'true';
+
+        // Update equipment
         $equipment->update([
-            'mark' => $validated['mark'],
-            'reference' => $validated['reference'],
+            'mark' => $request->mark,
+            'reference' => $request->reference,
             'equipment_type_id' => $type->id,
-            'state' => (string)$validated['state'] === '1' || $validated['state'] === 1 || $validated['state'] === true,
+            'state' => $state,
             'image' => $imagePath,
         ]);
 
-        return back()->with('success', 'Equipment updated');
+        return back()->with('success', 'Equipment updated successfully');
     }
 
     public function destroy(Equipment $equipment)

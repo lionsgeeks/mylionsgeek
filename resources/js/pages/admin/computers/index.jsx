@@ -6,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Route, Search } from 'lucide-react';
+import { Pencil, Route, Search, Trash } from 'lucide-react';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
 }
 
 export default function ComputersIndex({ computers: computersProp = [], users: usersProp = [] }) {
-    const [activeTab, setActiveTab] = useState('all');
     const [query, setQuery] = useState('');
     const [computers, setComputers] = useState(computersProp);
     const [users] = useState(usersProp);
@@ -26,6 +25,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [editTargetId, setEditTargetId] = useState(null);
     const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
     const [userSearch, setUserSearch] = useState('');
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [deletingComputer, setDeletingComputer] = useState(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState('');
+    const [selectedComputer, setSelectedComputer] = useState(null);
+    const [assignmentHistory, setAssignmentHistory] = useState([]);
 
     const filteredComputers = useMemo(() => {
         let list = computers;
@@ -109,7 +115,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         if (c.id === editTargetId) {
                             return {
                                 ...c,
-                                assignedUserId: editForm.user_id,
+                                assignedUserId: editForm.user_id || null,
                                 reference: editForm.reference,
                                 cpu: editForm.cpu,
                                 gpu: editForm.gpu,
@@ -125,6 +131,39 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                 setShowEditModal(false);
             }
         });
+    }
+    function handleDelete(computer) {
+        setDeletingComputer(computer);
+        setIsDeleteOpen(true);
+    };
+    function deleteComputer() {
+        if (deletingComputer) {
+            router.delete(`/admin/computers/${deletingComputer.id}`, {
+                onSuccess: () => {
+                    setIsDeleteOpen(false);
+                    setComputers(prev => prev.filter(c => c.id !== deletingComputer.id));
+                    setDeletingComputer(null);
+                    console.log("Deleted successfully")
+                }
+            })
+        }
+    }
+
+
+    function openHistoryModal(computer) {
+        setSelectedComputer(computer);
+        setShowHistoryModal(true);
+        setHistoryLoading(true);
+        setHistoryError('');
+        setAssignmentHistory([]);
+        fetch(`/admin/computers/${computer.id}/history`, { headers: { 'Accept': 'application/json' } })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Failed to load history');
+                const data = await res.json();
+                setAssignmentHistory(Array.isArray(data.history) ? data.history : []);
+            })
+            .catch((e) => setHistoryError(e.message || 'Failed to load history'))
+            .finally(() => setHistoryLoading(false));
     }
 
     function renderAllTable() {
@@ -146,7 +185,16 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             const user = findUserById(users, c.assignedUserId);
                             return (
                                 <TableRow key={c.id}>
-                                    <TableCell className="font-medium">{c.cpu}</TableCell>
+                                    <TableCell className="font-medium">
+                                        <button
+                                            type="button"
+                                            className="underline underline-offset-2 hover:text-primary"
+                                            onClick={() => openHistoryModal(c)}
+                                            title="View assignment history"
+                                        >
+                                            {c.cpu}
+                                        </button>
+                                    </TableCell>
                                     <TableCell>{c.gpu}</TableCell>
 
                                     <TableCell>
@@ -159,8 +207,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell>
                                         {user ? (
                                             <span className="text-sm font-medium">
-                                                <Button onClick={() => {
-                                                    window.location.href = `/admin/computers/${c.id}/contract`; 
+                                                <Button className="text-black hover:text-white dark:hover:text-black" onClick={() => {
+                                                    window.location.href = `/admin/computers/${c.id}/contract`;
                                                 }}>
                                                     Download
                                                 </Button></span>
@@ -177,6 +225,14 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         >
                                             <Pencil size={18} className="text-alpha" />
                                         </button>
+
+                                        <button
+                                            className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                            title="Delete"
+                                            variant="destructive" onClick={() => handleDelete(c)}
+                                        >
+                                            <Trash size={18} className="text-error"/>
+                                        </button>
                                     </TableCell>
                                 </TableRow>
                             );
@@ -184,12 +240,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </TableBody>
                 </Table>
             </div>
-        );
-    }
-
-    function renderHistoryTable() {
-        return (
-            <div className="border rounded p-6 text-sm text-gray-600"></div>
         );
     }
 
@@ -214,7 +264,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                             <Input
-                                className="pl-9"
+                                className="pl-9 bg-neutral-200 dark:bg-neutral-800 "
                                 placeholder="Search"
                                 ref={searchInputRef}
                                 onChange={e => setQuery(e.target.value)}
@@ -222,7 +272,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div>
 
                         <Select value={damaged} onValueChange={setDamaged}>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
                                 <SelectValue placeholder="Damaged" />
                             </SelectTrigger>
                             <SelectContent>
@@ -233,7 +283,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </Select>
 
                         <Select value={assigned} onValueChange={setAssigned}>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
                                 <SelectValue placeholder="Assigned" />
                             </SelectTrigger>
                             <SelectContent>
@@ -243,17 +293,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             </SelectContent>
                         </Select>
 
-                        <Button variant="outline" onClick={resetFilters}>Reset</Button>
+                        <Button className="bg-neutral-200 dark:bg-neutral-800 " variant="outline" onClick={resetFilters}>Reset</Button>
                     </div>
                 </div>
                 {/* End Header */}
 
-                <div className="flex items-center gap-2 mb-6">
-                    <Button variant={activeTab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('all')}>All Computers</Button>
-                    <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')}>Computers History</Button>
-                </div>
-
-                {activeTab === 'history' ? renderHistoryTable() : renderAllTable()}
+                {renderAllTable()}
             </div>
 
             {/* Add Modal */}
@@ -333,7 +378,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Edit Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent>
+                <DialogContent  className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
                     <DialogHeader>
                         <DialogTitle>Update Computer</DialogTitle>
                     </DialogHeader>
@@ -386,24 +431,54 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         value={userSearch}
                                         onChange={e => setUserSearch(e.target.value)}
                                     />
+
+                                    {/* Dissociate button */}
                                     {editForm.user_id && (
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setEditForm(f => ({ ...f, user_id: null }))}
+                                            onClick={() => {
+                                                if (!editTargetId) return;
+                                                const payload = {
+                                                    reference: editForm.reference,
+                                                    cpu: editForm.cpu,
+                                                    gpu: editForm.gpu,
+                                                    state: editForm.state,
+                                                    mark: editForm.mark,
+                                                    user_id: null,
+                                                };
+                                                setEditForm(f => ({ ...f, user_id: null }));
+                                                setComputers(prev =>
+                                                    prev.map(c =>
+                                                        c.id === editTargetId ? { ...c, assignedUserId: null } : c
+                                                    )
+                                                );
+                                                router.put(`/admin/computers/${editTargetId}`, payload, {
+                                                    onSuccess: () => {
+                                                        if (showHistoryModal && selectedComputer && selectedComputer.id === editTargetId) {
+                                                            openHistoryModal(selectedComputer);
+                                                        }
+                                                        setShowEditModal(false);
+                                                    },
+                                                    onError: err => console.error('Failed to dissociate:', err)
+                                                });
+                                            }}
                                         >
                                             Dissociate
                                         </Button>
+
                                     )}
                                 </div>
 
+                                {/* Show selected user */}
                                 {editForm.user_id && (
                                     <p className="text-xs text-muted-foreground">
                                         Selected: {findUserById(users, editForm.user_id)?.name || 'Unknown'}
                                     </p>
                                 )}
 
+                                {/* Search results */}
                                 {userSearch.trim() && (
                                     <div className="max-h-48 overflow-auto border rounded">
                                         {users
@@ -420,7 +495,29 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     key={u.id}
                                                     type="button"
                                                     onClick={() => {
+                                                        if (!editTargetId) return;
+                                                        const payload = {
+                                                            reference: editForm.reference,
+                                                            cpu: editForm.cpu,
+                                                            gpu: editForm.gpu,
+                                                            state: editForm.state,
+                                                            mark: editForm.mark,
+                                                            user_id: u.id,
+                                                        };
                                                         setEditForm(f => ({ ...f, user_id: u.id }));
+                                                        setComputers(prev =>
+                                                            prev.map(c =>
+                                                                c.id === editTargetId ? { ...c, assignedUserId: u.id } : c
+                                                            )
+                                                        );
+                                                        router.put(`/admin/computers/${editTargetId}`, payload, {
+                                                            onSuccess: () => {
+                                                                if (showHistoryModal && selectedComputer && selectedComputer.id === editTargetId) {
+                                                                    openHistoryModal(selectedComputer);
+                                                                }
+                                                            },
+                                                            onError: err => console.error('Failed to assign user:', err)
+                                                        });
                                                         setUserSearch(u.name);
                                                     }}
                                                     className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted ${editForm.user_id === u.id ? 'bg-muted' : ''
@@ -434,7 +531,6 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             ))}
                                     </div>
                                 )}
-
                             </div>
                         </div>
 
@@ -452,6 +548,110 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
                             <Button onClick={updateComputer}>Update Computer</Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+
+
+            {/* Delete confirmation modal */}
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                            <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                            <div>
+                                <h2 className="text-lg font-semibold">Delete Computer</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    This action cannot be undone.
+                                </p>
+                            </div></DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6">
+                        {deletingComputer && (
+                            <div className="rounded-lg border bg-muted/50 p-4">
+                                <div className="flex items-center gap-3">
+
+                                    <div>
+                                        <p className="font-medium">{deletingComputer.reference}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.mark}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.cpu}</p>
+                                        <p className="text-sm text-muted-foreground">{deletingComputer.gpu}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsDeleteOpen(false);
+                                    setDeletingComputer(null);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={deleteComputer}
+                            >
+                                Delete Computer
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* History Modal */}
+            <Dialog className="" open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                    <DialogHeader>
+                        <DialogTitle>Assignment history{selectedComputer ? ` - ${selectedComputer.cpu}` : ''}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {historyLoading && (
+                            <p className="text-sm text-muted-foreground">Loading history…</p>
+                        )}
+                        {historyError && (
+                            <p className="text-sm text-red-600">{historyError}</p>
+                        )}
+                        {!historyLoading && !historyError && (
+                            assignmentHistory.length ? (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>User</TableHead>
+                                                <TableHead>Start</TableHead>
+                                                <TableHead>End</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {assignmentHistory.map((h) => (
+                                                <TableRow key={h.id}>
+                                                    <TableCell>
+                                                        {h.user ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-sm">{h.user.name}</span>
+                                                                <span className="text-xs text-muted-foreground">{h.user.email}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-muted-foreground">Unassigned</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-sm">{new Date(h.start).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-sm">{h.end ? new Date(h.end).toLocaleString() : '—'}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No assignment history yet.</p>
+                            )
+                        )}
                     </div>
                 </DialogContent>
             </Dialog>
