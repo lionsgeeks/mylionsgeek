@@ -26,10 +26,7 @@ export default function Show({ training, usersNull }) {
   const [showAttendanceList, setShowAttendanceList] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [attendanceData, setAttendanceData] = useState({});
-  const [events] = useState([
-    // placeholder events; wire real data later
-    // { date: '2025-10-05', title: 'Session', type: 'session' }
-  ]);
+  const [events, setEvents] = useState([]);
   const [currentAttendanceId, setCurrentAttendanceId] = useState(null);
   const [showPlayDropdown, setShowPlayDropdown] = useState(false);
   const [showGeekyWheel, setShowGeekyWheel] = useState(false);
@@ -42,6 +39,16 @@ export default function Show({ training, usersNull }) {
   const calendarRef = useRef(null);
   const [calendarApi, setCalendarApi] = useState(null);
   const [calendarTitle, setCalendarTitle] = useState('');
+
+  // Map status to color styles for SelectTrigger
+  const statusClass = (value) => {
+    const v = String(value || '').toLowerCase();
+    if (v === 'present') return 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400';
+    if (v === 'absent') return 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400';
+    if (v === 'late') return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    if (v === 'excused') return 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400';
+    return '';
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -63,6 +70,20 @@ export default function Show({ training, usersNull }) {
       setCalendarApi(calendarRef.current.getApi());
     }
   }, [calendarRef]);
+
+  // Fetch attendance events for this training
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch(`/training/${training.id}/attendance-events`);
+        const data = await res.json();
+        if (Array.isArray(data.events)) {
+          setEvents(data.events.map(e => ({ ...e })));
+        }
+      } catch (e) {}
+    }
+    fetchEvents();
+  }, [training.id]);
 
   //   attendance
 
@@ -87,6 +108,7 @@ export default function Show({ training, usersNull }) {
             lunch: saved?.lunch ?? 'present',
             evening: saved?.evening ?? 'present',
             notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
+            user_id: s.id,
           };
         });
         setAttendanceData((prev) => ({ ...prev, ...initialized }));
@@ -112,7 +134,7 @@ export default function Show({ training, usersNull }) {
   //   atteandacelist
   async function handleSave() {
     const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
-      const studentId = key.split('-')[1];
+      const studentId = value?.user_id ?? (() => { const i = key.lastIndexOf('-'); return i !== -1 ? key.slice(i + 1) : key; })();
       return {
         user_id: studentId,
         attendance_day: selectedDate,
@@ -125,8 +147,17 @@ export default function Show({ training, usersNull }) {
     });
 
     try {
+      if (!currentAttendanceId || !selectedDate) return;
       await axios.post('/admin/attendance/save', { attendance: dataToSave });
       setShowAttendanceList(false);
+      // Refresh calendar events to mark the day as saved
+      try {
+        const res = await fetch(`/training/${training.id}/attendance-events`);
+        const data = await res.json();
+        if (Array.isArray(data.events)) setEvents(data.events);
+      } catch (e) {}
+      // Optional: show a simple success feedback
+      // alert('Attendance saved');
     } catch (err) {
       console.error('Failed to save attendance', err);
     }
@@ -681,7 +712,7 @@ export default function Show({ training, usersNull }) {
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="9:30 - 11:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -699,7 +730,7 @@ export default function Show({ training, usersNull }) {
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="11:30 - 13:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -717,7 +748,7 @@ export default function Show({ training, usersNull }) {
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="14:00 - 17:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -804,7 +835,7 @@ export default function Show({ training, usersNull }) {
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="Morning" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -825,7 +856,7 @@ export default function Show({ training, usersNull }) {
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="11:30 - 13:00" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -846,7 +877,7 @@ export default function Show({ training, usersNull }) {
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="14:00 - 17:00" />
                                   </SelectTrigger>
                                   <SelectContent>
