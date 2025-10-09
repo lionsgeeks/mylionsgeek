@@ -44,6 +44,49 @@ class UsersController extends Controller
         $cv = null;
         $notes = [];
 
+        // Attendance & Absences data
+        $absencesQuery = \App\Models\AttendanceListe::query()
+            ->select(['attendance_lists.*'])
+            ->where('user_id', $user->id)
+            // absent if any period marked absent
+            ->where(function ($q) {
+                $q->where('morning', 'absent')
+                  ->orWhere('lunch', 'absent')
+                  ->orWhere('evening', 'absent');
+            })
+            ->orderByDesc('attendance_day')
+            ->orderByDesc('updated_at');
+
+        $absences = $absencesQuery->paginate(10)->onEachSide(1);
+        $recentAbsences = (clone $absencesQuery)->limit(5)->get();
+
+        // Fetch notes mapped by attendance_id for quick attach
+        $attendanceIds = $recentAbsences->pluck('attendance_id')
+            ->merge($absences->getCollection()->pluck('attendance_id'))
+            ->unique()
+            ->values();
+        $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
+            ->get(['attendance_id','note','created_at','author','user_id'])
+            ->groupBy('attendance_id');
+
+        // Discipline metric (weighted score across user's attendance, 0..100)
+        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
+        $totalSlots = max(1, $allForDiscipline->count() * 3);
+        $score = 0;
+        $weight = function ($status) {
+            switch (strtolower((string) $status)) {
+                case 'present': return 1.0;
+                case 'excused': return 0.9;
+                case 'late': return 0.7;
+                case 'absent': return 0.0;
+                default: return 0.7; // treat unknown as late-ish
+            }
+        };
+        foreach ($allForDiscipline as $row) {
+            $score += $weight($row->morning) + $weight($row->lunch) + $weight($row->evening);
+        }
+        $discipline = round(($score / $totalSlots) * 100);
+
         return Inertia::render('admin/users/[id]', [
             'user' => $user,
             'trainings' => $allFormation,
@@ -52,6 +95,36 @@ class UsersController extends Controller
             'certificates' => $certificates,
             'cv' => $cv,
             'notes' => $notes,
+            // Attendance payloads
+            'discipline' => $discipline,
+            'absences' => [
+                'data' => $absences->getCollection()->map(function ($row) use ($notesByAttendance) {
+                    return [
+                        'attendance_id' => $row->attendance_id,
+                        'date' => $row->attendance_day,
+                        'morning' => strtolower((string) $row->morning),
+                        'lunch' => strtolower((string) $row->lunch),
+                        'evening' => strtolower((string) $row->evening),
+                        'notes' => ($notesByAttendance[$row->attendance_id] ?? collect())->pluck('note')->values(),
+                    ];
+                }),
+                'meta' => [
+                    'current_page' => $absences->currentPage(),
+                    'last_page' => $absences->lastPage(),
+                    'per_page' => $absences->perPage(),
+                    'total' => $absences->total(),
+                ],
+            ],
+            'recentAbsences' => $recentAbsences->map(function ($row) use ($notesByAttendance) {
+                return [
+                    'attendance_id' => $row->attendance_id,
+                    'date' => $row->attendance_day,
+                    'morning' => strtolower((string) $row->morning),
+                    'lunch' => strtolower((string) $row->lunch),
+                    'evening' => strtolower((string) $row->evening),
+                    'notes' => ($notesByAttendance[$row->attendance_id] ?? collect())->pluck('note')->values(),
+                ];
+            }),
         ]);
     }
     public function update(Request $request, User $user)
@@ -143,5 +216,58 @@ class UsersController extends Controller
         // dd($user);
 
         return redirect()->back()->with('success', 'User updated successfully');
+    }
+
+    // Lightweight JSON for modal: discipline + all absences
+    public function attendanceSummary(User $user)
+    {
+        $absencesQuery = \App\Models\AttendanceListe::query()
+            ->where('user_id', $user->id)
+            ->where(function ($q) {
+                $q->where('morning', 'absent')
+                  ->orWhere('lunch', 'absent')
+                  ->orWhere('evening', 'absent');
+            })
+            ->orderByDesc('attendance_day')
+            ->orderByDesc('updated_at');
+
+        $all = $absencesQuery->get(['attendance_id','attendance_day','morning','lunch','evening']);
+        $attendanceIds = $all->pluck('attendance_id')->unique()->values();
+        $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
+            ->get(['attendance_id','note'])
+            ->groupBy('attendance_id');
+
+        $rows = $all->map(function ($row) use ($notesByAttendance) {
+            return [
+                'attendance_id' => $row->attendance_id,
+                'date' => $row->attendance_day,
+                'morning' => strtolower((string) $row->morning),
+                'lunch' => strtolower((string) $row->lunch),
+                'evening' => strtolower((string) $row->evening),
+                'notes' => ($notesByAttendance[$row->attendance_id] ?? collect())->pluck('note')->values(),
+            ];
+        });
+
+        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
+        $totalSlots = max(1, $allForDiscipline->count() * 3);
+        $score = 0;
+        $weight = function ($status) {
+            switch (strtolower((string) $status)) {
+                case 'present': return 1.0;
+                case 'excused': return 0.9;
+                case 'late': return 0.7;
+                case 'absent': return 0.0;
+                default: return 0.7;
+            }
+        };
+        foreach ($allForDiscipline as $row) {
+            $score += $weight($row->morning) + $weight($row->lunch) + $weight($row->evening);
+        }
+        $discipline = round(($score / $totalSlots) * 100);
+
+        return response()->json([
+            'discipline' => $discipline,
+            'recentAbsences' => $rows,
+        ]);
     }
 }

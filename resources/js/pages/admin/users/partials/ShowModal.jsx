@@ -9,6 +9,18 @@ import { useInitials } from '@/hooks/use-initials';
 const User = ({ user, trainings, close, open }) => {
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
+    const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
+
+    React.useEffect(() => {
+        if (!open) return;
+        fetch(`/admin/users/${user.id}/attendance-summary`)
+            .then(r => r.json())
+            .then((data) => setSummary({
+                discipline: data?.discipline ?? null,
+                recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
+            }))
+            .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
+    }, [open, user.id]);
     const [processing, setProcessing] = useState(false);
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
 
@@ -73,8 +85,17 @@ const User = ({ user, trainings, close, open }) => {
                                 <p className="mt-1">{trainingName}</p>
                             </div>
                             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                <Label>Absences</Label>
-                                <p className="mt-1">—</p>
+                                <Label>Discipline</Label>
+                                {summary.discipline == null ? (
+                                    <p className="mt-1 text-sm text-neutral-500">No data</p>
+                                ) : (
+                                    <div className="mt-1 flex items-center gap-3">
+                                        <div className="text-2xl font-extrabold text-alpha">{summary.discipline}%</div>
+                                        <div className="flex-1 h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                                            <div className="h-full bg-alpha" style={{ width: `${Math.max(0, Math.min(100, summary.discipline))}%` }} />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="md:col-span-1 space-y-3">
@@ -129,7 +150,22 @@ const User = ({ user, trainings, close, open }) => {
                 {activeTab === 'attendance' && (
                     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                         <Label>Absences</Label>
-                        <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absence data available.</div>
+                        {Array.isArray(summary.recentAbsences) && summary.recentAbsences.length > 0 ? (
+                            <div className="mt-2 space-y-2">
+                                {summary.recentAbsences.map((row, i) => (
+                                    <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2">
+                                        <div className="text-sm font-medium">{new Date(row.date).toLocaleDateString()}</div>
+                                        <div className="flex items-center gap-2 text-xs">
+                                            <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                                            <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                                            <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absences.</div>
+                        )}
                     </div>
                 )}
 
