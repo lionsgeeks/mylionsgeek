@@ -440,14 +440,25 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             size="sm"
                                             onClick={() => {
                                                 if (!editTargetId) return;
+                                                const payload = {
+                                                    reference: editForm.reference,
+                                                    cpu: editForm.cpu,
+                                                    gpu: editForm.gpu,
+                                                    state: editForm.state,
+                                                    mark: editForm.mark,
+                                                    user_id: null,
+                                                };
                                                 setEditForm(f => ({ ...f, user_id: null }));
                                                 setComputers(prev =>
                                                     prev.map(c =>
                                                         c.id === editTargetId ? { ...c, assignedUserId: null } : c
                                                     )
                                                 );
-                                                router.put(`/admin/computers/${editTargetId}`, { ...editForm, user_id: null }, {
+                                                router.put(`/admin/computers/${editTargetId}`, payload, {
                                                     onSuccess: () => {
+                                                        if (showHistoryModal && selectedComputer && selectedComputer.id === editTargetId) {
+                                                            openHistoryModal(selectedComputer);
+                                                        }
                                                         setShowEditModal(false);
                                                     },
                                                     onError: err => console.error('Failed to dissociate:', err)
@@ -485,13 +496,26 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     type="button"
                                                     onClick={() => {
                                                         if (!editTargetId) return;
+                                                        const payload = {
+                                                            reference: editForm.reference,
+                                                            cpu: editForm.cpu,
+                                                            gpu: editForm.gpu,
+                                                            state: editForm.state,
+                                                            mark: editForm.mark,
+                                                            user_id: u.id,
+                                                        };
                                                         setEditForm(f => ({ ...f, user_id: u.id }));
                                                         setComputers(prev =>
                                                             prev.map(c =>
                                                                 c.id === editTargetId ? { ...c, assignedUserId: u.id } : c
                                                             )
                                                         );
-                                                        router.put(`/admin/computers/${editTargetId}`, { user_id: u.id }, {
+                                                        router.put(`/admin/computers/${editTargetId}`, payload, {
+                                                            onSuccess: () => {
+                                                                if (showHistoryModal && selectedComputer && selectedComputer.id === editTargetId) {
+                                                                    openHistoryModal(selectedComputer);
+                                                                }
+                                                            },
                                                             onError: err => console.error('Failed to assign user:', err)
                                                         });
                                                         setUserSearch(u.name);
