@@ -42,7 +42,17 @@ class UsersController extends Controller
         $posts = [];
         $certificates = [];
         $cv = null;
-        $notes = [];
+        // Notes authored for this user (attendance-related or general)
+        $notes = \App\Models\Note::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['note as text','author','created_at'])
+            ->map(function ($row) {
+                return [
+                    'text' => (string) $row->text,
+                    'author' => (string) ($row->author ?? 'Unknown'),
+                    'created_at' => (string) $row->created_at,
+                ];
+            });
 
         // Attendance & Absences data
         $absencesQuery = \App\Models\AttendanceListe::query()
@@ -126,6 +136,25 @@ class UsersController extends Controller
                 ];
             }),
         ]);
+    }
+    
+    // Return user notes as JSON for modal consumption
+    public function notes(User $user)
+    {
+        $notes = \App\Models\Note::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['note','author','created_at'])
+            ->map(function ($row) {
+                return [
+                    'note' => (string) $row->note,
+                    'author' => (string) ($row->author ?? 'Unknown'),
+                    'created_at' => (string) $row->created_at,
+                ];
+            })
+            ->values();
+
+        return response()->json(['notes' => $notes]);
     }
     public function update(Request $request, User $user)
     {

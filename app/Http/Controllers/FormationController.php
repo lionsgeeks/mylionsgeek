@@ -238,6 +238,10 @@ public function save(Request $request)
             }
         }
 
+        // Tag latest editor name on attendance row
+        if (!empty($attendanceId)) {
+            Attendance::where('id', $attendanceId)->update(['staff_name' => Auth::user()->name]);
+        }
         return response()->json(['status' => 'ok']);
 }
 
