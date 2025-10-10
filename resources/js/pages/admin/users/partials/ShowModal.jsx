@@ -189,6 +189,40 @@ const User = ({ user, trainings, close, open }) => {
                 {activeTab === 'notes' && (
                     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                         <Label className="text-dark dark:text-light">Notes</Label>
+                        <form
+                            className="mt-3 flex gap-2"
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const input = form.querySelector('input[name="newNote"]');
+                                const value = (input?.value || '').trim();
+                                if (!value) return;
+                                try {
+                                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                    const res = await fetch(`/admin/users/${user.id}/notes`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': csrf,
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                        },
+                                        credentials: 'same-origin',
+                                        body: JSON.stringify({ note: value }),
+                                    });
+                                    if (res.ok) {
+                                        // reload notes
+                                        const r = await fetch(`/admin/users/${user.id}/notes`);
+                                        const d = await r.json();
+                                        setNotes(Array.isArray(d?.notes) ? d.notes : []);
+                                        if (input) input.value = '';
+                                    }
+                                } catch {}
+                            }}
+                        >
+                            <input name="newNote" type="text" placeholder="Add a note and press Enter" className="flex-1 rounded-md border border-alpha/20 px-3 py-2 bg-transparent" />
+                            <Button type="submit">Save</Button>
+                        </form>
+
                         {Array.isArray(notes) && notes.length > 0 ? (
                             <ul className="mt-3 space-y-2 text-sm">
                                 {notes.map((n, i) => (
@@ -199,7 +233,7 @@ const User = ({ user, trainings, close, open }) => {
                                 ))}
                             </ul>
                         ) : (
-                            <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No notes yet.</div>
+                            <div className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">No notes yet.</div>
                         )}
                     </div>
                 )}

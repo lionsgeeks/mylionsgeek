@@ -680,6 +680,7 @@ export default function Show({ training, usersNull }) {
                 dayMaxEvents={true}
                 moreLinkClick="popover"
                 eventDisplay="block"
+                eventTextColor="#000000"
                 dayCellClassNames="hover:bg-alpha/10 cursor-pointer transition-colors duration-200 rounded-md"
                 dayHeaderClassNames="bg-secondary/50 text-dark dark:text-light font-semibold text-[13px]"
                 todayClassNames="bg-alpha/20 border border-alpha/60"
@@ -805,18 +806,30 @@ export default function Show({ training, usersNull }) {
                                 </button>
                               </span>
                             ))}
-                            <input
-                              type="text"
-                              placeholder="Add note and press Enter"
-                              className="flex-1 bg-transparent text-sm outline-hidden"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  addNote(studentKey, e.currentTarget.value);
-                                  e.currentTarget.value = '';
-                                }
-                              }}
-                            />
+                            <div className="flex w-full sm:w-auto items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Add note"
+                                className="flex-1 bg-transparent text-sm outline-hidden"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addNote(studentKey, e.currentTarget.value);
+                                    e.currentTarget.value = '';
+                                  }
+                                }}
+                              />
+                               <button
+                                 type="button"
+                                 className="px-3 py-1 rounded-md bg-alpha/10 text-black dark:text-white hover:bg-alpha/20 text-xs font-medium transition-colors"
+                                 onClick={(e) => {
+                                   const input = (e.currentTarget.previousElementSibling);
+                                   const val = input && 'value' in input ? input.value : '';
+                                   addNote(studentKey, val);
+                                   if (input && 'value' in input) input.value = '';
+                                 }}
+                               >Add</button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -939,7 +952,7 @@ export default function Show({ training, usersNull }) {
                                 ))}
                                 <input
                                   type="text"
-                                  placeholder="Add note and press Enter"
+                                  placeholder="Add note"
                                   className="flex-1 bg-transparent outline-hidden"
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
