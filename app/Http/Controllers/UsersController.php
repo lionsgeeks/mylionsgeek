@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class UsersController extends Controller
 {
@@ -155,6 +156,23 @@ class UsersController extends Controller
             ->values();
 
         return response()->json(['notes' => $notes]);
+    }
+
+    // Store a new note for a user from the admin modal
+    public function storeNote(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'note' => 'required|string|max:1000',
+        ]);
+
+        \App\Models\Note::create([
+            'user_id' => (int) $user->id,
+            'attendance_id' => null,
+            'note' => $validated['note'],
+            'author' => (Auth::check() ? (Auth::user()->name ?? 'Admin') : 'Admin'),
+        ]);
+
+        return response()->json(['status' => 'ok']);
     }
     public function update(Request $request, User $user)
     {
