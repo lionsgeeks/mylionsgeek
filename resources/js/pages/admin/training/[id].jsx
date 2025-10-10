@@ -147,10 +147,7 @@ export default function Show({ training, usersNull }) {
         }).catch(() => {});
       }
       setShowAttendanceList(true);
-    } catch (err) {
-      console.error(err);
-      alert('Unable to load attendance for this date. Please try again.');
-    }
+    } catch (err) {}
   }
 
 
@@ -182,17 +179,14 @@ export default function Show({ training, usersNull }) {
         credentials: 'same-origin',
         body: JSON.stringify({ attendance: dataToSave }),
       });
-      if (!res.ok) throw new Error(`Save failed (${res.status})`);
+      if (!res.ok) return;
       setShowAttendanceList(false);
       try {
         const evRes = await fetch(`/training/${training.id}/attendance-events`);
         const evData = await evRes.json();
         if (Array.isArray(evData.events)) setEvents(evData.events);
       } catch {}
-    } catch (err) {
-      console.error('Failed to save attendance', err);
-      alert('Saving failed. Please try again.');
-    }
+    } catch (err) {}
   }
 
   // Wheel functions
@@ -666,7 +660,14 @@ export default function Show({ training, usersNull }) {
                 editable={true}
                 events={events}
                 datesSet={(arg) => setCalendarTitle(arg.view.title)}
-                eventClick={(info) => alert(`Event: ${info.event.title}`)}
+                eventClick={(info) => {
+                  const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0,10);
+                  if (!dateStr) return;
+                  setSelectedDate(dateStr);
+                  AddAttendance(dateStr);
+                  setShowAttendance(false);
+                  setShowAttendanceList(true);
+                }}
                 dateClick={(info) => {
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);

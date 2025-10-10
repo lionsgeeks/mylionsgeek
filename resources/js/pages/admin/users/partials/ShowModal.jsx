@@ -10,6 +10,7 @@ const User = ({ user, trainings, close, open }) => {
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
+    const [notes, setNotes] = useState([]);
 
     React.useEffect(() => {
         if (!open) return;
@@ -20,6 +21,10 @@ const User = ({ user, trainings, close, open }) => {
                 recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
             }))
             .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
+        fetch(`/admin/users/${user.id}/notes`)
+            .then(r => r.json())
+            .then((data) => setNotes(Array.isArray(data?.notes) ? data.notes : []))
+            .catch(() => setNotes([]));
     }, [open, user.id]);
     const [processing, setProcessing] = useState(false);
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
@@ -183,8 +188,19 @@ const User = ({ user, trainings, close, open }) => {
 
                 {activeTab === 'notes' && (
                     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                        <Label>Notes</Label>
-                        <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Add/view notes on the full profile page.</div>
+                        <Label className="text-dark dark:text-light">Notes</Label>
+                        {Array.isArray(notes) && notes.length > 0 ? (
+                            <ul className="mt-3 space-y-2 text-sm">
+                                {notes.map((n, i) => (
+                                    <li key={i} className="rounded-lg border border-alpha/20 p-2">
+                                        <div className="font-medium text-dark dark:text-light">{n.note || n.text}</div>
+                                        <div className="text-xs text-neutral-500 mt-1">{new Date(n.created_at).toLocaleString()} • {n.author}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No notes yet.</div>
+                        )}
                     </div>
                 )}
 
