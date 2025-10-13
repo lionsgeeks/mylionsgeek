@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UsersController extends Controller
 {
@@ -29,6 +30,83 @@ class UsersController extends Controller
                 'trainings' => $allFormation
             ]
         );
+    }
+
+   
+    public function export(Request $request): StreamedResponse
+    {
+        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
+
+      
+        $fieldMap = [
+            'id' => 'id',
+            'name' => 'name',
+            'email' => 'email',
+            'cin' => 'cin',
+            'phone' => 'phone',
+            'status' => 'status',
+            'role' => 'role',
+            'formation' => 'formation', 
+            'access_studio' => 'access_studio',
+            'access_cowork' => 'access_cowork',
+        ];
+
+        $fields = [];
+        foreach ($requestedFields as $f) {
+            if (isset($fieldMap[$f])) {
+                $fields[] = $f;
+            }
+        }
+        if (empty($fields)) {
+            $fields = ['name','email','cin'];
+        }
+
+        $query = User::query()->with(['formation']);
+        if ($request->filled('role')) {
+            $query->where('role', $request->query('role'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+        if ($request->filled('formation_id')) {
+            $query->where('formation_id', $request->query('formation_id'));
+        }
+
+        $filename = 'students_export_' . now()->format('Y_m_d_H_i_s') . '.csv';
+
+        $response = new StreamedResponse(function () use ($query, $fields) {
+            $handle = fopen('php://output', 'w');
+
+           
+            fputcsv($handle, $fields);
+
+            $query->chunk(500, function ($users) use ($handle, $fields) {
+                foreach ($users as $user) {
+                    $row = [];
+                    foreach ($fields as $field) {
+                        switch ($field) {
+                            case 'formation':
+                                $row[] = optional($user->formation)->name;
+                                break;
+                            case 'access_studio':
+                            case 'access_cowork':
+                                $row[] = (string) $user->{$field} === '1' || $user->{$field} === 1 ? 'Yes' : 'No';
+                                break;
+                            default:
+                                $row[] = $user->{$field};
+                        }
+                    }
+                    fputcsv($handle, $row);
+                }
+            });
+
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+
+        return $response;
     }
     //! edit sunction
     public function show(User $user)
