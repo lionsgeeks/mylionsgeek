@@ -225,15 +225,19 @@ public function save(Request $request)
             );
 
             if (!empty($data['note'])) {
-                // support multiple notes separated by " | "
                 $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
                 foreach ($notes as $noteText) {
-                    Note::create([
-                        'user_id'       => (int) $data['user_id'],
-                        'attendance_id' => $attendanceId,
-                        'note'          => $noteText,
-                        'author'        => Auth::user()->name,
-                    ]);
+                    try {
+                        Note::create([
+                            'user_id'       => (int) $data['user_id'],
+                            'attendance_id' => $attendanceId,
+                            'note'          => $noteText,
+                            'author'        => Auth::user()->name,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Do not block attendance save if a note insert fails
+                        // Optionally log: \Log::warning('Note insert failed', ['error' => $e->getMessage()]);
+                    }
                 }
             }
         }
