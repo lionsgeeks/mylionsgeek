@@ -31,6 +31,13 @@ Route::middleware(['auth','verified','role:admin'])->prefix('admin')->group(func
     // Studio calendar page
     Route::get('/studios/{studio}/calendar', [ReservationsController::class, 'studioCalendar'])
         ->name('admin.studios.calendar');
+
+    // Store reservation cowork
+    Route::post('/reservations/storeReservationCowork', [ReservationsController::class, 'storeReservationCowork'])
+        ->name('admin.reservations.storeReservationCowork');
+    // Cowork calendar page
+    Route::get('/coworks/{studio}/calendar', [ReservationsController::class, 'coworkCalendar'])
+        ->name('admin.coworks.calendar');
 });
 
 

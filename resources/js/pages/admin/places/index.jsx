@@ -171,19 +171,28 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     <td className="px-4 py-3 text-center text-sm">
                                         <div className="inline-flex items-center gap-1.5">
                                         <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-                                            onClick={() => {
-                                                if (e.place_type === 'studio') {
-                                                    router.visit(`/admin/studios/${e.id}/calendar`);
-                                                } else {
-                                                    setCalendarFor({ id: e.id, place_type: e.place_type, name: e.name });
-                                                }
-                                            }}
-                                        >
-                                            View Calendar
-                                        </Button>
+    size="sm"
+    variant="outline"
+    className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+    onClick={() => {
+        if (e.place_type === 'studio') {
+            // Direct to studio calendar
+            router.visit(`/admin/studios/${e.id}/calendar`);
+        } else if (e.place_type === 'cowork') {
+            // Direct to cowork calendar
+            router.visit(`/admin/coworks/${e.id}/calendar`);
+        } else {
+            setCalendarFor({
+                id: e.id,
+                place_type: e.place_type,
+                name: e.name ?? 'Unknown', 
+            });
+        }
+    }}
+>
+    View Calendar
+</Button>
+
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center text-sm">
