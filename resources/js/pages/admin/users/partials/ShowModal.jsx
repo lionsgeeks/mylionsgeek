@@ -19,6 +19,7 @@ const User = ({ user, trainings, close, open }) => {
             .then((data) => setSummary({
                 discipline: data?.discipline ?? null,
                 recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
+                monthlyFullDayAbsences: Array.isArray(data?.monthlyFullDayAbsences) ? data.monthlyFullDayAbsences : [],
             }))
             .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
         fetch(`/admin/users/${user.id}/notes`)
@@ -171,6 +172,23 @@ const User = ({ user, trainings, close, open }) => {
                         ) : (
                             <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absences.</div>
                         )}
+
+                        {/* Monthly full-day absences summary */}
+                        <div className="mt-4">
+                            <Label>Full-day absences per month</Label>
+                            {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
+                                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {summary.monthlyFullDayAbsences.map((m, idx) => (
+                                        <div key={idx} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 text-sm">
+                                            <span>{new Date(m.month + '-01').toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}</span>
+                                            <span className="font-semibold">{m.fullDayAbsences}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No full-day absences recorded.</div>
+                            )}
+                        </div>
                     </div>
                 )}
 

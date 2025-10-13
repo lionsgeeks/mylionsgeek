@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Carbon\Carbon;
 
 class UsersController extends Controller
 {
@@ -373,6 +374,26 @@ class UsersController extends Controller
             ];
         });
 
+        // Aggregate full-day absences per month (AM, Noon, PM all 'absent')
+        $monthlyFullDayAbsences = $all
+            ->filter(function ($row) {
+                return strtolower((string) $row->morning) === 'absent'
+                    && strtolower((string) $row->lunch) === 'absent'
+                    && strtolower((string) $row->evening) === 'absent';
+            })
+            ->groupBy(function ($row) {
+                return Carbon::parse($row->attendance_day)->format('Y-m');
+            })
+            ->map(function ($group, $month) {
+                return [
+                    'month' => $month,
+                    'fullDayAbsences' => $group->count(),
+                ];
+            })
+            ->values()
+            ->sortBy('month')
+            ->values();
+
         $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
         $totalSlots = max(1, $allForDiscipline->count() * 3);
         $score = 0;
@@ -393,6 +414,7 @@ class UsersController extends Controller
         return response()->json([
             'discipline' => $discipline,
             'recentAbsences' => $rows,
+            'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
 }
