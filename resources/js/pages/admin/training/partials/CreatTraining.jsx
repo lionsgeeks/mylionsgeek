@@ -55,7 +55,7 @@ export default function CreatTraining({ coaches }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-500 px-6 py-2.5 font-medium text-white shadow-md transition-all hover:from-yellow-600 hover:to-yellow-600 hover:shadow-lg active:scale-95">
+        <Button className="flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent  cursor-pointer">
           <PlusCircle size={20} />
           Add Training
         </Button>
