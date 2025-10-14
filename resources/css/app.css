@@ -69,7 +69,10 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 }
-
+.custom-scrollbar::-webkit-scrollbar { height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #1118271a; } /* example */
+.custom-scrollbar::-webkit-scrollbar-thumb { background:  #ffc801 ; border-radius: 9999px; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color:  #ffc801 transparent; } /* Firefox */
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
