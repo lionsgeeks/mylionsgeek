@@ -10,6 +10,7 @@ const User = ({ user, trainings, close, open }) => {
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
+    const [notes, setNotes] = useState([]);
 
     React.useEffect(() => {
         if (!open) return;
@@ -18,8 +19,13 @@ const User = ({ user, trainings, close, open }) => {
             .then((data) => setSummary({
                 discipline: data?.discipline ?? null,
                 recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
+                monthlyFullDayAbsences: Array.isArray(data?.monthlyFullDayAbsences) ? data.monthlyFullDayAbsences : [],
             }))
             .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
+        fetch(`/admin/users/${user.id}/notes`)
+            .then(r => r.json())
+            .then((data) => setNotes(Array.isArray(data?.notes) ? data.notes : []))
+            .catch(() => setNotes([]));
     }, [open, user.id]);
     const [processing, setProcessing] = useState(false);
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
@@ -166,6 +172,23 @@ const User = ({ user, trainings, close, open }) => {
                         ) : (
                             <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absences.</div>
                         )}
+
+                        {/* Monthly full-day absences summary */}
+                        <div className="mt-4">
+                            <Label>Full-day absences per month</Label>
+                            {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
+                                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {summary.monthlyFullDayAbsences.map((m, idx) => (
+                                        <div key={idx} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 text-sm">
+                                            <span>{new Date(m.month + '-01').toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}</span>
+                                            <span className="font-semibold">{m.fullDayAbsences}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No full-day absences recorded.</div>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -183,8 +206,53 @@ const User = ({ user, trainings, close, open }) => {
 
                 {activeTab === 'notes' && (
                     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                        <Label>Notes</Label>
-                        <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Add/view notes on the full profile page.</div>
+                        <Label className="text-dark dark:text-light">Notes</Label>
+                        <form
+                            className="mt-3 flex gap-2"
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const input = form.querySelector('input[name="newNote"]');
+                                const value = (input?.value || '').trim();
+                                if (!value) return;
+                                try {
+                                    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                    const res = await fetch(`/admin/users/${user.id}/notes`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': csrf,
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                        },
+                                        credentials: 'same-origin',
+                                        body: JSON.stringify({ note: value }),
+                                    });
+                                    if (res.ok) {
+                                        // reload notes
+                                        const r = await fetch(`/admin/users/${user.id}/notes`);
+                                        const d = await r.json();
+                                        setNotes(Array.isArray(d?.notes) ? d.notes : []);
+                                        if (input) input.value = '';
+                                    }
+                                } catch {}
+                            }}
+                        >
+                            <input name="newNote" type="text" placeholder="Add a note and press Enter" className="flex-1 rounded-md border border-alpha/20 px-3 py-2 bg-transparent" />
+                            <Button type="submit">Save</Button>
+                        </form>
+
+                        {Array.isArray(notes) && notes.length > 0 ? (
+                            <ul className="mt-3 space-y-2 text-sm">
+                                {notes.map((n, i) => (
+                                    <li key={i} className="rounded-lg border border-alpha/20 p-2">
+                                        <div className="font-medium text-dark dark:text-light">{n.note || n.text}</div>
+                                        <div className="text-xs text-neutral-500 mt-1">{new Date(n.created_at).toLocaleString()} • {n.author}</div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">No notes yet.</div>
+                        )}
                     </div>
                 )}
 

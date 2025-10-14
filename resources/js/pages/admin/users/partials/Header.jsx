@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react'; // Import Inertia's useForm hook
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Header = ({ members, message, roles, trainings }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -26,6 +27,29 @@ const Header = ({ members, message, roles, trainings }) => {
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false); // Modal open/close state
+    const [exportOpen, setExportOpen] = useState(false);
+    const [exportFields, setExportFields] = useState({
+        name: true,
+        email: true,
+        cin: true,
+        phone: false,
+        formation: true,
+        access_studio: false,
+        access_cowork: false,
+        role: false,
+        status: false,
+    });
+    const exportQuery = useMemo(() => {
+        const selected = Object.entries(exportFields)
+            .filter(([, v]) => v)
+            .map(([k]) => k)
+            .join(',');
+        return selected.length ? selected : 'name,email,cin';
+    }, [exportFields]);
+    const triggerExport = () => {
+        const url = `/admin/users/export?fields=${encodeURIComponent(exportQuery)}`;
+        window.open(url, '_blank');
+    };
 
     // Handle form input change
     const handleChange = (field) => (e) => {
@@ -57,6 +81,40 @@ const Header = ({ members, message, roles, trainings }) => {
                     <h1 className="text-5xl">All Members</h1>
                     <p className="text-beta dark:text-light text-sm">{members} membres disponibles</p>
                 </div>
+                <div className="flex items-center gap-3">
+                <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-black dark:bg-alpha text-white  dark:text-black cursor-pointer rounded-lg px-7 py-4">
+                            Export Students
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[700px] max-w-[90vw]">
+                        <DialogHeader>
+                            <DialogTitle>Export Students</DialogTitle>
+                            <DialogDescription>
+                                Choose which columns to include. Click Export All to download every student.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-2 gap-4 py-2">
+                            {Object.keys(exportFields).map((key) => (
+                                <label key={key} className="flex items-center gap-3">
+                                    <Checkbox
+                                        checked={!!exportFields[key]}
+                                        onCheckedChange={(checked) => setExportFields((prev) => ({ ...prev, [key]: Boolean(checked) }))}
+                                    />
+                                    <span className="capitalize">{key.replace('_', ' ')}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button  className="bg-alpha dark:hover:bg-alpha dark:hover:text-black  hover:text-white text-black dark:text-black" >Cancel</Button>
+                            </DialogClose>
+                            <Button onClick={triggerExport} className="bg-alpha  dark:hover:bg-alpha dark:hover:text-black hover:text-white text-black dark:text-black">Export</Button>
+                            <Button onClick={() => { window.open('/admin/users/export', '_blank'); }}  className="bg-alpha  dark:hover:bg-alpha hover:text-white dark:hover:text-black text-black dark:text-black" >Export All</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                     <DialogTrigger asChild>
                         <Button className="bg-beta cursor-pointer dark:bg-alpha text-white dark:text-black rounded-lg px-7 py-4">
@@ -202,6 +260,7 @@ const Header = ({ members, message, roles, trainings }) => {
                         </form>
                     </DialogContent>
                 </Dialog>
+                </div>
             </div>
         </>
     );

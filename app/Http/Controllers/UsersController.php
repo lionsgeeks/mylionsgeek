@@ -12,6 +12,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Carbon\Carbon;
 
 class UsersController extends Controller
 {
@@ -29,6 +32,83 @@ class UsersController extends Controller
             ]
         );
     }
+
+   
+    public function export(Request $request): StreamedResponse
+    {
+        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
+
+      
+        $fieldMap = [
+            'id' => 'id',
+            'name' => 'name',
+            'email' => 'email',
+            'cin' => 'cin',
+            'phone' => 'phone',
+            'status' => 'status',
+            'role' => 'role',
+            'formation' => 'formation', 
+            'access_studio' => 'access_studio',
+            'access_cowork' => 'access_cowork',
+        ];
+
+        $fields = [];
+        foreach ($requestedFields as $f) {
+            if (isset($fieldMap[$f])) {
+                $fields[] = $f;
+            }
+        }
+        if (empty($fields)) {
+            $fields = ['name','email','cin'];
+        }
+
+        $query = User::query()->with(['formation']);
+        if ($request->filled('role')) {
+            $query->where('role', $request->query('role'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+        if ($request->filled('formation_id')) {
+            $query->where('formation_id', $request->query('formation_id'));
+        }
+
+        $filename = 'students_export_' . now()->format('Y_m_d_H_i_s') . '.csv';
+
+        $response = new StreamedResponse(function () use ($query, $fields) {
+            $handle = fopen('php://output', 'w');
+
+           
+            fputcsv($handle, $fields);
+
+            $query->chunk(500, function ($users) use ($handle, $fields) {
+                foreach ($users as $user) {
+                    $row = [];
+                    foreach ($fields as $field) {
+                        switch ($field) {
+                            case 'formation':
+                                $row[] = optional($user->formation)->name;
+                                break;
+                            case 'access_studio':
+                            case 'access_cowork':
+                                $row[] = (string) $user->{$field} === '1' || $user->{$field} === 1 ? 'Yes' : 'No';
+                                break;
+                            default:
+                                $row[] = $user->{$field};
+                        }
+                    }
+                    fputcsv($handle, $row);
+                }
+            });
+
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+
+        return $response;
+    }
     //! edit sunction
     public function show(User $user)
     {
@@ -42,7 +122,17 @@ class UsersController extends Controller
         $posts = [];
         $certificates = [];
         $cv = null;
-        $notes = [];
+        // Notes authored for this user (attendance-related or general)
+        $notes = \App\Models\Note::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['note as text','author','created_at'])
+            ->map(function ($row) {
+                return [
+                    'text' => (string) $row->text,
+                    'author' => (string) ($row->author ?? 'Unknown'),
+                    'created_at' => (string) $row->created_at,
+                ];
+            });
 
         // Attendance & Absences data
         $absencesQuery = \App\Models\AttendanceListe::query()
@@ -126,6 +216,42 @@ class UsersController extends Controller
                 ];
             }),
         ]);
+    }
+    
+    // Return user notes as JSON for modal consumption
+    public function notes(User $user)
+    {
+        $notes = \App\Models\Note::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['note','author','created_at'])
+            ->map(function ($row) {
+                return [
+                    'note' => (string) $row->note,
+                    'author' => (string) ($row->author ?? 'Unknown'),
+                    'created_at' => (string) $row->created_at,
+                ];
+            })
+            ->values();
+
+        return response()->json(['notes' => $notes]);
+    }
+
+    // Store a new note for a user from the admin modal
+    public function storeNote(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'note' => 'required|string|max:1000',
+        ]);
+
+        \App\Models\Note::create([
+            'user_id' => (int) $user->id,
+            'attendance_id' => null,
+            'note' => $validated['note'],
+            'author' => (Auth::check() ? (Auth::user()->name ?? 'Admin') : 'Admin'),
+        ]);
+
+        return response()->json(['status' => 'ok']);
     }
     public function update(Request $request, User $user)
     {
@@ -248,6 +374,26 @@ class UsersController extends Controller
             ];
         });
 
+        // Aggregate full-day absences per month (AM, Noon, PM all 'absent')
+        $monthlyFullDayAbsences = $all
+            ->filter(function ($row) {
+                return strtolower((string) $row->morning) === 'absent'
+                    && strtolower((string) $row->lunch) === 'absent'
+                    && strtolower((string) $row->evening) === 'absent';
+            })
+            ->groupBy(function ($row) {
+                return Carbon::parse($row->attendance_day)->format('Y-m');
+            })
+            ->map(function ($group, $month) {
+                return [
+                    'month' => $month,
+                    'fullDayAbsences' => $group->count(),
+                ];
+            })
+            ->values()
+            ->sortBy('month')
+            ->values();
+
         $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
         $totalSlots = max(1, $allForDiscipline->count() * 3);
         $score = 0;
@@ -268,6 +414,7 @@ class UsersController extends Controller
         return response()->json([
             'discipline' => $discipline,
             'recentAbsences' => $rows,
+            'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
 }

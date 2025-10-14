@@ -199,7 +199,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                                     <TableCell>
                                         {user ? (
-                                            <span className="text-sm font-medium">{user.name}</span>
+                                            <a
+                                                className="text-sm font-medium underline underline-offset-2 hover:text-primary"
+                                                href={`/admin/users/${user.id}`}
+                                            >
+                                                {user.name}
+                                            </a>
                                         ) : (
                                             <span className="text-sm text-gray-500">Not assigned</span>
                                         )}
@@ -655,6 +660,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* User Overview Modal removed: navigating to full profile instead */}
         </AppLayout>
     );
 }

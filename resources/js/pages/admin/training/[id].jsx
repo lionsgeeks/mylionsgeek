@@ -11,7 +11,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import axios from 'axios';
+// Use native fetch instead of axios
 import GeekyWheel from './partials/geekyWheel';
 
 export default function Show({ training, usersNull }) {
@@ -88,46 +88,66 @@ export default function Show({ training, usersNull }) {
   //   attendance
 
 
-  function AddAttendance(dateStr) {
-    axios.post("/attendances", {
-      formation_id: training.id,
-      attendance_day: dateStr,
-    })
-      .then(res => {
-        // juste save ID f state
-        setCurrentAttendanceId(res.data.attendance_id);
-        const initialized = {};
-        // If server returned existing lists, hydrate from them; otherwise default to 'present'
-        const existing = res.data.lists || [];
-        const byUserId = new Map(existing.map(l => [l.user_id, l]));
-        students.forEach((s) => {
-          const key = `${dateStr}-${s.id}`;
-          const saved = byUserId.get(s.id);
-          initialized[key] = {
-            morning: saved?.morning ?? 'present',
-            lunch: saved?.lunch ?? 'present',
-            evening: saved?.evening ?? 'present',
-            notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
-            user_id: s.id,
-          };
-        });
-        setAttendanceData((prev) => ({ ...prev, ...initialized }));
-        // If nothing saved yet, prefill DB with present
-        if (existing.length === 0) {
-          const dataToSave = students.map((s) => ({
-            user_id: s.id,
-            attendance_day: dateStr,
-            attendance_id: Number(res.data.attendance_id),
-            morning: 'present',
-            lunch: 'present',
-            evening: 'present',
-            note: null,
-          }));
-          axios.post('/admin/attendance/save', { attendance: dataToSave });
-        }
-        setShowAttendanceList(true);
-      })
-      .catch(err => console.error(err));
+  async function AddAttendance(dateStr) {
+    try {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const res = await fetch('/attendances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          formation_id: training.id,
+          attendance_day: dateStr,
+        }),
+      });
+      if (!res.ok) throw new Error(`Failed to create/load attendance (${res.status})`);
+      const data = await res.json();
+
+      setCurrentAttendanceId(data.attendance_id);
+      const initialized = {};
+      const existing = data.lists || [];
+      const byUserId = new Map(existing.map(l => [l.user_id, l]));
+      students.forEach((s) => {
+        const key = `${dateStr}-${s.id}`;
+        const saved = byUserId.get(s.id);
+        initialized[key] = {
+          morning: saved?.morning ?? 'present',
+          lunch: saved?.lunch ?? 'present',
+          evening: saved?.evening ?? 'present',
+          notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
+          user_id: s.id,
+        };
+      });
+      setAttendanceData((prev) => ({ ...prev, ...initialized }));
+
+      if (existing.length === 0) {
+        const dataToSave = students.map((s) => ({
+          user_id: s.id,
+          attendance_day: dateStr,
+          attendance_id: Number(data.attendance_id),
+          morning: 'present',
+          lunch: 'present',
+          evening: 'present',
+          note: null,
+        }));
+        // fire-and-forget initialization; errors will be visible on explicit save
+        fetch('/admin/attendance/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ attendance: dataToSave }),
+        }).catch(() => {});
+      }
+      setShowAttendanceList(true);
+    } catch (err) {}
   }
 
 
@@ -148,19 +168,25 @@ export default function Show({ training, usersNull }) {
 
     try {
       if (!currentAttendanceId || !selectedDate) return;
-      await axios.post('/admin/attendance/save', { attendance: dataToSave });
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const res = await fetch('/admin/attendance/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ attendance: dataToSave }),
+      });
+      if (!res.ok) return;
       setShowAttendanceList(false);
-      // Refresh calendar events to mark the day as saved
       try {
-        const res = await fetch(`/training/${training.id}/attendance-events`);
-        const data = await res.json();
-        if (Array.isArray(data.events)) setEvents(data.events);
-      } catch (e) {}
-      // Optional: show a simple success feedback
-      // alert('Attendance saved');
-    } catch (err) {
-      console.error('Failed to save attendance', err);
-    }
+        const evRes = await fetch(`/training/${training.id}/attendance-events`);
+        const evData = await evRes.json();
+        if (Array.isArray(evData.events)) setEvents(evData.events);
+      } catch {}
+    } catch (err) {}
   }
 
   // Wheel functions
@@ -634,7 +660,14 @@ export default function Show({ training, usersNull }) {
                 editable={true}
                 events={events}
                 datesSet={(arg) => setCalendarTitle(arg.view.title)}
-                eventClick={(info) => alert(`Event: ${info.event.title}`)}
+                eventClick={(info) => {
+                  const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0,10);
+                  if (!dateStr) return;
+                  setSelectedDate(dateStr);
+                  AddAttendance(dateStr);
+                  setShowAttendance(false);
+                  setShowAttendanceList(true);
+                }}
                 dateClick={(info) => {
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);
@@ -647,6 +680,7 @@ export default function Show({ training, usersNull }) {
                 dayMaxEvents={true}
                 moreLinkClick="popover"
                 eventDisplay="block"
+                eventTextColor="#000000"
                 dayCellClassNames="hover:bg-alpha/10 cursor-pointer transition-colors duration-200 rounded-md"
                 dayHeaderClassNames="bg-secondary/50 text-dark dark:text-light font-semibold text-[13px]"
                 todayClassNames="bg-alpha/20 border border-alpha/60"
@@ -772,18 +806,30 @@ export default function Show({ training, usersNull }) {
                                 </button>
                               </span>
                             ))}
-                            <input
-                              type="text"
-                              placeholder="Add note and press Enter"
-                              className="flex-1 bg-transparent text-sm outline-hidden"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  addNote(studentKey, e.currentTarget.value);
-                                  e.currentTarget.value = '';
-                                }
-                              }}
-                            />
+                            <div className="flex w-full sm:w-auto items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Add note"
+                                className="flex-1 bg-transparent text-sm outline-hidden"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addNote(studentKey, e.currentTarget.value);
+                                    e.currentTarget.value = '';
+                                  }
+                                }}
+                              />
+                               <button
+                                 type="button"
+                                 className="px-3 py-1 rounded-md bg-alpha/10 text-black dark:text-white hover:bg-alpha/20 text-xs font-medium transition-colors"
+                                 onClick={(e) => {
+                                   const input = (e.currentTarget.previousElementSibling);
+                                   const val = input && 'value' in input ? input.value : '';
+                                   addNote(studentKey, val);
+                                   if (input && 'value' in input) input.value = '';
+                                 }}
+                               >Add</button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -906,7 +952,7 @@ export default function Show({ training, usersNull }) {
                                 ))}
                                 <input
                                   type="text"
-                                  placeholder="Add note and press Enter"
+                                  placeholder="Add note"
                                   className="flex-1 bg-transparent outline-hidden"
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
