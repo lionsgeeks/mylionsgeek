@@ -32,7 +32,7 @@ const User = ({ user, trainings, close, open }) => {
 
     return (
         <Dialog open={open} onOpenChange={close}>
-            <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
+            <DialogContent className="sm:max-w-[780px] overflow-x-visible bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
                 <DialogHeader>
                     <DialogTitle className="text-dark dark:text-light">User Overview</DialogTitle>
                 </DialogHeader>
@@ -154,12 +154,37 @@ const User = ({ user, trainings, close, open }) => {
                 )}
 
                 {activeTab === 'attendance' && (
-                    <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                    <div style={{ overflowX: 'auto' }} className="mt-4  rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                        {/* Monthly full-day absences summary */}
+                        <div className="mt-4 ">
+                            <Label>Full-day absences per month</Label>
+                            {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
+                                <div className="mt-2 pb-2 -mx-3 px-3 w-full overflow-x-auto custom-scrollbar">
+                                    <div className="grid grid-flow-col auto-cols-[220px] gap-3 pr-3">
+                                        {summary.monthlyFullDayAbsences.map((m, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="min-w-[220px] flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 text-sm bg-neutral-50/60 dark:bg-neutral-900/40"
+                                            >
+                                                <span className="text-neutral-700 dark:text-neutral-300">
+                                                    {new Date(m.month + '-01').toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}
+                                                </span>
+                                                <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-semibold ${m.fullDayAbsences > 0 ? 'bg-error/10 text-error' : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300'}`}>
+                                                    {m.fullDayAbsences}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No full-day absences recorded.</div>
+                            )}
+                        </div>
                         <Label>Absences</Label>
                         {Array.isArray(summary.recentAbsences) && summary.recentAbsences.length > 0 ? (
-                            <div className="mt-2 space-y-2">
+                            <div className="mt-2 space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                                 {summary.recentAbsences.map((row, i) => (
-                                    <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2">
+                                    <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors">
                                         <div className="text-sm font-medium">{new Date(row.date).toLocaleDateString()}</div>
                                         <div className="flex items-center gap-2 text-xs">
                                             <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
@@ -173,22 +198,12 @@ const User = ({ user, trainings, close, open }) => {
                             <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absences.</div>
                         )}
 
-                        {/* Monthly full-day absences summary */}
-                        <div className="mt-4">
-                            <Label>Full-day absences per month</Label>
-                            {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
-                                <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {summary.monthlyFullDayAbsences.map((m, idx) => (
-                                        <div key={idx} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 text-sm">
-                                            <span>{new Date(m.month + '-01').toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}</span>
-                                            <span className="font-semibold">{m.fullDayAbsences}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No full-day absences recorded.</div>
-                            )}
-                        </div>
+                        {/* Legend */}
+                        {/* <div className="mt-3 text-xs text-neutral-500 dark:text-neutral-400 flex flex-wrap items-center gap-2">
+                            <span>Legend:</span>
+                            <span className="px-2 py-0.5 rounded-full bg-error/10 text-error">absent</span>
+                            <span className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">present/other</span>
+                        </div> */}
                     </div>
                 )}
 
