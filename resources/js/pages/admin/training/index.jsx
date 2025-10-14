@@ -58,6 +58,15 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
         applyFilters(selectedTrack, selectedCoach, value);
     };
 
+    const getTrainingStatus = (training) => {
+        const start = new Date(training.start_time);
+        const now = new Date();
+        const sixMonthsLater = new Date(start);
+        sixMonthsLater.setMonth(start.getMonth() + 6);
+        if (now < sixMonthsLater && start < now) return 'active';
+    };
+
+    const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
     return (
         <AppLayout>
             <Head title="Training" />
@@ -73,17 +82,18 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 </div>
 
                 {/* Filters */}
-                <div className="mb-10 rounded-2xl border border-yellow-200 p-6 shadow-sm backdrop-blur-md transition-all duration-300 dark:bg-gray-950/50">
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
+                <div className="mb-10 rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                         {/* Coach */}
                         <div>
-                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
-                                <User size={16} /> Coach
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <User size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Coach
                             </label>
                             <select
                                 value={selectedCoach}
                                 onChange={handleCoachChange}
-                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
                             >
                                 <option value="">All Coaches</option>
                                 {coaches.map((c) => (
@@ -96,13 +106,14 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
                         {/* Track */}
                         <div>
-                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
-                                <BookOpen size={16} /> Track
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <BookOpen size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Track
                             </label>
                             <select
                                 value={selectedTrack}
                                 onChange={handleTrackChange}
-                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
                             >
                                 <option value="">All Tracks</option>
                                 {tracks
@@ -117,13 +128,14 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
                         {/* Promo */}
                         <div>
-                            <label className="mb-2 flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-white">
-                                <TrendingUp size={16} /> Promo
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <TrendingUp size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Promo
                             </label>
                             <select
                                 value={selectedPromo}
                                 onChange={handlePromoChange}
-                                className="w-full rounded-lg border border-gray-300 bg-white/70 px-4 py-2 text-gray-800 transition focus:border-yellow-400 focus:ring-2 focus:ring-yellow-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:focus:ring-yellow-600"
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
                             >
                                 <option value="">All Promos</option>
                                 {promos
@@ -137,7 +149,6 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                         </div>
                     </div>
 
-                    {/* Reset Button */}
                     {(selectedCoach || selectedTrack || selectedPromo) && (
                         <div className="mt-6 flex justify-center">
                             <button
@@ -147,7 +158,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     setSelectedPromo('');
                                     router.visit('/training');
                                 }}
-                                className="rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-400 px-6 py-2 font-semibold text-white shadow-md transition-all hover:from-yellow-600 hover:to-yellow-500"
+                                className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-transparent"
                             >
                                 Reset Filters
                             </button>
@@ -157,18 +168,29 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
                 {/* Stats Cards */}
                 {trainings && trainings.length > 0 && (
-                    <div className="mt-12 mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
-                            <div className="text-lg font-bold text-yellow-700">Total Programs</div>
+                    <div className="mt-10 mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <BookOpen size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{trainings.length}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Total Programs</div>
                         </div>
-                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                            <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.filter((t) => t.status === 'active').length}</div>
-                            <div className="text-lg font-bold text-yellow-700">Active Now</div>
+
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <Timer size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{activeTrainingsCount}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Active Now</div>
                         </div>
-                        <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                            <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
-                            <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
+
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <User size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{coaches.length}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Expert Mentors</div>
                         </div>
                     </div>
                 )}
@@ -182,7 +204,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                 className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
                                 onClick={() => router.visit(`/trainings/${training.id}`)}
                             >
-                                {/* Image */}
+                                {/* Image + Category Badge */}
                                 <div className="relative h-40 overflow-hidden">
                                     <img
                                         src={
@@ -197,80 +219,67 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         alt={training.name}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     />
-                                    {/* Status Badge */}
-                                    {training.status && (
-                                        <div className="absolute top-3 left-3">
-                                            <span
-                                                className={`rounded-md px-2 py-1 text-xs font-medium ${
-                                                    training.status === 'active'
-                                                        ? 'bg-green-500/90 text-white'
-                                                        : training.status === 'upcoming'
-                                                          ? 'bg-blue-500/90 text-white'
-                                                          : 'bg-gray-500/90 text-white'
-                                                }`}
-                                            >
-                                                {training.status}
-                                            </span>
-                                        </div>
+
+                                    {training.category && (
+                                        <span
+                                            className={`absolute top-2 left-2 rounded-full bg-[var(--color-alpha)] px-2 py-1 text-xs font-semibold text-black`}
+                                        >
+                                            {training.category}
+                                        </span>
                                     )}
                                 </div>
 
                                 {/* Card Content */}
-                                <div className="space-y-3 p-4">
-                                    {/* Category + Actions */}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs font-medium tracking-wide text-alpha uppercase">{training.category}</span>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                }}
-                                            >
-                                                <UpdateTraining training={training} coaches={coaches} />
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openDeleteModal(training);
-                                                }}
-                                                className="cursor-pointer rounded-lg border border-transparent p-1 px-3 text-red-600 hover:border-red-600"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Title */}
-                                    <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
-
-                                    {/* Description */}
+                                <div className="flex flex-col gap-2 p-3">
+                                    {training.name && (
+                                        <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
+                                    )}
                                     {training.description && (
                                         <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">{training.description}</p>
                                     )}
 
                                     {/* Coach */}
-                                    <div className="flex items-center space-x-2">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
-                                            {training.coach
-                                                ? training.coach.name
-                                                      .split(' ')
-                                                      .map((n) => n[0])
-                                                      .join('')
-                                                      .toUpperCase()
-                                                : 'C'}
+                                    {training.coach?.name && (
+                                        <div className="mt-2 flex items-center space-x-2">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-yellow-600 text-xs font-bold text-yellow-600 dark:border-yellow-400 dark:text-yellow-400">
+                                                {training.coach.name
+                                                    .split(' ')
+                                                    .map((n) => n[0])
+                                                    .join('')
+                                                    .toUpperCase()}
+                                            </div>
+                                            <span className="text-sm text-dark/70 dark:text-light/70">{training.coach.name}</span>
                                         </div>
-                                        <span className="text-sm text-dark/70 dark:text-light/70">{training.coach?.name || 'Expert Instructor'}</span>
-                                    </div>
+                                    )}
 
                                     {/* Timer & Users */}
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                                            <Timer size={14} />
-                                            <span>{training.start_time || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                                            <User size={14} />
-                                            <span>{training.users_count ?? 0}</span>
+                                    <div className="mt-2 flex items-center justify-between text-sm">
+                                        {training.start_time && (
+                                            <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                                <Timer size={14} />
+                                                <span>{training.start_time}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                                <User size={14} />
+                                                <span>{training.users_count ?? 0}</span>
+                                            </div>
+                                            {/* Actions Row */}
+                                            <div className="flex items-center justify-center">
+                                                <button onClick={(e) => e.stopPropagation()}>
+                                                    <UpdateTraining training={training} coaches={coaches} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openDeleteModal(training);
+                                                    }}
+                                                    className="cursor-pointer rounded-lg border border-transparent p-2 px-3 text-red-600 hover:border-red-600"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
