@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\URL;
 
 class UsersController extends Controller
 {
@@ -314,7 +315,6 @@ class UsersController extends Controller
             'role' => 'required|string', // Assumes foreign key to formations table
             'entreprise' => 'nullable|string', // Assumes foreign key to formations table
         ]);
-        // dd($request->all());
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
             return Inertia::render('admin/users/partials/Header', [
@@ -326,10 +326,12 @@ class UsersController extends Controller
             $validated['image'] = '/storage/' . $path;
         }
         $plainPassword = Str::random(12);
+        $token = (string) Str::uuid();
         $user = User::create([
             'id' => (string) Str::uuid(),
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'activation_token' => $token,
             'password' => Hash::make($plainPassword),
             'phone' => $validated['phone'] ?? null,
             'image' => $validated['image'] ?? null,
@@ -345,7 +347,12 @@ class UsersController extends Controller
             'email_verified_at' => null,
         ]);
 
-        Mail::to($user->email)->send(new UserWelcomeMail($user));
+        $link = URL::temporarySignedRoute(
+            'user.complete-profile',
+            now()->addHours(24),
+            ['token' => $token]
+        );
+        Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
 
         // dd($user);
 
@@ -430,5 +437,4 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
-    
 }

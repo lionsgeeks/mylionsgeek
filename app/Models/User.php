@@ -38,6 +38,7 @@ class User extends Authenticatable
         'created_at',
         'updated_at',
         'wakatime_api_key',
+        'activation_token'
     ];
 
     /**

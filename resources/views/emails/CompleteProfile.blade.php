@@ -21,7 +21,7 @@
         </p>
 
         <div style="text-align: center; margin: 40px 0;">
-            <a href="{{ url('/complete-profile/form') }}"
+            <a href="{{ $link }}"
                 style="background-color: #ffc801; color: black; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">
                 Complete Your Profile
             </a>

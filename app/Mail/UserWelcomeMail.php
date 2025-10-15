@@ -8,18 +8,20 @@ use Illuminate\Queue\SerializesModels;
 
 class UserWelcomeMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     public $user;
+    public $link;
 
-    public function __construct($user)
+    public function __construct($user, $link)
     {
         $this->user = $user;
+        $this->link = $link;
     }
 
     public function build()
     {
-        return $this->subject('Welcome to Our App')
-            ->view('emails.CompleteProfile'); // Create this view
+        return $this->subject('Complete Your Profile')
+            ->view('emails.CompleteProfile');
     }
 }
