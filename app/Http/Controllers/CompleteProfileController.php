@@ -2,24 +2,57 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserWelcomeMail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CompleteProfileController extends Controller
 {
     public function goToCompleteProfile(Request $request, $token)
     {
+        // ✅ Manually check if the URL is still valid (not expired or tampered)
+        if (! $request->hasValidSignature()) {
+            return Inertia::render('profile/ExpiredLink');
+        }
+
+        // ✅ Then try to get the user using the token
         $user = User::where('activation_token', $token)->first();
 
         if (!$user) {
-            abort(404, "Invalid or expired activation link.");
+            return Inertia::render('profile/ExpiredLink');
         }
 
-        // Optionally, check if profile is already completed or user is active to prevent reuse
+        // ✅ (Optional) Prevent already-completed users from re-using the link
+        // if ($user->account_state === 'active') {
+        //     return redirect('/login')->with('error', 'Profile already completed.');
+        // }
 
         return Inertia::render('profile/index', [
             'user' => $user,
         ]);
+    }
+    public function resendActivationLink($id)
+    {
+        // Regenerate a new activation token (optional but safer)
+        $user = User::find($id);
+        // dd($id);
+        $user->activation_token = Str::uuid();
+        $user->save();
+
+        // Create new signed link valid for 24 hours
+        $link = URL::temporarySignedRoute(
+            'user.complete-profile',
+            now()->addHours(24),
+            ['token' => $user->activation_token]
+        );
+
+        // Send email
+        Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
+
+        return redirect()->back()->with('success', 'Activation link resent successfully.');
     }
 }

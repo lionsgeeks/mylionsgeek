@@ -16,8 +16,8 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::post('/users/store', [UsersController::class, 'store']);
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
+    Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
 });
 
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
-    ->middleware('signed') // Ensures signed + not expired
     ->name('user.complete-profile');

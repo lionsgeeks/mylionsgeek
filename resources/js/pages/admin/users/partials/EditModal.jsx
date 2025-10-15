@@ -74,6 +74,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
             },
         });
     };
+    function resendLink(userId) {
+        // alert(userId);
+        router.post(`/admin/users/${userId}/resend-link`);
+    }
 
 
 
@@ -113,6 +117,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
                     {/* Fields */}
                     <div className="col-span-1">
+
+                        {/* {console.log(editedUser)} */}
                         <Label htmlFor="name">Name</Label>
                         <Input
                             id="name"
@@ -185,9 +191,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         <Label>Training</Label>
                         <Select
                             value={formData.formation_id ? String(formData.formation_id) : ''}
-                            onValueChange={(v) =>
-                                setFormData({ ...formData, formation_id: Number(v) })
-                            }
+                            onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select training" />
@@ -202,13 +206,29 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         </Select>
                     </div>
 
-                    <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
-                        <Button type="button" variant="secondary" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit">Save changes</Button>
+                    {/* Footer */}
+                    <div className="col-span-1 md:col-span-2 mt-6">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t pt-4">
+                            {/* Left side - Resend Link */}
+                            <Button
+                                onClick={() => resendLink(editedUser.id)}
+                                type="button"
+                                variant=''
+                            >
+                                Resend Link
+                            </Button>
+
+                            {/* Right side - Action buttons */}
+                            <div className="flex gap-2">
+                                <Button type="button" variant="secondary" onClick={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit">Save changes</Button>
+                            </div>
+                        </div>
                     </div>
                 </form>
+
             </DialogContent>
         </Dialog>
     );
