@@ -430,4 +430,5 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
+    
 }

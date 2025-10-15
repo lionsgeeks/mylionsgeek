@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CompleteProfile;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,3 +16,5 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
 });
+
+Route::get('/complete-profile/form' , [CompleteProfile::class , 'goToCompleteProfile'])->name('user.complete-profile');
