@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 
 class UsersController extends Controller
@@ -327,8 +328,10 @@ class UsersController extends Controller
         }
         $plainPassword = Str::random(12);
         $token = (string) Str::uuid();
+        $lastUser = User::orderBy('id', 'desc')->first();
+        // dd($lastUser->id);
         $user = User::create([
-            'id' => (string) Str::uuid(),
+            'id' => $lastUser->id + 1,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'activation_token' => $token,
@@ -349,7 +352,7 @@ class UsersController extends Controller
 
         $link = URL::temporarySignedRoute(
             'user.complete-profile',
-            now()->addSecond(1),
+            now()->addHour(24),
             ['token' => $token]
         );
         Mail::to($user->email)->send(new UserWelcomeMail($user, $link));

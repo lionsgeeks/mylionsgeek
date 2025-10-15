@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\UserWelcomeMail;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CompleteProfileController extends Controller
@@ -30,5 +34,25 @@ class CompleteProfileController extends Controller
         return Inertia::render('profile/index', [
             'user' => $user,
         ]);
+    }
+    public function resendActivationLink($id)
+    {
+        // Regenerate a new activation token (optional but safer)
+        $user = User::find($id);
+        // dd($id);
+        $user->activation_token = Str::uuid();
+        $user->save();
+
+        // Create new signed link valid for 24 hours
+        $link = URL::temporarySignedRoute(
+            'user.complete-profile',
+            now()->addHours(24),
+            ['token' => $user->activation_token]
+        );
+
+        // Send email
+        Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
+
+        return redirect()->back()->with('success', 'Activation link resent successfully.');
     }
 }
