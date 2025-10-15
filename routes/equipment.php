@@ -10,6 +10,7 @@ Route::middleware(['auth','verified','role:admin'])->prefix('admin')->group(func
     Route::post('/equipements', [EquipmentController::class, 'store'])->name('admin.equipment.store');
     Route::put('/equipements/{equipment}', [EquipmentController::class, 'update'])->name('admin.equipment.update');
     Route::delete('/equipements/{equipment}', [EquipmentController::class, 'destroy'])->name('admin.equipment.destroy');
+    Route::get('/equipements/{equipment}/history', [EquipmentController::class, 'history'])->name('admin.equipment.history');
     
     // Equipment Type management routes
     Route::get('/equipment-types', [EquipmentTypeController::class, 'index'])->name('admin.equipment-types.index');
