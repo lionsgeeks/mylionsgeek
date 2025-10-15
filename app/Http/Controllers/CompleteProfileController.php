@@ -10,13 +10,22 @@ class CompleteProfileController extends Controller
 {
     public function goToCompleteProfile(Request $request, $token)
     {
+        // ✅ Manually check if the URL is still valid (not expired or tampered)
+        if (! $request->hasValidSignature()) {
+            return Inertia::render('profile/ExpiredLink');
+        }
+
+        // ✅ Then try to get the user using the token
         $user = User::where('activation_token', $token)->first();
 
         if (!$user) {
-            abort(404, "Invalid or expired activation link.");
+            return Inertia::render('profile/ExpiredLink');
         }
 
-        // Optionally, check if profile is already completed or user is active to prevent reuse
+        // ✅ (Optional) Prevent already-completed users from re-using the link
+        // if ($user->account_state === 'active') {
+        //     return redirect('/login')->with('error', 'Profile already completed.');
+        // }
 
         return Inertia::render('profile/index', [
             'user' => $user,

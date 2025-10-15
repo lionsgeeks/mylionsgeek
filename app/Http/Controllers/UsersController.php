@@ -349,7 +349,7 @@ class UsersController extends Controller
 
         $link = URL::temporarySignedRoute(
             'user.complete-profile',
-            now()->addHours(24),
+            now()->addSecond(1),
             ['token' => $token]
         );
         Mail::to($user->email)->send(new UserWelcomeMail($user, $link));

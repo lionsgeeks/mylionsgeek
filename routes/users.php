@@ -19,5 +19,4 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
 });
 
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
-    ->middleware('signed') // Ensures signed + not expired
     ->name('user.complete-profile');
