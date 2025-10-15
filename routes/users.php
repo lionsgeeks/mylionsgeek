@@ -1,5 +1,7 @@
 <?php
 
+// use App\Http\Controllers\CompleteProfile;
+use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,3 +17,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
 });
+
+Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
+    ->middleware('signed') // Ensures signed + not expired
+    ->name('user.complete-profile');
