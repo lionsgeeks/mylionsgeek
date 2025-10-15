@@ -40,7 +40,7 @@ const User = ({ user, trainings, close, open }) => {
                 {/* Tabs */}
                 <div className="px-1 mt-2">
                     <div className="flex gap-2 border-b border-alpha/20">
-                        {['overview','access','attendance','projects','posts','notes'].map(tab => (
+                        {['overview', 'access', 'attendance', 'projects', 'posts', 'notes'].map(tab => (
                             <button
                                 key={tab}
                                 className={`px-3 py-2 text-sm capitalize ${activeTab === tab ? 'border-b-2 border-alpha text-alpha' : 'text-neutral-600 dark:text-neutral-400'}`}
@@ -59,10 +59,16 @@ const User = ({ user, trainings, close, open }) => {
                             <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                                 <div className="relative w-24 h-24">
                                     <Avatar className="w-24 h-24 rounded-full overflow-hidden">
-                                        <AvatarImage src={user.image} alt={user?.name} />
-                                        <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                            {getInitials(user?.name)}
-                                        </AvatarFallback>
+                                        {user?.image ? (
+                                            <AvatarImage
+                                                src={`/storage/img/profile/${user.image}`}
+                                                alt={user?.name}
+                                            />
+                                        ) : (
+                                            <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                {getInitials(user?.name)}
+                                            </AvatarFallback>
+                                        )}
                                     </Avatar>
                                 </div>
                                 <div className="text-center">
