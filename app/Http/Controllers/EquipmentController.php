@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Equipment;
 use App\Models\EquipmentType;
+use App\Models\Reservation;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -162,6 +163,56 @@ class EquipmentController extends Controller
     {
         $equipment->delete();
         return back()->with('success', 'Equipment deleted');
+    }
+
+    /**
+     * Return reservation history for an equipment (JSON).
+     */
+    public function history(Equipment $equipment)
+    {
+        // Join pivot and reservations to collect history with user names
+        $rows = DB::table('reservation_equipment as re')
+            ->join('reservations as r', 'r.id', '=', 're.reservation_id')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('re.equipment_id', $equipment->id)
+            ->select(
+                'r.id as reservation_id',
+                'u.name as user_name',
+                're.day as day',
+                're.start as start',
+                're.end as end',
+                'r.approved',
+                'r.canceled',
+                'r.passed',
+                're.created_at as attached_at'
+            )
+            ->orderByDesc(DB::raw("COALESCE(re.day, r.day)"))
+            ->orderByDesc('re.start')
+            ->limit(200)
+            ->get();
+
+        $history = $rows->map(function ($row) {
+            return [
+                'reservation_id' => $row->reservation_id,
+                'user_name' => $row->user_name,
+                'day' => $row->day,
+                'start' => $row->start,
+                'end' => $row->end,
+                'approved' => (bool) ($row->approved ?? false),
+                'canceled' => (bool) ($row->canceled ?? false),
+                'passed' => (bool) ($row->passed ?? false),
+                'attached_at' => $row->attached_at,
+            ];
+        });
+
+        return response()->json([
+            'equipment' => [
+                'id' => $equipment->id,
+                'reference' => $equipment->reference,
+                'mark' => $equipment->mark,
+            ],
+            'history' => $history,
+        ]);
     }
 }
 
