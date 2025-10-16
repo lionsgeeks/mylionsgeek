@@ -404,3 +404,28 @@
         @apply transform translate-x-full opacity-0 transition-all duration-300 ease-in;
     }
 }
+
+.fc .fc-button-primary {
+  background-color: var(--color-alpha) !important;
+  color: black !important;
+  border: none !important;
+  border-radius: 0.6rem !important;
+  padding: 0.4rem 1rem !important;
+  transition: all 0.2s ease !important;
+  margin-inline: 5px !important;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: black !important;
+  color: white !important;
+}
+
+.dark .fc .fc-button-primary {
+  background-color: var(--color-alpha) !important;
+  color: black !important;
+}
+
+.dark .fc .fc-button-primary:hover {
+  background-color: white !important;
+  color: black !important;
+}
