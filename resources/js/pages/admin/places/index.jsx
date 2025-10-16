@@ -625,8 +625,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <DialogContent className="p-6 overflow-hidden"
                         style={{
-                        maxWidth: '73vw',
-                        width: '73vw',
+                        maxWidth: '95vw',
+                        width: '95vw',
                         height: '85vh',
                         maxHeight: '85vh'
                         }}>
@@ -634,6 +634,24 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     <DialogTitle className="text-2xl font-bold">
                         Calendar - {selectedPlace?.name}
                     </DialogTitle>
+                        <div className="flex justify-end max-md:justify-center">
+                            <button
+                                onClick={() => {
+                                    const now = new Date();
+                                    const day = now.toISOString().split('T')[0];
+                                    const startTime = now.toTimeString().slice(0, 5);
+                                    const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                                    const endTime = endDate.toTimeString().slice(0, 5);
+                                    
+                                    setSelectedRange({ day, start: startTime, end: endTime });
+                                    setIsReservationModalOpen(true);
+                                }}
+                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md hover:bg-black hover:text-white transition-colors duration-200 font-medium"
+                            >
+                                + Add Reservation
+                            </button>
+                        </div>
+
                     </DialogHeader>
                     
                     {loadingEvents ? (

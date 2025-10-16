@@ -56,7 +56,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
                 <DialogHeader>
                     <DialogTitle>
                         Reservation Table {cowork.table}
