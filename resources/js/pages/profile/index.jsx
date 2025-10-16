@@ -9,13 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 const CompleteProfile = ({ user }) => {
-    const [step, setStep] = useState(1);
-    const [stepErrors, setStepErrors] = useState({});
-
-
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, setError } = useForm({
         password: '',
-        password_confirmation: '',
+        // password_confirmation: '',
         phone: '',
         cin: '',
         entreprise: '',
@@ -24,19 +20,38 @@ const CompleteProfile = ({ user }) => {
     });
 
     const handleSubmit = (userToken) => {
-        router.put(`/complete-profile/update/${userToken}`, data, {
+        // Clear previous manual errors (optional, but useful)
+        setError("password", null);
+        setError("password_confirmation", null);
+
+        // Frontend password validation
+        const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+
+        if (!passwordRegex.test(data.password)) {
+            setError("password", "Password must be at least 8 characters long and include at least one uppercase letter.");
+            return;
+        }
+
+        if (data.password !== data.password_confirmation) {
+            setError("password_confirmation", "Passwords do not match.");
+            return;
+        }
+
+        // Continue with form submission if valid
+        router.post(`/complete-profile/update/${userToken}`, data, {
             onSuccess: () => {
-                // ✅ Force browser to leave the signed route completely
                 window.location.href = '/login';
             },
             onError: (errors) => {
-                console.error(errors);
+                console.error('Validation Errors:', errors);
             },
             onFinish: () => {
                 console.log('Request finished');
             }
         });
     };
+
+
 
 
 
@@ -63,9 +78,9 @@ const CompleteProfile = ({ user }) => {
                                 type="text"
                                 value={data.cin}
                                 onChange={(e) => setData("cin", e.target.value)}
-                                className="w-full text-black focus:outline-0"
+                                className="w-full text-beta focus:outline-0"
                             />
-                            {errors.cin && <p className="text-red-600 text-sm mt-1">{errors.cin}</p>}
+                            {errors.cin && <p className="text-error text-sm mt-1">{errors.cin}</p>}
                         </div>
 
                         <div>
@@ -77,9 +92,9 @@ const CompleteProfile = ({ user }) => {
                                 type="text"
                                 value={data.entreprise}
                                 onChange={(e) => setData("entreprise", e.target.value)}
-                                className="w-full text-black focus:outline-0"
+                                className="w-full text-beta focus:outline-0"
                             />
-                            {errors.entreprise && <p className="text-red-600 text-sm mt-1">{errors.entreprise}</p>}
+                            {errors.entreprise && <p className="text-error text-sm mt-1">{errors.entreprise}</p>}
                         </div>
                     </div>
 
@@ -94,9 +109,9 @@ const CompleteProfile = ({ user }) => {
                                 type="file"
                                 accept="image/*"
                                 onChange={(e) => setData("image", e.target.files[0])}
-                                className="w-full border border-gray-300 rounded-md px-4 py-2 text-black"
+                                className="w-full border border-gray-300 rounded-md px-4 py-2 text-beta"
                             />
-                            {errors.image && <p className="text-red-600 text-sm mt-1">{errors.image}</p>}
+                            {errors.image && <p className="text-error text-sm mt-1">{errors.image}</p>}
                         </div>
 
                         <div>
@@ -108,9 +123,9 @@ const CompleteProfile = ({ user }) => {
                                 type="text"
                                 value={data.phone}
                                 onChange={(e) => setData("phone", e.target.value)}
-                                className="w-full text-black focus:outline-0"
+                                className="w-full text-beta focus:outline-0"
                             />
-                            {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
+                            {errors.phone && <p className="text-error text-sm mt-1">{errors.phone}</p>}
                         </div>
                     </div>
 
@@ -124,10 +139,13 @@ const CompleteProfile = ({ user }) => {
                                 id="password"
                                 type="password"
                                 value={data.password}
-                                onChange={(e) => setData("password", e.target.value)}
-                                className="w-full text-black focus:outline-0"
+                                onChange={(e) => {
+                                    setData("password", e.target.value);
+                                    setError("password", null); // ✅ Clear error as user types
+                                }}
+                                className="w-full text-beta focus:outline-0"
                             />
-                            {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
+                            {errors.password && <p className="text-error text-sm mt-1">{errors.password}</p>}
                         </div>
 
                         <div>
@@ -138,11 +156,14 @@ const CompleteProfile = ({ user }) => {
                                 id="password_confirmation"
                                 type="password"
                                 value={data.password_confirmation}
-                                onChange={(e) => setData("password_confirmation", e.target.value)}
-                                className="w-full text-black focus:outline-0"
+                                onChange={(e) => {
+                                    setData("password_confirmation", e.target.value);
+                                    setError("password_confirmation", null); // ✅ Clear error
+                                }}
+                                className="w-full text-beta focus:outline-0"
                             />
                             {errors.password_confirmation && (
-                                <p className="text-red-600 text-sm mt-1">{errors.password_confirmation}</p>
+                                <p className="text-error text-sm mt-1">{errors.password_confirmation}</p>
                             )}
                         </div>
                     </div>
@@ -152,7 +173,7 @@ const CompleteProfile = ({ user }) => {
                         <Button
                             type='button'
                             disabled={processing}
-                            className="bg-alpha hover:bg-alpha text-black font-bold py-2 px-6 rounded-md transition-all duration-200 disabled:opacity-50"
+                            className="bg-alpha hover:bg-alpha text-beta font-bold py-2 px-6 rounded-md transition-all duration-200 disabled:opacity-50"
                             onClick={() => handleSubmit(user.activation_token)}
                         >
                             {processing ? "Submitting..." : "Submit"}
