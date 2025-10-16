@@ -646,7 +646,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     setSelectedRange({ day, start: startTime, end: endTime });
                                     setIsReservationModalOpen(true);
                                 }}
-                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md hover:bg-black hover:text-white transition-colors duration-200 font-medium"
+                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
                             >
                                 + Add Reservation
                             </button>
