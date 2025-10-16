@@ -23,7 +23,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 <SidebarMenuButton
                                     isActive={isActive}
                                     tooltip={{ children: item.title }}
-                                    className="[&>[data-chevron]]:ml-auto"
+                                    className="[&>[data-chevron]]:ml-auto py-6"
                                     aria-expanded={isOpen}
                                     onClick={() => toggleOpen(item.title)}
                                 >
@@ -39,10 +39,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     asChild
                                     isActive={isActive}
                                     tooltip={{ children: item.title }}
-                                    className="[&>[data-chevron]]:ml-auto"
+                                    className="[&>[data-chevron]]:ml-auto py-5.5"
                                 >
                                     <Link href={item.href} prefetch>
-                                        {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
+                                        {item.icon && <item.icon  className="dark:text-[var(--color-alpha)] text-[#d8a200] " />}
                                         <span>{item.title}</span>
                                         {item.chevron && (
                                             <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />
