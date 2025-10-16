@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewPasswordNotification;
 use App\Mail\UserWelcomeMail;
 use App\Mail\WelcomeUserAfterProfileComplete;
 use App\Models\User;
@@ -59,20 +60,6 @@ class CompleteProfileController extends Controller
 
         return redirect()->back()->with('success', 'Activation link resent successfully.');
     }
-    // public function submitCompleteProfile(Request $request, $token)
-    // {
-    //     // No need to check signed URL here
-    //     dd($token);
-
-    //     $user = User::where('activation_token', $token)->first();
-
-    //     if (!$user) {
-    //         return Inertia::render('profile/ExpiredLink');
-    //     }
-
-    //     return redirect('/login')->with('success', 'Profile completed!');
-    // }
-
     public function submitCompleteProfile(Request $request, $token)
     {
         $user = User::where('activation_token', $token)->first();
@@ -107,10 +94,24 @@ class CompleteProfileController extends Controller
         $user->activation_token = null; // Invalidate the token
         $user->account_state = 0; // Optional: mark user as active
         $user->save();
-        
+
         Mail::to($user->email)->send(new WelcomeUserAfterProfileComplete($user));
 
 
         return redirect('/login')->with('success', 'Profile completed successfully. You can now log in.');
+    }
+    public function resetPassword($id)
+    {
+        $user = User::find($id);
+        $newPassword = Str::random(10);
+
+        // Update the user's password
+        $user->password = Hash::make($newPassword);
+        $user->save();
+
+        // Send the new password email
+        Mail::to($user->email)->send(new NewPasswordNotification($user, $newPassword));
+
+        return back()->with('success', 'Password reset and email sent to user.');
     }
 }

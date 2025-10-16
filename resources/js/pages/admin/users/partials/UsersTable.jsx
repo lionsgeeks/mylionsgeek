@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { useInitials } from '@/hooks/use-initials';
 import EditModal from './EditModal';
@@ -71,6 +71,16 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             });
         }
     };
+    const resetPassword = (id) => {
+        router.post(`/admin/users/${id}/reset-password` , {
+            onSuccess : () => {
+                alert('fine')
+            },
+            onError : () => {
+                alert('error')
+            }
+        })
+    }
     return (
         <div>
             <Table>
@@ -149,6 +159,13 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     ) : (
                                         <Trash size={25} className="text-error" />
                                     )}
+                                </Button>
+                                <Button
+                                    className="p-2 bg-transparent cursor-pointer hover:bg-transparent duration-200"
+                                    title="Reset password"
+                                    onClick={() => resetPassword(user.id)}
+                                >
+                                    <RefreshCcw size={20} className="text-alpha" />
                                 </Button>
                             </TableCell>
                         </TableRow>
