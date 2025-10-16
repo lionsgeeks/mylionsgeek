@@ -429,3 +429,23 @@
   background-color: white !important;
   color: black !important;
 }
+
+/* FullCalendar Mobile Responsive */
+@media (max-width: 768px) {
+  .fc .fc-button {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    /* display: none !important; */
+  }
+  
+  .fc .fc-toolbar-title {
+    font-size: 1.25rem !important;
+  }
+  
+  /* خلي toolbar يكون أحسن على mobile */
+  .fc .fc-toolbar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    /* display: none !important; */
+  }
+}
