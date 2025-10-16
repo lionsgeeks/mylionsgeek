@@ -18,6 +18,7 @@ class CompleteProfileController extends Controller
         if (! $request->hasValidSignature()) {
             return Inertia::render('profile/ExpiredLink');
         }
+        // dd():
 
         // ✅ Then try to get the user using the token
         $user = User::where('activation_token', $token)->first();
@@ -54,5 +55,18 @@ class CompleteProfileController extends Controller
         Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
 
         return redirect()->back()->with('success', 'Activation link resent successfully.');
+    }
+    public function submitCompleteProfile(Request $request, $token)
+    {
+        // No need to check signed URL here
+        dd($token);
+
+        $user = User::where('activation_token', $token)->first();
+
+        if (!$user) {
+            return Inertia::render('profile/ExpiredLink');
+        }
+
+        return redirect('/login')->with('success', 'Profile completed!');
     }
 }

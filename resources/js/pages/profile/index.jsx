@@ -1,6 +1,6 @@
 // resources/js/Pages/Profile/Complete.jsx
 
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import React from 'react';
 import Logo from '/public/assets/images/lionsgeek_logo_2.png'
@@ -23,10 +23,22 @@ const CompleteProfile = ({ user }) => {
         image: null,
     });
 
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-    //     post(`/complete-profile/${user.activation_token}`);
-    // };
+    const handleSubmit = (userToken) => {
+        router.put(`/complete-profile/update/${userToken}`, data, {
+            onSuccess: () => {
+                // ✅ Force browser to leave the signed route completely
+                window.location.href = '/login';
+            },
+            onError: (errors) => {
+                console.error(errors);
+            },
+            onFinish: () => {
+                console.log('Request finished');
+            }
+        });
+    };
+
+
 
 
     return (
@@ -38,8 +50,8 @@ const CompleteProfile = ({ user }) => {
 
             <div className="w-full bg-white ">
 
-                <form className="space-y-6 mx-auto w-1/2 shadow-lg rounded-lg p-8">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">Complete Your Profile</h2>
+                <form className="space-y-6 mx-auto w-1/2 shadow-lg rounded-lg p-8" onSubmit={(e) => e.preventDefault()}>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Complete Your Profile</h2>
                     {/* Row 1: CIN + Entreprise */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -138,11 +150,12 @@ const CompleteProfile = ({ user }) => {
                     {/* Submit Button */}
                     <div className="mt-8 text-end">
                         <Button
-                            type="submit"
+                            type='button'
                             disabled={processing}
                             className="bg-alpha hover:bg-alpha text-black font-bold py-2 px-6 rounded-md transition-all duration-200 disabled:opacity-50"
+                            onClick={() => handleSubmit(user.activation_token)}
                         >
-                            {processing ? "Submitting..." : "Submit Profile"}
+                            {processing ? "Submitting..." : "Submit"}
                         </Button>
                     </div>
                 </form>

@@ -19,5 +19,6 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
 });
 
+Route::put('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
     ->name('user.complete-profile');
