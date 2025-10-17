@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash, Settings } from 'lucide-react';
+import { Pencil, Trash, Settings, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,11 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [editingEquipment, setEditingEquipment] = useState(null);
     const [deletingEquipment, setDeletingEquipment] = useState(null);
     const [filterType, setFilterType] = useState('all');
+    // History modal state
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [historyEquipment, setHistoryEquipment] = useState(null);
+    const [historyItems, setHistoryItems] = useState([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     
     // Type management state
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
@@ -67,6 +72,23 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const handleDelete = (equipment) => {
         setDeletingEquipment(equipment);
         setIsDeleteOpen(true);
+    };
+
+    const openHistory = async (equipment) => {
+        setHistoryEquipment(equipment);
+        setIsHistoryOpen(true);
+        setIsLoadingHistory(true);
+        try {
+            const res = await fetch(`/admin/equipements/${equipment.id}/history`);
+            if (!res.ok) throw new Error('Failed to load history');
+            const json = await res.json();
+            setHistoryItems(Array.isArray(json.history) ? json.history : []);
+        } catch (err) {
+            console.error(err);
+            setHistoryItems([]);
+        } finally {
+            setIsLoadingHistory(false);
+        }
     };
 
     const handleUpdateEquipment = () => {
@@ -277,6 +299,13 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     </td>
                                     <td className="px-4 py-3 text-right text-sm">
                                         <div className="inline-flex items-center gap-1.5">
+                                            <button
+                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                                title="History"
+                                                onClick={() => openHistory(e)}
+                                            >
+                                                <History size={18} className="h-4 w-4" />
+                                            </button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                                 title="Edit"
@@ -684,6 +713,75 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 >
                                     Delete Type
                                 </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Reservation History Modal */}
+                <Dialog open={isHistoryOpen} onOpenChange={(open) => {
+                    setIsHistoryOpen(open);
+                    if (!open) {
+                        setHistoryItems([]);
+                        setHistoryEquipment(null);
+                    }
+                }}>
+                    <DialogContent className="max-w-2xl bg-light text-dark dark:bg-dark dark:text-light">
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-medium">Reservation History</h2>
+                                    {historyEquipment && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {historyEquipment.reference} — {historyEquipment.mark}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-sidebar-border/70 overflow-hidden">
+                                <div className="bg-secondary/50 px-4 py-3 text-sm font-medium flex items-center justify-between">
+                                    <span>Last reservations</span>
+                                    {isLoadingHistory && <span className="text-muted-foreground text-xs">Loading…</span>}
+                                </div>
+                                {historyItems.length === 0 ? (
+                                    <div className="p-6 text-sm text-muted-foreground text-center">
+                                        {isLoadingHistory ? 'Fetching history…' : 'No reservation history found.'}
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-sidebar-border/70">
+                                        {historyItems.map((h) => {
+                                            const status = h.canceled ? 'Canceled' : (h.approved ? 'Approved' : 'Pending');
+                                            const statusClasses = h.canceled
+                                                ? 'bg-red-500/15 text-red-700 dark:text-red-300'
+                                                : (h.approved ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-yellow-500/20 text-yellow-800 dark:text-yellow-300');
+                                            return (
+                                                <div key={`${h.reservation_id}-${h.day}-${h.start}`} className="px-4 py-3 flex items-center gap-4">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${statusClasses}`}>{status}</span>
+                                                            {h.day && (
+                                                                <span className="text-sm font-medium">
+                                                                    {h.day}
+                                                                </span>
+                                                            )}
+                                                            {(h.start || h.end) && (
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    {h.start || '--'} — {h.end || '--'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {h.user_name && (
+                                                            <div className="text-sm text-muted-foreground truncate">
+                                                                Reserved by {h.user_name}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </DialogContent>

@@ -1,11 +1,11 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Timer, User ,Trash2 ,Edit3 } from 'lucide-react';
+import { BookOpen, Timer, Trash2, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
 import UpdateTraining from './partials/UpdateTraining';
 
-export default function Training({ trainings, coaches, filters = {}, tracks = [],promos=[]}) {
+export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
     const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
@@ -26,38 +26,47 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     const confirmDelete = () => {
         if (trainingToDelete) {
             router.delete(`/trainings/${trainingToDelete.id}`, {
-                onSuccess: () => closeDeleteModal()
+                onSuccess: () => closeDeleteModal(),
             });
         }
     };
 
-    const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach , promoValue = selectedPromo) => {
+    const applyFilters = (trackValue = selectedTrack, coachValue = selectedCoach, promoValue = selectedPromo) => {
         const params = new URLSearchParams();
         if (coachValue) params.set('coach', coachValue);
         if (trackValue) params.set('track', trackValue);
         if (promoValue) params.set('promo', promoValue);
-        
-        
+
         router.visit(`/training?${params.toString()}`);
     };
+
     const handleCoachChange = (e) => {
         const value = e.target.value;
         setSelectedCoach(value);
-        applyFilters(selectedTrack, value);
+        applyFilters(selectedTrack, value, selectedPromo);
     };
-    const handlePromoChange = (e) => {
-    const value = e.target.value;
-    setSelectedPromo(value);
-    applyFilters(selectedTrack, selectedCoach, value);
-};
-
 
     const handleTrackChange = (e) => {
         const value = e.target.value;
         setSelectedTrack(value);
-        applyFilters(value, selectedCoach);
+        applyFilters(value, selectedCoach, selectedPromo);
     };
 
+    const handlePromoChange = (e) => {
+        const value = e.target.value;
+        setSelectedPromo(value);
+        applyFilters(selectedTrack, selectedCoach, value);
+    };
+
+    const getTrainingStatus = (training) => {
+        const start = new Date(training.start_time);
+        const now = new Date();
+        const sixMonthsLater = new Date(start);
+        sixMonthsLater.setMonth(start.getMonth() + 6);
+        if (now < sixMonthsLater && start < now) return 'active';
+    };
+
+    const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
     return (
         <AppLayout>
             <Head title="Training" />
@@ -73,96 +82,120 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 flex flex-wrap items-end gap-3">
-                    <div>
-                        <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Coach</label>
-                        <select
-                            value={selectedCoach}
-                            onChange={handleCoachChange}
-                            className="rounded-lg border border-alpha/30 bg-light px-3 py-2 dark:bg-dark"
-                        >
-                            <option value="">All</option>
-                            {coaches.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Track</label>
-                        <select
-                            value={selectedTrack}
-                            onChange={handleTrackChange}
-                            className="rounded-lg border border-alpha/30 bg-light px-3 py-2 dark:bg-dark"
-                        >
-                            <option value="">All</option>
-                            {tracks
-                                .filter((t) => t !== null && t !== '')
-                                .map((t) => (
-                                    <option key={t} value={t}>
-                                        {t}
+                <div className="mb-10 rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                        {/* Coach */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <User size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Coach
+                            </label>
+                            <select
+                                value={selectedCoach}
+                                onChange={handleCoachChange}
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
+                            >
+                                <option value="">All Coaches</option>
+                                {coaches.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name}
                                     </option>
                                 ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm text-dark/70 dark:text-light/70">Promo</label>
-                        <select
-                            value={selectedPromo}
-                            onChange={handlePromoChange}
-                            className="rounded-lg border border-alpha/30 bg-light px-3 py-2 dark:bg-dark"
-                        >
-                            <option value="">All</option>
-                            {promos
-                                .filter((t) => t !== null && t !== '')
-                                .map((t) => (
-                                    <option key={t} value={t}>
-                                        {t}
-                                    </option>
-                                ))}
-                        </select>
+                            </select>
+                        </div>
+
+                        {/* Track */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <BookOpen size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Track
+                            </label>
+                            <select
+                                value={selectedTrack}
+                                onChange={handleTrackChange}
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
+                            >
+                                <option value="">All Tracks</option>
+                                {tracks
+                                    .filter((t) => t)
+                                    .map((t) => (
+                                        <option key={t} value={t}>
+                                            {t}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+
+                        {/* Promo */}
+                        <div>
+                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-yellow-600 dark:text-yellow-300">
+                                <TrendingUp size={18} className="text-yellow-600 dark:text-yellow-400" />
+                                Promo
+                            </label>
+                            <select
+                                value={selectedPromo}
+                                onChange={handlePromoChange}
+                                className="w-full cursor-pointer rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 shadow-sm transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-600/40 dark:border-yellow-400/20 dark:bg-[#222] dark:text-gray-200"
+                            >
+                                <option value="">All Promos</option>
+                                {promos
+                                    .filter((p) => p)
+                                    .map((p) => (
+                                        <option key={p} value={p}>
+                                            {p}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {/* Bouton pour réinitialiser les filtres */}
                     {(selectedCoach || selectedTrack || selectedPromo) && (
-                        <button
-                            onClick={() => {
-                                setSelectedCoach('');
-                                setSelectedTrack('');
-                                setSelectedPromo('');
-                                router.visit('/training');
-                            }}
-                            className="rounded-lg bg-yellow-500 px-4 py-2 text-white transition-colors hover:bg-yellow-600"
-                        >
-                            Reset
-                        </button>
-                    )}
-                </div>
-
-                {/* Stats Cards */}
-                <div className="mb-8">
-                    {trainings && trainings.length > 0 && (
-                        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">{trainings.length}</div>
-                                <div className="text-lg font-bold text-yellow-700">Total Programs</div>
-                            </div>
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">
-                                    {trainings.filter((t) => t.status === 'active').length}
-                                </div>
-                                <div className="text-lg font-bold text-yellow-700">Active Now</div>
-                            </div>
-                            <div className="rounded-2xl border border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 p-8 text-center shadow-lg transition-all duration-300 hover:shadow-xl">
-                                <div className="mb-2 text-4xl font-black text-yellow-600">{coaches.length}</div>
-                                <div className="text-lg font-bold text-yellow-700">Expert Mentors</div>
-                            </div>
+                        <div className="mt-6 flex justify-center">
+                            <button
+                                onClick={() => {
+                                    setSelectedCoach('');
+                                    setSelectedTrack('');
+                                    setSelectedPromo('');
+                                    router.visit('/training');
+                                }}
+                                className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-transparent"
+                            >
+                                Reset Filters
+                            </button>
                         </div>
                     )}
                 </div>
 
-                {/* Training Cards Grid */}
+                {/* Stats Cards */}
+                {trainings && trainings.length > 0 && (
+                    <div className="mt-10 mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <BookOpen size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{trainings.length}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Total Programs</div>
+                        </div>
+
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <Timer size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{activeTrainingsCount}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Active Now</div>
+                        </div>
+
+                        <div className="group rmb-10 flex flex-col items-center justify-center rounded-xl border border-gray-200 p-6 transition-all duration-300 dark:border-yellow-400/20 dark:bg-[#1c1c1c]/80">
+                            <div className="mb-3 rounded-full bg-yellow-200 p-3 transition-transform group-hover:scale-110 dark:bg-yellow-400/10">
+                                <User size={34} className="text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <div className="text-4xl font-bold text-yellow-600 dark:text-yellow-400">{coaches.length}</div>
+                            <div className="mt-2 text-sm font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-300">Expert Mentors</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Training Cards */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {trainings && trainings.length > 0 ? (
                         trainings.map((training) => (
@@ -171,94 +204,82 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                 className="group cursor-pointer overflow-hidden rounded-xl border border-alpha/20 bg-light transition-all duration-300 hover:border-alpha/40 dark:bg-dark"
                                 onClick={() => router.visit(`/trainings/${training.id}`)}
                             >
-                                {/* Training Image */}
+                                {/* Image + Category Badge */}
                                 <div className="relative h-40 overflow-hidden">
-                                    <div className="absolute top-3 right-3 z-50 flex gap-2">
-            {/* Edit Button */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation(); 
-                }}
-            >
-                <UpdateTraining training={training} coaches={coaches} />
-            </button>
-
-            {/* Delete Button */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation(); 
-                    openDeleteModal(training);
-                }}
-                className="rounded bg-red-500 p-1 text-white hover:bg-red-600 px-3"
-            >
-                <Trash2 size={16} />
-            </button>
-            </div>
                                     <img
                                         src={
-                                            training.category?.toLowerCase() === "coding"
-                                            ? "/assets/images/training/coding.jpg"
-                                            : training.category?.toLowerCase() === "media"
-                                            ? "/assets/images/training/media.jpg"
-                                            : training.img
-                                            ? `/storage/img/training/${training.img}`
-                                            : "/assets/images/training/default.jpg"
+                                            training.category?.toLowerCase() === 'coding'
+                                                ? '/assets/images/training/coding.jpg'
+                                                : training.category?.toLowerCase() === 'media'
+                                                  ? '/assets/images/training/media.jpg'
+                                                  : training.img
+                                                    ? `/storage/img/training/${training.img}`
+                                                    : '/assets/images/training/default.jpg'
                                         }
                                         alt={training.name}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                        />
+                                    />
 
-
-                                    {/* Status Badge */}
-                                    {training.status && (
-                                        <div className="absolute top-3 right-3">
-                                            <span
-                                                className={`rounded-md px-2 py-1 text-xs font-medium ${
-                                                    training.status === 'active'
-                                                        ? 'bg-green-500/90 text-white'
-                                                        : training.status === 'upcoming'
-                                                          ? 'bg-blue-500/90 text-white'
-                                                          : 'bg-gray-500/90 text-white'
-                                                }`}
-                                            >
-                                                {training.status}
-                                            </span>
-                                        </div>
+                                    {training.category && (
+                                        <span
+                                            className={`absolute top-2 left-2 rounded-full bg-[var(--color-alpha)] px-2 py-1 text-xs font-semibold text-black`}
+                                        >
+                                            {training.category}
+                                        </span>
                                     )}
                                 </div>
 
                                 {/* Card Content */}
-                                <div className="space-y-3 p-4">
-                                    <div>
-                                        <span className="text-xs font-medium tracking-wide text-alpha uppercase">{training.category}</span>
-                                        <h3 className="mt-1 line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
-                                    </div>
-
+                                <div className="flex flex-col gap-2 p-3">
+                                    {training.name && (
+                                        <h3 className="line-clamp-2 text-lg font-semibold text-dark dark:text-light">{training.name}</h3>
+                                    )}
                                     {training.description && (
                                         <p className="line-clamp-2 text-sm text-dark/70 dark:text-light/70">{training.description}</p>
                                     )}
 
-                                    <div className="flex items-center space-x-2">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-alpha text-xs font-bold text-light">
-                                            {training.coach
-                                                ? training.coach.name
-                                                      .split(' ')
-                                                      .map((n) => n[0])
-                                                      .join('')
-                                                      .toUpperCase()
-                                                : 'C'}
+                                    {/* Coach */}
+                                    {training.coach?.name && (
+                                        <div className="mt-2 flex items-center space-x-2">
+                                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-yellow-600 text-xs font-bold text-yellow-600 dark:border-yellow-400 dark:text-yellow-400">
+                                                {training.coach.name
+                                                    .split(' ')
+                                                    .map((n) => n[0])
+                                                    .join('')
+                                                    .toUpperCase()}
+                                            </div>
+                                            <span className="text-sm text-dark/70 dark:text-light/70">{training.coach.name}</span>
                                         </div>
-                                        <span className="text-sm text-dark/70 dark:text-light/70">{training.coach?.name || 'Expert Instructor'}</span>
-                                    </div>
+                                    )}
 
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                                            <Timer size={14} />
-                                            <span>{training.start_time || 'N/A'}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
-                                            <User size={14} />
-                                            <span>{training.users_count ?? 0}</span>
+                                    {/* Timer & Users */}
+                                    <div className="mt-2 flex items-center justify-between text-sm">
+                                        {training.start_time && (
+                                            <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                                <Timer size={14} />
+                                                <span>{training.start_time}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="flex items-center space-x-1 text-dark/70 dark:text-light/70">
+                                                <User size={14} />
+                                                <span>{training.users_count ?? 0}</span>
+                                            </div>
+                                            {/* Actions Row */}
+                                            <div className="flex items-center justify-center">
+                                                <button onClick={(e) => e.stopPropagation()}>
+                                                    <UpdateTraining training={training} coaches={coaches} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openDeleteModal(training);
+                                                    }}
+                                                    className="cursor-pointer rounded-lg border border-transparent p-2 px-3 text-red-600 hover:border-red-600"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -274,34 +295,30 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                         </div>
                     )}
                 </div>
-            </div>
-            {deleteModalOpen && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
-            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">
-                Confirm Deletion
-            </h3>
-            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
-                Are you sure you want to delete "{trainingToDelete?.name}"?
-            </p>
-            <div className="flex justify-end space-x-3">
-                <button
-                    onClick={closeDeleteModal}
-                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
-                >
-                    Cancel
-                </button>
-                <button
-                    onClick={confirmDelete}
-                    className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-                >
-                    Delete
-                </button>
-            </div>
-        </div>
-    </div>
-)}
 
+                {/* Delete Modal */}
+                {deleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-dark">
+                            <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">Confirm Deletion</h3>
+                            <p className="mb-6 text-sm text-dark/70 dark:text-light/70">
+                                Are you sure you want to delete "{trainingToDelete?.name}"?
+                            </p>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={closeDeleteModal}
+                                    className="rounded bg-gray-300 px-4 py-2 text-dark hover:bg-gray-400 dark:bg-gray-700 dark:text-light dark:hover:bg-gray-600"
+                                >
+                                    Cancel
+                                </button>
+                                <button onClick={confirmDelete} className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
         </AppLayout>
     );
 }

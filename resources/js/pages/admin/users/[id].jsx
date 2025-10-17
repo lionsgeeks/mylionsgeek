@@ -10,6 +10,9 @@ export default function AdminUserProfile() {
   const certificates = props.certificates || [];
   const cv = props.cv || null;
   const notes = props.notes || [];
+  const discipline = props.discipline ?? null;
+  const absences = props.absences || { data: [], meta: {} };
+  const recentAbsences = props.recentAbsences || [];
 
   const coverUrl = useMemo(() => user?.cover || '/assets/images/cover-placeholder.svg', [user]);
 
@@ -137,10 +140,42 @@ export default function AdminUserProfile() {
 
           {/* Right: Tabs-like sections */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Attendance Overview (placeholder) */}
+            {/* Attendance Overview */}
             <div className="rounded-xl border border-alpha/20 p-4">
               <h2 className="font-semibold mb-3">Attendance Overview</h2>
-              <div className="text-sm text-neutral-500">No attendance data available yet.</div>
+              {discipline === null ? (
+                <div className="text-sm text-neutral-500">No attendance data available yet.</div>
+              ) : (
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm text-neutral-600 dark:text-neutral-300">Discipline</div>
+                    <div className="text-3xl font-extrabold text-alpha">{discipline}%</div>
+                  </div>
+                  <div className="flex-1 h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                    <div className="h-full bg-alpha" style={{ width: `${Math.max(0, Math.min(100, discipline))}%` }} />
+                  </div>
+                </div>
+              )}
+              {/* Recent 5 absences */}
+              <div className="mt-5">
+                <div className="text-sm font-semibold mb-2">Recent Absences</div>
+                {Array.isArray(recentAbsences) && recentAbsences.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentAbsences.map((row, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2">
+                        <div className="text-sm font-medium">{new Date(row.date).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-neutral-500">No absences yet.</div>
+                )}
+              </div>
             </div>
 
             <div className="rounded-xl border border-alpha/20 p-4">
@@ -176,10 +211,48 @@ export default function AdminUserProfile() {
               )}
             </div>
 
-            {/* Activity Timeline (placeholder) */}
+            {/* Absences (paginated, only absent) */}
             <div className="rounded-xl border border-alpha/20 p-4">
-              <h2 className="font-semibold mb-3">Activity</h2>
-              <div className="text-sm text-neutral-500">No activity recorded yet.</div>
+              <h2 className="font-semibold mb-3">Absences</h2>
+              {absences.data && absences.data.length > 0 ? (
+                <div className="space-y-2">
+                  {absences.data.map((row, i) => (
+                    <div key={i} className="rounded-lg border border-alpha/20 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-semibold">{new Date(row.date).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                        </div>
+                      </div>
+                      {Array.isArray(row.notes) && row.notes.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {row.notes.map((n, idx) => (
+                            <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs">{n}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {/* Pagination */}
+                  {absences.meta && absences.meta.last_page > 1 && (
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <a
+                        className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
+                        href={`?page=${Math.max(1, (absences.meta.current_page||1)-1)}`}
+                      >Prev</a>
+                      <span className="text-xs text-neutral-500">Page {absences.meta.current_page} / {absences.meta.last_page}</span>
+                      <a
+                        className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
+                        href={`?page=${Math.min(absences.meta.last_page||1, (absences.meta.current_page||1)+1)}`}
+                      >Next</a>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-neutral-500">No absences to display.</div>
+              )}
             </div>
           </div>
         </div>

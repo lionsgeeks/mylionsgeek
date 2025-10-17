@@ -9,7 +9,6 @@ class Note extends Model
     protected $table = 'notes'; 
 
     protected $fillable = [
-        'id',
         'user_id',
         'attendance_id',
         'note',

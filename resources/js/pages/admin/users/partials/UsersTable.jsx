@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { useInitials } from '@/hooks/use-initials';
 import EditModal from './EditModal';
@@ -71,6 +71,16 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             });
         }
     };
+    const resetPassword = (id) => {
+        router.post(`/admin/users/${id}/reset-password` , {
+            onSuccess : () => {
+                alert('fine')
+            },
+            onError : () => {
+                alert('error')
+            }
+        })
+    }
     return (
         <div>
             <Table>
@@ -91,15 +101,15 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 className="font-medium flex gap-4 items-center"
                                 onClick={() => onShow(user)}
                             >
-                             <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-  <AvatarImage
-    src={`/storage/img/profile/${user.image}`}
-    alt={user.name}
-  />
-  <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-    {getInitials(user.name)}
-  </AvatarFallback>
-</Avatar>
+                                <Avatar className="h-8 w-8 overflow-hidden rounded-full">
+                                    <AvatarImage
+                                        src={`/storage/${user.image}`}
+                                        alt={user.name}
+                                    />
+                                    <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                        {getInitials(user.name)}
+                                    </AvatarFallback>
+                                </Avatar>
 
                                 <div className="flex flex-col">
                                     <h1 className="capitalize">{user.name}</h1>
@@ -149,6 +159,13 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     ) : (
                                         <Trash size={25} className="text-error" />
                                     )}
+                                </Button>
+                                <Button
+                                    className="p-2 bg-transparent cursor-pointer hover:bg-transparent duration-200"
+                                    title="Reset password"
+                                    onClick={() => resetPassword(user.id)}
+                                >
+                                    <RefreshCcw size={20} className="text-alpha" />
                                 </Button>
                             </TableCell>
                         </TableRow>

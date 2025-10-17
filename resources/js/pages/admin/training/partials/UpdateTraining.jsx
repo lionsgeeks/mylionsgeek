@@ -56,7 +56,7 @@ export default function UpdateTraining({ training, coaches }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white">
+        <Button className="flex items-center bg-transparent gap-2 rounded-lg text-yellow-600 border border-transparent  hover:border-yellow-600  px-3 cursor-pointer active:scale-95 hover:bg-transparent">
           <Pencil size={18} />
         </Button>
       </DialogTrigger>
@@ -143,7 +143,7 @@ export default function UpdateTraining({ training, coaches }) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-yellow-400 hover:bg-yellow-500 cursor-pointer"
               disabled={processing}
             >
               {processing ? 'Updating...' : 'Update'}

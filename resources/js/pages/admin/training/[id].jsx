@@ -11,7 +11,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import axios from 'axios';
+// Use native fetch instead of axios
 import GeekyWheel from './partials/geekyWheel';
 
 export default function Show({ training, usersNull }) {
@@ -26,10 +26,7 @@ export default function Show({ training, usersNull }) {
   const [showAttendanceList, setShowAttendanceList] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [attendanceData, setAttendanceData] = useState({});
-  const [events] = useState([
-    // placeholder events; wire real data later
-    // { date: '2025-10-05', title: 'Session', type: 'session' }
-  ]);
+  const [events, setEvents] = useState([]);
   const [currentAttendanceId, setCurrentAttendanceId] = useState(null);
   const [showPlayDropdown, setShowPlayDropdown] = useState(false);
   const [showGeekyWheel, setShowGeekyWheel] = useState(false);
@@ -42,6 +39,16 @@ export default function Show({ training, usersNull }) {
   const calendarRef = useRef(null);
   const [calendarApi, setCalendarApi] = useState(null);
   const [calendarTitle, setCalendarTitle] = useState('');
+
+  // Map status to color styles for SelectTrigger
+  const statusClass = (value) => {
+    const v = String(value || '').toLowerCase();
+    if (v === 'present') return 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400';
+    if (v === 'absent') return 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400';
+    if (v === 'late') return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    if (v === 'excused') return 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400';
+    return '';
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -64,39 +71,122 @@ export default function Show({ training, usersNull }) {
     }
   }, [calendarRef]);
 
+  // Fetch attendance events for this training
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch(`/training/${training.id}/attendance-events`);
+        const data = await res.json();
+        if (Array.isArray(data.events)) {
+          setEvents(data.events.map(e => ({ ...e })));
+        }
+      } catch (e) {}
+    }
+    fetchEvents();
+  }, [training.id]);
+
   //   attendance
 
 
-  function AddAttendance(dateStr) {
-    axios.post("/attendances", {
-      formation_id: training.id,
-      attendance_day: dateStr,
-    })
-      .then(res => {
-        // juste save ID f state
-        setCurrentAttendanceId(res.data.attendance_id);
-        setShowAttendanceList(true);
-      })
-      .catch(err => console.error(err));
+  async function AddAttendance(dateStr) {
+    try {
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const res = await fetch('/attendances', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          formation_id: training.id,
+          attendance_day: dateStr,
+        }),
+      });
+      if (!res.ok) throw new Error(`Failed to create/load attendance (${res.status})`);
+      const data = await res.json();
+
+      setCurrentAttendanceId(data.attendance_id);
+      const initialized = {};
+      const existing = data.lists || [];
+      const byUserId = new Map(existing.map(l => [l.user_id, l]));
+      students.forEach((s) => {
+        const key = `${dateStr}-${s.id}`;
+        const saved = byUserId.get(s.id);
+        initialized[key] = {
+          morning: saved?.morning ?? 'present',
+          lunch: saved?.lunch ?? 'present',
+          evening: saved?.evening ?? 'present',
+          notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
+          user_id: s.id,
+        };
+      });
+      setAttendanceData((prev) => ({ ...prev, ...initialized }));
+
+      if (existing.length === 0) {
+        const dataToSave = students.map((s) => ({
+          user_id: s.id,
+          attendance_day: dateStr,
+          attendance_id: Number(data.attendance_id),
+          morning: 'present',
+          lunch: 'present',
+          evening: 'present',
+          note: null,
+        }));
+        // fire-and-forget initialization; errors will be visible on explicit save
+        fetch('/admin/attendance/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({ attendance: dataToSave }),
+        }).catch(() => {});
+      }
+      setShowAttendanceList(true);
+    } catch (err) {}
   }
 
 
   //   atteandacelist
-  function handleSave() {
+  async function handleSave() {
     const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
-      const studentId = key.split('-')[1];
+      const studentId = value?.user_id ?? (() => { const i = key.lastIndexOf('-'); return i !== -1 ? key.slice(i + 1) : key; })();
       return {
         user_id: studentId,
         attendance_day: selectedDate,
-        attendance_id: currentAttendanceId,
+        attendance_id: Number(currentAttendanceId),
         morning: value.morning,
         lunch: value.lunch,
         evening: value.evening,
-        note: value.notes || null,
+        note: Array.isArray(value.notes) ? value.notes.join(' | ') : (value.notes || null),
       };
     });
 
-    router.post('/admin/attendance/save', { attendance: dataToSave });
+    try {
+      if (!currentAttendanceId || !selectedDate) return;
+      const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const res = await fetch('/admin/attendance/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ attendance: dataToSave }),
+      });
+      if (!res.ok) return;
+      setShowAttendanceList(false);
+      try {
+        const evRes = await fetch(`/training/${training.id}/attendance-events`);
+        const evData = await evRes.json();
+        if (Array.isArray(evData.events)) setEvents(evData.events);
+      } catch {}
+    } catch (err) {}
   }
 
   // Wheel functions
@@ -152,6 +242,38 @@ export default function Show({ training, usersNull }) {
     setSelectedWinner(null);
     setShowWinnerModal(false);
   };
+
+  // Notes helpers: add/remove chip-style notes per student
+  const addNote = (studentKey, noteText) => {
+    const text = (noteText || '').trim();
+    if (!text) return;
+    setAttendanceData(prev => {
+      const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+      const existingNotes = Array.isArray(prevForStudent.notes) ? prevForStudent.notes : (prevForStudent.notes ? [prevForStudent.notes] : []);
+      return {
+        ...prev,
+        [studentKey]: {
+          ...prevForStudent,
+          notes: [...existingNotes, text]
+        }
+      };
+    });
+  };
+
+  const removeNote = (studentKey, index) => {
+    setAttendanceData(prev => {
+      const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+      const existingNotes = Array.isArray(prevForStudent.notes) ? [...prevForStudent.notes] : (prevForStudent.notes ? [prevForStudent.notes] : []);
+      existingNotes.splice(index, 1);
+      return {
+        ...prev,
+        [studentKey]: {
+          ...prevForStudent,
+          notes: existingNotes
+        }
+      };
+    });
+  };
   // Filter enrolled students
   const filteredStudents = students.filter(
     s =>
@@ -181,7 +303,7 @@ export default function Show({ training, usersNull }) {
   });
 
   // Delete student
-
+  
 
   // Add student from modal
   const handleAddStudent = (user) => {
@@ -201,7 +323,7 @@ export default function Show({ training, usersNull }) {
   const confirmDelete = () => {
     if (studentToDelete) {
       router.delete(`/trainings/${training.id}/students/${studentToDelete.id}`, {
-        onSuccess: () => {
+      onSuccess: () => {
           setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
           setAvailableUsers(prev => [...prev, studentToDelete]);
           setShowDeleteConfirm(false);
@@ -263,11 +385,11 @@ export default function Show({ training, usersNull }) {
                   <button
                     onClick={() => {
                       setShowPlayDropdown(false);
-                      // Add The Geek functionality later
+                      router.visit(`/training/${training.id}/geeko`);
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-b-xl transition-colors text-dark dark:text-light font-semibold"
                   >
-                    The Geek
+                    Geeko
                   </button>
                 </div>
               )}
@@ -278,15 +400,17 @@ export default function Show({ training, usersNull }) {
         {/* Hero Image */}
         <div className="w-full h-64 rounded-2xl overflow-hidden border border-alpha/20 mb-8">
           {training.img ? (
-            <img
-              src={
-                training.category?.toLowerCase() === 'coding'
-                  ? '/assets/images/training/coding.jpg'
-                  : training.category?.toLowerCase() === 'media'
-                    ? '/assets/images/training/media.jpg'
-                    : training.img
-              }
-              alt={training.name}
+             <img
+                                        src={
+                                            training.category?.toLowerCase() === "coding"
+                                            ? "/assets/images/training/coding.jpg"
+                                            : training.category?.toLowerCase() === "media"
+                                            ? "/assets/images/training/media.jpg"
+                                            : training.img
+                                            ? `/storage/img/training/${training.img}`
+                                            : "/assets/images/training/default.jpg"
+                                        }
+                                        alt={training.name}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             />
           ) : (
@@ -303,8 +427,8 @@ export default function Show({ training, usersNull }) {
               <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold">
-                    Enrolled Students ({students.length})
-                  </h2>
+                  Enrolled Students ({students.length})
+                </h2>
                 </div>
 
                 {/* Filter Input */}
@@ -429,7 +553,7 @@ export default function Show({ training, usersNull }) {
               <div className="space-y-2">
                 {filteredAvailableUsers.length === 0 ? (
                   <div className="px-4 py-6 text-center text-dark/50 dark:text-light/60">
-                    No available students
+                No available students
                   </div>
                 ) : (
                   filteredAvailableUsers.map(user => (
@@ -458,8 +582,8 @@ export default function Show({ training, usersNull }) {
                         Add
                       </Button>
                     </div>
-                  ))
-                )}
+            ))
+          )}
               </div>
             </div>
             <div className="mt-4 text-right">
@@ -473,14 +597,14 @@ export default function Show({ training, usersNull }) {
           <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 flex flex-col gap-4 sm:gap-5 p-4 sm:p-6 md:p-8 rounded-none sm:rounded-2xl shadow-xl">
 
             {/* Header */}
-            <DialogHeader>
+    <DialogHeader>
               <DialogTitle className="text-3xl lg:text-4xl font-extrabold text-dark dark:text-light">
                 Training Attendance Calendar
               </DialogTitle>
               <p className="text-dark/70 dark:text-light/70 text-lg lg:text-xl">
                 Click on any day to manage attendance for that date
               </p>
-            </DialogHeader>
+    </DialogHeader>
 
             {/* Calendar */}
             {/* Custom calendar toolbar */}
@@ -518,8 +642,8 @@ export default function Show({ training, usersNull }) {
             </div>
 
             <div
-              className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-hidden"
-              style={{ height: 'calc(100svh - 360px)' }}
+              className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-2 sm:p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-auto"
+              style={{ height: 'calc(100svh - 260px)' }}
             >
               <FullCalendar
                 ref={(el) => {
@@ -536,7 +660,14 @@ export default function Show({ training, usersNull }) {
                 editable={true}
                 events={events}
                 datesSet={(arg) => setCalendarTitle(arg.view.title)}
-                eventClick={(info) => alert(`Event: ${info.event.title}`)}
+                eventClick={(info) => {
+                  const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0,10);
+                  if (!dateStr) return;
+                  setSelectedDate(dateStr);
+                  AddAttendance(dateStr);
+                  setShowAttendance(false);
+                  setShowAttendanceList(true);
+                }}
                 dateClick={(info) => {
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);
@@ -549,44 +680,24 @@ export default function Show({ training, usersNull }) {
                 dayMaxEvents={true}
                 moreLinkClick="popover"
                 eventDisplay="block"
+                eventTextColor="#000000"
                 dayCellClassNames="hover:bg-alpha/10 cursor-pointer transition-colors duration-200 rounded-md"
                 dayHeaderClassNames="bg-secondary/50 text-dark dark:text-light font-semibold text-[13px]"
                 todayClassNames="bg-alpha/20 border border-alpha/60"
                 dayCellContent={(info) => (
                   <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
                     {info.dayNumberText}
-                  </div>
+    </div>
                 )}
                 dayHeaderContent={(info) => (
                   <div className="text-center font-bold text-dark dark:text-light">
                     {info.text}
-                  </div>
+    </div>
                 )}
               />
             </div>
 
-            {/* Legend & Close Button */}
-            <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
-              <div className="flex flex-wrap items-center gap-4 text-sm lg:text-base text-dark/70 dark:text-light/70">
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-green-500 rounded-full"></span>
-                  <span className="font-semibold">Present</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-red-500 rounded-full"></span>
-                  <span className="font-semibold">Absent</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-yellow-500 rounded-full"></span>
-                  <span className="font-semibold">Late</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="inline-block w-4 h-4 bg-blue-500 rounded-full"></span>
-                  <span className="font-semibold">Excused</span>
-                </div>
-              </div>
-              {/* Close button removed per request; use the top-right X */}
-            </div>
+            {/* Legend removed to allow calendar more vertical space */}
           </DialogContent>
         </Dialog>
 
@@ -605,19 +716,17 @@ export default function Show({ training, usersNull }) {
               <p className="text-dark/70 dark:text-light/70 text-sm md:text-base">Mark attendance for each student</p>
             </DialogHeader>
             <div className="mt-4">
-              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm ml-0">
+              <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm -ml-3 md:-ml-4">
                 {/* Mobile cards layout */}
                 <div className="block md:hidden p-3 pr-4 space-y-3">
                   {students.map((student) => {
                     const studentKey = `${selectedDate}-${student.id}`;
-                    const currentData = attendanceData[studentKey] || {
-                      status: 'present',
-                      time: '09:00',
-                      notes: '',
-                      slot930: false,
-                      slot1130: false,
-                      slot1400: false,
-                    };
+                        const currentData = attendanceData[studentKey] || {
+                          morning: 'present',
+                          lunch: 'present',
+                          evening: 'present',
+                          notes: '',
+                        };
                     return (
                       <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
                         <div className="flex items-center gap-3 mb-3">
@@ -631,13 +740,13 @@ export default function Show({ training, usersNull }) {
                         </div>
                         <div className="grid grid-cols-1 gap-2">
                           <Select
-                            value={currentData.morning}
+                            value={currentData.morning ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, morning: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="9:30 - 11:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -649,13 +758,13 @@ export default function Show({ training, usersNull }) {
                           </Select>
 
                           <Select
-                            value={currentData.lunch}
+                            value={currentData.lunch ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, lunch: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="11:30 - 13:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -667,13 +776,13 @@ export default function Show({ training, usersNull }) {
                           </Select>
 
                           <Select
-                            value={currentData.evening}
+                            value={currentData.evening ?? 'present'}
                             onValueChange={(val) => {
                               const newData = { ...currentData, evening: val };
                               setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-alpha/30 text-sm">
+                            <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
                               <SelectValue placeholder="14:00 - 17:00" />
                             </SelectTrigger>
                             <SelectContent>
@@ -684,15 +793,44 @@ export default function Show({ training, usersNull }) {
                             </SelectContent>
                           </Select>
 
-                          <Input
-                            type="text"
-                            placeholder="Optional notes..."
-                            value={currentData.notes}
-                            onChange={(e) => {
-                              const newData = { ...currentData, notes: e.target.value };
-                              setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                            }}
-                          />
+                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark p-2">
+                            {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
+                                {n}
+                                <button
+                                  type="button"
+                                  className="text-red-500 hover:text-red-600"
+                                  onClick={() => removeNote(studentKey, idx)}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                            <div className="flex w-full sm:w-auto items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Add note"
+                                className="flex-1 bg-transparent text-sm outline-hidden"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    addNote(studentKey, e.currentTarget.value);
+                                    e.currentTarget.value = '';
+                                  }
+                                }}
+                              />
+                               <button
+                                 type="button"
+                                 className="px-3 py-1 rounded-md bg-alpha/10 text-black dark:text-white hover:bg-alpha/20 text-xs font-medium transition-colors"
+                                 onClick={(e) => {
+                                   const input = (e.currentTarget.previousElementSibling);
+                                   const val = input && 'value' in input ? input.value : '';
+                                   addNote(studentKey, val);
+                                   if (input && 'value' in input) input.value = '';
+                                 }}
+                               >Add</button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -716,12 +854,10 @@ export default function Show({ training, usersNull }) {
                       {students.map((student) => {
                         const studentKey = `${selectedDate}-${student.id}`;
                         const currentData = attendanceData[studentKey] || {
-                          status: 'present',
-                          time: '09:00',
+                          morning: 'present',
+                          lunch: 'present',
+                          evening: 'present',
                           notes: '',
-                          slot930: false,
-                          slot1130: false,
-                          slot1400: false,
                         };
                         return (
                           <tr key={student.id} className="hover:bg-accent/30 transition-colors">
@@ -738,14 +874,14 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                value={currentData.morning}
+                                  <Select
+                                    value={currentData.morning ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, morning: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="Morning" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -759,14 +895,14 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                  value={currentData.lunch}
+                                  <Select
+                                    value={currentData.lunch ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, lunch: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="11:30 - 13:00" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -780,14 +916,14 @@ export default function Show({ training, usersNull }) {
                             </td>
                             <td className="px-4 py-3 text-center">
                               <div className="inline-block min-w-[150px]">
-                                <Select
-                                value={currentData.evening}
+                                  <Select
+                                    value={currentData.evening ?? 'present'}
                                   onValueChange={(val) => {
                                     const newData = { ...currentData, evening: val };
                                   setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
                                 }}
                               >
-                                  <SelectTrigger className="h-10 rounded-xl border-alpha/30 focus:ring-[var(--color-alpha)]/40 text-sm">
+                                  <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
                                     <SelectValue placeholder="14:00 - 17:00" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -801,16 +937,32 @@ export default function Show({ training, usersNull }) {
                             </td>
 
                             <td className="px-4 py-3 text-center">
-                              <input
-                                type="text"
-                                placeholder="Optional notes..."
-                                className="border border-alpha/30 rounded-xl px-3 py-2 bg-light dark:bg-dark text-sm w-full min-w-[180px]"
-                                value={currentData.notes}
-                                onChange={(e) => {
-                                  const newData = { ...currentData, notes: e.target.value };
-                                  setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
-                                }}
-                              />
+                              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark px-2 py-2 text-sm">
+                                {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
+                                  <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
+                                    {n}
+                                    <button
+                                      type="button"
+                                      className="text-red-500 hover:text-red-600"
+                                      onClick={() => removeNote(studentKey, idx)}
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                                <input
+                                  type="text"
+                                  placeholder="Add note"
+                                  className="flex-1 bg-transparent outline-hidden"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      addNote(studentKey, e.currentTarget.value);
+                                      e.currentTarget.value = '';
+                                    }
+                                  }}
+                                />
+                              </div>
                             </td>
 
 
@@ -841,14 +993,13 @@ export default function Show({ training, usersNull }) {
                   onClick={() => {
                     // Save attendance logic here
                     handleSave();
-                    setShowAttendanceList(false);
                   }}
                   className="px-6 py-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] w-full sm:w-auto"
                 >
                   Save Attendance
                 </Button>
               </div>
-            </div>
+        </div>
 
           </DialogContent>
         </Dialog>
@@ -878,7 +1029,7 @@ export default function Show({ training, usersNull }) {
               <p className="text-dark/70 dark:text-light/70">
                 Are you sure you want to remove <strong>{studentToDelete?.name}</strong> from this training?
               </p>
-            </div>
+    </div>
             <div className="mt-6 flex justify-end space-x-3">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
               <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmDelete}>Remove Student</Button>

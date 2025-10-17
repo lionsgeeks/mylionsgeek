@@ -55,7 +55,7 @@ export default function CreatTraining({ coaches }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white">
+        <Button className="flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent  cursor-pointer">
           <PlusCircle size={20} />
           Add Training
         </Button>
@@ -151,7 +151,7 @@ export default function CreatTraining({ coaches }) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-yellow-600 hover:bg-yellow-700 cursor-pointer"
               disabled={processing}
             >
               {processing ? 'Saving...' : 'Save'}

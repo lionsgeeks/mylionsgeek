@@ -27,10 +27,11 @@ Route::middleware(['auth','verified','role:admin'])->prefix('admin')->group(func
     // Get equipment for equipment selector
     Route::get('/api/equipment', [ReservationsController::class, 'getEquipment'])
         ->name('admin.api.equipment');
-    
-    // Studio calendar page
-    Route::get('/studios/{studio}/calendar', [ReservationsController::class, 'studioCalendar'])
-        ->name('admin.studios.calendar');
+
+    // Store reservation cowork
+    Route::post('/reservations/storeReservationCowork', [ReservationsController::class, 'storeReservationCowork'])
+        ->name('admin.reservations.storeReservationCowork');
+
 });
 
 

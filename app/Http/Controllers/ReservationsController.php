@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Equipment;
 use App\Models\Reservation;
+use App\Models\ReservationCowork;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -639,6 +640,49 @@ class ReservationsController extends Controller
                 'image' => $studioData->image ?? null,
             ],
         ]);
+    }
+    public function coworkCalendar(int $cowork)
+    {
+        $coworkData = DB::table('coworks')->where('id', $cowork)->first();
+        
+        if (!$coworkData) {
+            return redirect()->route('admin.places')->with('error', 'Coworks not found');
+        }
+
+        return Inertia::render('admin/places/coworks/CoworkCalendar', [
+            'cowork' => [
+                'id' => $coworkData->id,
+                'table' => $coworkData->table,
+                'image' => $coworkData->image ?? null,
+            ],
+        ]);
+    }
+
+    public function storeReservationCowork(Request $request)
+    {
+        $request->validate([
+            'cowork_id' => 'required|exists:coworks,id',
+            
+            'day' => 'required|date',
+            'start' => 'required',
+            'end' => 'required',
+            
+        ]);
+        $lastId = (int) (DB::table('reservation_coworks')->max('id') ?? 0);
+                $reservationId = $lastId + 1;
+
+        ReservationCowork::create([
+            'id' => $reservationId,
+            'table' => $request->cowork_id,
+            'user_id' => Auth::id(),
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'passed' => false,
+            'approved' => false,
+            'canceled' => false,
+        ]);
+        return back();
     }
 
 }
