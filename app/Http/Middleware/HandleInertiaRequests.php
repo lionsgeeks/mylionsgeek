@@ -6,6 +6,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -43,10 +44,27 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
+            'session' => [
+                'id' => $request->session()->getId(),
+            ],
             'auth' => [
                 'user' => tap($request->user(), function ($user) {
                     if ($user && Schema::hasTable('accesses')) {
                         $user->loadMissing('access');
+                    }
+                    if ($user) {
+                        $rawImage = $user->image ?? null;
+                        $avatarUrl = null;
+
+                        if ($rawImage) {
+                            // Accept absolute URLs as-is; otherwise, fallback to storage path
+                            $avatarUrl = Str::startsWith($rawImage, ['http://', 'https://'])
+                                ? $rawImage
+                                : asset('storage/' . ltrim($rawImage, '/'));
+                        }
+
+                        $user->setAttribute('avatarUrl', $avatarUrl);
+                        $user->setAttribute('isProfileImageMissing', empty($avatarUrl));
                     }
                 }),
             ],
