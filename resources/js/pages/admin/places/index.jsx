@@ -11,8 +11,35 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import ReservationModal from './studios/components/ReservationModal';
+import ReservationModalCowork from './coworks/components/ReservationModalCowork';
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+  const [selectedRange, setSelectedRange] = useState(null);
+
+    const handleViewCalendar = (place) => {
+    setSelectedPlace(place);
+    setIsCalendarOpen(true);
+    loadCalendarEvents(place);
+  };
+
+  const loadCalendarEvents = (place) => {
+    setLoadingEvents(true);
+    const placeType = place.place_type === 'studio' ? 'studio' : 'cowork';
+    fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin',
+    })
+      .then((r) => r.json())
+      .then((data) => setEvents(Array.isArray(data) ? data : []))
+      .catch(() => setEvents([]))
+      .finally(() => setLoadingEvents(false));
+  };
+
+
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -170,28 +197,14 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </td>
                                     <td className="px-4 py-3 text-center text-sm">
                                         <div className="inline-flex items-center gap-1.5">
-                                        <Button
-    size="sm"
-    variant="outline"
-    className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-    onClick={() => {
-        if (e.place_type === 'studio') {
-            // Direct to studio calendar
-            router.visit(`/admin/studios/${e.id}/calendar`);
-        } else if (e.place_type === 'cowork') {
-            // Direct to cowork calendar
-            router.visit(`/admin/coworks/${e.id}/calendar`);
-        } else {
-            setCalendarFor({
-                id: e.id,
-                place_type: e.place_type,
-                name: e.name ?? 'Unknown', 
-            });
-        }
-    }}
->
-    View Calendar
-</Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleViewCalendar(e)}
+                                                className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                                >
+                                                View Calendar
+                                            </Button>
 
                                         </div>
                                     </td>
@@ -607,6 +620,103 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </div>
                     </DialogContent>
                 </Dialog>
+
+                {/* Calendar Modal */}
+                <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <DialogContent className="p-6 overflow-hidden"
+                        style={{
+                        maxWidth: '95vw',
+                        width: '95vw',
+                        height: '85vh',
+                        maxHeight: '85vh'
+                        }}>
+                    <DialogHeader>
+                    <DialogTitle className="text-2xl font-bold">
+                        Calendar - {selectedPlace?.name}
+                    </DialogTitle>
+                        <div className="flex justify-end max-md:justify-center">
+                            <button
+                                onClick={() => {
+                                    const now = new Date();
+                                    const day = now.toISOString().split('T')[0];
+                                    const startTime = now.toTimeString().slice(0, 5);
+                                    const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                                    const endTime = endDate.toTimeString().slice(0, 5);
+                                    
+                                    setSelectedRange({ day, start: startTime, end: endTime });
+                                    setIsReservationModalOpen(true);
+                                }}
+                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
+                            >
+                                + Add Reservation
+                            </button>
+                        </div>
+
+                    </DialogHeader>
+                    
+                    {loadingEvents ? (
+                    <div className="flex justify-center items-center h-96">
+                        <p>Loading events...</p>
+                    </div>
+                    ) : (
+                    <div className="h-[calc(95vh-100px)]">
+                        <FullCalendar
+                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                        initialView="timeGridWeek"
+                        headerToolbar={{
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                        }}
+                        events={events}
+                        selectable={true}
+                        selectMirror={true}
+                        selectOverlap={false}
+                        editable={false}
+                        select={(selectInfo) => {
+                            const { start, end } = selectInfo;
+                            const day = start.toISOString().split('T')[0];
+                            const startTime = start.toTimeString().slice(0, 5);
+                            const endTime = end.toTimeString().slice(0, 5);
+                            setSelectedRange({ day, start: startTime, end: endTime });
+                            setIsReservationModalOpen(true);
+                        }}
+                        height="88%"
+                        eventColor="#FFC801"
+                        eventTextColor="#000000"
+                        />
+                    </div>
+                    )}
+                </DialogContent>
+                </Dialog>
+
+                {/* Reservation Modals */}
+                {selectedPlace?.place_type === 'studio' && (
+                <ReservationModal
+                    isOpen={isReservationModalOpen}
+                    onClose={() => setIsReservationModalOpen(false)}
+                    studio={selectedPlace}
+                    selectedRange={selectedRange}
+                    onSuccess={() => {
+                    setIsReservationModalOpen(false);
+                    loadCalendarEvents(selectedPlace);
+                    }}
+                />
+                )}
+
+                {selectedPlace?.place_type === 'cowork' && (
+                <ReservationModalCowork
+                    isOpen={isReservationModalOpen}
+                    onClose={() => setIsReservationModalOpen(false)}
+                    cowork={selectedPlace}
+                    selectedRange={selectedRange}
+                    onSuccess={() => {
+                    setIsReservationModalOpen(false);
+                    loadCalendarEvents(selectedPlace);
+                    }}
+                />
+                )}
+
             </div>
         </AppLayout>
     );

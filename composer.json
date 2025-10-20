@@ -12,6 +12,8 @@
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "*",
         "inertiajs/inertia-laravel": "^2.0",
+        "intervention/image": "^3.11",
+        "intervention/image-laravel": "^1.5",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.10.1",

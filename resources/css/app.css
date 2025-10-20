@@ -69,7 +69,10 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 }
-
+.custom-scrollbar::-webkit-scrollbar { height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #1118271a; } /* example */
+.custom-scrollbar::-webkit-scrollbar-thumb { background:  #ffc801 ; border-radius: 9999px; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color:  #ffc801 transparent; } /* Firefox */
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
@@ -400,4 +403,49 @@
     .notification-exit-active {
         @apply transform translate-x-full opacity-0 transition-all duration-300 ease-in;
     }
+}
+
+.fc .fc-button-primary {
+  background-color: var(--color-alpha) !important;
+  color: black !important;
+  border: none !important;
+  border-radius: 0.6rem !important;
+  padding: 0.4rem 1rem !important;
+  transition: all 0.2s ease !important;
+  margin-inline: 5px !important;
+}
+
+.fc .fc-button-primary:hover {
+  background-color: black !important;
+  color: white !important;
+}
+
+.dark .fc .fc-button-primary {
+  background-color: var(--color-alpha) !important;
+  color: black !important;
+}
+
+.dark .fc .fc-button-primary:hover {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* FullCalendar Mobile Responsive */
+@media (max-width: 768px) {
+  .fc .fc-button {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+    /* display: none !important; */
+  }
+  
+  .fc .fc-toolbar-title {
+    font-size: 1.25rem !important;
+  }
+  
+  /* خلي toolbar يكون أحسن على mobile */
+  .fc .fc-toolbar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    /* display: none !important; */
+  }
 }

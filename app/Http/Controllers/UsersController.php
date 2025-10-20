@@ -6,6 +6,7 @@ use App\Models\Formation;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
+use App\Mail\UserWelcomeMail;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -15,6 +16,12 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Contract;
+use App\Models\Medical;
+use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
 {
@@ -33,12 +40,12 @@ class UsersController extends Controller
         );
     }
 
-   
+
     public function export(Request $request): StreamedResponse
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
 
-      
+
         $fieldMap = [
             'id' => 'id',
             'name' => 'name',
@@ -47,7 +54,7 @@ class UsersController extends Controller
             'phone' => 'phone',
             'status' => 'status',
             'role' => 'role',
-            'formation' => 'formation', 
+            'formation' => 'formation',
             'access_studio' => 'access_studio',
             'access_cowork' => 'access_cowork',
         ];
@@ -59,7 +66,7 @@ class UsersController extends Controller
             }
         }
         if (empty($fields)) {
-            $fields = ['name','email','cin'];
+            $fields = ['name', 'email', 'cin'];
         }
 
         $query = User::query()->with(['formation']);
@@ -78,7 +85,7 @@ class UsersController extends Controller
         $response = new StreamedResponse(function () use ($query, $fields) {
             $handle = fopen('php://output', 'w');
 
-           
+
             fputcsv($handle, $fields);
 
             $query->chunk(500, function ($users) use ($handle, $fields) {
@@ -125,7 +132,7 @@ class UsersController extends Controller
         // Notes authored for this user (attendance-related or general)
         $notes = \App\Models\Note::where('user_id', $user->id)
             ->orderByDesc('created_at')
-            ->get(['note as text','author','created_at'])
+            ->get(['note as text', 'author', 'created_at'])
             ->map(function ($row) {
                 return [
                     'text' => (string) $row->text,
@@ -141,8 +148,8 @@ class UsersController extends Controller
             // absent if any period marked absent
             ->where(function ($q) {
                 $q->where('morning', 'absent')
-                  ->orWhere('lunch', 'absent')
-                  ->orWhere('evening', 'absent');
+                    ->orWhere('lunch', 'absent')
+                    ->orWhere('evening', 'absent');
             })
             ->orderByDesc('attendance_day')
             ->orderByDesc('updated_at');
@@ -156,20 +163,25 @@ class UsersController extends Controller
             ->unique()
             ->values();
         $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
-            ->get(['attendance_id','note','created_at','author','user_id'])
+            ->get(['attendance_id', 'note', 'created_at', 'author', 'user_id'])
             ->groupBy('attendance_id');
 
         // Discipline metric (weighted score across user's attendance, 0..100)
-        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
+        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
         $totalSlots = max(1, $allForDiscipline->count() * 3);
         $score = 0;
         $weight = function ($status) {
             switch (strtolower((string) $status)) {
-                case 'present': return 1.0;
-                case 'excused': return 0.9;
-                case 'late': return 0.7;
-                case 'absent': return 0.0;
-                default: return 0.7; // treat unknown as late-ish
+                case 'present':
+                    return 1.0;
+                case 'excused':
+                    return 0.9;
+                case 'late':
+                    return 0.7;
+                case 'absent':
+                    return 0.0;
+                default:
+                    return 0.7; // treat unknown as late-ish
             }
         };
         foreach ($allForDiscipline as $row) {
@@ -217,14 +229,14 @@ class UsersController extends Controller
             }),
         ]);
     }
-    
+
     // Return user notes as JSON for modal consumption
     public function notes(User $user)
     {
         $notes = \App\Models\Note::where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(50)
-            ->get(['note','author','created_at'])
+            ->get(['note', 'author', 'created_at'])
             ->map(function ($row) {
                 return [
                     'note' => (string) $row->note,
@@ -252,6 +264,152 @@ class UsersController extends Controller
         ]);
 
         return response()->json(['status' => 'ok']);
+    }
+    
+    // Documents API
+    public function documents(User $user)
+    {
+        $toUrl = function ($path) {
+            $p = (string) $path;
+            if ($p === '') {
+                return null;
+            }
+            if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                return $p;
+            }
+            // If already a web path like "/storage/...", return as-is (legacy rows)
+            if (str_starts_with($p, '/storage/')) {
+                return $p;
+            }
+            // Default: map storage path to public URL
+            return Storage::url($p);
+        };
+
+        $contracts = Contract::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['id','contract','type','created_at'])
+            ->map(function ($c) {
+                return [
+                    'id' => (int) $c->id,
+                    'name' => (string) ($c->type ?: 'Contract'),
+                    // Always attempt to generate a URL; legacy rows may already store '/storage/...'
+                    'url' => (function ($path) {
+                        $p = (string) $path;
+                        if ($p === '') return null;
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
+                        if (str_starts_with($p, '/storage/')) return $p;
+                        return Storage::url($p);
+                    })($c->contract),
+                    'kind' => 'contract',
+                    'created_at' => (string) $c->created_at,
+                ];
+            });
+
+        $medicals = Medical::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['id','mc_document','description','created_at'])
+            ->map(function ($m) {
+                return [
+                    'id' => (int) $m->id,
+                    'name' => (string) ($m->description ?: 'Medical certificate'),
+                    'url' => (function ($path) {
+                        $p = (string) $path;
+                        if ($p === '') return null;
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
+                        if (str_starts_with($p, '/storage/')) return $p;
+                        return Storage::url($p);
+                    })($m->mc_document),
+                    'kind' => 'medical',
+                    'created_at' => (string) $m->created_at,
+                ];
+            });
+
+        return response()->json([
+            'contracts' => $contracts->values(),
+            'medicals' => $medicals->values(),
+        ]);
+    }
+
+    public function uploadDocument(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'kind' => 'required|string|in:contract,medical',
+            'file' => 'required|file|max:10240',
+            'name' => 'nullable|string|max:255',
+            'type' => 'nullable|string|max:100',
+        ]);
+
+        $path = $request->file('file')->store('documents', 'public');
+
+        if ($validated['kind'] === 'contract') {
+            Contract::create([
+                'user_id' => $user->id,
+                'contract' => $path,
+                'type' => $validated['type'] ?? ($validated['name'] ?? 'Contract'),
+                'reservation_id' => null,
+            ]);
+        } else {
+            Medical::create([
+                'user_id' => $user->id,
+                'mc_document' => $path,
+                'description' => $validated['name'] ?? 'Medical certificate',
+                'author' => (Auth::check() ? (Auth::user()->name ?? 'Admin') : 'Admin'),
+            ]);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    // Stream a stored document via controller to avoid direct /storage access issues
+    public function viewDocument(Request $request, User $user, string $kind, int $doc)
+    {
+        // Fetch by document id only to handle legacy rows with mismatched user_id types
+        if ($kind === 'contract') {
+            $row = Contract::where('id', $doc)->firstOrFail();
+            $path = (string) $row->contract;
+        } else {
+            $row = Medical::where('id', $doc)->firstOrFail();
+            $path = (string) $row->mc_document;
+        }
+
+        // Normalize possible stored paths and resolve to an actual file on public disk
+        if (str_starts_with($path, '/storage/')) {
+            $path = ltrim(substr($path, strlen('/storage/')), '/');
+        }
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return redirect()->away($path);
+        }
+
+        $candidates = [];
+        $base = ltrim($path, '/');
+        // as-is
+        $candidates[] = $base;
+        // try common directories for legacy rows that only stored filename
+        $candidates[] = 'documents/' . basename($base);
+        if ($kind === 'contract') {
+            $candidates[] = 'contracts/' . basename($base);
+        } else {
+            $candidates[] = 'medicals/' . basename($base);
+        }
+
+        $resolved = null;
+        foreach ($candidates as $candidate) {
+            if (Storage::disk('public')->exists($candidate)) {
+                $resolved = $candidate;
+                break;
+            }
+        }
+
+        if ($resolved === null) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        $fullPath = storage_path('app/public/' . ltrim($resolved, '/'));
+        if (!is_file($fullPath)) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        return response()->file($fullPath);
     }
     public function update(Request $request, User $user)
     {
@@ -308,7 +466,6 @@ class UsersController extends Controller
             'role' => 'required|string', // Assumes foreign key to formations table
             'entreprise' => 'nullable|string', // Assumes foreign key to formations table
         ]);
-        // dd($request->all());
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
             return Inertia::render('admin/users/partials/Header', [
@@ -320,17 +477,21 @@ class UsersController extends Controller
             $validated['image'] = '/storage/' . $path;
         }
         $plainPassword = Str::random(12);
-        User::create([
-            'id' => (string) Str::uuid(),
+        $token = (string) Str::uuid();
+        $lastUser = User::orderBy('id', 'desc')->first();
+        // dd($lastUser->id);
+        $user = User::create([
+            'id' => $lastUser->id + 1,
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'activation_token' => $token,
             'password' => Hash::make($plainPassword),
-            'phone' => $validated['phone'] ?? null,  // Use null if 'phone' is not present
-            'image' => $validated['image'] ?? null,  // Handle image field similarly if not uploaded
+            'phone' => $validated['phone'] ?? null,
+            'image' => $validated['image'] ?? null,
             'status' => $validated['status'] ?? null,
             'cin' => $validated['cin'] ?? null,
             'formation_id' => $validated['formation_id'],
-            'account_state' => $validated['account_state'] ?? 'active', // Add a default value if needed
+            'account_state' => $validated['account_state'] ?? 'active',
             'access_studio' => $validated['access_studio'],
             'access_cowork' => $validated['access_cowork'],
             'role' => $validated['role'],
@@ -338,7 +499,14 @@ class UsersController extends Controller
             'remember_token' => null,
             'email_verified_at' => null,
         ]);
-        // Mail::to($user->email)->queue(new CompleteUserProfile($user, $plainPassword));
+
+        $link = URL::temporarySignedRoute(
+            'user.complete-profile',
+            now()->addHour(24),
+            ['token' => $token]
+        );
+        Mail::to($user->email)->send(new UserWelcomeMail($user, $link));
+
         // dd($user);
 
         return redirect()->back()->with('success', 'User updated successfully');
@@ -351,16 +519,16 @@ class UsersController extends Controller
             ->where('user_id', $user->id)
             ->where(function ($q) {
                 $q->where('morning', 'absent')
-                  ->orWhere('lunch', 'absent')
-                  ->orWhere('evening', 'absent');
+                    ->orWhere('lunch', 'absent')
+                    ->orWhere('evening', 'absent');
             })
             ->orderByDesc('attendance_day')
             ->orderByDesc('updated_at');
 
-        $all = $absencesQuery->get(['attendance_id','attendance_day','morning','lunch','evening']);
+        $all = $absencesQuery->get(['attendance_id', 'attendance_day', 'morning', 'lunch', 'evening']);
         $attendanceIds = $all->pluck('attendance_id')->unique()->values();
         $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
-            ->get(['attendance_id','note'])
+            ->get(['attendance_id', 'note'])
             ->groupBy('attendance_id');
 
         $rows = $all->map(function ($row) use ($notesByAttendance) {
@@ -394,16 +562,21 @@ class UsersController extends Controller
             ->sortBy('month')
             ->values();
 
-        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning','lunch','evening']);
+        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
         $totalSlots = max(1, $allForDiscipline->count() * 3);
         $score = 0;
         $weight = function ($status) {
             switch (strtolower((string) $status)) {
-                case 'present': return 1.0;
-                case 'excused': return 0.9;
-                case 'late': return 0.7;
-                case 'absent': return 0.0;
-                default: return 0.7;
+                case 'present':
+                    return 1.0;
+                case 'excused':
+                    return 0.9;
+                case 'late':
+                    return 0.7;
+                case 'absent':
+                    return 0.0;
+                default:
+                    return 0.7;
             }
         };
         foreach ($allForDiscipline as $row) {

@@ -84,7 +84,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
                 <DialogHeader>
                     <DialogTitle>
                         Reservation — Step {currentStep}/3
@@ -122,7 +122,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
                                 <div>
                                     <Label htmlFor="day">Date</Label>
                                     <Input
