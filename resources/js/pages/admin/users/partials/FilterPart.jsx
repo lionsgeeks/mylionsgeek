@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from "@/components/ui/input"
 import { Clipboard, Copy, RotateCw, Search } from "lucide-react"
 import {
@@ -12,7 +12,12 @@ import { Button } from '@headlessui/react';
 
 
 
-const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [], status }) => {
+const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredUsers = [], status }) => {
+
+
+
+
+
     const [copy, setCopy] = useState(true);
 
     // ! email copy
@@ -66,6 +71,22 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [],
                         ))}
                     </SelectContent>
                 </Select>
+                {/* select by Promo */}
+                <Select
+                    value={filters.promo || undefined}
+                    onValueChange={e => handleChange('promo', e)}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select By Promo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {allPromo.map((p, index) => (
+                            <SelectItem key={index} value={p}>
+                                {p}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
                 {/* select by select by role */}
                 <Select
                     value={filters.role || undefined}
@@ -100,7 +121,7 @@ const FilterPart = ({ filters, setFilters, trainings, roles, filteredUsers = [],
                             search: "",
                             training: null,
                             role: "",
-                            status:'',
+                            status: '',
                             date: ""
                         })
                     }
