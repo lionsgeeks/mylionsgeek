@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useInitials } from '@/hooks/use-initials';
 import EditModal from './EditModal';
 import User from './ShowModal';
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
+    const { auth } = usePage().props;
     const [currentPage, setCurrentPage] = useState(1);
     const [filterUsers, setFilterUsers] = useState(users);
     const [openEditUser, setOpenEditUser] = useState(null);
@@ -72,11 +73,11 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
         }
     };
     const resetPassword = (id) => {
-        router.post(`/admin/users/${id}/reset-password` , {
-            onSuccess : () => {
+        router.post(`/admin/users/${id}/reset-password`, {
+            onSuccess: () => {
                 alert('fine')
             },
-            onError : () => {
+            onError: () => {
                 alert('error')
             }
         })
@@ -111,9 +112,12 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     </AvatarFallback>
                                 </Avatar>
 
+
                                 <div className="flex flex-col">
                                     <h1 className="capitalize">{user.name}</h1>
-                                    <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>
+                                    {auth.user.role == 'super_admin' &&
+                                        <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>
+                                    }
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">
