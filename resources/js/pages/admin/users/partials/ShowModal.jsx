@@ -30,6 +30,22 @@ const User = ({ user, trainings, close, open }) => {
     const [processing, setProcessing] = useState(false);
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
 
+
+    function timeAgo(timestamp) {
+    if (!timestamp) return 'Never';
+
+    const now = new Date();
+    const last = new Date(timestamp + 'Z');
+
+    const diff = Math.floor(( now - last ) / 1000); // seconds
+
+    if (diff < 60) return 'Online now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+    if (diff < 172800) return 'Yesterday';
+    return last.toLocaleDateString();
+}
+
     return (
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
@@ -56,6 +72,18 @@ const User = ({ user, trainings, close, open }) => {
                 {activeTab === 'overview' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4">
                         <div className="md:col-span-1">
+                            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 mb-2.5 text-center">
+                                <div className="text-sm text-neutral-500">Last active</div> 
+                                <div
+  className={`font-medium text-sm ${
+    timeAgo(user.last_online) === 'Online now' ? 'text-green-500' : 'text-red-500'
+  }`}
+>
+  {timeAgo(user.last_online)}
+</div>
+
+
+</div>
                             <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                                 <div className="relative w-24 h-24">
                                     <Avatar className="w-24 h-24 rounded-full overflow-hidden">
