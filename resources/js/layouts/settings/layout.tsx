@@ -4,11 +4,11 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { edit as editPassword } from '@/routes/password';
 import { edit } from '@/routes/profile';
-import { type NavItem } from '@/types';
+// import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
-const sidebarNavItems: NavItem[] = [
+const sidebarNavItems = [
     {
         title: 'Profile',
         href: edit(),
@@ -43,11 +43,10 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                 variant="ghost"
                                 asChild
                                 className={cn('w-fit justify-center px-12 py-5 rounded-full dark:bg-[#FAFAFA] dark:text-[#171717] hover:text-[#FAFAFA] bg-[#171717] text-[#FAFAFA] hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA] transition-all', {
-                                    'dark:bg-[#FFC801] dark:text-[#FAFAFA] bg-[#FFC801] ': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
+                                    'dark:bg-[#FFC801] bg-[#FFC801] text-[#171717] dark:text-[#171717]': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
                                 })}
                             >
                                 <Link href={item.href} prefetch>
-                                    {item.icon && <item.icon className="h-4 w-4" />}
                                     {item.title}
                                 </Link>
                             </Button>
