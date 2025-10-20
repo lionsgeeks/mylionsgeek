@@ -63,6 +63,8 @@ export default function AdminUserProfile() {
                 <div><span className="text-neutral-500">Phone:</span> {user?.phone || '—'}</div>
                 <div><span className="text-neutral-500">CIN:</span> {user?.cin || '—'}</div>
                 <div><span className="text-neutral-500">Promo:</span> {user?.promo || '—'}</div>
+                <div><span className="text-neutral-500">Last Online:</span> {user?.last_online ? new Date(user.last_online).toLocaleString() : '—'}</div>
+
               </div>
             </div>
 

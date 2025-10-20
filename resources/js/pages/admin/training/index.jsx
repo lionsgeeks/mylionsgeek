@@ -3,12 +3,15 @@ import { Head, router } from '@inertiajs/react';
 import { BookOpen, Timer, Trash2, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useInitials } from '@/hooks/use-initials';
 import UpdateTraining from './partials/UpdateTraining';
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
     const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
+    const getInitials = useInitials();
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [trainingToDelete, setTrainingToDelete] = useState(null);
@@ -241,16 +244,16 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {/* Coach */}
                                     {training.coach?.name && (
                                         <div className="mt-2 flex items-center space-x-2">
-                                            <div className="flex h-6 w-6 items-center justify-center rounded-full border border-yellow-600 text-xs font-bold text-yellow-600 dark:border-yellow-400 dark:text-yellow-400">
-                                                {training.coach.name
-                                                    .split(' ')
-                                                    .map((n) => n[0])
-                                                    .join('')
-                                                    .toUpperCase()}
-                                            </div>
+                                            <Avatar className="h-8 w-8 overflow-hidden rounded-full">
+                <AvatarImage className='h-full w-full object-cover' src={training.coach.image} alt={training.coach.name} />
+                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white text-[13px]">
+                    {getInitials(training.coach.name)}
+                </AvatarFallback>
+            </Avatar>
                                             <span className="text-sm text-dark/70 dark:text-light/70">{training.coach.name}</span>
                                         </div>
                                     )}
+                                    
 
                                     {/* Timer & Users */}
                                     <div className="mt-2 flex items-center justify-between text-sm">
