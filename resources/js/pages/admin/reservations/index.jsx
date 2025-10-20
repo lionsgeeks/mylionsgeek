@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, X, Search, FileText, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Calendar, TrendingUp, Users } from 'lucide-react';
 
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
@@ -296,6 +298,55 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         });
         return buildTimeStats(allStudio);
     }, [rangeActive, studioReservations]);
+    // Prepare data for charts dynamically from current reservation lists
+const statusData = [
+    { 
+        name: 'Approved', 
+        all: filteredStatus.all.approved, 
+        cowork: filteredStatus.cowork.approved, 
+        studio: filteredStatus.studio.approved 
+    },
+    { 
+        name: 'Canceled', 
+        all: filteredStatus.all.canceled, 
+        cowork: filteredStatus.cowork.canceled, 
+        studio: filteredStatus.studio.canceled 
+    },
+    { 
+        name: 'Pending', 
+        all: filteredStatus.all.pending, 
+        cowork: filteredStatus.cowork.pending, 
+        studio: filteredStatus.studio.pending 
+    }
+];
+
+const timelineData = [
+    { 
+        period: 'Today', 
+        all: stats.timeAll.today, 
+        cowork: stats.timeCowork.today, 
+        studio: timeStudioPI.today 
+    },
+    { 
+        period: 'This Week', 
+        all: stats.timeAll.week, 
+        cowork: stats.timeCowork.week, 
+        studio: timeStudioPI.week 
+    },
+    { 
+        period: 'This Month', 
+        all: stats.timeAll.month, 
+        cowork: stats.timeCowork.month, 
+        studio: timeStudioPI.month 
+    }
+];
+
+const distributionData = [
+    { name: 'Cowork', value: baseCowork.length, color: '#3b82f6' },
+    { name: 'Studios', value: baseStudioPI.length, color: '#8b5cf6' },
+    { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
+];
+
 
     return (
         <AppLayout>
@@ -344,52 +395,92 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
 
                 {/* Statistics Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">All reservations</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-semibold">{baseAll.length}</div>
-                            <div className="mt-2 text-sm text-muted-foreground">Approved {filteredStatus.all.approved} • Canceled {filteredStatus.all.canceled} • Pending {filteredStatus.all.pending}</div>
-                            {rangeActive && (
-                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseAll.length} — A {filteredStatus.all.approved} • C {filteredStatus.all.canceled} • P {filteredStatus.all.pending}</div>
-                            )}
-                            {!rangeActive && (
-                                <div className="mt-2 text-sm text-muted-foreground">Today {stats.timeAll.today} • This week {stats.timeAll.week} • This month {stats.timeAll.month}</div>
-                            )}
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">Cowork reservations</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-semibold">{baseCowork.length}</div>
-                            <div className="mt-2 text-sm text-muted-foreground">Approved {filteredStatus.cowork.approved} • Canceled {filteredStatus.cowork.canceled} • Pending {filteredStatus.cowork.pending}</div>
-                            {rangeActive ? (
-                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseCowork.length} — A {filteredStatus.cowork.approved} • C {filteredStatus.cowork.canceled} • P {filteredStatus.cowork.pending}</div>
-                            ) : (
-                                <div className="mt-2 text-sm text-muted-foreground">Today {stats.timeCowork.today} • This week {stats.timeCowork.week} • This month {stats.timeCowork.month}</div>
-                            )}
-                        </CardContent>
-                    </Card>
-                    {/* Removed Cowork card per request */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">Studios (Podcast + Image)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-semibold">{baseStudioPI.length}</div>
-                            <div className="mt-2 text-sm text-muted-foreground">Approved {(() => baseStudioPI.reduce((n, r) => n + (r.approved && !r.canceled ? 1 : 0), 0))()} • Canceled {(() => baseStudioPI.reduce((n, r) => n + (r.canceled ? 1 : 0), 0))()} • Pending {(() => baseStudioPI.reduce((n, r) => n + (!r.approved && !r.canceled ? 1 : 0), 0))()}</div>
-                            {rangeActive ? (
-                                <div className="mt-1 text-xs text-muted-foreground">In range: {baseStudioPI.length}</div>
-                            ) : (
-                                <div className="mt-2 text-sm text-muted-foreground">Today {timeStudioPI.today} • This week {timeStudioPI.week} • This month {timeStudioPI.month}</div>
-                            )}
-                        </CardContent>
-                    </Card>
+                      {/* Charts Section */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 lg:col-span-3">
+        {/* Status Distribution Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              Status Distribution by Category
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" tick={{ fill: '#6b7280' }} />
+                <YAxis tick={{ fill: '#6b7280' }} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                />
+                <Legend />
+                <Bar dataKey="all" name="All" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="cowork" name="Cowork" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="studio" name="Studios" fill="#10b981" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
+        {/* Reservation Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-purple-600" />
+              Reservation Type Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={distributionData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {distributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
                 </div>
+                {/* Timeline Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-green-600" />
+            Reservation Timeline
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={timelineData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="period" tick={{ fill: '#6b7280' }} />
+              <YAxis tick={{ fill: '#6b7280' }} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+              />
+              <Legend />
+              <Line type="monotone" dataKey="all" name="All Reservations" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="cowork" name="Cowork" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 6 }} />
+              <Line type="monotone" dataKey="studio" name="Studios" stroke="#10b981" strokeWidth={3} dot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (

@@ -9,11 +9,11 @@ use Carbon\Carbon;
 
 class UpdateLastOnline
 {
-    public function handle($request, Closure $next)
-    {
-        if (Auth::check()) {
-            Auth::user()->forceFill(['last_online' => Carbon::now()])->save();
-        }
-        return $next($request);
-    }
+    // public function handle($request, Closure $next)
+    // {
+    //     if (Auth::check()) {
+    //         Auth::user()->forceFill(['last_online' => Carbon::now()])->save();
+    //     }
+    //     return $next($request);
+    // }
 }
