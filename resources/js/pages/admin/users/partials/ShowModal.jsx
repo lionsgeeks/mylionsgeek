@@ -11,6 +11,7 @@ const User = ({ user, trainings, close, open }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
     const [notes, setNotes] = useState([]);
+    const [docs, setDocs] = useState({ contracts: [], medicals: [] });
 
     React.useEffect(() => {
         if (!open) return;
@@ -26,8 +27,17 @@ const User = ({ user, trainings, close, open }) => {
             .then(r => r.json())
             .then((data) => setNotes(Array.isArray(data?.notes) ? data.notes : []))
             .catch(() => setNotes([]));
+        fetch(`/admin/users/${user.id}/documents`)
+            .then(r => r.json())
+            .then((data) => setDocs({
+                contracts: Array.isArray(data?.contracts) ? data.contracts : [],
+                medicals: Array.isArray(data?.medicals) ? data.medicals : [],
+            }))
+            .catch(() => setDocs({ contracts: [], medicals: [] }));
     }, [open, user.id]);
     const [processing, setProcessing] = useState(false);
+    const [uploadError, setUploadError] = useState('');
+    const [uploadKind, setUploadKind] = useState('contract');
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
 
     return (
@@ -40,7 +50,7 @@ const User = ({ user, trainings, close, open }) => {
                 {/* Tabs */}
                 <div className="px-1 mt-2">
                     <div className="flex gap-2 border-b border-alpha/20">
-                        {['overview', 'access', 'attendance', 'projects', 'posts', 'notes'].map(tab => (
+                        {['overview', 'access', 'attendance', 'projects', 'posts', 'documents', 'notes'].map(tab => (
                             <button
                                 key={tab}
                                 className={`px-3 py-2 text-sm capitalize ${activeTab === tab ? 'border-b-2 border-alpha text-alpha' : 'text-neutral-600 dark:text-neutral-400'}`}
@@ -65,9 +75,9 @@ const User = ({ user, trainings, close, open }) => {
                                                 alt={user?.name}
                                             />
                                         ) : (
-                                            <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                {getInitials(user?.name)}
-                                            </AvatarFallback>
+                                        <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                            {getInitials(user?.name)}
+                                        </AvatarFallback>
                                         )}
                                     </Avatar>
                                 </div>
@@ -222,6 +232,133 @@ const User = ({ user, trainings, close, open }) => {
                 {activeTab === 'posts' && (
                     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                         <div className="text-sm text-neutral-600 dark:text-neutral-400">No posts yet.</div>
+                    </div>
+                )}
+
+                {activeTab === 'documents' && (
+                    <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                        <Label>Documents</Label>
+                        <form className="mt-3 grid grid-cols-1 md:grid-cols-6 gap-2 items-end" onSubmit={async (e) => {
+                            e.preventDefault();
+                            const form = e.currentTarget;
+                            setUploadError('');
+                            const kind = form.querySelector('select[name="docKind"]').value;
+                            const name = form.querySelector('input[name="docName"]').value.trim();
+                            const type = form.querySelector('input[name="docType"]').value.trim();
+                            const fileInput = form.querySelector('input[name="docFile"]');
+                            const file = fileInput && fileInput.files && fileInput.files[0];
+                            if (!file) return;
+                            const body = new FormData();
+                            body.append('kind', kind);
+                            body.append('file', file);
+                            if (name) body.append('name', name);
+                            if (kind === 'contract' && type) body.append('type', type);
+                            const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content') || '';
+                            // include CSRF both as header and form field for compatibility with multipart
+                            body.append('_token', csrf);
+                            const res = await fetch(`/admin/users/${user.id}/documents`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json',
+                                },
+                                credentials: 'same-origin',
+                                body,
+                            });
+                            if (!res.ok) {
+                                try {
+                                    const data = await res.json();
+                                    if (res.status === 419) {
+                                        setUploadError('Your session expired. Please reload the page and try again.');
+                                    } else {
+                                        setUploadError(data?.message || 'Upload failed');
+                                    }
+                                } catch (_) {
+                                    const text = await res.text();
+                                    setUploadError(res.status === 419 ? 'Your session expired. Please reload the page and try again.' : (text || 'Upload failed'));
+                                }
+                                return;
+                            }
+                            const r = await fetch(`/admin/users/${user.id}/documents`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+                            const d = await r.json();
+                            setDocs({ contracts: Array.isArray(d?.contracts) ? d.contracts : [], medicals: Array.isArray(d?.medicals) ? d.medicals : [] });
+                            form.reset();
+                            setUploadKind('contract');
+                        }}>
+                            <div className="md:col-span-1">
+                                <Label className="text-xs">Type</Label>
+                                <select name="docKind" value={uploadKind} onChange={(e) => setUploadKind(e.target.value)} className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs">
+                                    <option value="contract">Contract</option>
+                                    <option value="medical">Medical certificate</option>
+                                </select>
+                            </div>
+                            <div className={uploadKind === 'contract' ? 'md:col-span-2' : 'md:col-span-3'}>
+                                <Label className="text-xs">{uploadKind === 'contract' ? 'Name' : 'Description'}</Label>
+                                <input name="docName" type="text" placeholder={uploadKind === 'contract' ? 'Name' : 'Description'} className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs" />
+                            </div>
+                            {uploadKind === 'contract' ? (
+                                <div className="md:col-span-2">
+                                    <Label className="text-xs">Type</Label>
+                                    <input name="docType" type="text" placeholder="Type" className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs" />
+                                </div>
+                            ) : (
+                                <input name="docType" type="hidden" value="" />
+                            )}
+                            <div className="md:col-span-2">
+                                <Label className="text-xs">File</Label>
+                                <input name="docFile" type="file" accept="application/pdf,image/*" required className="w-full text-xs" />
+                            </div>
+                            <div className="md:col-span-1">
+                                <Button type="submit" size="sm" className="w-full">Upload</Button>
+                            </div>
+                        </form>
+                        {uploadError ? (
+                            <div className="mt-2 text-xs text-red-600 dark:text-red-400 break-words">{uploadError}</div>
+                        ) : null}
+
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="text-sm font-medium">Contracts</div>
+                                    <div className="text-xs text-neutral-500">{docs.contracts?.length || 0}</div>
+                                </div>
+                                {Array.isArray(docs.contracts) && docs.contracts.length > 0 ? (
+                                    <ul className="space-y-2 text-sm">
+                                        {docs.contracts.map((d, i) => (
+                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 bg-neutral-50/50 dark:bg-neutral-900/30">
+                                                <span className="truncate max-w-[70%]">{d.name}</span>
+                                                {d.id ? (
+                                                    <a className="text-alpha text-xs" href={`/admin/users/${user.id}/documents/contract/${d.id}`} target="_blank" rel="noreferrer">View</a>
+                                                ) : (d.url ? <a className="text-alpha text-xs" href={d.url} target="_blank" rel="noreferrer">View</a> : null)}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-xs text-neutral-500">No contracts.</div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="text-sm font-medium">Medical certificates</div>
+                                    <div className="text-xs text-neutral-500">{docs.medicals?.length || 0}</div>
+                                </div>
+                                {Array.isArray(docs.medicals) && docs.medicals.length > 0 ? (
+                                    <ul className="space-y-2 text-sm">
+                                        {docs.medicals.map((d, i) => (
+                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 bg-neutral-50/50 dark:bg-neutral-900/30">
+                                                <span className="truncate max-w-[70%]">{d.name}</span>
+                                                {d.id ? (
+                                                    <a className="text-alpha text-xs" href={`/admin/users/${user.id}/documents/medical/${d.id}`} target="_blank" rel="noreferrer">View</a>
+                                                ) : (d.url ? <a className="text-alpha text-xs" href={d.url} target="_blank" rel="noreferrer">View</a> : null)}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-xs text-neutral-500">No medical certificates.</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
 

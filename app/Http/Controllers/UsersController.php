@@ -18,6 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Contract;
+use App\Models\Medical;
+use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
 {
@@ -260,6 +264,152 @@ class UsersController extends Controller
         ]);
 
         return response()->json(['status' => 'ok']);
+    }
+    
+    // Documents API
+    public function documents(User $user)
+    {
+        $toUrl = function ($path) {
+            $p = (string) $path;
+            if ($p === '') {
+                return null;
+            }
+            if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                return $p;
+            }
+            // If already a web path like "/storage/...", return as-is (legacy rows)
+            if (str_starts_with($p, '/storage/')) {
+                return $p;
+            }
+            // Default: map storage path to public URL
+            return Storage::url($p);
+        };
+
+        $contracts = Contract::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['id','contract','type','created_at'])
+            ->map(function ($c) {
+                return [
+                    'id' => (int) $c->id,
+                    'name' => (string) ($c->type ?: 'Contract'),
+                    // Always attempt to generate a URL; legacy rows may already store '/storage/...'
+                    'url' => (function ($path) {
+                        $p = (string) $path;
+                        if ($p === '') return null;
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
+                        if (str_starts_with($p, '/storage/')) return $p;
+                        return Storage::url($p);
+                    })($c->contract),
+                    'kind' => 'contract',
+                    'created_at' => (string) $c->created_at,
+                ];
+            });
+
+        $medicals = Medical::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->get(['id','mc_document','description','created_at'])
+            ->map(function ($m) {
+                return [
+                    'id' => (int) $m->id,
+                    'name' => (string) ($m->description ?: 'Medical certificate'),
+                    'url' => (function ($path) {
+                        $p = (string) $path;
+                        if ($p === '') return null;
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
+                        if (str_starts_with($p, '/storage/')) return $p;
+                        return Storage::url($p);
+                    })($m->mc_document),
+                    'kind' => 'medical',
+                    'created_at' => (string) $m->created_at,
+                ];
+            });
+
+        return response()->json([
+            'contracts' => $contracts->values(),
+            'medicals' => $medicals->values(),
+        ]);
+    }
+
+    public function uploadDocument(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'kind' => 'required|string|in:contract,medical',
+            'file' => 'required|file|max:10240',
+            'name' => 'nullable|string|max:255',
+            'type' => 'nullable|string|max:100',
+        ]);
+
+        $path = $request->file('file')->store('documents', 'public');
+
+        if ($validated['kind'] === 'contract') {
+            Contract::create([
+                'user_id' => $user->id,
+                'contract' => $path,
+                'type' => $validated['type'] ?? ($validated['name'] ?? 'Contract'),
+                'reservation_id' => null,
+            ]);
+        } else {
+            Medical::create([
+                'user_id' => $user->id,
+                'mc_document' => $path,
+                'description' => $validated['name'] ?? 'Medical certificate',
+                'author' => (Auth::check() ? (Auth::user()->name ?? 'Admin') : 'Admin'),
+            ]);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    // Stream a stored document via controller to avoid direct /storage access issues
+    public function viewDocument(Request $request, User $user, string $kind, int $doc)
+    {
+        // Fetch by document id only to handle legacy rows with mismatched user_id types
+        if ($kind === 'contract') {
+            $row = Contract::where('id', $doc)->firstOrFail();
+            $path = (string) $row->contract;
+        } else {
+            $row = Medical::where('id', $doc)->firstOrFail();
+            $path = (string) $row->mc_document;
+        }
+
+        // Normalize possible stored paths and resolve to an actual file on public disk
+        if (str_starts_with($path, '/storage/')) {
+            $path = ltrim(substr($path, strlen('/storage/')), '/');
+        }
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return redirect()->away($path);
+        }
+
+        $candidates = [];
+        $base = ltrim($path, '/');
+        // as-is
+        $candidates[] = $base;
+        // try common directories for legacy rows that only stored filename
+        $candidates[] = 'documents/' . basename($base);
+        if ($kind === 'contract') {
+            $candidates[] = 'contracts/' . basename($base);
+        } else {
+            $candidates[] = 'medicals/' . basename($base);
+        }
+
+        $resolved = null;
+        foreach ($candidates as $candidate) {
+            if (Storage::disk('public')->exists($candidate)) {
+                $resolved = $candidate;
+                break;
+            }
+        }
+
+        if ($resolved === null) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        $fullPath = storage_path('app/public/' . ltrim($resolved, '/'));
+        if (!is_file($fullPath)) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        return response()->file($fullPath);
     }
     public function update(Request $request, User $user)
     {
