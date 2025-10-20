@@ -31,7 +31,7 @@ export default function ProfilePictureWarning() {
         setOpen(false);
     };
 
-    const currentUrl = (page as any).url as string | undefined;
+    const currentUrl = (page as unknown as { url?: string })?.url;
     if (!auth?.user || !isMissing) return null;
     if (currentUrl && currentUrl.startsWith('/settings/profile')) return null;
 
