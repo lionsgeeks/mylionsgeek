@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState , useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -7,6 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  BarChart, Bar, PieChart, Pie, LineChart, Line, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
+import { TrendingUp, Package, AlertCircle } from 'lucide-react';
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
@@ -16,6 +22,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [editingEquipment, setEditingEquipment] = useState(null);
     const [deletingEquipment, setDeletingEquipment] = useState(null);
     const [filterType, setFilterType] = useState('all');
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterState, setFilterState] = useState('all');
+    const [page, setPage] = useState(1);
+    const [showAll, setShowAll] = useState(false);
+    const perPage = 10;
     // History modal state
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [historyEquipment, setHistoryEquipment] = useState(null);
@@ -211,10 +223,87 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     // For the Add modal, we want 'other' to always be last
     const addModalTypes = [...baseTypes.filter((t) => t !== 'other'), 'other'];
 
-    // Filter equipment based on selected type
-    const filteredEquipment = filterType === 'all' 
-        ? equipment 
-        : equipment.filter(e => e.equipment_type === filterType);
+    // Filter equipment
+    const filteredEquipment = useMemo(() => {
+    const typeMatch = (e) => {
+        if (filterType === 'all') return true;
+        return e.equipment_type === filterType;
+    };
+    
+    const stateMatch = (e) => {
+        if (filterState === 'all') return true;
+        if (filterState === 'working') return e.state === true;
+        if (filterState === 'not_working') return e.state === false;
+        return true;
+    };
+    
+    const searchMatch = (e) => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        return (
+        e.reference?.toLowerCase().includes(term) ||
+        e.mark?.toLowerCase().includes(term) ||
+        e.equipment_type?.toLowerCase().includes(term)
+        );
+    };
+    
+    return equipment.filter(e => typeMatch(e) && stateMatch(e) && searchMatch(e));
+    }, [equipment, searchTerm, filterType, filterState]);
+
+    // Pagination
+    const pagedEquipment = showAll 
+    ? filteredEquipment 
+    : filteredEquipment.slice((page - 1) * perPage, page * perPage);
+
+    const totalPages = showAll ? 1 : (Math.ceil(filteredEquipment.length / perPage) || 1);
+
+    useEffect(() => {
+    setPage(1);
+    }, [filteredEquipment]);
+
+    // Statistics
+    const stats = useMemo(() => {
+    const totalAll = equipment.length;
+    const totalWorking = equipment.filter(e => e.state).length;
+    const totalNotWorking = equipment.filter(e => !e.state).length;
+    
+    // By type
+    const byType = equipment.reduce((acc, e) => {
+        const type = e.equipment_type || 'other';
+        if (!acc[type]) acc[type] = { working: 0, notWorking: 0, total: 0 };
+        if (e.state) acc[type].working++;
+        else acc[type].notWorking++;
+        acc[type].total++;
+        return acc;
+    }, {});
+    
+    return { totalAll, totalWorking, totalNotWorking, byType };
+    }, [equipment]);
+
+    // Chart data
+    const statusData = Object.keys(stats.byType).map(type => ({
+    name: type,
+    Working: stats.byType[type].working,
+    'Not Working': stats.byType[type].notWorking,
+    All: stats.byType[type].total
+    }));
+
+    const distributionData = Object.keys(stats.byType)
+    .filter(type => stats.byType[type].total > 0)
+    .map(type => ({
+        name: type,
+        value: stats.byType[type].total,
+        percentage: ((stats.byType[type].total / equipment.length) * 100).toFixed(0)
+    }));
+
+    const timelineData = [
+    { period: 'Today', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
+    { period: 'This Week', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
+    { period: 'This Month', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking }
+    ];
+
+    const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+
 
     return (
         <AppLayout>
@@ -231,11 +320,13 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </div>
 
                 {/* Filter section */}
+            <div className="space-y-4">
+                {/* First row: Type filter */}
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 max-md:flex-col max-md:items-start">
                         <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48">
+                            <SelectTrigger className="w-48 max-md:w-full">
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
@@ -245,11 +336,33 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 ))}
                             </SelectContent>
                         </Select>
+
+                        {/* Search and State filter */}
+                            <Select value={filterState} onValueChange={setFilterState}>
+                                <SelectTrigger className="w-40 max-md:w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All States</SelectItem>
+                                    <SelectItem value="working">Working</SelectItem>
+                                    <SelectItem value="not_working">Not Working</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        <div className="flex gap-4">
+                            <Input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="max-w-xs max-md:w-full"
+                            />
+                        </div>
+
                         <Button 
                             variant="outline" 
                             size="sm"
                             onClick={openTypeManager}
-                            className="text-xs p-2"
+                            className="text-xs p-2 max-md:w-full cursor-pointer"
                             title="Manage Equipment Types"
                         >
                             <Settings className="h-4 w-4" />
@@ -266,6 +379,127 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                         </Button>
                     )}
                 </div>
+            </div>
+
+
+                {/* Statistics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-400">
+                        Total Equipment
+                    </CardTitle>
+                    <Package className="h-4 w-4 text-blue-400" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold dark:text-white">{stats.totalAll}</div>
+                    </CardContent>
+                </Card>
+                
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-400">
+                        Working
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-400" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold text-green-400">{stats.totalWorking}</div>
+                    </CardContent>
+                </Card>
+                
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-400">
+                        Not Working
+                    </CardTitle>
+                    <AlertCircle className="h-4 w-4 text-red-400" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold text-red-400">{stats.totalNotWorking}</div>
+                    </CardContent>
+                </Card>
+                </div>
+
+                {/* Charts */}
+                <div className="mb-8 space-y-6">
+                {/* Bar Chart */}
+                <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">📊</span>
+                    <h2 className="text-xl font-semibold text-white">Status Distribution by Type</h2>
+                    </div>
+                    <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={statusData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="name" stroke="#9ca3af" />
+                        <YAxis stroke="#9ca3af" />
+                        <Tooltip 
+                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        labelStyle={{ color: '#f9fafb' }}
+                        />
+                        <Legend />
+                        <Bar dataKey="All" fill="#3b82f6" />
+                        <Bar dataKey="Working" fill="#10b981" />
+                        <Bar dataKey="Not Working" fill="#ef4444" />
+                    </BarChart>
+                    </ResponsiveContainer>
+                </Card>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Pie Chart */}
+                    <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="text-2xl">📈</span>
+                        <h2 className="text-xl font-semibold text-white">Equipment Type Distribution</h2>
+                    </div>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                        <Pie
+                            data={distributionData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percentage }) => `${name}: ${percentage}%`}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                        >
+                            {distributionData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                        />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    </Card>
+
+                    {/* Line Chart */}
+                    <Card className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="text-2xl">📉</span>
+                        <h2 className="text-xl font-semibold text-white">Equipment Timeline</h2>
+                    </div>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={timelineData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="period" stroke="#9ca3af" />
+                        <YAxis stroke="#9ca3af" />
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                            labelStyle={{ color: '#f9fafb' }}
+                        />
+                        <Legend />
+                        <Line type="monotone" dataKey="All" stroke="#3b82f6" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Working" stroke="#10b981" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Not Working" stroke="#ef4444" strokeWidth={2} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                    </Card>
+                </div>
+                </div>
 
                 <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
                     <table className="min-w-full divide-y divide-sidebar-border/70">
@@ -279,7 +513,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
-                            {filteredEquipment.map((e) => (
+                            {pagedEquipment.map((e) => (
                                 <tr key={e.id} className="hover:bg-accent/30">
                                     <td className="px-4 py-3">
                                         {e.image ? (
@@ -334,6 +568,45 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {!showAll && totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="cursor-pointer"
+                            >
+                                Previous
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                                Page {page} of {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="cursor-pointer"
+                            >
+                                Next
+                            </Button>
+                        </div>
+                        
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAll(!showAll)}
+                            className="cursor-pointer"
+                        >
+                            {showAll ? 'Show Paginated' : 'Show All'}
+                        </Button>
+                    </div>
+                )}
+
 
                 <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>
                     <DialogContent className="max-w-3xl p-0 bg-light text-dark dark:bg-dark dark:text-light">
