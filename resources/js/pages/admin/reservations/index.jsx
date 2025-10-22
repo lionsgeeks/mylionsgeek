@@ -357,19 +357,19 @@ const distributionData = [
                         <h1 className="text-2xl font-medium">Reservations</h1>
                         <p className="text-sm text-muted-foreground">{(rangeActive ? baseAll.length : allReservations.length)} total — {(rangeActive ? baseCowork.length : coworkReservations.length)} coworks — {(rangeActive ? baseStudio.length : studioReservations.length)} studios</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <div className="flex items-center gap-2 ">
+                        <div className="relative ">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 " />
                             <Input
                                 type="text"
                                 placeholder="Search reservations..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 w-64"
+                                className="pl-10 w-64 bg-neutral-200 dark:bg-neutral-800"
                             />
                         </div>
                         <Select value={filterType || 'all'} onValueChange={onTypeChange}>
-                            <SelectTrigger className="w-44"><SelectValue placeholder="Type (all)" /></SelectTrigger>
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 w-44"><SelectValue placeholder="Type (all)" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All types</SelectItem>
                                 <SelectItem value="cowork">Cowork</SelectItem>
@@ -379,7 +379,7 @@ const distributionData = [
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus || 'all'} onValueChange={onStatusChange}>
-                            <SelectTrigger className="w-44"><SelectValue placeholder="Status (all)" /></SelectTrigger>
+                            <SelectTrigger className="w-44 bg-neutral-200 dark:bg-neutral-800"><SelectValue placeholder="Status (all)" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All status</SelectItem>
                                 <SelectItem value="approved">Approved</SelectItem>
@@ -387,9 +387,9 @@ const distributionData = [
                                 <SelectItem value="canceled">Canceled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40" />
-                        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40" />
-                        <Button variant="outline" size="sm" onClick={() => { setFromDate(''); setToDate(''); }}>Clear</Button>
+                        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40 bg-neutral-200 dark:bg-neutral-800" />
+                        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40 bg-neutral-200 dark:bg-neutral-800" />
+                        <Button variant="outline" className="bg-neutral-200 dark:bg-neutral-800 " onClick={() => { setFromDate(''); setToDate(''); }}>Clear</Button>
                     </div>
                 </div>
 
