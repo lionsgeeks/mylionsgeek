@@ -18,8 +18,8 @@ const Impact = () => {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         {items.map((stat, idx) => (
-                            <div key={idx} className="text-center p-6 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 hover:border-amber-400 dark:hover:border-amber-400 transition-all hover:scale-105">
-                                <stat.icon className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                            <div key={idx} className="text-center p-6 bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-200 dark:border-neutral-700 hover:border-alpha dark:hover:border-alpha transition-all hover:scale-105">
+                                <stat.icon className="w-8 h-8 text-alpha mx-auto mb-3" />
                                 <div className="text-3xl font-bold text-neutral-900 dark:text-white mb-1">{stat.value}</div>
                                 <div className="text-sm text-neutral-600 dark:text-neutral-400">{stat.label}</div>
                             </div>

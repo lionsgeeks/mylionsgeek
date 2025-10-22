@@ -37,7 +37,7 @@ const Footer = () => {
                                 <a
                                     key={link.name}
                                     href={link.href}
-                                    className="text-neutral-600 dark:text-neutral-400 hover:text-amber-400 dark:hover:text-amber-300 transition-colors duration-300 text-sm font-medium"
+                                    className="text-neutral-600 dark:text-neutral-400 hover:text-alpha dark:hover:text-amber-300 transition-colors duration-300 text-sm font-medium"
                                 >
                                     {link.name}
                                 </a>

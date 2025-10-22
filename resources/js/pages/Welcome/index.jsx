@@ -142,7 +142,7 @@ export default function LionsGeekLanding() {
             {/* Dark mode gradient overlays */}
             <div className="pointer-events-none fixed inset-0 -z-10 hidden dark:block" aria-hidden="true">
                 <div className="absolute -left-40 -top-40 w-[560px] h-[560px] rounded-full bg-amber-500/20 blur-3xl" />
-                <div className="absolute left-1/3 top-1/4 w-[560px] h-[560px] rounded-full bg-amber-400/15 blur-3xl" />
+                <div className="absolute left-1/3 top-1/4 w-[560px] h-[560px] rounded-full bg-alpha/15 blur-3xl" />
                 <div className="absolute right-[-10%] bottom-[-10%] w-[680px] h-[680px] rounded-full bg-amber-500/25 blur-3xl" />
             </div>
 

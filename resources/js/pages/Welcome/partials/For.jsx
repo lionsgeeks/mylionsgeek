@@ -24,14 +24,14 @@ const For = () => {
                 <div className="mx-auto w-full px-4 md:max-w-7xl">
                     <div className="grid md:grid-cols-2 gap-12">
                         <div className="p-8 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 rounded-3xl border border-amber-200 dark:border-amber-800">
-                            <div className="w-14 h-14 rounded-2xl bg-amber-400 flex items-center justify-center mb-6">
+                            <div className="w-14 h-14 rounded-2xl bg-alpha flex items-center justify-center mb-6">
                                 <BookOpen className="w-7 h-7 text-black" />
                             </div>
                             <h3 className="text-2xl font-bold mb-4 text-neutral-900 dark:text-white">For Students</h3>
                             <ul className="space-y-3">
                                 {students.map((item, idx) => (
                                     <li key={idx} className="flex items-start gap-3 text-neutral-700 dark:text-neutral-300">
-                                        <CheckCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                                        <CheckCircle className="w-5 h-5 text-amber-600 dark:text-alpha mt-0.5 flex-shrink-0" />
                                         <span>{item}</span>
                                     </li>
                                 ))}

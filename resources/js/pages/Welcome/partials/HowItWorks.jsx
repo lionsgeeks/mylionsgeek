@@ -41,7 +41,7 @@ const HowItWorks = () => {
                             >
                                 {/* Connector Line */}
                                 {idx < items.length - 1 && (
-                                    <div className="hidden md:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-amber-400 to-transparent"></div>
+                                    <div className="hidden md:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-alpha to-transparent"></div>
                                 )}
 
                                 {/* Step Number */}
