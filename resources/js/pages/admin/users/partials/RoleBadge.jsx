@@ -1,6 +1,6 @@
 const RoleBadge = ({ role }) => {
   const roleColors = {
-    admin: { cercle: 'bg-red-700', border: 'border-red-500/20', text: 'text-red-600/90' },
+    // admin: { cercle: 'bg-red-700', border: 'border-red-500/20', text: 'text-red-600/90' },
     student: { cercle: 'bg-green-700', border: 'border-green-500/20', text: 'text-green-600/90' },
     graduated: { cercle: 'bg-[#FFC801]', border: 'border-[#FFC801]/20', text: 'text-[#FFC801]' }
   };

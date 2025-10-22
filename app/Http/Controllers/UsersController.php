@@ -27,7 +27,7 @@ class UsersController extends Controller
 {
 public function index()
 {
-    $allUsers = User::orderBy('created_at', 'desc')->get();
+    $allUsers = User::where('role', '!=', 'admin')->orderBy('created_at', 'desc')->get();
     
     $allFormation = Formation::orderBy('created_at', 'desc')->get();
 

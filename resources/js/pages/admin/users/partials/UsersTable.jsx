@@ -148,16 +148,15 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                             </TableCell>
                             <TableCell className="font-medium">{user.email}</TableCell>
                             <TableCell className="font-medium">{user.status}</TableCell>
-                            {/* <TableCell className="font-medium">{user.role}</TableCell> */}
-<TableCell>
-  <div className="flex flex-wrap gap-2">
-    {user.role ? (
-      <RoleBadge role={user.role} />
-    ) : (
-      <span className="text-gray-400 text-xs">No role</span>
-    )}
-  </div>
-</TableCell>
+                            <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                                {user.role ? (
+                                <RoleBadge role={user.role} />
+                                ) : (
+                                <span className="text-gray-400 text-xs">No role</span>
+                                )}
+                            </div>
+                            </TableCell>
 
                             <TableCell className="font-medium flex gap-2 items-center">
                                 <Button
