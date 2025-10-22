@@ -3,6 +3,8 @@ import AppHeaderLayout from "@/layouts/app/app-header-layout";
 import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
 import { type BreadcrumbItem } from "@/types";
 import { type ReactNode } from "react";
+import ShowSkippableModal from "@/components/ShowSkippableModal";
+
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -19,6 +21,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     return (
         <Layout breadcrumbs={breadcrumbs} {...props}>
             <div className="bg-light dark:bg-dark shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg">
+                <ShowSkippableModal/>
                 {children}
             </div>
         </Layout>
