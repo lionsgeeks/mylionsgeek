@@ -45,7 +45,7 @@ export default function Show({ training, usersNull }) {
     const v = String(value || '').toLowerCase();
     if (v === 'present') return 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400';
     if (v === 'absent') return 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400';
-    if (v === 'late') return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    if (v === 'late') return 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-alpha';
     if (v === 'excused') return 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400';
     return '';
   };

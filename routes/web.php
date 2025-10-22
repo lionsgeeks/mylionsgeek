@@ -11,7 +11,7 @@ Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
-    return Inertia::render('index');
+    return Inertia::render('Welcome/index');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
