@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     const [editingPlace, setEditingPlace] = useState(null);
     const [deletingPlace, setDeletingPlace] = useState(null);
     const [filterType, setFilterType] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
     const [calendarFor, setCalendarFor] = useState(null); // { id, place_type, name }
     const [events, setEvents] = useState([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
@@ -93,9 +95,11 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     };
 
     const normalizeType = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
-    const filteredPlaces = normalizeType(filterType) === 'all'
-        ? places
-        : places.filter(e => normalizeType(e.place_type) === normalizeType(filterType));
+    const filteredPlaces = places.filter(place => {
+        const matchesType = normalizeType(filterType) === 'all' || normalizeType(place.place_type) === normalizeType(filterType);
+        const matchesSearch = !searchQuery || place.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesType && matchesSearch;
+    });
 
     // Pagination (same pattern as Members)
     const [currentPage, setCurrentPage] = useState(1);
@@ -108,7 +112,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     useEffect(() => {
         // Reset page when filter changes or places change
         setCurrentPage(1);
-    }, [filterType, places]);
+    }, [filterType, searchQuery, places]);
 
     useEffect(() => {
         if (!calendarFor) return;
@@ -132,12 +136,43 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         <h1 className="text-2xl font-medium">Places</h1>
                         <p className="text-sm text-muted-foreground">{filteredPlaces.length} places</p>
                     </div>
-                    <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
-                        Add place
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 border border-sidebar-border/70 rounded-lg p-1">
+                            <Button
+                                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewMode('table')}
+                                className="h-8 w-8 p-0"
+                            >
+                                <List className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewMode('grid')}
+                                className="h-8 w-8 p-0"
+                            >
+                                <Grid3X3 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
+                            Add place
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
+                        <Input
+                            id="search"
+                            type="text"
+                            placeholder="Search by name..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-64"
+                        />
+                    </div>
                     <div className="flex items-center gap-2">
                         <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
                         <Select value={filterType} onValueChange={setFilterType}>
@@ -152,92 +187,164 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             </SelectContent>
                         </Select>
                     </div>
-                    {filterType !== 'all' && (
+                    {(filterType !== 'all' || searchQuery) && (
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setFilterType('all')}
+                            onClick={() => {
+                                setFilterType('all');
+                                setSearchQuery('');
+                            }}
                             className="text-xs"
                         >
-                            Clear filter
+                            Clear filters
                         </Button>
                     )}
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                    <table className="min-w-full divide-y divide-sidebar-border/70">
-                        <thead className="bg-secondary/50">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-sm font-medium">Photo</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium">State</th>
-                                <th className="px-4 py-3 text-center text-sm font-medium">Calender</th>
-                                <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-sidebar-border/70">
-                            {pagedPlaces.map((e) => (
-                                <tr key={`${e.place_type}-${e.id}`} className="hover:bg-accent/30">
-                                    <td className="px-4 py-3">
-                                        {e.image ? (
-                                            <button onClick={() => setPreviewSrc(e.image)} className="group rounded outline-hidden cursor-pointer">
-                                                <img src={e.image} alt={e.name} className="h-10 w-10 rounded object-cover transition group-hover:opacity-90" />
-                                            </button>
-                                        ) : (
-                                            <div className="h-10 w-10 rounded bg-muted" />
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">{e.name}</td>
-                                    <td className="px-4 py-3 text-sm">{e.place_type.replace('_',' ')}</td>
-                                    <td className="px-4 py-3 text-sm">
-                                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                {viewMode === 'table' ? (
+                    <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
+                        <table className="min-w-full divide-y divide-sidebar-border/70">
+                            <thead className="bg-secondary/50">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Photo</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium">State</th>
+                                    <th className="px-4 py-3 text-center text-sm font-medium">Calender</th>
+                                    <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-sidebar-border/70">
+                                {pagedPlaces.map((e) => (
+                                    <tr key={`${e.place_type}-${e.id}`} className="hover:bg-accent/30">
+                                        <td className="px-4 py-3">
+                                            {e.image ? (
+                                                <button onClick={() => setPreviewSrc(e.image)} className="group rounded outline-hidden cursor-pointer">
+                                                    <img src={e.image} alt={e.name} className="h-10 w-10 rounded object-cover transition group-hover:opacity-90" />
+                                                </button>
+                                            ) : (
+                                                <div className="h-10 w-10 rounded bg-muted" />
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm">{e.name}</td>
+                                        <td className="px-4 py-3 text-sm">{e.place_type.replace('_',' ')}</td>
+                                        <td className="px-4 py-3 text-sm">
+                                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                                                {e.state ? 'Available' : 'Unavailable'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-sm">
+                                            <div className="inline-flex items-center gap-1.5">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleViewCalendar(e)}
+                                                    className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                                    >
+                                                    View Calendar
+                                                </Button>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-sm">
+                                            <div className="inline-flex items-center gap-2">
+                                                <button
+                                                    className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
+                                                    title="Edit"
+                                                    onClick={() => handleEdit(e)}
+                                                >
+                                                    <Pencil size={18} className="h-4 w-4 text-alpha" />
+                                                </button>
+                                                <button
+                                                    className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
+                                                    title="Delete"
+                                                    onClick={() => handleDelete(e)}
+                                                >
+                                                    <Trash size={18} className="h-4 w-4 text-red-600" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredPlaces.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                            {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {pagedPlaces.map((e) => (
+                            <div key={`${e.place_type}-${e.id}`} className="rounded-xl border border-sidebar-border/70 bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                                {/* Large Profile Image */}
+                                <div className="relative h-48 w-full">
+                                    {e.image ? (
+                                        <button onClick={() => setPreviewSrc(e.image)} className="group w-full h-full cursor-pointer">
+                                            <img src={e.image} alt={e.name} className="w-full h-full object-cover transition group-hover:opacity-90" />
+                                        </button>
+                                    ) : (
+                                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                                            <span className="text-muted-foreground text-sm">No Image</span>
+                                        </div>
+                                    )}
+                                    {/* Status Badge */}
+                                    <div className="absolute top-3 left-3">
+                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${e.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
                                             {e.state ? 'Available' : 'Unavailable'}
                                         </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-sm">
-                                        <div className="inline-flex items-center gap-1.5">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleViewCalendar(e)}
-                                                className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-                                                >
-                                                View Calendar
-                                            </Button>
-
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-sm">
-                                        <div className="inline-flex items-center gap-2">
+                                    </div>
+                                </div>
+                                
+                                {/* Content Section */}
+                                <div className="p-4">
+                                    <div className="mb-3">
+                                        <h3 className="font-semibold text-lg text-foreground mb-1">{e.name}</h3>
+                                        <p className="text-sm text-muted-foreground capitalize">{e.place_type.replace('_',' ')}</p>
+                                    </div>
+                                    
+                                    {/* Actions */}
+                                    <div className="space-y-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleViewCalendar(e)}
+                                            className="w-full h-9 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                        >
+                                            View Calendar
+                                        </Button>
+                                        <div className="flex items-center gap-2">
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
+                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={18} className="h-4 w-4 text-alpha" />
+                                                <Pencil size={16} className="h-4 w-4 text-alpha mx-auto" />
                                             </button>
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
+                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={18} className="h-4 w-4 text-red-600" />
+                                                <Trash size={16} className="h-4 w-4 text-red-600 mx-auto" />
                                             </button>
                                         </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredPlaces.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                        {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {filteredPlaces.length === 0 && (
+                            <div className="col-span-full flex items-center justify-center py-12">
+                                <p className="text-sm text-muted-foreground">
+                                    {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Pagination */}
                 <div className="flex gap-5 mt-6 w-full items-center justify-center">
