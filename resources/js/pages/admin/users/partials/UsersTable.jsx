@@ -7,6 +7,7 @@ import { router, usePage } from '@inertiajs/react';
 import { useInitials } from '@/hooks/use-initials';
 import EditModal from './EditModal';
 import User from './ShowModal';
+import RoleBadge from '@/pages/admin/users/partials/RoleBadge';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -82,6 +83,10 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             }
         })
     }
+
+
+    console.log('All users:', currentItems);
+    console.log('First user roles:', currentItems[0]?.roles);
     return (
         <div>
             <Table>
@@ -143,7 +148,16 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                             </TableCell>
                             <TableCell className="font-medium">{user.email}</TableCell>
                             <TableCell className="font-medium">{user.status}</TableCell>
-                            <TableCell className="font-medium">{user.role}</TableCell>
+                            <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                                {user.role ? (
+                                <RoleBadge role={user.role} />
+                                ) : (
+                                <span className="text-gray-400 text-xs">No role</span>
+                                )}
+                            </div>
+                            </TableCell>
+
                             <TableCell className="font-medium flex gap-2 items-center">
                                 <Button
                                     className="p-2 bg-transparent hover:bg-transparent duration-200"

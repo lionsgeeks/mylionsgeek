@@ -25,20 +25,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
 {
-    public function index()
-    {
-        $allUsers = User::orderBy('created_at', 'desc')->get();
-        $allFormation = Formation::orderBy('created_at', 'desc')->get();
+public function index()
+{
+    $allUsers = User::where('role', '!=', 'admin')->orderBy('created_at', 'desc')->get();
+    
+    $allFormation = Formation::orderBy('created_at', 'desc')->get();
 
-
-        return Inertia::render(
-            'admin/users/index',
-            [
-                'users' => $allUsers,
-                'trainings' => $allFormation
-            ]
-        );
-    }
+    return Inertia::render('admin/users/index', [
+        'users' => $allUsers,
+        'trainings' => $allFormation,
+    ]);
+}
 
 
     public function export(Request $request): StreamedResponse
