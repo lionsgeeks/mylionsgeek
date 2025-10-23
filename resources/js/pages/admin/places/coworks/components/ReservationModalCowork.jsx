@@ -6,15 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess }) => {
-   
+
 
     const { data, setData, post, processing, errors, reset } = useForm({
-    cowork_id: cowork?.id || '',
-    day: selectedRange?.day || '',
-    start: selectedRange?.start || '',
-    end: selectedRange?.end || '',
-    
-});
+        cowork_id: cowork?.id || '',
+        day: selectedRange?.day || '',
+        start: selectedRange?.start || '',
+        end: selectedRange?.end || '',
+
+    });
 
 
     // Update form when selectedRange changes
@@ -31,20 +31,20 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     const handleClose = () => {
         reset();
-       
+
         onClose();
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         const formData = {
             ...data
         };
 
         post('/admin/reservations/storeReservationCowork', {
-            
-            
+
+
             data: formData,
             onSuccess: () => {
                 handleClose();
@@ -64,16 +64,16 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    { (
+                    {(
                         <div className="space-y-4">
-                           <img
-  src={`/storage/img/cowork/${cowork.image}`}
-  alt={cowork.name}
-  className="h-40 w-full rounded object-cover transition group-hover:opacity-90"
-/>
+                            <img
+                                src={cowork.image}
+                                alt={cowork.name}
+                                className="h-40 w-full rounded object-cover transition group-hover:opacity-90"
+                            />
 
 
-                            
+
 
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
@@ -119,8 +119,8 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                         </div>
                     )}
 
-                   
-                  
+
+
                 </form>
             </DialogContent>
         </Dialog>

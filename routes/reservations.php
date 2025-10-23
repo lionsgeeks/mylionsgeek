@@ -31,6 +31,10 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
     // Store reservation cowork
     Route::post('/reservations/storeReservationCowork', [ReservationsController::class, 'storeReservationCowork'])
         ->name('admin.reservations.storeReservationCowork');
+    
+    // Cancel cowork reservation
+    Route::post('/reservations/cowork/{reservation}/cancel', [ReservationsController::class, 'cancelCowork'])
+        ->name('admin.reservations.cowork.cancel');
 
 });
 

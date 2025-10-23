@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Search, FileText, Download } from 'lucide-react';
+import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
@@ -78,6 +78,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState(''); // '', 'cowork', 'studio', 'meeting_room', 'exterior'
     const [filterStatus, setFilterStatus] = useState(''); // '', 'approved', 'canceled', 'pending'
+    const [showCharts, setShowCharts] = useState(false); // New state for chart visibility
 
     const onTypeChange = (v) => setFilterType(v === 'all' ? '' : v);
     const onStatusChange = (v) => setFilterStatus(v === 'all' ? '' : v);
@@ -300,44 +301,44 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     }, [rangeActive, studioReservations]);
     // Prepare data for charts dynamically from current reservation lists
 const statusData = [
-    { 
-        name: 'Approved', 
-        all: filteredStatus.all.approved, 
-        cowork: filteredStatus.cowork.approved, 
-        studio: filteredStatus.studio.approved 
+    {
+        name: 'Approved',
+        all: filteredStatus.all.approved,
+        cowork: filteredStatus.cowork.approved,
+        studio: filteredStatus.studio.approved
     },
-    { 
-        name: 'Canceled', 
-        all: filteredStatus.all.canceled, 
-        cowork: filteredStatus.cowork.canceled, 
-        studio: filteredStatus.studio.canceled 
+    {
+        name: 'Canceled',
+        all: filteredStatus.all.canceled,
+        cowork: filteredStatus.cowork.canceled,
+        studio: filteredStatus.studio.canceled
     },
-    { 
-        name: 'Pending', 
-        all: filteredStatus.all.pending, 
-        cowork: filteredStatus.cowork.pending, 
-        studio: filteredStatus.studio.pending 
+    {
+        name: 'Pending',
+        all: filteredStatus.all.pending,
+        cowork: filteredStatus.cowork.pending,
+        studio: filteredStatus.studio.pending
     }
 ];
 
 const timelineData = [
-    { 
-        period: 'Today', 
-        all: stats.timeAll.today, 
-        cowork: stats.timeCowork.today, 
-        studio: timeStudioPI.today 
+    {
+        period: 'Today',
+        all: stats.timeAll.today,
+        cowork: stats.timeCowork.today,
+        studio: timeStudioPI.today
     },
-    { 
-        period: 'This Week', 
-        all: stats.timeAll.week, 
-        cowork: stats.timeCowork.week, 
-        studio: timeStudioPI.week 
+    {
+        period: 'This Week',
+        all: stats.timeAll.week,
+        cowork: stats.timeCowork.week,
+        studio: timeStudioPI.week
     },
-    { 
-        period: 'This Month', 
-        all: stats.timeAll.month, 
-        cowork: stats.timeCowork.month, 
-        studio: timeStudioPI.month 
+    {
+        period: 'This Month',
+        all: stats.timeAll.month,
+        cowork: stats.timeCowork.month,
+        studio: timeStudioPI.month
     }
 ];
 
@@ -393,94 +394,121 @@ const distributionData = [
                     </div>
                 </div>
 
-                {/* Statistics Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 lg:col-span-3">
-        {/* Status Distribution Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
-              Status Distribution by Category
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={statusData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fill: '#6b7280' }} />
-                <YAxis tick={{ fill: '#6b7280' }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                  cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
-                />
-                <Legend />
-                <Bar dataKey="all" name="All" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="cowork" name="Cowork" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="studio" name="Studios" fill="#10b981" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Reservation Distribution Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-600" />
-              Reservation Type Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={distributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {distributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+                {/* Charts Toggle Button */}
+                <div className="flex justify-center">
+                    <Button
+                        onClick={() => setShowCharts(!showCharts)}
+                        variant="outline"
+                        className="flex items-center gap-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                        {showCharts ? (
+                            <>
+                                <ChevronUp className="h-4 w-4" />
+                                Hide Charts & Analytics
+                            </>
+                        ) : (
+                            <>
+                                <ChevronDown className="h-4 w-4" />
+                                Show Charts & Analytics
+                            </>
+                        )}
+                    </Button>
                 </div>
-                {/* Timeline Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-green-600" />
-            Reservation Timeline
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={timelineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="period" tick={{ fill: '#6b7280' }} />
-              <YAxis tick={{ fill: '#6b7280' }} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="all" name="All Reservations" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="cowork" name="Cowork" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 6 }} />
-              <Line type="monotone" dataKey="studio" name="Studios" stroke="#10b981" strokeWidth={3} dot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+
+                {/* Charts Section - Conditionally Rendered */}
+                {showCharts && (
+                    <>
+                        {/* Statistics Cards */}
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {/* Charts Section */}
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 lg:col-span-3">
+                                {/* Status Distribution Chart */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <TrendingUp className="h-5 w-5 text-blue-600" />
+                                            Status Distribution by Category
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <BarChart data={statusData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                                <XAxis dataKey="name" tick={{ fill: '#6b7280' }} />
+                                                <YAxis tick={{ fill: '#6b7280' }} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                                    cursor={{ fill: 'rgba(59, 130, 246, 0.1)' }}
+                                                />
+                                                <Legend />
+                                                <Bar dataKey="all" name="All" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                                                <Bar dataKey="cowork" name="Cowork" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+                                                <Bar dataKey="studio" name="Studios" fill="#10b981" radius={[8, 8, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Reservation Distribution Pie Chart */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Users className="h-5 w-5 text-purple-600" />
+                                            Reservation Type Distribution
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <PieChart>
+                                                <Pie
+                                                    data={distributionData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    labelLine={false}
+                                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                    outerRadius={100}
+                                                    fill="#8884d8"
+                                                    dataKey="value"
+                                                >
+                                                    {distributionData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+
+                        {/* Timeline Chart */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Calendar className="h-5 w-5 text-green-600" />
+                                    Reservation Timeline
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <LineChart data={timelineData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                        <XAxis dataKey="period" tick={{ fill: '#6b7280' }} />
+                                        <YAxis tick={{ fill: '#6b7280' }} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                        />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="all" name="All Reservations" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                                        <Line type="monotone" dataKey="cowork" name="Cowork" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="studio" name="Studios" stroke="#10b981" strokeWidth={3} dot={{ r: 6 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
 
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
@@ -507,9 +535,6 @@ const distributionData = [
                     </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-                </div>
 
                 <div className="mt-6">
                     <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
@@ -544,65 +569,71 @@ const distributionData = [
                                                 <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
                                             )}
                                         </td>
-                                        {r.type != "cowork" && (
+                                        <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
+                                            <div className="inline-flex items-center justify-center gap-2">
+                                                {/* PDF Download - Only for non-cowork approved reservations */}
+                                                {r.approved && r.type !== 'cowork' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 px-2 cursor-pointer hover:bg-alpha dark:hover:bg-alpha dark:text-white"
+                                                        onClick={() => {
+                                                            window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
+                                                        }}
+                                                        title="Download PDF"
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                )}
 
-                                            <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
-                                                <div className="inline-flex items-center justify-center gap-2">
+                                                {/* Approve Button - Only for non-cowork pending reservations */}
+                                                {!r.canceled && !r.approved && r.type !== 'cowork' && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                                                        disabled={loadingAction.id === r.id}
+                                                        onClick={() => {
+                                                            setLoadingAction({ id: r.id, type: 'approve' });
+                                                            router.post(`/admin/reservations/${r.id}/approve`, {}, {
+                                                                onFinish: () => setLoadingAction({ id: null, type: null })
+                                                            });
+                                                        }}
+                                                        title="Approve reservation"
+                                                    >
+                                                        <Check className="h-4 w-4" />
+                                                    </Button>
+                                                )}
 
-                                                    {r.approved && ((r.type || r.place_type) !== 'cowork') && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 px-2 cursor-pointer hover:bg-alpha  dark:hover:bg-alpha dark:text-white"
-                                                            onClick={() => {
-                                                                window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
-                                                            }}
-                                                            title="Download PDF"
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                    {!r.canceled && !r.approved && (
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                            disabled={loadingAction.id === r.id}
-                                                            onClick={() => {
-                                                                setLoadingAction({ id: r.id, type: 'approve' });
-                                                                router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                            title="Approve reservation"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                    {!r.canceled && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="destructive"
-                                                            className="h-8 px-2 cursor-pointer disabled:opacity-50"
-                                                            disabled={loadingAction.id === r.id}
-                                                            onClick={() => {
-                                                                const confirmMsg = r.approved ?
-                                                                    'Cancel this approved reservation?' :
-                                                                    'Cancel this reservation?';
-                                                                if (!window.confirm(confirmMsg)) return;
-                                                                setLoadingAction({ id: r.id, type: 'cancel' });
-                                                                router.post(`/admin/reservations/${r.id}/cancel`, {}, {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null })
-                                                                });
-                                                            }}
-                                                            title="Cancel reservation"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        )
-                                        }
+                                                {/* Cancel Button - For all non-canceled reservations */}
+                                                {!r.canceled && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        className="h-8 px-2 cursor-pointer disabled:opacity-50"
+                                                        disabled={loadingAction.id === r.id}
+                                                        onClick={() => {
+                                                            const confirmMsg = r.approved ?
+                                                                'Cancel this approved reservation?' :
+                                                                'Cancel this reservation?';
+                                                            if (!window.confirm(confirmMsg)) return;
+                                                            setLoadingAction({ id: r.id, type: 'cancel' });
+                                                            
+                                                            // Use different routes for cowork vs regular reservations
+                                                            const cancelRoute = r.type === 'cowork' 
+                                                                ? `/admin/reservations/cowork/${r.id}/cancel`
+                                                                : `/admin/reservations/${r.id}/cancel`;
+                                                            
+                                                            router.post(cancelRoute, {}, {
+                                                                onFinish: () => setLoadingAction({ id: null, type: null })
+                                                            });
+                                                        }}
+                                                        title="Cancel reservation"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                                 {filteredReservations.length === 0 && (
@@ -746,7 +777,13 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                                         'Cancel this reservation?';
                                     if (!window.confirm(confirmMsg)) return;
                                     setLoadingAction({ id: reservation.id, type: 'cancel' });
-                                    router.post(`/admin/reservations/${reservation.id}/cancel`, {}, {
+                                    
+                                    // Use different routes for cowork vs regular reservations
+                                    const cancelRoute = reservation.type === 'cowork' 
+                                        ? `/admin/reservations/cowork/${reservation.id}/cancel`
+                                        : `/admin/reservations/${reservation.id}/cancel`;
+                                    
+                                    router.post(cancelRoute, {}, {
                                         onFinish: () => setLoadingAction({ id: null, type: null })
                                     });
                                 }}
