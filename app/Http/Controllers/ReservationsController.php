@@ -10,10 +10,12 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Mail\ReservationApprovedMail;
 
 class ReservationsController extends Controller
 {
@@ -200,11 +202,35 @@ class ReservationsController extends Controller
         if (!Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
+        
+        // Get the reservation details before updating
+        $reservationData = DB::table('reservations')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Reservation not found');
+        }
+        
+        // Get the user who made the reservation
+        $user = DB::table('users')->where('id', $reservationData->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+        
+        // Update the reservation
         DB::table('reservations')->where('id', $reservation)->update([
             'approved' => 1,
+            'approve_id' => auth()->id(),
             'canceled' => 0,
             'updated_at' => now(),
         ]);
+        
+        // Send approval email
+        try {
+            Mail::to($user->email)->send(new ReservationApprovedMail($user, $reservationData));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the approval
+            \Log::error('Failed to send approval email: ' . $e->getMessage());
+        }
+        
         return back()->with('success', 'Reservation approved');
     }
 
@@ -213,11 +239,34 @@ class ReservationsController extends Controller
         if (!Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
+        
+        // Get the reservation details before updating
+        $reservationData = DB::table('reservations')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Reservation not found');
+        }
+        
+        // Get the user who made the reservation
+        $user = DB::table('users')->where('id', $reservationData->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+        
+        // Update the reservation
         DB::table('reservations')->where('id', $reservation)->update([
             'canceled' => 1,
             'approved' => 0,
             'updated_at' => now(),
         ]);
+        
+        // Send cancellation email
+        try {
+            Mail::to($user->email)->send(new ReservationCanceledMail($user, $reservationData));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the cancellation
+            \Log::error('Failed to send cancellation email: ' . $e->getMessage());
+        }
+        
         return back()->with('success', 'Reservation canceled');
     }
 
@@ -532,6 +581,13 @@ class ReservationsController extends Controller
                 ->toArray();
         }
 
+        // Get approver name by looking up the user with approve_id
+        $approverName = null;
+        if ($reservation->approve_id) {
+            $approver = DB::table('users')->where('id', $reservation->approve_id)->first();
+            $approverName = $approver ? $approver->name : null;
+        }
+
         return [
             'id' => $reservation->id,
             'user_name' => $reservation->user_name,
@@ -541,6 +597,7 @@ class ReservationsController extends Controller
             'title' => $reservation->title,
             'description' => $reservation->description,
             'approved' => (bool) ($reservation->approved ?? 0),
+            'approver_name' => $approverName,
             'equipments' => $equipments,
             'team_members' => $teamMembers,
         ];
