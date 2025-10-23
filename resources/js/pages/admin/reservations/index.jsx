@@ -11,6 +11,7 @@ import { Check, X, Search, FileText, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
+import ExportModal from './partials/ExportModal';
 
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
@@ -347,6 +348,8 @@ const distributionData = [
     { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
 ];
 
+// export
+const [showExportModal, setShowExportModal] = useState(false);
 
     return (
         <AppLayout>
@@ -507,8 +510,14 @@ const distributionData = [
                     </div>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
                     <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
+                    
+                    <Button onClick={() => setShowExportModal(true)}
+                        className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                        >
+                        <Download /> Export
+                    </Button>
                 </div>
 
                 <div className="mt-6">
@@ -635,6 +644,11 @@ const distributionData = [
                     </DialogContent>
                 </Dialog>
             </div>
+            <ExportModal
+                open={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                reservations={allReservations}
+            />
         </AppLayout>
     );
 };
