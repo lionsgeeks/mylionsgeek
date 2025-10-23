@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">    
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -258,7 +258,7 @@
              </div>
             <div class="section-info">
                 <div>Projet: {{ $reservation['title'] ?? 'N/A' }}</div>
-                <div>Demandé Approuvé par: {{ $reservation['approver_name'] ?? 'Bassam Rafiq' }}</div>
+                <div>Demandé Approuvé par: {{ $reservation['approver_name']}}</div>
                 <div>Sortie approuvée par:</div>
             </div>
         </div>
@@ -352,7 +352,7 @@
              </div>
             <div class="section-info">
                 <div>Projet: {{ $reservation['title'] ?? 'N/A' }}</div>
-                <div>Demandé Approuvé par: {{ $reservation['approver_name'] ?? 'Bassam Rafiq' }}</div>
+                <div>Demandé Approuvé par: {{ $reservation['approver_name']}}</div>
                 <div>Retour Approuvé par:</div>
             </div>
         </div>
