@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
+import LineStatistic from './components/LineChart';
 
 const User = ({ user, trainings, close, open }) => {
     const getInitials = useInitials();
@@ -200,8 +201,8 @@ const User = ({ user, trainings, close, open }) => {
                 {activeTab === 'attendance' && (
                     <div style={{ overflowX: 'auto' }} className="mt-4  rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                         {/* Monthly full-day absences summary */}
-                        <div className="mt-4 ">
-                            <Label>Full-day absences per month</Label>
+                        {/* <div className="mt-4 "> */}
+                            {/* <Label>Full-day absences per month</Label>
                             {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
                                 <div className="mt-2 pb-2 -mx-3 px-3 w-full overflow-x-auto custom-scrollbar">
                                     <div className="grid grid-flow-col auto-cols-[220px] gap-3 pr-3">
@@ -222,9 +223,9 @@ const User = ({ user, trainings, close, open }) => {
                                 </div>
                             ) : (
                                 <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No full-day absences recorded.</div>
-                            )}
-                        </div>
-                        <Label>Absences</Label>
+                            )} */}
+                        {/* </div> */}
+                        {/* <Label>Absences</Label>
                         {Array.isArray(summary.recentAbsences) && summary.recentAbsences.length > 0 ? (
                             <div className="mt-2 space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                                 {summary.recentAbsences.map((row, i) => (
@@ -240,7 +241,7 @@ const User = ({ user, trainings, close, open }) => {
                             </div>
                         ) : (
                             <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">No absences.</div>
-                        )}
+                        )} */}
 
                         {/* Legend */}
                         {/* <div className="mt-3 text-xs text-neutral-500 dark:text-neutral-400 flex flex-wrap items-center gap-2">
@@ -248,6 +249,7 @@ const User = ({ user, trainings, close, open }) => {
                             <span className="px-2 py-0.5 rounded-full bg-error/10 text-error">absent</span>
                             <span className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">present/other</span>
                         </div> */}
+                        <LineStatistic />
                     </div>
                 )}
 

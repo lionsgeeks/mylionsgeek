@@ -82,7 +82,7 @@ class CompleteProfileController extends Controller
 
         // ✅ Handle image upload (optional)
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('users', 'public');
+            $path = $request->file('image')->store('img/profile', 'public');
             $user->image = $path;
         }
 
