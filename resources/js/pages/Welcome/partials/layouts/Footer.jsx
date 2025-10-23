@@ -1,5 +1,6 @@
 import React from 'react';
 import logo from '../../../../../../public/assets/images/logolionsgeek.png'
+import { Link } from '@inertiajs/react';
 
 const Footer = () => {
     return (
@@ -30,13 +31,14 @@ const Footer = () => {
                         {/* Social Links */}
                         <div className="flex gap-6">
                             {[
-                                { name: "Instagram", href: "#" },
-                                { name: "LinkedIn", href: "#" },
-                                { name: "YouTube", href: "#" },
+                                { name: "Instagram", href: "https://www.instagram.com/lions_geek/" },
+                                { name: "LinkedIn", href: "https://www.linkedin.com/company/lionsgeek/posts/?feedView=all" },
+                                { name: "YouTube", href: "https://www.youtube.com/@lionsgeek_MA" },
                             ].map((link) => (
                                 <a
                                     key={link.name}
                                     href={link.href}
+                                    target='_blank'
                                     className="text-neutral-600 dark:text-neutral-400 hover:text-alpha dark:hover:text-amber-300 transition-colors duration-300 text-sm font-medium"
                                 >
                                     {link.name}
