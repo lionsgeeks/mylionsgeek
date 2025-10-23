@@ -17,6 +17,7 @@ class Reservation extends Model
         'studio_id',
         'type',
         'approved',
+        'approve_id',
         'canceled',
         'passed',
         'start_signed',
