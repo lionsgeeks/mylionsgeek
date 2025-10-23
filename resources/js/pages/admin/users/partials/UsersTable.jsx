@@ -73,16 +73,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             });
         }
     };
-    const resetPassword = (id) => {
-        router.post(`/admin/users/${id}/reset-password`, {
-            onSuccess: () => {
-                alert('fine')
-            },
-            onError: () => {
-                alert('error')
-            }
-        })
-    }
+    
 
 
     console.log('All users:', currentItems);
@@ -177,13 +168,6 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     ) : (
                                         <Trash size={25} className="text-error" />
                                     )}
-                                </Button>
-                                <Button
-                                    className="p-2 bg-transparent cursor-pointer hover:bg-transparent duration-200"
-                                    title="Reset password"
-                                    onClick={() => resetPassword(user.id)}
-                                >
-                                    <RefreshCcw size={20} className="text-alpha" />
                                 </Button>
                             </TableCell>
                         </TableRow>

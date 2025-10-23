@@ -78,6 +78,16 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         // alert(userId);
         router.post(`/admin/users/${userId}/resend-link`);
     }
+    const resetPassword = (id) => {
+        router.post(`/admin/users/${id}/reset-password`, {
+            onSuccess: () => {
+                alert('fine')
+            },
+            onError: () => {
+                alert('error')
+            }
+        })
+    }
 
 
 
@@ -210,13 +220,23 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                     <div className="col-span-1 md:col-span-2 mt-6">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t pt-4">
                             {/* Left side - Resend Link */}
-                            <Button
-                                onClick={() => resendLink(editedUser.id)}
-                                type="button"
-                                variant=''
-                            >
-                                Resend Link
-                            </Button>
+                            {editedUser?.activation_token != null ?
+                                <Button
+                                    onClick={() => resendLink(editedUser.id)}
+                                    type="button"
+                                    variant="secondary"
+                                >
+                                    Resend Link
+                                </Button>
+                                :
+                                <Button
+                                    onClick={() => resetPassword(editedUser.id)}
+                                    type="button"
+                                    variant="secondary"
+                                >
+                                    Reset Password
+                                </Button>
+                            }
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
