@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
+use App\Models\AttendanceListe;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -512,7 +513,7 @@ public function index()
     // Lightweight JSON for modal: discipline + all absences
     public function attendanceSummary(User $user)
     {
-        $absencesQuery = \App\Models\AttendanceListe::query()
+        $absencesQuery = AttendanceListe::query()
             ->where('user_id', $user->id)
             ->where(function ($q) {
                 $q->where('morning', 'absent')
