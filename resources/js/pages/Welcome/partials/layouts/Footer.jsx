@@ -12,8 +12,8 @@ const Footer = () => {
                     <div className="flex flex-col md:flex-row justify-between items-center gap-6">
 
                         {/* Left Section */}
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
+                        <div className="flex lg:flex-row flex-col items-center gap-3">
+                            <div className="flex lg:flex-row flex-col items-center gap-2">
                                 <img
                                     src={logo}
                                     alt="LionsGeek Logo"

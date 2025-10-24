@@ -617,12 +617,12 @@ const distributionData = [
                                                                 'Cancel this reservation?';
                                                             if (!window.confirm(confirmMsg)) return;
                                                             setLoadingAction({ id: r.id, type: 'cancel' });
-                                                            
+
                                                             // Use different routes for cowork vs regular reservations
-                                                            const cancelRoute = r.type === 'cowork' 
+                                                            const cancelRoute = r.type === 'cowork'
                                                                 ? `/admin/reservations/cowork/${r.id}/cancel`
                                                                 : `/admin/reservations/${r.id}/cancel`;
-                                                            
+
                                                             router.post(cancelRoute, {}, {
                                                                 onFinish: () => setLoadingAction({ id: null, type: null })
                                                             });
@@ -777,12 +777,12 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                                         'Cancel this reservation?';
                                     if (!window.confirm(confirmMsg)) return;
                                     setLoadingAction({ id: reservation.id, type: 'cancel' });
-                                    
+
                                     // Use different routes for cowork vs regular reservations
-                                    const cancelRoute = reservation.type === 'cowork' 
+                                    const cancelRoute = reservation.type === 'cowork'
                                         ? `/admin/reservations/cowork/${reservation.id}/cancel`
                                         : `/admin/reservations/${reservation.id}/cancel`;
-                                    
+
                                     router.post(cancelRoute, {}, {
                                         onFinish: () => setLoadingAction({ id: null, type: null })
                                     });

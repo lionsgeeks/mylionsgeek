@@ -14,13 +14,17 @@ use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Mail\ReservationApprovedMail;
-use App\Mail\ReservationCanceledMail;
 
 class ReservationsController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+
+        if ($request->has('export') && $request->get('export') === 'true') {
+            return $this->exportData($request);
+        }
         // Base reservations
         $reservations = DB::table('reservations as r')
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
@@ -816,6 +820,85 @@ class ReservationsController extends Controller
         return back()->with('success', 'Cowork reservation canceled');
     }
 
+    private function exportData(Request $request)
+    {
+        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
+        
+        if (empty($requestedFields)) {
+            $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
+        }
+
+        $query = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->select('r.*', 'u.name as user_name')
+            ->orderByDesc('r.created_at');
+
+        $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
+        $placeByReservation = [];
+        
+        if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
+            DB::table('reservation_places as rp')
+                ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
+                ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
+                ->get()
+                ->each(function ($row) use (&$placeByReservation) {
+                    $placeByReservation[$row->reservation_id] = [
+                        'place_name' => $row->place_name,
+                        'place_type' => $row->place_type,
+                    ];
+                });
+        }
+
+        $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $response = new StreamedResponse(function () use ($query, $requestedFields, $placeByReservation) {
+            $handle = fopen('php://output', 'w');
+            
+            // Add BOM for Excel UTF-8 compatibility
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Use semicolon delimiter for Excel
+            fputcsv($handle, $requestedFields, ';');
+
+            $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
+                foreach ($reservations as $reservation) {
+                    $row = [];
+                    
+                    foreach ($requestedFields as $field) {
+                        $value = null;
+                        
+                        if ($field === 'place_name' || $field === 'place_type') {
+                            $value = $placeByReservation[$reservation->id][$field] ?? '';
+                        } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
+                            $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
+                        } elseif ($field === 'created_at' || $field === 'updated_at') {
+                            $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
+                        } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                            $value = $reservation->day;
+                        } else {
+                            $value = $reservation->$field ?? '';
+                        }
+                        
+                        if (is_string($value)) {
+                            $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
+                        }
+                        
+                        $row[] = $value;
+                    }
+                    
+                    // Use semicolon delimiter
+                    fputcsv($handle, $row, ';');
+                }
+            });
+
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        
+        return $response;
+    }
 }
 
 

@@ -60,9 +60,9 @@ const Navbar = ({ scrollToSection, setDarkMode, darkMode, mobileMenuOpen, setMob
                             <button onClick={() => scrollToSection('how-it-works')} className="text-left px-4 py-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-alpha hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-lg transition-colors">How it works</button>
                             <button onClick={() => scrollToSection('benefits')} className="text-left px-4 py-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-alpha hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-lg transition-colors">Benefits</button>
                             <button onClick={() => scrollToSection('impact')} className="text-left px-4 py-3 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-alpha hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-lg transition-colors">Impact</button>
-                            <button className="w-full mt-2 inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-medium bg-alpha text-black border-2 border-transparent transition-all hover:bg-black hover:text-alpha hover:border-alpha">
+                            <Link href={"/login"} className="w-full mt-2 inline-flex items-center justify-center rounded-lg px-4 py-3 text-sm font-medium bg-alpha text-black border-2 border-transparent transition-all hover:bg-black hover:text-alpha hover:border-alpha">
                                 Log in
-                            </button>
+                            </Link>
                         </nav>
                     </div>
                 )}
