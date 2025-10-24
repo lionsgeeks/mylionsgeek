@@ -6,6 +6,9 @@ import CreatTraining from './partials/CreatTraining';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import UpdateTraining from './partials/UpdateTraining';
+import Banner from "@/components/banner"
+import illustration from "../../../../../public/assets/images/banner/Lesson-bro.png"
+
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
@@ -75,6 +78,11 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
             <Head title="Training" />
 
             <div className="min-h-screen p-6">
+                <Banner
+                    illustration={illustration}
+                    size={400}
+
+                />
                 {/* Header with Button */}
                 <div className="mb-8 flex items-center justify-between">
                     <div>
@@ -214,10 +222,10 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                             training.category?.toLowerCase() === 'coding'
                                                 ? '/assets/images/training/coding.jpg'
                                                 : training.category?.toLowerCase() === 'media'
-                                                  ? '/assets/images/training/media.jpg'
-                                                  : training.img
-                                                    ? `/storage/img/training/${training.img}`
-                                                    : '/assets/images/training/default.jpg'
+                                                    ? '/assets/images/training/media.jpg'
+                                                    : training.img
+                                                        ? `/storage/img/training/${training.img}`
+                                                        : '/assets/images/training/default.jpg'
                                         }
                                         alt={training.name}
                                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -245,15 +253,15 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {training.coach?.name && (
                                         <div className="mt-2 flex items-center space-x-2">
                                             <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                <AvatarImage className='h-full w-full object-cover' src={training.coach.image} alt={training.coach.name} />
-                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white text-[13px]">
-                    {getInitials(training.coach.name)}
-                </AvatarFallback>
-            </Avatar>
+                                                <AvatarImage className='h-full w-full object-cover' src={training.coach.image} alt={training.coach.name} />
+                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white text-[13px]">
+                                                    {getInitials(training.coach.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
                                             <span className="text-sm text-dark/70 dark:text-light/70">{training.coach.name}</span>
                                         </div>
                                     )}
-                                    
+
 
                                     {/* Timer & Users */}
                                     <div className="mt-2 flex items-center justify-between text-sm">

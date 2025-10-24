@@ -31,12 +31,7 @@ const mainNavItems = [
 
     },
     { title: 'Reservations', href: '/admin/reservations', icon: Timer },
-    {
-        title: 'Calendar',
-        href: '/calendar',
-        icon: CalendarDays,
-
-    },
+    
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
     { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
     { title: 'Training', href: '/training', icon: GraduationCap },

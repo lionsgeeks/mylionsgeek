@@ -13,6 +13,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ReservationModal from './studios/components/ReservationModal';
 import ReservationModalCowork from './coworks/components/ReservationModalCowork';
+import illustration from "../../../../../public/assets/images/banner/studio.png"
+import Banner from "@/components/banner"
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -131,6 +133,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         <AppLayout>
             <Head title="Places" />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <Banner
+            illustration={illustration}
+             />
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Places</h1>

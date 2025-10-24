@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pencil, Route, Search, Trash } from 'lucide-react';
+import Banner from "@/components/banner"
+import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -236,7 +238,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             title="Delete"
                                             variant="destructive" onClick={() => handleDelete(c)}
                                         >
-                                            <Trash size={18} className="text-error"/>
+                                            <Trash size={18} className="text-error" />
                                         </button>
                                     </TableCell>
                                 </TableRow>
@@ -252,6 +254,11 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         <AppLayout>
             <Head title="Computers" />
             <div className="p-6 md:p-10">
+
+                <Banner
+                    illustration={illustration}
+
+                />
 
                 {/* Inlined Header JSX */}
                 <div className="mb-6 md:mb-8">
@@ -383,7 +390,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Edit Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent  className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
                     <DialogHeader>
                         <DialogTitle>Update Computer</DialogTitle>
                     </DialogHeader>
