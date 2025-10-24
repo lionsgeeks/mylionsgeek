@@ -62,26 +62,26 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
     onFilter,
     onSort
 }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [sortBy, setSortBy] = useState('created_at');
-    const [sortOrder, setSortOrder] = useState('desc');
+    // const [searchTerm, setSearchTerm] = useState('');
+    // const [statusFilter, setStatusFilter] = useState('all');
+    // const [sortBy, setSortBy] = useState('created_at');
+    // const [sortOrder, setSortOrder] = useState('desc');
 
-    const handleSearch = () => {
-        onSearch(searchTerm);
-    };
+    // const handleSearch = () => {
+    //     onSearch(searchTerm);
+    // };
 
-    const handleFilter = (status: string) => {
-        setStatusFilter(status);
-        onFilter(status);
-    };
+    // const handleFilter = (status: string) => {
+    //     setStatusFilter(status);
+    //     onFilter(status);
+    // };
 
-    const handleSort = (field: string) => {
-        const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
-        setSortBy(field);
-        setSortOrder(newOrder);
-        onSort(field, newOrder);
-    };
+    // const handleSort = (field: string) => {
+    //     const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    //     setSortBy(field);
+    //     setSortOrder(newOrder);
+    //     onSort(field, newOrder);
+    // };
 
     const getStatusColor = (status: string) => {
         switch (status) {
