@@ -33,3 +33,4 @@ require __DIR__ . '/geeko.php';
 require __DIR__ . '/equipment.php';
 require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';
+require __DIR__ . '/projects.php';
