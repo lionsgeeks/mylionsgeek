@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from "@/components/ui/input"
-import { Clipboard, Copy, RotateCw, Search } from "lucide-react"
+import {RotateCw, Search } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -18,24 +18,9 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
 
 
 
-    const [copy, setCopy] = useState(true);
+    
 
-    // ! email copy
-    const emailsToCopy = useMemo(() => {
-        return filteredUsers
-            .map(u => u?.email)
-            .filter(Boolean)
-            .join(", ");
-    }, [filteredUsers]);
-
-    //! copy email 
-    const handleCopyEmails = () => {
-        if (!emailsToCopy) return;
-        navigator.clipboard.writeText(emailsToCopy).then(() => {
-            setCopy(false);
-            setTimeout(() => setCopy(true), 1500);
-        });
-    };
+    
 
     //! handel change selects and saerch
     const handleChange = (field, e) => {
@@ -127,14 +112,6 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     }
                 >
                     <RotateCw size={15} /> Reset
-                </Button>
-                <Button
-                    onClick={handleCopyEmails}
-                    className="transform rounded-lg bg-[#212529] text-white transition-all duration-300 ease-in-out hover:scale-105 hover:bg-[#fee819] hover:text-[#212529] py-1 px-2 w-fit flex gap-2 items-center"
-                    disabled={!emailsToCopy}
-                >
-                    {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-                    {copy ? 'Copy Emails' : 'Copied!'}
                 </Button>
             </div>
         </>

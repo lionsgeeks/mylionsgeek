@@ -66,7 +66,7 @@ const Users = ({ users, trainings }) => {
     return (
         <AppLayout>
             <div className="p-10 flex flex-col gap-10">
-                <Header trainings={trainings} members={users.length} roles={allRoles} status={allStatus} />
+                <Header trainings={trainings} filteredUsers={filteredUsers} members={users.length} roles={allRoles} status={allStatus} />
                 <FilterPart
                     filters={filters}
                     setFilters={setFilters}
