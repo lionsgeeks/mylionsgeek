@@ -1,3 +1,4 @@
+import Banner from '@/components/banner';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -7,6 +8,7 @@ import { edit } from '@/routes/profile';
 // import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
+import illustration from "../../../../public/assets/images/banner/Personal settings-cuate.png"
 
 const sidebarNavItems = [
     {
@@ -32,6 +34,9 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     return (
         <div className="px-4 py-6 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-10">
             <Heading title="Settings" description="Manage your profile and account settings" />
+            <Banner
+            illustration={illustration}
+            />
 
             <div className=" flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
                 <aside className="w-full max-w-xl lg:w-48">

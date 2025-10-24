@@ -25,7 +25,7 @@ const mainNavItems = [
     },
 
     {
-        title: 'Places',
+        title: 'Spaces ',
         href: '/admin/places',
         icon: Building2,
 
