@@ -19,8 +19,6 @@ return new class extends Migration
 			$table->integer('passed')->default('0');
 			$table->integer('approved')->default('0');
 			$table->integer('user_id');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
 			$table->timestamps();
             });
         }

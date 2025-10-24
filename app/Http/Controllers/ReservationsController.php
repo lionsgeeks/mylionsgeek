@@ -202,19 +202,19 @@ class ReservationsController extends Controller
         if (!Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
-        
+
         // Get the reservation details before updating
         $reservationData = DB::table('reservations')->where('id', $reservation)->first();
         if (!$reservationData) {
             return back()->with('error', 'Reservation not found');
         }
-        
+
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
         if (!$user) {
             return back()->with('error', 'User not found');
         }
-        
+
         // Update the reservation
         DB::table('reservations')->where('id', $reservation)->update([
             'approved' => 1,
@@ -222,7 +222,7 @@ class ReservationsController extends Controller
             'canceled' => 0,
             'updated_at' => now(),
         ]);
-        
+
         // Send approval email
         try {
             Mail::to($user->email)->send(new ReservationApprovedMail($user, $reservationData));
@@ -230,7 +230,7 @@ class ReservationsController extends Controller
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
         }
-        
+
         return back()->with('success', 'Reservation approved');
     }
 
@@ -239,26 +239,26 @@ class ReservationsController extends Controller
         if (!Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
-        
+
         // Get the reservation details before updating
         $reservationData = DB::table('reservations')->where('id', $reservation)->first();
         if (!$reservationData) {
             return back()->with('error', 'Reservation not found');
         }
-        
+
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
         if (!$user) {
             return back()->with('error', 'User not found');
         }
-        
+
         // Update the reservation
         DB::table('reservations')->where('id', $reservation)->update([
             'canceled' => 1,
             'approved' => 0,
             'updated_at' => now(),
         ]);
-        
+
         // Send cancellation email
         try {
             Mail::to($user->email)->send(new ReservationCanceledMail($user, $reservationData));
@@ -266,7 +266,7 @@ class ReservationsController extends Controller
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cancellation email: ' . $e->getMessage());
         }
-        
+
         return back()->with('success', 'Reservation canceled');
     }
 
@@ -655,7 +655,7 @@ class ReservationsController extends Controller
                             'updated_at' => now()->toDateTimeString(),
                         ];
                     }, $validated['team_members']);
-                    
+
                     DB::table('reservation_teams')->insert($teamData);
                 }
 
@@ -672,7 +672,7 @@ class ReservationsController extends Controller
                             'updated_at' => now()->toDateTimeString(),
                         ];
                     }, $validated['equipment']);
-                    
+
                     DB::table('reservation_equipment')->insert($equipmentData);
                 }
             });
@@ -690,7 +690,7 @@ class ReservationsController extends Controller
     public function studioCalendar(int $studio)
     {
         $studioData = DB::table('studios')->where('id', $studio)->first();
-        
+
         if (!$studioData) {
             return redirect()->route('admin.places')->with('error', 'Studio not found');
         }
@@ -706,7 +706,7 @@ class ReservationsController extends Controller
     public function coworkCalendar(int $cowork)
     {
         $coworkData = DB::table('coworks')->where('id', $cowork)->first();
-        
+
         if (!$coworkData) {
             return redirect()->route('admin.places')->with('error', 'Coworks not found');
         }
@@ -724,16 +724,22 @@ class ReservationsController extends Controller
     {
         $request->validate([
             'cowork_id' => 'required|exists:coworks,id',
-            
             'day' => 'required|date',
             'start' => 'required',
             'end' => 'required',
-            
         ]);
-        $lastId = (int) (DB::table('reservation_coworks')->max('id') ?? 0);
-                $reservationId = $lastId + 1;
 
-        ReservationCowork::create([
+        $lastId = (int) (DB::table('reservation_coworks')->max('id') ?? 0);
+        $reservationId = $lastId + 1;
+
+        // Get user data for email
+        $user = DB::table('users')->where('id', Auth::id())->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        // Create cowork reservation as auto-approved
+        $reservation = ReservationCowork::create([
             'id' => $reservationId,
             'table' => $request->cowork_id,
             'user_id' => Auth::id(),
@@ -741,10 +747,77 @@ class ReservationsController extends Controller
             'start' => $request->start,
             'end' => $request->end,
             'passed' => false,
-            'approved' => false,
+            'approved' => 1,
             'canceled' => false,
         ]);
-        return back();
+
+        // Send approval email for auto-approved cowork reservation
+        try {
+            // Create a reservation-like object for the email
+            $reservationData = (object) [
+                'id' => $reservationId,
+                'title' => "Cowork - Table {$request->cowork_id}",
+                'date' => $request->day,
+                'start' => $request->start,
+                'end' => $request->end,
+                'description' => 'Cowork space reservation',
+                'type' => 'cowork'
+            ];
+
+            Mail::to($user->email)->send(new ReservationApprovedMail($user, $reservationData));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the reservation creation
+            \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Cowork reservation created and approved automatically');
+    }
+
+    public function cancelCowork(int $reservation)
+    {
+        if (!Schema::hasTable('reservation_coworks')) {
+            return back()->with('error', 'Reservation coworks table missing');
+        }
+
+        // Get the cowork reservation details before updating
+        $reservationData = DB::table('reservation_coworks')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Cowork reservation not found');
+        }
+
+        // Get the user who made the reservation
+        $user = DB::table('users')->where('id', $reservationData->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        // Update the cowork reservation
+        DB::table('reservation_coworks')->where('id', $reservation)->update([
+            'canceled' => 1,
+            'approved' => 0,
+            'updated_at' => now(),
+        ]);
+
+        // Send cancellation email
+        try {
+            // Create a reservation-like object for the email
+            $reservationForEmail = (object) [
+                'id' => $reservationData->id,
+                'title' => "Cowork - Table {$reservationData->table}",
+                'date' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'description' => 'Cowork space reservation',
+                'type' => 'cowork'
+            ];
+
+            Mail::to($user->email)->send(new ReservationCanceledMail($user, $reservationForEmail));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the cancellation
+            \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Cowork reservation canceled');
     }
 
     private function exportData(Request $request)
