@@ -39,7 +39,7 @@ const Users = ({ users, trainings }) => {
         const promoTrainingIds = filters.promo === null
             ? null
             : trainings
-                .filter(t => t.name.toLowerCase().includes(filters.promo.toLowerCase()))
+                .filter(t => filters.promo != null && t.name.toLowerCase().includes(filters.promo.toLowerCase()))
                 .map(t => t.id);
 
         const list = users
@@ -49,8 +49,8 @@ const Users = ({ users, trainings }) => {
                 if (promoTrainingIds === null) return true;
                 return promoTrainingIds.includes(user.formation_id);
             })
-            .filter(user => (user.role || "").toLowerCase().includes(filters.role.toLowerCase()))
-            .filter(user => (user.status || "").toLowerCase().includes(filters.status.toLowerCase()))
+            .filter(user => filters.role != null && (user.role || "").toLowerCase().includes(filters.role.toLowerCase()))
+            .filter(user => filters.status != null && (user.status || "").toLowerCase().includes(filters.status.toLowerCase()))
             .sort((a, b) => {
                 if (filters.date === "oldest") {
                     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -63,6 +63,8 @@ const Users = ({ users, trainings }) => {
     const allStatus = [...new Set(users.map((user) => user.status))]
     // console.log(status);
     // console.log(filteredUsers.length);
+    // console.log(filteredUsers.length + 'yahya');
+
 
 
     return (
@@ -72,7 +74,7 @@ const Users = ({ users, trainings }) => {
                     illustration={students}
 
                 />
-                <Header trainings={trainings} members={users.length} roles={allRoles} status={allStatus} />
+                <Header trainings={trainings} filteredUsers={filteredUsers} roles={allRoles} status={allStatus} />
                 <FilterPart
                     filters={filters}
                     setFilters={setFilters}
