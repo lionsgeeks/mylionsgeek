@@ -7,8 +7,9 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import MainDashboard from './admin/dashboard/index'
-
-
+import Banner from '@/components/banner'
+import illustration from "../../../public/assets/images/banner/men.png"
+import pattern from "../../../public/assets/images/banner/pattern.png"
 const breadcrumbs = [
     {
         title: 'Dashboard',
@@ -22,6 +23,20 @@ export default function Dashboard() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+
+                {/* l9aw  liha blasa  */}
+
+
+                <Banner
+                    illustration={illustration}
+                    pattern={pattern}
+                    description='Easily book, manage and track studio gear and equipment Streamline your studio workflow'
+                    title='Welcome to the Dashboard'
+                    userName={auth.user.name}
+                    greeting='Hi'
+                />
+
+
                 <MainDashboard />
                 {/* <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">

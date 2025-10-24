@@ -1,6 +1,6 @@
 import React from 'react';
 
-const HeaderDashboard = () => {
+export const HeaderDashboard = () => {
     return (
         <>
             
@@ -8,4 +8,3 @@ const HeaderDashboard = () => {
     );
 };
 
-export default HeaderDashboard;
