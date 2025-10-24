@@ -13,7 +13,7 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
     const {  quote } = usePage<SharedData>().props;
 
     return (
-        <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
+        <div className="relative grid h-dvh flex-col items-center lg:justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
             <div className="relative hidden h-full flex-col p-10  lg:flex dark:border-r">
                 <div className="absolute inset-0 dark:hidden"  />
                 <div className="absolute inset-0  dark:block dark:bg-black j" />
@@ -41,13 +41,13 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
                     </div>
                 )}
             </div>
-            <div className="w-full lg:p-8 bg-white dark:bg-transparent lg:border-l lg:border-neutral-200 dark:lg:border-transparent">
+            <div className="w-full lg:p-8 bg-white dark:bg-transparent dark:lg: lg:border-l lg:border-neutral-200 dark:lg:border-transparent">
                 <div className="mx-auto w-full max-w-[420px] rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-transparent dark:bg-transparent dark:p-0 dark:shadow-none">
                     <div className="mx-auto flex w-full flex-col justify-center space-y-6">
                     <Link href={home()} className="relative z-20 flex items-center justify-center lg:hidden">
                         <img src="/assets/images/logolionsgeek.png" alt="LionsGeek" className="h-10 sm:h-12" />
                     </Link>
-                    <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center">
+                    <div className="flex flex-col items-center gap-2 text-left sm:items-center ">
                         <h1 className="text-xl font-medium">{title}</h1>
                         <p className="text-sm text-balance text-muted-foreground">{description}</p>
                     </div>
