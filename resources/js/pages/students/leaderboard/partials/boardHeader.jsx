@@ -9,15 +9,15 @@ const BoardHeader = ({ fetchLeaderboardData, isRefreshing , fetchPreviousWeekPod
             <div className="text-center mb-12">
                 <div className="flex flex-col lg:flex-row items-start justify-between mb-8 gap-6">
                     <div className="flex  gap-4">
-                        <div className="p-4 bg-gradient-to-br from-yellow-400 via-alpha to-alpha rounded-2xl shadow-2xl">
+                        {/* <div className="p-4 bg-gradient-to-br from-yellow-400 via-alpha to-alpha rounded-2xl shadow-2xl">
                             <Trophy className="w-10 h-10 text-dark" />
-                        </div>
-                        <div className="text-left">
+                        </div> */}
+                        {/* <div className="text-left">
                             <h1 className="text-3xl font-bold text-alpha mb-2">
                                 Wakatime Leaderboard
                             </h1>
                             <p className="text-gray-600 dark:text-gray-400 text-l">Track coding activity and compete with peers</p>
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* <div className="flex items-center gap-4">

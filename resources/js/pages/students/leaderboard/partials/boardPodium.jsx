@@ -21,7 +21,7 @@ const BoardPodium = ({
     return (
         <>
             {topWinners.length > 0 && (
-                <div className="mb-12">
+                <div className="mb-6">
                     {/* <div className="text-center mb-8">
                         <h2 className="text-3xl font-bold text-alpha mb-2">🏆 Week Geeks 🏆</h2>
                         <p className="text-gray-600 dark:text-gray-400">

@@ -78,7 +78,7 @@ const Header = ({ members, message, roles, trainings }) => {
         <>
             <div className="flex justify-between items-center">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-5xl">All Members</h1>
+                    {/* <h1 className="text-5xl">All Members</h1> */}
                     <p className="text-beta dark:text-light text-sm">{members} membres disponibles</p>
                 </div>
                 <div className="flex items-center gap-3">
