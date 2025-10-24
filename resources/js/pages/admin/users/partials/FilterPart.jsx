@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from "@/components/ui/input"
-import {RotateCw, Search } from "lucide-react"
+import { RotateCw, Search } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -18,9 +18,9 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
 
 
 
-    
 
-    
+
+
 
     //! handel change selects and saerch
     const handleChange = (field, e) => {
@@ -35,7 +35,7 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     <Input
                         type="text"
                         placeholder="Search"
-                        className="pl-10"
+                        className="pl-10 bg-[#262626] text-white placeholder:text-white"
                         value={filters.search}
                         onChange={e => handleChange("search", e.target.value)}
                     />
@@ -45,23 +45,28 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     value={filters.training === null ? undefined : String(filters.training)}
                     onValueChange={e => handleChange('training', Number(e))}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#262626] text-white data-[placeholder]:text-white">
                         <SelectValue placeholder="Select By Training" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#262626] text-white">
                         {trainings.map(training => (
-                            <SelectItem key={training.id} value={training.id.toString()}>
+                            <SelectItem
+                                key={training.id}
+                                value={training.id.toString()}
+                                className="text-white focus:bg-neutral-700 focus:text-white"
+                            >
                                 {training.name}
                             </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
+
                 {/* select by Promo */}
                 <Select
                     value={filters.promo || undefined}
                     onValueChange={e => handleChange('promo', e)}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#262626] text-white data-[placeholder]:text-white">
                         <SelectValue placeholder="Select By Promo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -77,7 +82,7 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     value={filters.role || undefined}
                     onValueChange={e => handleChange('role', e)}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#262626] text-white data-[placeholder]:text-white">
                         <SelectValue placeholder="Select By Role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -91,7 +96,7 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     value={filters.status || undefined}
                     onValueChange={e => handleChange('status', e)}
                 >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#262626] text-white data-[placeholder]:text-white">
                         <SelectValue placeholder="Select By Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -100,7 +105,7 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                         )}
                     </SelectContent>
                 </Select>
-                <Button className='dark:bg-light cursor-pointer dark:hover:bg-light/80 py-1 px-2 w-fit flex gap-2 items-center dark:text-black bg-dark text-light rounded-lg'
+                <Button className='dark:bg-[#262626] cursor-pointer py-1 px-2 w-fit flex gap-2 items-center dark:text-white bg-dark text-light rounded-lg'
                     onClick={() =>
                         setFilters({
                             search: "",

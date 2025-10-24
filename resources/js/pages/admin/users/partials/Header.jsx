@@ -19,7 +19,7 @@ import { Clipboard, Copy } from 'lucide-react';
 
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     // console.log(filteredUsers+'hello');
-    
+
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
@@ -102,6 +102,14 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Button
+                        onClick={handleCopyEmails}
+                        className="dark:bg-[#262626] cursor-pointer py-1 px-2 w-fit flex gap-2 items-center dark:text-white bg-dark text-light rounded-lg"
+                        disabled={!emailsToCopy}
+                    >
+                        {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                        {copy ? 'Copy Emails' : 'Copied!'}
+                    </Button>
                     <Dialog open={exportOpen} onOpenChange={setExportOpen}>
                         <DialogTrigger asChild>
                             <Button className="bg-black dark:bg-alpha text-white  dark:text-black cursor-pointer rounded-lg px-7 py-4">
@@ -135,6 +143,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+
                     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                         <DialogTrigger asChild>
                             <Button className="bg-beta cursor-pointer dark:bg-alpha text-white dark:text-black rounded-lg px-7 py-4">
@@ -280,14 +289,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                             </form>
                         </DialogContent>
                     </Dialog>
-                    <Button
-                        onClick={handleCopyEmails}
-                        className="transform rounded-lg bg-alpha text-beta hover:bg-alpha py-1 px-2 w-fit flex gap-2 items-center"
-                        disabled={!emailsToCopy}
-                    >
-                        {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-                        {copy ? 'Copy Emails' : 'Copied!'}
-                    </Button>
+
                 </div>
             </div>
         </>
