@@ -44,8 +44,8 @@ interface Task {
 interface TaskManagerProps {
     tasks: Task[];
     teamMembers: Array<{ id: number; name: string }>;
-    onTaskCreate: (data: any) => void;
-    onTaskUpdate: (id: number, data: any) => void;
+    onTaskCreate: (data: { title: string; description?: string; priority: string; assigned_to?: number; due_date?: string }) => void;
+    onTaskUpdate: (id: number, data: { title?: string; description?: string; priority?: string; status?: string; assigned_to?: number; due_date?: string }) => void;
     onTaskDelete: (id: number) => void;
     onCommentAdd: (taskId: number, content: string) => void;
 }
@@ -66,7 +66,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [newComment, setNewComment] = useState<{ [taskId: number]: string }>({});
 
-    const { data: taskData, setData: setTaskData, post, put, processing } = useForm({
+    const { data: taskData, setData: setTaskData, processing } = useForm({
         title: '',
         description: '',
         priority: 'medium',

@@ -51,7 +51,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const { data: inviteData, setData: setInviteData, post, processing } = useForm({
+    const { data: inviteData, setData: setInviteData, processing } = useForm({
         user_id: '',
         role: 'member'
     });

@@ -55,7 +55,7 @@ const FileManager: React.FC<FileManagerProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedTask, setSelectedTask] = useState('');
 
-    const { data: uploadData, setData: setUploadData, post, processing } = useForm({
+    const { setData: setUploadData, processing } = useForm({
         file: null as File | null,
         task_id: null as number | null
     });
@@ -123,12 +123,14 @@ const FileManager: React.FC<FileManagerProps> = ({
         switch (range) {
             case 'today':
                 return date.toDateString() === now.toDateString();
-            case 'week':
+            case 'week': {
                 const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
                 return date >= weekAgo;
-            case 'month':
+            }
+            case 'month': {
                 const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
                 return date >= monthAgo;
+            }
             default:
                 return true;
         }
