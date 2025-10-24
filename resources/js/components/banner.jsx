@@ -9,7 +9,7 @@ const Banner = ({
     description = "Easily book, manage and track studio gear and equipment. Streamline your studio workflow.",
 }) => {
     return (
-        <div className="p-1 flex gap-5 justify-between items-center w-full rounded-lg h-[200px] bg-[#ffc80183] my-4">
+        <div className="p-1 flex gap-5 justify-between items-center w-full rounded-lg h-50 bg-[#ffc80183] my-4">
             {/* Left image */}
             <div className="imgbanner1 h-full rounded">
                 <img
