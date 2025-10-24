@@ -17,8 +17,10 @@ import { useForm } from '@inertiajs/react'; // Import Inertia's useForm hook
 import { Checkbox } from '@/components/ui/checkbox';
 import { Clipboard, Copy } from 'lucide-react';
 
-const Header = ({ members, message, roles, trainings, filteredUsers }) => {
+const Header = ({ message, roles, trainings, filteredUsers }) => {
+    // console.log(filteredUsers+'hello');
     
+
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         email: '',
@@ -87,8 +89,7 @@ const Header = ({ members, message, roles, trainings, filteredUsers }) => {
 
     // ! email copy
     const emailsToCopy = useMemo(() => {
-        return filteredUsers
-            .map(u => u?.email)
+        return filteredUsers?.map(u => u?.email)
             .filter(Boolean)
             .join(", ");
     }, [filteredUsers]);
@@ -98,7 +99,7 @@ const Header = ({ members, message, roles, trainings, filteredUsers }) => {
             <div className="flex justify-between items-center">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-5xl">All Members</h1>
-                    <p className="text-beta dark:text-light text-sm">{filteredUsers.length} membres disponibles</p>
+                    <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Dialog open={exportOpen} onOpenChange={setExportOpen}>

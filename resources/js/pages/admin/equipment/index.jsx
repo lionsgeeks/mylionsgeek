@@ -1,4 +1,4 @@
-import React, { useState , useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -8,11 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  BarChart, Bar, PieChart, Pie, LineChart, Line, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+import {
+    BarChart, Bar, PieChart, Pie, LineChart, Line, Cell,
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, Package, AlertCircle } from 'lucide-react';
+import Banner from "@/components/banner"
+import illustration from "../../../../../public/assets/images/banner/Camera-amico.png"
+
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
@@ -33,7 +36,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [historyEquipment, setHistoryEquipment] = useState(null);
     const [historyItems, setHistoryItems] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-    
+
     // Type management state
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
     const [equipmentTypes, setEquipmentTypes] = useState([]);
@@ -66,7 +69,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const handleEdit = (equipment) => {
         // Set the equipment being edited
         setEditingEquipment(equipment);
-        
+
         // Populate form with current equipment data
         setEditData({
             mark: equipment.mark || '',
@@ -76,7 +79,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             state: equipment.state ? 1 : 0,
             image: null,
         });
-        
+
         // Open the modal
         setIsEditOpen(true);
     };
@@ -105,10 +108,10 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
     const handleUpdateEquipment = () => {
         put(`/admin/equipements/${editingEquipment.id}`, {
-            onSuccess: () => { 
-                resetEdit(); 
-                setIsEditOpen(false); 
-                setEditingEquipment(null); 
+            onSuccess: () => {
+                resetEdit();
+                setIsEditOpen(false);
+                setEditingEquipment(null);
             },
             onError: (errors) => {
                 console.log('Validation errors:', errors);
@@ -124,9 +127,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
         post('/admin/equipements', {
             forceFormData: true,
-            onSuccess: () => { 
-                reset(); 
-                setIsAddOpen(false); 
+            onSuccess: () => {
+                reset();
+                setIsAddOpen(false);
             },
             onError: (errors) => {
                 console.log('Validation errors:', errors);
@@ -225,81 +228,81 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
     // Filter equipment
     const filteredEquipment = useMemo(() => {
-    const typeMatch = (e) => {
-        if (filterType === 'all') return true;
-        return e.equipment_type === filterType;
-    };
-    
-    const stateMatch = (e) => {
-        if (filterState === 'all') return true;
-        if (filterState === 'working') return e.state === true;
-        if (filterState === 'not_working') return e.state === false;
-        return true;
-    };
-    
-    const searchMatch = (e) => {
-        if (!searchTerm) return true;
-        const term = searchTerm.toLowerCase();
-        return (
-        e.reference?.toLowerCase().includes(term) ||
-        e.mark?.toLowerCase().includes(term) ||
-        e.equipment_type?.toLowerCase().includes(term)
-        );
-    };
-    
-    return equipment.filter(e => typeMatch(e) && stateMatch(e) && searchMatch(e));
+        const typeMatch = (e) => {
+            if (filterType === 'all') return true;
+            return e.equipment_type === filterType;
+        };
+
+        const stateMatch = (e) => {
+            if (filterState === 'all') return true;
+            if (filterState === 'working') return e.state === true;
+            if (filterState === 'not_working') return e.state === false;
+            return true;
+        };
+
+        const searchMatch = (e) => {
+            if (!searchTerm) return true;
+            const term = searchTerm.toLowerCase();
+            return (
+                e.reference?.toLowerCase().includes(term) ||
+                e.mark?.toLowerCase().includes(term) ||
+                e.equipment_type?.toLowerCase().includes(term)
+            );
+        };
+
+        return equipment.filter(e => typeMatch(e) && stateMatch(e) && searchMatch(e));
     }, [equipment, searchTerm, filterType, filterState]);
 
     // Pagination
-    const pagedEquipment = showAll 
-    ? filteredEquipment 
-    : filteredEquipment.slice((page - 1) * perPage, page * perPage);
+    const pagedEquipment = showAll
+        ? filteredEquipment
+        : filteredEquipment.slice((page - 1) * perPage, page * perPage);
 
     const totalPages = showAll ? 1 : (Math.ceil(filteredEquipment.length / perPage) || 1);
 
     useEffect(() => {
-    setPage(1);
+        setPage(1);
     }, [filteredEquipment]);
 
     // Statistics
     const stats = useMemo(() => {
-    const totalAll = equipment.length;
-    const totalWorking = equipment.filter(e => e.state).length;
-    const totalNotWorking = equipment.filter(e => !e.state).length;
-    
-    // By type
-    const byType = equipment.reduce((acc, e) => {
-        const type = e.equipment_type || 'other';
-        if (!acc[type]) acc[type] = { working: 0, notWorking: 0, total: 0 };
-        if (e.state) acc[type].working++;
-        else acc[type].notWorking++;
-        acc[type].total++;
-        return acc;
-    }, {});
-    
-    return { totalAll, totalWorking, totalNotWorking, byType };
+        const totalAll = equipment.length;
+        const totalWorking = equipment.filter(e => e.state).length;
+        const totalNotWorking = equipment.filter(e => !e.state).length;
+
+        // By type
+        const byType = equipment.reduce((acc, e) => {
+            const type = e.equipment_type || 'other';
+            if (!acc[type]) acc[type] = { working: 0, notWorking: 0, total: 0 };
+            if (e.state) acc[type].working++;
+            else acc[type].notWorking++;
+            acc[type].total++;
+            return acc;
+        }, {});
+
+        return { totalAll, totalWorking, totalNotWorking, byType };
     }, [equipment]);
 
     // Chart data
     const statusData = Object.keys(stats.byType).map(type => ({
-    name: type,
-    Working: stats.byType[type].working,
-    'Not Working': stats.byType[type].notWorking,
-    All: stats.byType[type].total
+        name: type,
+        Working: stats.byType[type].working,
+        'Not Working': stats.byType[type].notWorking,
+        All: stats.byType[type].total
     }));
 
     const distributionData = Object.keys(stats.byType)
-    .filter(type => stats.byType[type].total > 0)
-    .map(type => ({
-        name: type,
-        value: stats.byType[type].total,
-        percentage: ((stats.byType[type].total / equipment.length) * 100).toFixed(0)
-    }));
+        .filter(type => stats.byType[type].total > 0)
+        .map(type => ({
+            name: type,
+            value: stats.byType[type].total,
+            percentage: ((stats.byType[type].total / equipment.length) * 100).toFixed(0)
+        }));
 
     const timelineData = [
-    { period: 'Today', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
-    { period: 'This Week', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
-    { period: 'This Month', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking }
+        { period: 'Today', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
+        { period: 'This Week', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
+        { period: 'This Month', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking }
     ];
 
     const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
@@ -309,6 +312,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         <AppLayout>
             <Head title="Equipment" />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+                <Banner
+                    illustration={illustration}
+                />
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Equipment</h1>
@@ -320,24 +326,24 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </div>
 
                 {/* Filter section */}
-            <div className="space-y-4">
-                {/* First row: Type filter */}
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 max-md:flex-col max-md:items-start">
-                        <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48 max-md:w-full">
-                                <SelectValue placeholder="All types" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                {baseTypes.filter((t) => t !== 'other').map((t) => (
-                                    <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                <div className="space-y-4">
+                    {/* First row: Type filter */}
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 max-md:flex-col max-md:items-start">
+                            <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
+                            <Select value={filterType} onValueChange={setFilterType}>
+                                <SelectTrigger className="w-48 max-md:w-full">
+                                    <SelectValue placeholder="All types" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    {baseTypes.filter((t) => t !== 'other').map((t) => (
+                                        <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        {/* Search and State filter */}
+                            {/* Search and State filter */}
                             <Select value={filterState} onValueChange={setFilterState}>
                                 <SelectTrigger className="w-40 max-md:w-full">
                                     <SelectValue />
@@ -348,157 +354,157 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     <SelectItem value="not_working">Not Working</SelectItem>
                                 </SelectContent>
                             </Select>
-                        <div className="flex gap-4">
-                            <Input
-                                type="text"
-                                placeholder="Search..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="max-w-xs max-md:w-full"
-                            />
-                        </div>
+                            <div className="flex gap-4">
+                                <Input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="max-w-xs max-md:w-full"
+                                />
+                            </div>
 
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={openTypeManager}
-                            className="text-xs p-2 max-md:w-full cursor-pointer"
-                            title="Manage Equipment Types"
-                        >
-                            <Settings className="h-4 w-4" />
-                        </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openTypeManager}
+                                className="text-xs p-2 max-md:w-full cursor-pointer"
+                                title="Manage Equipment Types"
+                            >
+                                <Settings className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        {filterType !== 'all' && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setFilterType('all')}
+                                className="text-xs"
+                            >
+                                Clear filter
+                            </Button>
+                        )}
                     </div>
-                    {filterType !== 'all' && (
-                        <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setFilterType('all')}
-                            className="text-xs"
-                        >
-                            Clear filter
-                        </Button>
-                    )}
                 </div>
-            </div>
 
 
                 {/* Statistics Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-400">
-                        Total Equipment
-                    </CardTitle>
-                    <Package className="h-4 w-4 text-blue-400" />
-                    </CardHeader>
-                    <CardContent>
-                    <div className="text-2xl font-bold dark:text-white">{stats.totalAll}</div>
-                    </CardContent>
-                </Card>
-                
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-400">
-                        Working
-                    </CardTitle>
-                    <TrendingUp className="h-4 w-4 text-green-400" />
-                    </CardHeader>
-                    <CardContent>
-                    <div className="text-2xl font-bold text-green-400">{stats.totalWorking}</div>
-                    </CardContent>
-                </Card>
-                
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-400">
-                        Not Working
-                    </CardTitle>
-                    <AlertCircle className="h-4 w-4 text-red-400" />
-                    </CardHeader>
-                    <CardContent>
-                    <div className="text-2xl font-bold text-red-400">{stats.totalNotWorking}</div>
-                    </CardContent>
-                </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-400">
+                                Total Equipment
+                            </CardTitle>
+                            <Package className="h-4 w-4 text-blue-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold dark:text-white">{stats.totalAll}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-400">
+                                Working
+                            </CardTitle>
+                            <TrendingUp className="h-4 w-4 text-green-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-400">{stats.totalWorking}</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-400">
+                                Not Working
+                            </CardTitle>
+                            <AlertCircle className="h-4 w-4 text-red-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-400">{stats.totalNotWorking}</div>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Charts */}
                 <div className="mb-8 space-y-6">
-                {/* Bar Chart */}
-                <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                    <span className="text-2xl">📊</span>
-                    <h2 className="text-xl font-semibold text-white">Status Distribution by Type</h2>
-                    </div>
-                    <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={statusData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="name" stroke="#9ca3af" />
-                        <YAxis stroke="#9ca3af" />
-                        <Tooltip 
-                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                        labelStyle={{ color: '#f9fafb' }}
-                        />
-                        <Legend />
-                        <Bar dataKey="All" fill="#3b82f6" />
-                        <Bar dataKey="Working" fill="#10b981" />
-                        <Bar dataKey="Not Working" fill="#ef4444" />
-                    </BarChart>
-                    </ResponsiveContainer>
-                </Card>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Pie Chart */}
+                    {/* Bar Chart */}
                     <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="text-2xl">📈</span>
-                        <h2 className="text-xl font-semibold text-white">Equipment Type Distribution</h2>
-                    </div>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                        <Pie
-                            data={distributionData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percentage }) => `${name}: ${percentage}%`}
-                            outerRadius={100}
-                            fill="#8884d8"
-                            dataKey="value"
-                        >
-                            {distributionData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                        />
-                        </PieChart>
-                    </ResponsiveContainer>
+                        <div className="flex items-center gap-2 mb-4">
+                            <span className="text-2xl">📊</span>
+                            <h2 className="text-xl font-semibold text-white">Status Distribution by Type</h2>
+                        </div>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={statusData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis dataKey="name" stroke="#9ca3af" />
+                                <YAxis stroke="#9ca3af" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    labelStyle={{ color: '#f9fafb' }}
+                                />
+                                <Legend />
+                                <Bar dataKey="All" fill="#3b82f6" />
+                                <Bar dataKey="Working" fill="#10b981" />
+                                <Bar dataKey="Not Working" fill="#ef4444" />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </Card>
 
-                    {/* Line Chart */}
-                    <Card className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <span className="text-2xl">📉</span>
-                        <h2 className="text-xl font-semibold text-white">Equipment Timeline</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Pie Chart */}
+                        <Card className="p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-2xl">📈</span>
+                                <h2 className="text-xl font-semibold text-white">Equipment Type Distribution</h2>
+                            </div>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={distributionData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, percentage }) => `${name}: ${percentage}%`}
+                                        outerRadius={100}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {distributionData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Card>
+
+                        {/* Line Chart */}
+                        <Card className="p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-2xl">📉</span>
+                                <h2 className="text-xl font-semibold text-white">Equipment Timeline</h2>
+                            </div>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={timelineData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                    <XAxis dataKey="period" stroke="#9ca3af" />
+                                    <YAxis stroke="#9ca3af" />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                        labelStyle={{ color: '#f9fafb' }}
+                                    />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="All" stroke="#3b82f6" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="Working" stroke="#10b981" strokeWidth={2} />
+                                    <Line type="monotone" dataKey="Not Working" stroke="#ef4444" strokeWidth={2} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </Card>
                     </div>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={timelineData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="period" stroke="#9ca3af" />
-                        <YAxis stroke="#9ca3af" />
-                        <Tooltip 
-                            contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                            labelStyle={{ color: '#f9fafb' }}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="All" stroke="#3b82f6" strokeWidth={2} />
-                        <Line type="monotone" dataKey="Working" stroke="#10b981" strokeWidth={2} />
-                        <Line type="monotone" dataKey="Not Working" stroke="#ef4444" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                    </Card>
-                </div>
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
@@ -595,7 +601,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 Next
                             </Button>
                         </div>
-                        
+
                         <Button
                             variant="outline"
                             size="sm"
@@ -699,21 +705,21 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-mark">Equipment Mark</Label>
-                                    <Input 
-                                        id="edit-mark" 
-                                        placeholder="mark" 
-                                        value={editData.mark} 
-                                        onChange={(e) => setEditData('mark', e.target.value)} 
+                                    <Input
+                                        id="edit-mark"
+                                        placeholder="mark"
+                                        value={editData.mark}
+                                        onChange={(e) => setEditData('mark', e.target.value)}
                                     />
                                     {editErrors.mark && <p className="text-xs text-destructive">{editErrors.mark}</p>}
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-reference">Equipment Reference</Label>
-                                    <Input 
-                                        id="edit-reference" 
-                                        placeholder="reference" 
-                                        value={editData.reference} 
-                                        onChange={(e) => setEditData('reference', e.target.value)} 
+                                    <Input
+                                        id="edit-reference"
+                                        placeholder="reference"
+                                        value={editData.reference}
+                                        onChange={(e) => setEditData('reference', e.target.value)}
                                     />
                                     {editErrors.reference && <p className="text-xs text-destructive">{editErrors.reference}</p>}
                                 </div>
@@ -733,22 +739,22 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 {editData.equipment_type === 'other' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="edit-other-type">Specify Equipment Type</Label>
-                                        <Input 
-                                            id="edit-other-type" 
-                                            placeholder="e.g. tripod" 
-                                            value={editData.other_type} 
-                                            onChange={(e) => setEditData('other_type', e.target.value)} 
+                                        <Input
+                                            id="edit-other-type"
+                                            placeholder="e.g. tripod"
+                                            value={editData.other_type}
+                                            onChange={(e) => setEditData('other_type', e.target.value)}
                                         />
                                         {editErrors.other_type && <p className="text-xs text-destructive">{editErrors.other_type}</p>}
                                     </div>
                                 )}
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-image">Upload New Image (optional)</Label>
-                                    <Input 
-                                        id="edit-image" 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)} 
+                                    <Input
+                                        id="edit-image"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)}
                                     />
                                     {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
                                 </div>
@@ -799,13 +805,13 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     </p>
                                 </div>
                             </div>
-                            
+
                             {deletingEquipment && (
                                 <div className="rounded-lg border bg-muted/50 p-4">
                                     <div className="flex items-center gap-3">
                                         {deletingEquipment.image && (
-                                            <img 
-                                                src={deletingEquipment.image} 
+                                            <img
+                                                src={deletingEquipment.image}
                                                 alt={deletingEquipment.reference}
                                                 className="h-10 w-10 rounded object-cover"
                                             />
@@ -819,8 +825,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             )}
 
                             <div className="flex justify-end gap-3">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={() => {
                                         setIsDeleteOpen(false);
                                         setDeletingEquipment(null);
@@ -828,7 +834,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 >
                                     Cancel
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="destructive"
                                     onClick={confirmDelete}
                                 >
@@ -852,8 +858,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 <h3 className="text-sm font-medium mb-3">Add New Type</h3>
                                 <div className="flex gap-3">
                                     <div className="flex-1">
-                                        <Input 
-                                            placeholder="Enter type name (e.g., camera, microphone)" 
+                                        <Input
+                                            placeholder="Enter type name (e.g., camera, microphone)"
                                             value={typeData.name}
                                             onChange={(e) => setTypeData('name', e.target.value)}
                                             onKeyPress={(e) => {
@@ -868,7 +874,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                         />
                                         {typeErrors.name && <p className="text-xs text-destructive mt-1">{typeErrors.name}</p>}
                                     </div>
-                                    <Button 
+                                    <Button
                                         onClick={editingType ? handleUpdateType : handleAddType}
                                         disabled={typeProcessing || !typeData.name.trim()}
                                         className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
@@ -876,7 +882,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                         {editingType ? 'Update' : 'Add'} Type
                                     </Button>
                                     {editingType && (
-                                        <Button 
+                                        <Button
                                             variant="outline"
                                             onClick={() => {
                                                 setEditingType(null);
@@ -956,14 +962,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     </p>
                                 </div>
                             </div>
-                            
+
                             {deletingType && (
                                 <div className="rounded-lg border bg-muted/50 p-4">
                                     <div>
                                         <p className="font-medium">{deletingType.name.charAt(0).toUpperCase() + deletingType.name.slice(1)}</p>
                                         <p className="text-sm text-muted-foreground">
-                                            {deletingType.equipment_count === 0 
-                                                ? 'No equipment using this type' 
+                                            {deletingType.equipment_count === 0
+                                                ? 'No equipment using this type'
                                                 : `${deletingType.equipment_count} equipment items using this type will be reassigned to "other"`}
                                         </p>
                                     </div>
@@ -971,8 +977,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             )}
 
                             <div className="flex justify-end gap-3">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={() => {
                                         setIsTypeDeleteOpen(false);
                                         setDeletingType(null);
@@ -980,7 +986,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 >
                                     Cancel
                                 </Button>
-                                <Button 
+                                <Button
                                     variant="destructive"
                                     onClick={confirmDeleteType}
                                 >

@@ -3,6 +3,8 @@ import AppLayout from '@/layouts/app-layout';
 import FilterPart from "./partials/FilterPart";
 import UsersTable from "./partials/UsersTable";
 import Header from "./partials/Header";
+import Banner from '@/components/banner'
+import students from "../../../../../public/assets/images/banner/students.png"
 
 const Users = ({ users, trainings }) => {
     const [allPromo, setAllPromo] = useState([])
@@ -61,12 +63,18 @@ const Users = ({ users, trainings }) => {
     const allStatus = [...new Set(users.map((user) => user.status))]
     // console.log(status);
     // console.log(filteredUsers.length);
+    console.log(filteredUsers.length+'yahya');
+    
 
 
     return (
         <AppLayout>
-            <div className="p-10 flex flex-col gap-10">
-                <Header trainings={trainings} filteredUsers={filteredUsers} members={users.length} roles={allRoles} status={allStatus} />
+            <div className="p-6 flex flex-col gap-10">
+                <Banner
+                    illustration={students}
+
+                />
+                <Header trainings={trainings} filteredUsers={filteredUsers} roles={allRoles} status={allStatus} />
                 <FilterPart
                     filters={filters}
                     setFilters={setFilters}

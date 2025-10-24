@@ -1,47 +1,15 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  Crown,
-  Search,
-  Filter,
-  Award,
-  RefreshCw,
-  Moon,
-  Sun,
-  Trophy,
-  Medal,
-  Star,
-  Clock,
-  Code,
-  TrendingUp,
-  Users,
-  Calendar,
-  ChevronDown,
-  X,
-  Eye,
-  Zap,
-  Target,
-  BarChart3,
-  Activity,
-  Flame,
-  Sparkles,
-  CheckCircle,
-  XCircle,
-  Info,
-  Crown as CrownIcon,
-  Medal as MedalIcon,
-  Award as AwardIcon,
-  Monitor,
-  Laptop,
-  Smartphone
-} from "lucide-react";
+import { Award, RefreshCw, Trophy, Medal, Star, X, CheckCircle, XCircle, Info, Crown as CrownIcon, Medal as MedalIcon, Award as AwardIcon, Monitor, Laptop, Smartphone } from "lucide-react";
 import { TableRowSkeleton, PodiumSkeleton, LoadingSpinner, LoadingOverlay } from '@/components/LoadingSkeleton';
 import { NoResults } from '@/components/NoResults';
 import BoardHeader from './partials/boardHeader';
 import BoardPodium from './partials/boardPodium';
 import BoardFilter from './partials/boardFilter';
 import BoardTable from './partials/boardTable';
+import Banner from "@/components/banner"
+import illustration from "../../../../../public/assets/images/banner/Winners-amico.png"
 
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -75,12 +43,12 @@ export default function Leaderboard() {
         insights: 'true'
       });
 
-      
+
       const res = await fetch(`/leaderboard/data?${params}`);
       const data = await res.json();
 
       console.log(data);
-      
+
 
       // Store all data for client-side filtering
       setAllLeaderboardData(data.data || []);
@@ -133,7 +101,7 @@ export default function Leaderboard() {
     if (!searchText.trim()) {
       return allLeaderboardData;
     }
-    
+
     const searchLower = searchText.toLowerCase();
     const filtered = allLeaderboardData.filter(item => {
       const userName = item.user?.name?.toLowerCase() || '';
@@ -297,12 +265,11 @@ export default function Leaderboard() {
       <div className="min-h-screen bg-gradient-to-br from-light to-light/80 dark:from-dark dark:to-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-          <BoardHeader
-            fetchLeaderboardData={fetchLeaderboardData}
-            isRefreshing={isRefreshing} 
-            fetchPreviousWeekPodium={fetchPreviousWeekPodium}
-            />
+          <Banner
+            illustration={illustration}
 
+          />
+          
           <BoardPodium
             topWinners={topWinners}
             formatTime={formatTime}
@@ -312,7 +279,14 @@ export default function Leaderboard() {
             handleUserClick={handleUserClick}
           />
 
-         
+          <BoardHeader
+            fetchLeaderboardData={fetchLeaderboardData}
+            isRefreshing={isRefreshing}
+            fetchPreviousWeekPodium={fetchPreviousWeekPodium}
+          />
+
+
+
 
           <BoardFilter
             filter={filter}
@@ -485,12 +459,12 @@ export default function Leaderboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-2xl p-0">
             <div className="p-6 border-b border-neutral-200 dark:border-neutral-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Previous Week Podium</h3>
-              <button onClick={() => setShowPreviousModal(false)} className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Previous Week Podium</h3>
+                <button onClick={() => setShowPreviousModal(false)} className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
               {previousPodium.period && (
                 <div className="text-sm text-neutral-600 dark:text-neutral-300">

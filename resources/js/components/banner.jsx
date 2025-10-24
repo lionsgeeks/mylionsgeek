@@ -1,22 +1,26 @@
 import React from "react";
+import pattern_default from "../../../public/assets/images/banner/pattern.png"
+
 
 const Banner = ({
+    size= 300,
     illustration,
-    pattern,
+    pattern = pattern_default,
     greeting = "Hi",
     userName = "",
     title = "Welcome to the Dashboard",
     description = "Easily book, manage and track studio gear and equipment. Streamline your studio workflow.",
 }) => {
     return (
-        <div className="p-1 flex gap-5 justify-between items-center w-full rounded-lg h-50 bg-[#ffc80183] my-4">
+        <div className="px-5 py-2 flex gap-5 justify-between items-center w-full rounded-lg h-50 bg-[#ffc80183] my-4">
             {/* Left image */}
             <div className="imgbanner1 h-full rounded">
                 <img
+width={size}
                     src={illustration}
                     alt="illustration"
                     loading="lazy"
-                    className="w-full h-full object-cover object-center"
+                    className=" h-full object-cover object-center"
                 />
             </div>
 
