@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Mail\ReservationApprovedMail;
+use App\Mail\ReservationCanceledMail;
+use App\Mail\ReservationCreatedAdminMail;
 
 class ReservationsController extends Controller
 {
@@ -225,7 +227,7 @@ class ReservationsController extends Controller
 
         // Send approval email
         try {
-            Mail::to($user->email)->send(new ReservationApprovedMail($user, $reservationData));
+            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
@@ -261,7 +263,7 @@ class ReservationsController extends Controller
 
         // Send cancellation email
         try {
-            Mail::to($user->email)->send(new ReservationCanceledMail($user, $reservationData));
+            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cancellation email: ' . $e->getMessage());
@@ -622,7 +624,9 @@ class ReservationsController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($validated) {
+            $reservationId = null;
+
+            DB::transaction(function () use ($validated, &$reservationId) {
                 $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
                 $reservationId = $lastId + 1;
 
@@ -676,6 +680,45 @@ class ReservationsController extends Controller
                     DB::table('reservation_equipment')->insert($equipmentData);
                 }
             });
+
+            // Send admin notification email (outside transaction)
+            try {
+                \Log::info('Starting admin notification email process for reservation ID: ' . $reservationId);
+
+                // Get admin users
+                $adminUsers = DB::table('users')
+                    ->whereIn('role', ['admin', 'super_admin'])
+                    ->select('email', 'name')
+                    ->get();
+
+                \Log::info('Admin users found: ' . $adminUsers->count());
+
+                // Get the created reservation data for the email
+                $createdReservation = DB::table('reservations')
+                    ->leftJoin('studios', 'studios.id', '=', 'reservations.studio_id')
+                    ->where('reservations.id', $reservationId)
+                    ->select('reservations.*', 'studios.name as studio_name')
+                    ->first();
+
+                \Log::info('Reservation data: ' . json_encode($createdReservation));
+
+                // Get the user who made the reservation
+                $reservationUser = DB::table('users')->where('id', auth()->id())->first();
+
+                \Log::info('User data: ' . json_encode($reservationUser));
+
+                // Send email to all admin users
+                foreach ($adminUsers as $admin) {
+                    \Log::info('Sending email to: boujjarr@gmail.com');
+                    // Mail::to($admin->email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                    Mail::to("boujjarr@gmail.com")->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                    \Log::info('Email sent successfully to: boujjarr@gmail.com');
+                }
+            } catch (\Exception $e) {
+                // Log the error but don't fail the reservation creation
+                \Log::error('Failed to send admin notification email: ' . $e->getMessage());
+                \Log::error('Stack trace: ' . $e->getTraceAsString());
+            }
 
             return back()->with('success', 'Reservation created successfully');
         } catch (\Exception $e) {
@@ -764,7 +807,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            Mail::to($user->email)->send(new ReservationApprovedMail($user, $reservationData));
+            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the reservation creation
             \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
@@ -811,7 +854,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            Mail::to($user->email)->send(new ReservationCanceledMail($user, $reservationForEmail));
+            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
@@ -823,7 +866,7 @@ class ReservationsController extends Controller
     private function exportData(Request $request)
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
-        
+
         if (empty($requestedFields)) {
             $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
         }
@@ -835,7 +878,7 @@ class ReservationsController extends Controller
 
         $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
         $placeByReservation = [];
-        
+
         if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
             DB::table('reservation_places as rp')
                 ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
@@ -853,20 +896,20 @@ class ReservationsController extends Controller
 
         $response = new StreamedResponse(function () use ($query, $requestedFields, $placeByReservation) {
             $handle = fopen('php://output', 'w');
-            
+
             // Add BOM for Excel UTF-8 compatibility
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-            
+
             // Use semicolon delimiter for Excel
             fputcsv($handle, $requestedFields, ';');
 
             $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
                 foreach ($reservations as $reservation) {
                     $row = [];
-                    
+
                     foreach ($requestedFields as $field) {
                         $value = null;
-                        
+
                         if ($field === 'place_name' || $field === 'place_type') {
                             $value = $placeByReservation[$reservation->id][$field] ?? '';
                         } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
@@ -878,14 +921,14 @@ class ReservationsController extends Controller
                         } else {
                             $value = $reservation->$field ?? '';
                         }
-                        
+
                         if (is_string($value)) {
                             $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
                         }
-                        
+
                         $row[] = $value;
                     }
-                    
+
                     // Use semicolon delimiter
                     fputcsv($handle, $row, ';');
                 }
@@ -896,7 +939,7 @@ class ReservationsController extends Controller
 
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-        
+
         return $response;
     }
 }
