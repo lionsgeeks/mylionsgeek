@@ -11,7 +11,7 @@ import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp } from 'lu
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
-
+import ExportModal from './partials/ExportModal';
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
         {yes ? trueText : falseText}
@@ -300,55 +300,56 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         return buildTimeStats(allStudio);
     }, [rangeActive, studioReservations]);
     // Prepare data for charts dynamically from current reservation lists
-const statusData = [
-    {
-        name: 'Approved',
-        all: filteredStatus.all.approved,
-        cowork: filteredStatus.cowork.approved,
-        studio: filteredStatus.studio.approved
-    },
-    {
-        name: 'Canceled',
-        all: filteredStatus.all.canceled,
-        cowork: filteredStatus.cowork.canceled,
-        studio: filteredStatus.studio.canceled
-    },
-    {
-        name: 'Pending',
-        all: filteredStatus.all.pending,
-        cowork: filteredStatus.cowork.pending,
-        studio: filteredStatus.studio.pending
-    }
-];
+    const statusData = [
+        {
+            name: 'Approved',
+            all: filteredStatus.all.approved,
+            cowork: filteredStatus.cowork.approved,
+            studio: filteredStatus.studio.approved
+        },
+        {
+            name: 'Canceled',
+            all: filteredStatus.all.canceled,
+            cowork: filteredStatus.cowork.canceled,
+            studio: filteredStatus.studio.canceled
+        },
+        {
+            name: 'Pending',
+            all: filteredStatus.all.pending,
+            cowork: filteredStatus.cowork.pending,
+            studio: filteredStatus.studio.pending
+        }
+    ];
 
-const timelineData = [
-    {
-        period: 'Today',
-        all: stats.timeAll.today,
-        cowork: stats.timeCowork.today,
-        studio: timeStudioPI.today
-    },
-    {
-        period: 'This Week',
-        all: stats.timeAll.week,
-        cowork: stats.timeCowork.week,
-        studio: timeStudioPI.week
-    },
-    {
-        period: 'This Month',
-        all: stats.timeAll.month,
-        cowork: stats.timeCowork.month,
-        studio: timeStudioPI.month
-    }
-];
+    const timelineData = [
+        {
+            period: 'Today',
+            all: stats.timeAll.today,
+            cowork: stats.timeCowork.today,
+            studio: timeStudioPI.today
+        },
+        {
+            period: 'This Week',
+            all: stats.timeAll.week,
+            cowork: stats.timeCowork.week,
+            studio: timeStudioPI.week
+        },
+        {
+            period: 'This Month',
+            all: stats.timeAll.month,
+            cowork: stats.timeCowork.month,
+            studio: timeStudioPI.month
+        }
+    ];
 
-const distributionData = [
-    { name: 'Cowork', value: baseCowork.length, color: '#3b82f6' },
-    { name: 'Studios', value: baseStudioPI.length, color: '#8b5cf6' },
-    { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
-];
+    const distributionData = [
+        { name: 'Cowork', value: baseCowork.length, color: '#3b82f6' },
+        { name: 'Studios', value: baseStudioPI.length, color: '#8b5cf6' },
+        { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
+    ];
 
-
+    // export
+    const [showExportModal, setShowExportModal] = useState(false);
     return (
         <AppLayout>
             <Head title="Reservations" />
@@ -509,7 +510,15 @@ const distributionData = [
                         </Card>
                     </>
                 )}
+                <div className="flex items-center justify-between">
+                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
 
+                    <Button onClick={() => setShowExportModal(true)}
+                        className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                    >
+                        <Download /> Export
+                    </Button>
+                </div>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
                     <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -666,6 +675,11 @@ const distributionData = [
                     </DialogContent>
                 </Dialog>
             </div>
+            <ExportModal
+                open={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                reservations={allReservations}
+            />
         </AppLayout>
     );
 };
@@ -869,6 +883,7 @@ function InfoModalContent({ reservationId, initial }) {
                     <div className="text-sm text-muted-foreground">No team members.</div>
                 )}
             </div>
+
         </div>
     );
 }
