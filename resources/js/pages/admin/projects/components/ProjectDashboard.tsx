@@ -58,9 +58,9 @@ interface ProjectDashboardProps {
 const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
     projects,
     stats,
-    onSearch,
-    onFilter,
-    onSort
+    // onSearch,
+    // onFilter,
+    // onSort
 }) => {
     // const [searchTerm, setSearchTerm] = useState('');
     // const [statusFilter, setStatusFilter] = useState('all');
