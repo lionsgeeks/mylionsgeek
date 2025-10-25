@@ -12,7 +12,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
         <div className="space-y-6">
             {/* Main Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
                         <CheckSquare className="h-4 w-4 text-muted-foreground" />
@@ -25,7 +25,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Completed</CardTitle>
                         <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -38,7 +38,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">In Progress</CardTitle>
                         <Clock className="h-4 w-4 text-muted-foreground" />
@@ -51,7 +51,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Team Members</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
@@ -67,7 +67,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
 
             {/* Progress Overview */}
             <div className="grid gap-4 md:grid-cols-2">
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <TrendingUp className="h-5 w-5" />
@@ -100,7 +100,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className='bg-background/30'>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Target className="h-5 w-5" />
@@ -133,7 +133,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
             </div>
 
             {/* Recent Activity */}
-            <Card>
+            <Card className='bg-background/30'>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Calendar className="h-5 w-5" />

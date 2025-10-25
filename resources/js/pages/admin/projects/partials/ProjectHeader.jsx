@@ -173,7 +173,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
             <div className="p-6 -mt-8 relative z-20">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Quick Stats */}
-                    <Card className="bg-background/95 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -187,7 +187,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/95 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -201,7 +201,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/95 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -215,7 +215,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/95 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
