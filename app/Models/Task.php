@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Task extends Model
@@ -14,14 +15,32 @@ class Task extends Model
         'priority',
         'status',
         'project_id',
-        'assigned_to',
         'created_by',
         'due_date',
-        'sort_order'
+        'sort_order',
+        'subtasks',
+        'assignees',
+        'is_pinned',
+        'is_editable',
+        'tags',
+        'progress',
+        'started_at',
+        'completed_at',
+        'attachments',
+        'comments'
     ];
 
     protected $casts = [
-        'due_date' => 'date'
+        'due_date' => 'date',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'subtasks' => 'array',
+        'assignees' => 'array',
+        'is_pinned' => 'boolean',
+        'is_editable' => 'boolean',
+        'tags' => 'array',
+        'attachments' => 'array',
+        'comments' => 'array'
     ];
 
     public function project(): BelongsTo
@@ -29,9 +48,9 @@ class Task extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function assignee(): BelongsTo
+    public function assignees(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsToMany(User::class, 'task_assignees');
     }
 
     public function creator(): BelongsTo

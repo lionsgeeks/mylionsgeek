@@ -283,7 +283,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                     {/* Main Content */}
                     <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
                         {/* Calendar Section */}
-                        <Calendar events={events} />
+                        {/* <Calendar events={events} /> */}
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
@@ -314,8 +314,9 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
 
                                 <TabsContent value="tasks" className="mt-6">
                                     <Tasks
-                                        tasks={sampleTasks}
+                            tasks={tasks}
                             teamMembers={teamMembers}
+                                        projectId={project.id}
                         />
                     </TabsContent>
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { 
     Search, 
     Plus, 
@@ -20,11 +22,20 @@ import {
     Clock,
     AlertCircle,
     Calendar,
-    User
+    User,
+    Pin,
+    PinOff,
+    Users,
+    Tag,
+    FileText,
+    MessageSquare,
+    Paperclip
 } from 'lucide-react';
+import { useForm, router, usePage } from '@inertiajs/react';
 import TaskModal from '../components/TaskModal';
+import FlashMessage from '@/components/FlashMessage';
 
-const Tasks = ({ tasks = [], teamMembers = [] }) => {
+const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
     const safeTeamMembers = teamMembers || [];
@@ -37,16 +48,32 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
-    const [newTask, setNewTask] = useState({
+    const [flashMessage, setFlashMessage] = useState(null);
+    
+    // Get flash messages from Inertia
+    const { flash } = usePage().props;
+    
+    // Handle flash messages
+    useEffect(() => {
+        if (flash?.success) {
+            setFlashMessage({ message: flash.success, type: 'success' });
+        } else if (flash?.error) {
+            setFlashMessage({ message: flash.error, type: 'error' });
+        }
+    }, [flash]);
+    
+    // Form for creating tasks
+    const { data: taskData, setData: setTaskData, post: createTask, processing: isCreating } = useForm({
         title: '',
         description: '',
         priority: 'medium',
-        assignee: '',
-        dueDate: ''
+        status: 'todo',
+        assignees: [],
+        due_date: '',
+        tags: [],
+        progress: 0,
+        project_id: projectId
     });
-    const [newComment, setNewComment] = useState('');
-    const [newSubtask, setNewSubtask] = useState('');
-    const [newFile, setNewFile] = useState(null);
 
     const filteredTasks = useMemo(() => {
         return safeTasks.filter((task) => {
@@ -56,21 +83,47 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
             }
             if (taskFilter.status !== "all" && task.status !== taskFilter.status) return false;
             if (taskFilter.priority !== "all" && task.priority !== taskFilter.priority) return false;
-            if (taskFilter.assignee !== "all" && task.assignee?.id !== taskFilter.assignee) return false;
+            if (taskFilter.assignee !== "all") {
+                const hasAssignee = task.assignees?.some(assignee => assignee.id === taskFilter.assignee);
+                if (!hasAssignee) return false;
+            }
             return true;
         });
     }, [safeTasks, searchTerm, taskFilter]);
 
-    const handleCreateTask = () => {
-        console.log('Creating task:', newTask);
-        setNewTask({
-            title: '',
-            description: '',
-            priority: 'medium',
-            assignee: '',
-            dueDate: ''
+    const handleCreateTask = (e) => {
+        e.preventDefault();
+        
+        // Ensure project_id is included in the data
+        const taskDataWithProject = {
+            ...taskData,
+            project_id: projectId
+        };
+        
+        console.log(taskDataWithProject);
+        createTask('/admin/tasks', taskDataWithProject, {
+            data: taskDataWithProject,
+            onSuccess: () => {
+                setTaskData({
+                    title: '',
+                    description: '',
+                    priority: 'medium',
+                    status: 'todo',
+                    assignees: [],
+                    due_date: '',
+                    tags: [],
+                    progress: 0
+                });
+                setIsCreateModalOpen(false);
+            },
+            onError: (errors) => {
+                console.error('Task creation errors:', errors);
+                setFlashMessage({ 
+                    message: 'Failed to create task: ' + Object.values(errors).flat().join(', '), 
+                    type: 'error' 
+                });
+            }
         });
-        setIsCreateModalOpen(false);
     };
 
     const handleTaskClick = (task) => {
@@ -79,14 +132,70 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
     };
 
     const handleUpdateTask = (updatedTask) => {
-        // This would typically update the task in the backend
-        console.log('Updating task:', updatedTask);
+        router.put(`/admin/tasks/${updatedTask.id}`, updatedTask, {
+            onSuccess: () => {
+                setFlashMessage({ message: 'Task updated successfully!', type: 'success' });
+            },
+            onError: (errors) => {
+                setFlashMessage({ 
+                    message: 'Failed to update task: ' + Object.values(errors).flat().join(', '), 
+                    type: 'error' 
+                });
+            }
+        });
     };
 
     const handleMention = (member) => {
         if (member?.name) {
             setNewComment(prev => prev + `@${member.name} `);
         }
+    };
+
+    const handleTogglePin = (task) => {
+        router.post(`/admin/tasks/${task.id}/pin`, {}, {
+            onSuccess: () => {
+                setFlashMessage({ 
+                    message: task.is_pinned ? 'Task unpinned successfully!' : 'Task pinned successfully!', 
+                    type: 'success' 
+                });
+            },
+            onError: (errors) => {
+                setFlashMessage({ 
+                    message: 'Failed to toggle pin: ' + Object.values(errors).flat().join(', '), 
+                    type: 'error' 
+                });
+            }
+        });
+    };
+
+    const handleDeleteTask = (task) => {
+        if (confirm('Are you sure you want to delete this task?')) {
+            router.delete(`/admin/tasks/${task.id}`, {
+                onSuccess: () => {
+                    setFlashMessage({ message: 'Task deleted successfully!', type: 'success' });
+                },
+                onError: (errors) => {
+                    setFlashMessage({ 
+                        message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '), 
+                        type: 'error' 
+                    });
+                }
+            });
+        }
+    };
+
+    const handleUpdateStatus = (task, newStatus) => {
+        router.patch(`/admin/tasks/${task.id}/status`, { status: newStatus }, {
+            onSuccess: () => {
+                setFlashMessage({ message: 'Task status updated successfully!', type: 'success' });
+            },
+            onError: (errors) => {
+                setFlashMessage({ 
+                    message: 'Failed to update status: ' + Object.values(errors).flat().join(', '), 
+                    type: 'error' 
+                });
+            }
+        });
     };
 
     const getStatusBadge = (status) => {
@@ -127,6 +236,15 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
 
     return (
         <div className="space-y-6">
+            {/* Flash Messages */}
+            {flashMessage && (
+                <FlashMessage
+                    message={flashMessage.message}
+                    type={flashMessage.type}
+                    onClose={() => setFlashMessage(null)}
+                />
+            )}
+            
             {/* Header and Filters */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -205,7 +323,8 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                             <TableHead className="w-[300px]">Task</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Priority</TableHead>
-                            <TableHead>Assignee</TableHead>
+                            <TableHead>Assignees</TableHead>
+                            <TableHead>Progress</TableHead>
                             <TableHead>Due Date</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -213,7 +332,7 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                     <TableBody>
                         {filteredTasks.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                     No tasks match your filters
                                 </TableCell>
                             </TableRow>
@@ -221,13 +340,26 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                             filteredTasks.map((task) => (
                                 <TableRow 
                                     key={task.id} 
-                                    className="cursor-pointer hover:bg-muted/50"
+                                    className={`cursor-pointer hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
                                     onClick={() => handleTaskClick(task)}
                                 >
                                     <TableCell>
                                         <div className='py-2'>
-                                            <div className="font-medium">{task.title || 'Untitled Task'}</div>
-                                            <div className="text-sm text-muted-foreground">{task.description || 'No description'}</div>
+                                            <div className="flex items-center gap-2">
+                                                {task.is_pinned && <Pin className="h-4 w-4 text-yellow-600" />}
+                                                <div className="font-medium">{task.title || 'Untitled Task'}</div>
+                                            </div>
+                                            <div className="text-sm text-muted-foreground line-clamp-2">{task.description || 'No description'}</div>
+                                            {task.tags && task.tags.length > 0 && (
+                                                <div className="flex gap-1 mt-1">
+                                                    {task.tags.map((tag, index) => (
+                                                        <Badge key={index} variant="outline" className="text-xs">
+                                                            <Tag className="h-3 w-3 mr-1" />
+                                                            {tag}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -237,16 +369,38 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                                         {getPriorityBadge(task.priority)}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6">
-                                                <AvatarImage src={task.assignee?.avatar} alt={task.assignee?.name || 'Assignee'} />
-                                                <AvatarFallback>{(task.assignee?.name || 'U').substring(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
-                                            <span>{task.assignee?.name || 'Unassigned'}</span>
+                                        <div className="flex items-center gap-1">
+                                            {task.assignees && task.assignees.length > 0 ? (
+                                                <>
+                                                    <div className="flex -space-x-1">
+                                                        {task.assignees.slice(0, 3).map((assignee) => (
+                                                            <Avatar key={assignee.id} className="h-6 w-6 border border-white dark:border-gray-800">
+                                                                <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
+                                                                <AvatarFallback className="text-xs">
+                                                                    {assignee.name.charAt(0).toUpperCase()}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                        ))}
+                                                    </div>
+                                                    {task.assignees.length > 3 && (
+                                                        <span className="text-xs text-muted-foreground ml-1">
+                                                            +{task.assignees.length - 3}
+                                                        </span>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground">Unassigned</span>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                                        <div className="flex items-center gap-2">
+                                            <Progress value={task.progress || 0} className="w-16 h-2" />
+                                            <span className="text-xs text-muted-foreground">{task.progress || 0}%</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
@@ -266,16 +420,27 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                                                         <Edit className="mr-2 h-4 w-4" />
                                                         <span>View Details</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleTogglePin(task)}>
+                                                        {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
+                                                        <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
                                                         <CheckCircle className="mr-2 h-4 w-4" />
                                                         <span>Mark as Completed</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Mail className="h-3.5 w-3.5 mr-1" />
-                                                        Notify
+                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                                        <span>Add Comment</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                        <FileText className="mr-2 h-4 w-4" />
+                                                        <span>Add Note</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive">
+                                                    <DropdownMenuItem 
+                                                        className="text-destructive"
+                                                        onClick={() => handleDeleteTask(task)}
+                                                    >
                                                         <Trash className="mr-2 h-4 w-4" />
                                                         <span>Delete</span>
                                                     </DropdownMenuItem>
@@ -299,22 +464,23 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                             Add a new task to your project
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <form onSubmit={handleCreateTask} className="space-y-4">
                         <div>
-                            <Label htmlFor="title">Task Title</Label>
+                            <Label htmlFor="title">Task Title *</Label>
                             <Input 
                                 id="title" 
-                                value={newTask.title}
-                                onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                                value={taskData.title}
+                                onChange={(e) => setTaskData('title', e.target.value)}
                                 placeholder="Enter task title..."
+                                required
                             />
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
                             <Textarea 
                                 id="description" 
-                                value={newTask.description}
-                                onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                                value={taskData.description}
+                                onChange={(e) => setTaskData('description', e.target.value)}
                                 placeholder="Enter task description..."
                                 rows={3}
                             />
@@ -323,8 +489,8 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                             <div>
                                 <Label htmlFor="priority">Priority</Label>
                                 <Select 
-                                    value={newTask.priority} 
-                                    onValueChange={(value) => setNewTask({...newTask, priority: value})}
+                                    value={taskData.priority} 
+                                    onValueChange={(value) => setTaskData('priority', value)}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -333,46 +499,97 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
                                         <SelectItem value="low">Low</SelectItem>
                                         <SelectItem value="medium">Medium</SelectItem>
                                         <SelectItem value="high">High</SelectItem>
+                                        <SelectItem value="urgent">Urgent</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="assignee">Assignee</Label>
+                                <Label htmlFor="status">Status</Label>
                                 <Select 
-                                    value={newTask.assignee} 
-                                    onValueChange={(value) => setNewTask({...newTask, assignee: value})}
+                                    value={taskData.status} 
+                                    onValueChange={(value) => setTaskData('status', value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select assignee" />
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {safeTeamMembers.map((member) => (
-                                            <SelectItem key={member?.id || Math.random()} value={member?.id || ''}>
-                                                {member?.name || 'Unknown'}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="todo">To Do</SelectItem>
+                                        <SelectItem value="in_progress">In Progress</SelectItem>
+                                        <SelectItem value="review">Review</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div>
-                            <Label htmlFor="dueDate">Due Date</Label>
+                            <Label htmlFor="assignees">Assignees</Label>
+                            <Select 
+                                value="" 
+                                onValueChange={(value) => {
+                                    if (value && !taskData.assignees.includes(value)) {
+                                        setTaskData('assignees', [...taskData.assignees, value]);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select assignees" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {safeTeamMembers.map((member) => (
+                                        <SelectItem key={member?.id || Math.random()} value={member?.id || ''}>
+                                            {member?.name || 'Unknown'}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {taskData.assignees.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                    {taskData.assignees.map((assigneeId) => {
+                                        const member = safeTeamMembers.find(m => m.id === assigneeId);
+                                        return (
+                                            <Badge key={assigneeId} variant="outline" className="flex items-center gap-1">
+                                                {member?.name || 'Unknown'}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTaskData('assignees', taskData.assignees.filter(id => id !== assigneeId))}
+                                                    className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                                                >
+                                                    ×
+                                                </button>
+                                            </Badge>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <Label htmlFor="due_date">Due Date</Label>
                             <Input 
-                                id="dueDate" 
+                                id="due_date" 
                                 type="date"
-                                value={newTask.dueDate}
-                                onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                                value={taskData.due_date}
+                                onChange={(e) => setTaskData('due_date', e.target.value)}
                             />
                         </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleCreateTask}>
-                            Create Task
-                        </Button>
-                    </DialogFooter>
+                        <div>
+                            <Label htmlFor="notes">Notes</Label>
+                            <Textarea 
+                                id="notes" 
+                                value={taskData.notes}
+                                onChange={(e) => setTaskData('notes', e.target.value)}
+                                placeholder="Add any additional notes..."
+                                rows={2}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isCreating}>
+                                {isCreating ? 'Creating...' : 'Create Task'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 

@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, Trash, MoreVertical, Plus, Search, Filter, SortAsc, SortDesc, Bell, X, Users, Calendar, FileText, Star, UserPlus, Eye, CheckSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import illustration from "../../../../../public/assets/images/banner/Organizing 
 import AdvancedInviteModal from './components/AdvancedInviteModal'
 import { useInitials } from '@/hooks/use-initials';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import FlashMessage from '@/components/FlashMessage';
 
 
 const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
@@ -28,6 +29,19 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     const [editingProject, setEditingProject] = useState(null);
     const [deletingProject, setDeletingProject] = useState(null);
     const [invitingProject, setInvitingProject] = useState(null);
+    const [flashMessage, setFlashMessage] = useState(null);
+    
+    // Get flash messages from Inertia
+    const { flash: pageFlash } = usePage().props;
+    
+    // Handle flash messages
+    useEffect(() => {
+        if (pageFlash?.success) {
+            setFlashMessage({ message: pageFlash.success, type: 'success' });
+        } else if (pageFlash?.error) {
+            setFlashMessage({ message: pageFlash.error, type: 'error' });
+        }
+    }, [pageFlash]);
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
     const [categoryFilter, setCategoryFilter] = useState(filters?.category || '');
@@ -222,15 +236,12 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
             <div className="p-6 space-y-6">
                 {/* Flash Messages */}
-                {flash?.success && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                        {flash.success}
-                    </div>
-                )}
-                {flash?.error && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                        {flash.error}
-                    </div>
+                {flashMessage && (
+                    <FlashMessage
+                        message={flashMessage.message}
+                        type={flashMessage.type}
+                        onClose={() => setFlashMessage(null)}
+                    />
                 )}
 
                 {/* Header with Search and Actions */}

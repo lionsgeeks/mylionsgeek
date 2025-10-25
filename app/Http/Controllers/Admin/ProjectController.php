@@ -125,21 +125,23 @@ class ProjectController extends Controller
         $project->load([
             'creator',
             'users',
-            'tasks.assignee',
+            'tasks.assignees',
             'tasks.creator',
             'tasks.comments.user',
             'attachments.uploader'
         ]);
 
         $teamMembers = $project->users()->get();
-        $tasks = $project->tasks()->with(['assignee', 'creator', 'comments.user'])->get();
+        $tasks = $project->tasks()->with(['assignees', 'creator'])->get();
         $attachments = $project->attachments()->with('uploader')->get();
+        $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
 
         return Inertia::render('admin/projects/show', [
             'project' => $project,
             'teamMembers' => $teamMembers,
             'tasks' => $tasks,
-            'attachments' => $attachments
+            'attachments' => $attachments,
+            'notes' => $notes
         ]);
     }
 
