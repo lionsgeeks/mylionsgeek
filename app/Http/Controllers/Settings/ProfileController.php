@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,16 +35,21 @@ class ProfileController extends Controller
         // Handle avatar upload if provided
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('users', 'public');
-            $data['image'] = '/storage/' . $path;
+            $data['image'] = $path; // Store just the path without /storage/ prefix
         }
 
-        $request->user()->fill($data);
+        // Only update the fields that are actually in the database
+        $allowedFields = ['name', 'email', 'phone', 'cin', 'wakatime_api_key', 'image'];
+        $updateData = array_intersect_key($data, array_flip($allowedFields));
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Use a fresh user instance to avoid virtual attributes
+        $userId = $request->user()->id;
+        User::where('id', $userId)->update($updateData);
+
+        // Check if email was changed and reset verification
+        if (isset($updateData['email']) && $updateData['email'] !== $request->user()->getOriginal('email')) {
+            User::where('id', $userId)->update(['email_verified_at' => null]);
         }
-
-        $request->user()->save();
 
         return to_route('profile.edit');
     }

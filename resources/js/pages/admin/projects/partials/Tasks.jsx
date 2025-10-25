@@ -9,9 +9,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { 
     Search, 
     Plus, 
@@ -23,19 +20,9 @@ import {
     Clock,
     AlertCircle,
     Calendar,
-    User,
-    Paperclip,
-    MessageSquare,
-    AtSign,
-    FileText,
-    List,
-    X,
-    Send,
-    CheckSquare,
-    Square,
-    Share2,
-    Download
+    User
 } from 'lucide-react';
+import TaskModal from '../components/TaskModal';
 
 const Tasks = ({ tasks = [], teamMembers = [] }) => {
     // Ensure we have safe defaults
@@ -60,29 +47,6 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
     const [newComment, setNewComment] = useState('');
     const [newSubtask, setNewSubtask] = useState('');
     const [newFile, setNewFile] = useState(null);
-    const [subtasks, setSubtasks] = useState([
-        { id: 1, text: "Set up development environment", completed: true },
-        { id: 2, text: "Write unit tests", completed: false },
-        { id: 3, text: "Update documentation", completed: false }
-    ]);
-    const [comments, setComments] = useState([
-        {
-            id: 1,
-            user: { name: "John Doe", avatar: "/placeholder.svg?height=32&width=32" },
-            content: "This looks good! I'll start working on the authentication system.",
-            timestamp: "2024-02-15T12:30:00"
-        },
-        {
-            id: 2,
-            user: { name: "Jane Smith", avatar: "/placeholder.svg?height=32&width=32" },
-            content: "Great! Let me know if you need any help with the frontend integration.",
-            timestamp: "2024-02-15T13:15:00"
-        }
-    ]);
-    const [attachments, setAttachments] = useState([
-        { id: 1, name: "requirements.pdf", type: "pdf", size: "2.3 MB", url: "#" },
-        { id: 2, name: "design-mockup.fig", type: "fig", size: "1.8 MB", url: "#" }
-    ]);
 
     const filteredTasks = useMemo(() => {
         return safeTasks.filter((task) => {
@@ -114,72 +78,9 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
         setIsTaskDetailModalOpen(true);
     };
 
-    const handleAddComment = () => {
-        if (newComment.trim()) {
-            const newCommentObj = {
-                id: comments.length + 1,
-                user: { 
-                    name: "You", 
-                    avatar: "/placeholder.svg?height=32&width=32" 
-                },
-                content: newComment,
-                timestamp: new Date().toISOString()
-            };
-            setComments([...comments, newCommentObj]);
-            setNewComment('');
-        }
-    };
-
-    const handleAddSubtask = () => {
-        if (newSubtask.trim()) {
-            const newSubtaskObj = {
-                id: subtasks.length + 1,
-                text: newSubtask,
-                completed: false
-            };
-            setSubtasks([...subtasks, newSubtaskObj]);
-            setNewSubtask('');
-        }
-    };
-
-    const handleToggleSubtask = (id) => {
-        setSubtasks(subtasks.map(subtask => 
-            subtask.id === id ? { ...subtask, completed: !subtask.completed } : subtask
-        ));
-    };
-
-    const handleDeleteSubtask = (id) => {
-        setSubtasks(subtasks.filter(subtask => subtask.id !== id));
-    };
-
-    const handleFileUpload = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const newAttachment = {
-                id: attachments.length + 1,
-                name: file.name,
-                type: file.type.split('/')[1] || 'file',
-                size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
-                url: URL.createObjectURL(file)
-            };
-            setAttachments([...attachments, newAttachment]);
-            setNewFile(file);
-        }
-    };
-
-    const handleDownloadFile = (attachment) => {
-        if (attachment.url && attachment.url !== '#') {
-            const link = document.createElement('a');
-            link.href = attachment.url;
-            link.download = attachment.name;
-            link.click();
-        } else {
-            console.log('Downloading:', attachment.name);
-        }
-    };
-
-    const handleDeleteAttachment = (id) => {
-        setAttachments(attachments.filter(attachment => attachment.id !== id));
+    const handleUpdateTask = (updatedTask) => {
+        // This would typically update the task in the backend
+        console.log('Updating task:', updatedTask);
     };
 
     const handleMention = (member) => {
@@ -476,317 +377,13 @@ const Tasks = ({ tasks = [], teamMembers = [] }) => {
             </Dialog>
 
             {/* Task Detail Modal */}
-            <Dialog open={isTaskDetailModalOpen} onOpenChange={setIsTaskDetailModalOpen}>
-                <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw]">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3">
-                            <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
-                                <FileText className="h-5 w-5 text-[var(--color-alpha)]" />
-                            </div>
-                            <div>
-                                <div className="text-lg font-semibold">{selectedTask?.title || 'Untitled Task'}</div>
-                                <div className="text-sm text-muted-foreground">
-                                    Created {selectedTask?.createdAt ? new Date(selectedTask.createdAt).toLocaleDateString() : 'Recently'}
-                                </div>
-                            </div>
-                        </DialogTitle>
-                    </DialogHeader>
-                    
-                    <ScrollArea className="max-h-[70vh]">
-                        <div className="space-y-6">
-                            {/* Task Header */}
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-4">
-                                    {getStatusBadge(selectedTask?.status)}
-                                    {getPriorityBadge(selectedTask?.priority)}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="sm">
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Edit
-                                    </Button>
-                                    <Button variant="outline" size="sm">
-                                        <Share2 className="h-4 w-4 mr-2" />
-                                        Share
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Task Details Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Main Content */}
-                                <div className="md:col-span-2 space-y-6">
-                                    {/* Description */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4" />
-                                                Description
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="text-sm text-muted-foreground">
-                                                {selectedTask?.description || 'No description provided'}
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Subtasks */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <List className="h-4 w-4" />
-                                                Subtasks
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            {/* Dynamic subtasks */}
-                                            {subtasks.map((subtask) => (
-                                                <div key={subtask.id} className="flex items-center gap-2 group">
-                                                    <button
-                                                        onClick={() => handleToggleSubtask(subtask.id)}
-                                                        className="flex-shrink-0"
-                                                    >
-                                                        {subtask.completed ? (
-                                                            <CheckSquare className="h-4 w-4 text-green-500" />
-                                                        ) : (
-                                                            <Square className="h-4 w-4 text-muted-foreground" />
-                                                        )}
-                                                    </button>
-                                                    <span className={`text-sm flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                                                        {subtask.text}
-                                                    </span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        onClick={() => handleDeleteSubtask(subtask.id)}
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                            
-                                            {/* Add subtask */}
-                                            <div className="flex gap-2 pt-2">
-                                                <Input
-                                                    placeholder="Add a subtask..."
-                                                    value={newSubtask}
-                                                    onChange={(e) => setNewSubtask(e.target.value)}
-                                                    onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
-                                                    className="flex-1"
-                                                />
-                                                <Button size="sm" onClick={handleAddSubtask} disabled={!newSubtask.trim()}>
-                                                    <Plus className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Comments */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <MessageSquare className="h-4 w-4" />
-                                                Comments
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            {/* Dynamic comments */}
-                                            {comments.map((comment, index) => (
-                                                <div key={comment.id}>
-                                                    <div className="flex gap-3">
-                                                        <Avatar className="h-8 w-8">
-                                                            <AvatarImage src={comment.user.avatar} />
-                                                            <AvatarFallback>{comment.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-medium text-sm">{comment.user.name}</span>
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {new Date(comment.timestamp).toLocaleString(undefined, {
-                                                                        hour: "2-digit",
-                                                                        minute: "2-digit",
-                                                                        day: "numeric",
-                                                                        month: "short",
-                                                                    })}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm">{comment.content}</p>
-                                                        </div>
-                                                    </div>
-                                                    {index < comments.length - 1 && <Separator className="mt-4" />}
-                                                </div>
-                                            ))}
-
-                                            {/* Add comment */}
-                                            <div className="space-y-2">
-                                                <div className="flex gap-2">
-                                                    <Input
-                                                        placeholder="Add a comment..."
-                                                        value={newComment}
-                                                        onChange={(e) => setNewComment(e.target.value)}
-                                                        onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                                                        className="flex-1"
-                                                    />
-                                                    <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
-                                                        <Send className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                                
-                                                {/* Mention dropdown */}
-                                                <div className="flex gap-1">
-                                                    <span className="text-xs text-muted-foreground">Mention:</span>
-                                                    {safeTeamMembers.slice(0, 3).map((member) => (
-                                                        <Button
-                                                            key={member?.id || Math.random()}
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 p-1"
-                                                            onClick={() => handleMention(member)}
-                                                        >
-                                                            <AtSign className="h-3 w-3 mr-1" />
-                                                            {member?.name || 'Unknown'}
-                                                        </Button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-
-                                {/* Sidebar */}
-                                <div className="space-y-4">
-                                    {/* Assignee */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2 text-sm">
-                                                <User className="h-4 w-4" />
-                                                Assignee
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-8 w-8">
-                                                    <AvatarImage src={selectedTask?.assignee?.avatar} alt={selectedTask?.assignee?.name || 'Assignee'} />
-                                                    <AvatarFallback>{(selectedTask?.assignee?.name || 'U').substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <div className="font-medium text-sm">{selectedTask?.assignee?.name || 'Unassigned'}</div>
-                                                    <div className="text-xs text-muted-foreground">{selectedTask?.assignee?.email || 'No email'}</div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Due Date */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2 text-sm">
-                                                <Calendar className="h-4 w-4" />
-                                                Due Date
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-sm">
-                                                {selectedTask?.dueDate ? new Date(selectedTask.dueDate).toLocaleDateString() : 'No due date set'}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Attachments */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2 text-sm">
-                                                <Paperclip className="h-4 w-4" />
-                                                Attachments
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-2">
-                                            {/* Dynamic attachments */}
-                                            {attachments.map((attachment) => (
-                                                <div key={attachment.id} className="flex items-center justify-between group">
-                                                    <div className="flex items-center gap-2 text-sm flex-1">
-                                                        <FileText className="h-4 w-4 text-blue-500" />
-                                                        <span className="truncate">{attachment.name}</span>
-                                                        <span className="text-xs text-muted-foreground">({attachment.size})</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0"
-                                                            onClick={() => handleDownloadFile(attachment)}
-                                                        >
-                                                            <Download className="h-3 w-3" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 w-6 p-0 text-destructive"
-                                                            onClick={() => handleDeleteAttachment(attachment.id)}
-                                                        >
-                                                            <Trash className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            
-                                            {/* File upload */}
-                                            <div className="pt-2">
-                                                <input
-                                                    type="file"
-                                                    onChange={handleFileUpload}
-                                                    className="hidden"
-                                                    id="file-upload"
-                                                    multiple
-                                                />
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="w-full"
-                                                    onClick={() => document.getElementById('file-upload').click()}
-                                                >
-                                                    <Paperclip className="h-4 w-4 mr-2" />
-                                                    Add File
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Activity */}
-                                    <Card className="bg-background/30">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2 text-sm">
-                                                <Clock className="h-4 w-4" />
-                                                Activity
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-2">
-                                            <div className="text-xs text-muted-foreground">
-                                                <div>Created 2 days ago</div>
-                                                <div>Last updated 1 hour ago</div>
-                                                <div>{comments.length} comments</div>
-                                                <div>{attachments.length} attachments</div>
-                                                <div className="flex items-center gap-2 mt-2">
-                                                    <span>Subtasks:</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-green-500">
-                                                            {subtasks.filter(s => s.completed).length}
-                                                        </span>
-                                                        <span>/</span>
-                                                        <span>{subtasks.length}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
-                        </div>
-                    </ScrollArea>
-                </DialogContent>
-            </Dialog>
+            <TaskModal
+                isOpen={isTaskDetailModalOpen}
+                onClose={() => setIsTaskDetailModalOpen(false)}
+                selectedTask={selectedTask}
+                teamMembers={safeTeamMembers}
+                onUpdateTask={handleUpdateTask}
+            />
         </div>
     );
 };

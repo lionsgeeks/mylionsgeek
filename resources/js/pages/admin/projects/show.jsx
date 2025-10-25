@@ -289,8 +289,8 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                         <div className="mb-6 py-3">
                             <Tabs defaultValue="overview" onValueChange={setActiveTab} value={activeTab}>
                                 <TabsList className="grid grid-cols-6 w-full">
-                                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                        <TabsTrigger value="overview">Overview</TabsTrigger>
+                        <TabsTrigger value="tasks">Tasks</TabsTrigger>
                                     <TabsTrigger value="files">Files</TabsTrigger>
                                     <TabsTrigger value="notes">Notes</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
@@ -301,23 +301,23 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                             </span>
                                         )}
                                     </TabsTrigger>
-                                    <TabsTrigger value="team">Team</TabsTrigger>
-                                </TabsList>
+                        <TabsTrigger value="team">Team</TabsTrigger>
+                    </TabsList>
 
                                 <TabsContent value="overview" className="mt-6">
                                     <Overview
-                                        project={project}
-                                        teamMembers={teamMembers}
+                            project={project}
+                            teamMembers={teamMembers}
                                         tasks={sampleTasks}
-                                    />
-                                </TabsContent>
+                        />
+                    </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
                                     <Tasks
                                         tasks={sampleTasks}
-                                        teamMembers={teamMembers}
-                                    />
-                                </TabsContent>
+                            teamMembers={teamMembers}
+                        />
+                    </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
                                     <Files files={files} />
@@ -329,12 +329,12 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
 
                                 <TabsContent value="activity" className="mt-6">
                                     <Activity activities={recentActivities} />
-                                </TabsContent>
+                    </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
                                     <Team teamMembers={teamMembers} />
-                                </TabsContent>
-                            </Tabs>
+                    </TabsContent>
+                </Tabs>
                         </div>
                     </div>
 

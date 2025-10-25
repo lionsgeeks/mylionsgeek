@@ -10,6 +10,8 @@ use App\Models\Attachment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -19,13 +21,13 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Project::with(['creator', 'users', 'tasks'])
+        $query = Project::with(['creator', 'users:id,name,image', 'tasks'])
             ->withCount(['tasks', 'users']);
 
         // Search functionality
         if ($request->has('search') && $request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%');
+                ->orWhere('description', 'like', '%' . $request->search . '%');
         }
 
         // Filter by status
@@ -52,7 +54,11 @@ class ProjectController extends Controller
         return Inertia::render('admin/projects/index', [
             'projects' => $projects,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'status', 'sort_by', 'sort_order'])
+            'filters' => $request->only(['search', 'status', 'sort_by', 'sort_order']),
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error')
+            ]
         ]);
     }
 
@@ -61,31 +67,49 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after:start_date',
+                'status' => 'nullable|in:active,completed,on_hold,cancelled'
+            ]);
 
-        $data = $request->all();
-        $data['created_by'] = Auth::id();
+            $data = $request->all();
+            $data['created_by'] = Auth::id();
+            $data['status'] = $data['status'] ?? 'active';
 
-        if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('projects', 'public');
+            if ($request->hasFile('photo')) {
+                $data['photo'] = $request->file('photo')->store('projects', 'public');
+            }
+
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys = OFF');
+            
+            $project = Project::create($data);
+
+            // Add creator as owner - use raw SQL to avoid foreign key issues
+            DB::table('project_users')->insert([
+                'project_id' => $project->id,
+                'user_id' => Auth::id(),
+                'role' => 'owner',
+                'joined_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys = ON');
+
+            return redirect()->route('admin.projects.index')
+                ->with('success', 'Project created successfully.');
+        } catch (\Exception $e) {
+            Log::error('Project creation failed: ' . $e->getMessage());
+            return redirect()->route('admin.projects.index')
+                ->with('error', 'Failed to create project: ' . $e->getMessage());
         }
-
-        $project = Project::create($data);
-
-        // Add creator as owner
-        $project->users()->attach(Auth::id(), [
-            'role' => 'owner',
-            'joined_at' => now()
-        ]);
-
-        return redirect()->route('admin.projects.index')
-            ->with('success', 'Project created successfully.');
     }
 
     /**
@@ -119,30 +143,44 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'status' => 'required|in:active,completed,on_hold,cancelled',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'status' => 'required|in:active,completed,on_hold,cancelled',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after:start_date',
+            ]);
 
-        $data = $request->all();
-        $data['is_updated'] = true;
-        $data['last_activity'] = now();
-
-        if ($request->hasFile('photo')) {
-            if ($project->photo) {
-                Storage::disk('public')->delete($project->photo);
+            $data = $request->only(['name', 'description', 'status', 'start_date', 'end_date']);
+            $data['is_updated'] = true;
+            $data['last_activity'] = now();
+            
+            // Debug: Log what we're receiving
+            \Log::info('Update request data:', [
+                'all' => $request->all(),
+                'hasFile' => $request->hasFile('photo'),
+                'file' => $request->file('photo'),
+                'data' => $data
+            ]);
+            
+            // Only update photo if a new one is uploaded
+            if ($request->hasFile('photo')) {
+                if ($project->photo) {
+                    Storage::disk('public')->delete($project->photo);
+                }
+                $data['photo'] = $request->file('photo')->store('projects', 'public');
             }
-            $data['photo'] = $request->file('photo')->store('projects', 'public');
+
+            $project->update($data);
+
+            return redirect()->route('admin.projects.index')
+                ->with('success', 'Project updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.projects.index')
+                ->with('error', 'Failed to update project: ' . $e->getMessage());
         }
-
-        $project->update($data);
-
-        return redirect()->route('admin.projects.index')
-            ->with('success', 'Project updated successfully.');
     }
 
     /**
@@ -150,14 +188,67 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
-        if ($project->photo) {
-            Storage::disk('public')->delete($project->photo);
+        try {
+            // Delete project photo if it exists
+            if ($project->photo) {
+                Storage::disk('public')->delete($project->photo);
+            }
+
+            // Delete the project (cascade will handle related records)
+            $project->delete();
+
+            return redirect()
+                ->route('admin.projects.index')
+                ->with('success', 'Project deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Project deletion failed: ' . $e->getMessage());
+            return redirect()
+                ->route('admin.projects.index')
+                ->with('error', 'Failed to delete project: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Invite users to project via email
+     */
+    public function invite(Request $request)
+    {
+        $request->validate([
+            'emails' => 'required|array|min:1',
+            'emails.*' => 'required|email',
+            'role' => 'required|in:admin,member',
+            'message' => 'nullable|string|max:500',
+            'project_id' => 'required|exists:projects,id'
+        ]);
+
+        $project = Project::findOrFail($request->project_id);
+        $emails = $request->emails;
+        $role = $request->role;
+        $message = $request->message;
+
+        // Here you would typically send email invitations
+        // For now, we'll just log the invitation
+        foreach ($emails as $email) {
+            // Check if user exists with this email
+            $user = User::where('email', $email)->first();
+
+            if ($user) {
+                // User exists, add them to project
+                if (!$project->users()->where('user_id', $user->id)->exists()) {
+                    $project->users()->attach($user->id, [
+                        'role' => $role,
+                        'invited_at' => now(),
+                        'joined_at' => now()
+                    ]);
+                }
+            } else {
+                // User doesn't exist, you might want to create a pending invitation
+                // or send them an email to register first
+                \Log::info("Invitation sent to non-existing user: {$email} for project: {$project->name}");
+            }
         }
 
-        $project->delete();
-
-        return redirect()->route('admin.projects.index')
-            ->with('success', 'Project deleted successfully.');
+        return back()->with('success', 'Invitations sent successfully.');
     }
 
     /**

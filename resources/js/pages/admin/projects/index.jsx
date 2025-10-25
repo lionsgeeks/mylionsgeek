@@ -14,20 +14,27 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Clock, AlertCircle, FolderOpen } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Organizing projects-pana.png"
+import InviteModal from './components/InviteModal'
+import { useInitials } from '@/hooks/use-initials';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const ProjectsIndex = ({ projects, stats, filters }) => {
+
+const ProjectsIndex = ({ projects, stats, filters, flash }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [deletingProject, setDeletingProject] = useState(null);
+    const [invitingProject, setInvitingProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
     const [categoryFilter, setCategoryFilter] = useState(filters?.category || '');
     const [clientFilter, setClientFilter] = useState(filters?.client || '');
     const [sortBy, setSortBy] = useState(filters?.sort_by || 'created_at');
     const [sortOrder, setSortOrder] = useState(filters?.sort_order || 'desc');
+    const getInitials = useInitials();
 
     const { data, setData, post, put, delete: destroy, processing, errors } = useForm({
         name: '',
@@ -40,7 +47,20 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
 
     const handleCreate = useCallback((e) => {
         e.preventDefault();
-        post('/admin/projects', {
+        
+        // Transform data to FormData if photo is present
+        const formData = new FormData();
+        formData.append('name', data.name);
+        formData.append('description', data.description || '');
+        formData.append('status', data.status);
+        formData.append('start_date', data.start_date || '');
+        formData.append('end_date', data.end_date || '');
+        
+        if (data.photo) {
+            formData.append('photo', data.photo);
+        }
+        
+        post('/admin/projects', formData, {
             onSuccess: () => {
                 setIsCreateModalOpen(false);
                 setData({
@@ -53,16 +73,16 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                 });
             }
         });
-    }, [post, setData]);
+    }, [post, setData, data]);
 
     const handleEdit = useCallback((project) => {
         setEditingProject(project);
         setData({
             name: project.name,
             description: project.description || '',
-            photo: null,
-            start_date: project.start_date || '',
-            end_date: project.end_date || '',
+            photo: project.photo || null, // Keep existing photo
+            start_date: project.start_date ? project.start_date.split('T')[0] : '', // Format for date input
+            end_date: project.end_date ? project.end_date.split('T')[0] : '', // Format for date input
             status: project.status
         });
         setIsEditModalOpen(true);
@@ -70,7 +90,22 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
 
     const handleUpdate = useCallback((e) => {
         e.preventDefault();
-        put(`/admin/projects/${editingProject.id}`, {
+        console.log(data.photo);
+        
+        // Transform data to FormData if photo is present
+        const formData = new FormData();
+        formData.append('_method', 'PUT');
+        formData.append('name', data.name);
+        formData.append('description', data.description || '');
+        formData.append('status', data.status);
+        formData.append('start_date', data.start_date || '');
+        formData.append('end_date', data.end_date || '');
+        
+        if (data.photo) {
+            formData.append('photo', data.photo);
+        }
+        
+        post(`/admin/projects/${editingProject.id}`, formData, {
             onSuccess: () => {
                 setIsEditModalOpen(false);
                 setEditingProject(null);
@@ -84,7 +119,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                 });
             }
         });
-    }, [put, editingProject, setData]);
+    }, [post, editingProject, setData, data]);
 
     const handleDelete = useCallback((project) => {
         setDeletingProject(project);
@@ -101,6 +136,11 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
             });
         }
     }, [destroy, deletingProject]);
+
+    const handleInvite = useCallback((project) => {
+        setInvitingProject(project);
+        setIsInviteModalOpen(true);
+    }, []);
 
     const handleSearch = useCallback(() => {
         router.get('/admin/projects', {
@@ -171,7 +211,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
     return (
         <AppLayout>
             <Head title="Projects Management" />
-            
+
             <Banner
                 illustration={illustration}
                 greeting="Welcome"
@@ -181,6 +221,18 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
             />
 
             <div className="p-6 space-y-6">
+                {/* Flash Messages */}
+                {flash?.success && (
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                        {flash.success}
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        {flash.error}
+                    </div>
+                )}
+
                 {/* Header with Search and Actions */}
                 <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -189,7 +241,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                             {projects.data.length} projects
                         </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -200,16 +252,16 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                                 className="pl-10 w-64"
                             />
                         </div>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={() => setIsFiltersOpen(true)}
                             className="flex items-center gap-2"
                         >
                             <Filter className="h-4 w-4" />
                             Filters
                         </Button>
-                        <Button 
-                            onClick={() => setIsCreateModalOpen(true)} 
+                        <Button
+                            onClick={() => setIsCreateModalOpen(true)}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
                         >
                             <Plus className="h-4 w-4 mr-2" />
@@ -221,8 +273,8 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                 {/* Projects Grid - Jira/Agile Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.data.map((project) => (
-                        <div 
-                            key={project.id} 
+                        <div
+                            key={project.id}
                             className="group relative bg-white dark:bg-transparent rounded-lg border border-dark/10 dark:border-light/30 hover:border-[var(--color-alpha)] dark:hover:border-[var(--color-alpha)] transition-all duration-200 hover:shadow-lg dark:hover:shadow-xl cursor-pointer"
                             onClick={() => router.get(`/admin/projects/${project.id}`)}
                         >
@@ -248,7 +300,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                                             </p>
                                         </div>
                                     </div>
-                                    
+
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                             <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0">
@@ -264,7 +316,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                                                 <Pencil className="h-4 w-4 mr-2" />
                                                 Edit
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(project); }}
                                                 className="text-red-600"
                                             >
@@ -314,12 +366,16 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                                     <div className="flex items-center gap-2">
                                         <div className="flex -space-x-1">
                                             {project.users?.slice(0, 4).map((user, index) => (
-                                                <div
-                                                    key={user.id}
-                                                    className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold border-2 border-white dark:border-gray-800 shadow-sm"
-                                                >
-                                                    {user.name.charAt(0).toUpperCase()}
-                                                </div>
+
+                                                <Avatar className=" w-8 h-8 overflow-hidden rounded-full">
+                                                    <AvatarImage
+                                                        src={`/storage/${user.image}`}
+                                                        alt={user.name}
+                                                    />
+                                                    <AvatarFallback className="rounded-lg text-sm bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                        {getInitials(user.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
                                             ))}
                                             {project.users_count > 4 && (
                                                 <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-xs font-medium border-2 border-white dark:border-gray-800">
@@ -336,11 +392,11 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         className="flex items-center gap-1 text-xs h-7"
-                                        onClick={(e) => { e.stopPropagation(); }}
+                                        onClick={(e) => { e.stopPropagation(); handleInvite(project); }}
                                     >
                                         <UserPlus className="h-3 w-3" />
                                         Invite
@@ -368,7 +424,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                         </div>
                         <h3 className="text-xl font-semibold mb-2">No projects found</h3>
                         <p className="text-muted-foreground mb-6">Get started by creating your first project.</p>
-                        <Button 
+                        <Button
                             onClick={() => setIsCreateModalOpen(true)}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
                         >
@@ -473,7 +529,7 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                         </div>
 
                         <div className="flex gap-2">
-                            <Button 
+                            <Button
                                 onClick={() => {
                                     handleFilter();
                                     setIsFiltersOpen(false);
@@ -482,8 +538,8 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                             >
                                 Done
                             </Button>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => setIsFiltersOpen(false)}
                                 className="flex-1"
                             >
@@ -505,16 +561,16 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                             Are you sure you want to delete <strong>{deletingProject?.name}</strong>? This action cannot be undone.
                         </p>
                         <div className="flex gap-2">
-                            <Button 
-                                variant="destructive" 
+                            <Button
+                                variant="destructive"
                                 onClick={confirmDelete}
                                 disabled={processing}
                                 className="flex-1"
                             >
                                 {processing ? 'Deleting...' : 'Delete'}
                             </Button>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => setIsDeleteModalOpen(false)}
                                 className="flex-1"
                             >
@@ -687,12 +743,23 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
 
                         <div className="space-y-2">
                             <Label htmlFor="edit_photo">Project Photo</Label>
+                            {editingProject?.photo && (
+                                <div className="mb-2">
+                                    <p className="text-sm text-muted-foreground mb-2">Current photo:</p>
+                                    <img 
+                                        src={`/storage/${editingProject.photo}`} 
+                                        alt="Current project photo" 
+                                        className="w-20 h-20 object-cover rounded-md border"
+                                    />
+                                </div>
+                            )}
                             <Input
                                 id="edit_photo"
                                 type="file"
                                 accept="image/*"
                                 onChange={(e) => setData('photo', e.target.files[0])}
                             />
+                            <p className="text-xs text-muted-foreground">Leave empty to keep current photo</p>
                         </div>
 
                         <div className="flex justify-end space-x-2">
@@ -706,6 +773,17 @@ const ProjectsIndex = ({ projects, stats, filters }) => {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Invite Modal */}
+            <InviteModal
+                isOpen={isInviteModalOpen}
+                onClose={() => {
+                    setIsInviteModalOpen(false);
+                    setInvitingProject(null);
+                }}
+                projectId={invitingProject?.id}
+                projectName={invitingProject?.name}
+            />
         </AppLayout>
     );
 };

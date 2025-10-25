@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Project routes
     Route::resource('projects', ProjectController::class);
-    Route::post('projects/{project}/invite', [ProjectController::class, 'inviteUser'])->name('projects.invite');
+    Route::post('projects/{project}', [ProjectController::class, 'update'])->name('projects.update-post');
+    Route::post('projects/invite', [ProjectController::class, 'invite'])->name('projects.invite');
+    Route::post('projects/{project}/invite', [ProjectController::class, 'inviteUser'])->name('projects.invite-user');
     Route::delete('projects/{project}/users/{user}', [ProjectController::class, 'removeUser'])->name('projects.remove-user');
     Route::put('projects/{project}/users/{user}', [ProjectController::class, 'updateRole'])->name('projects.update-role');
     Route::get('projects-statistics', [ProjectController::class, 'statistics'])->name('projects.statistics');
