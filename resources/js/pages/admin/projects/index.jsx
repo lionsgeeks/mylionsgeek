@@ -11,15 +11,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Clock, AlertCircle, FolderOpen } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, FolderOpen, Share2 } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Organizing projects-pana.png"
-import InviteModal from './components/InviteModal'
+import AdvancedInviteModal from './components/AdvancedInviteModal'
 import { useInitials } from '@/hooks/use-initials';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-const ProjectsIndex = ({ projects, stats, filters, flash }) => {
+const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -270,32 +270,32 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
                     </div>
                 </div>
 
-                {/* Projects Grid - Jira/Agile Style */}
+                {/* Projects Grid - Compact Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {projects.data.map((project) => (
                         <div
                             key={project.id}
-                            className="group relative bg-white dark:bg-transparent rounded-lg border border-dark/10 dark:border-light/30 hover:border-[var(--color-alpha)] dark:hover:border-[var(--color-alpha)] transition-all duration-200 hover:shadow-lg dark:hover:shadow-xl cursor-pointer"
+                            className="group relative bg-white dark:bg-transparent rounded-lg border border-dark/10 dark:border-light/30 hover:border-[var(--color-alpha)] dark:hover:border-[var(--color-alpha)] transition-all duration-200 hover:shadow-lg dark:hover:shadow-xl cursor-pointer flex flex-col h-80"
                             onClick={() => router.get(`/admin/projects/${project.id}`)}
                         >
-                            {/* Project Header */}
-                            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {/* Project Header - Compact */}
+                            <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
                                         {project.photo ? (
                                             <img
                                                 src={`/storage/${project.photo}`}
                                                 alt={project.name}
-                                                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                                                className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80 flex items-center justify-center flex-shrink-0">
-                                                <FolderOpen className="h-5 w-5 text-white" />
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80 flex items-center justify-center flex-shrink-0">
+                                                <FolderOpen className="h-4 w-4 text-white" />
                                             </div>
                                         )}
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{project.name}</h3>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                            <h3 className="font-semibold text-gray-900 dark:text-white truncate text-sm">{project.name}</h3>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                 by {project.creator?.name}
                                             </p>
                                         </div>
@@ -303,8 +303,8 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0">
-                                                <MoreVertical className="h-4 w-4" />
+                                            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0">
+                                                <MoreVertical className="h-3 w-3" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
@@ -327,16 +327,12 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
                                     </DropdownMenu>
                                 </div>
 
-                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3">
-                                    {project.description || 'No description provided'}
-                                </p>
-
                                 <div className="flex items-center justify-between">
-                                    <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 text-xs`}>
+                                    <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 text-xs px-2 py-1`}>
                                         {getStatusIcon(project.status)}
-                                        <span className="capitalize">{project.status.replace('_', ' ')}</span>
+                                        <span className="capitalize text-xs">{project.status.replace('_', ' ')}</span>
                                     </Badge>
-                                    <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                         <div className="flex items-center gap-1">
                                             <CheckSquare className="h-3 w-3" />
                                             <span>{project.tasks_count}</span>
@@ -349,37 +345,43 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
                                 </div>
                             </div>
 
-                            {/* Progress Section */}
+                            {/* Description - Fixed Height */}
+                            <div className="p-3 flex-1">
+                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-5  overflow-hidden">
+                                    {project.description || 'No description provided'}
+                                </p>
+                            </div>
+
+                            {/* Progress Section - Compact */}
                             {project.tasks_count > 0 && (
-                                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress</span>
-                                        <span className="text-sm font-semibold text-[var(--color-alpha)]">{project.progress_percentage || 0}%</span>
+                                <div className="px-3 pb-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Progress</span>
+                                        <span className="text-xs font-semibold text-[var(--color-alpha)]">{project.progress_percentage || 0}%</span>
                                     </div>
-                                    <Progress value={project.progress_percentage || 0} className="h-2" />
+                                    <Progress value={project.progress_percentage || 0} className="h-1" />
                                 </div>
                             )}
 
-                            {/* Team Members & Actions */}
-                            <div className="p-4">
-                                <div className="flex items-center justify-between mb-3">
+                            {/* Footer - Fixed Height */}
+                            <div className="p-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
+                                <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className="flex -space-x-1">
-                                            {project.users?.slice(0, 4).map((user, index) => (
-
-                                                <Avatar className=" w-8 h-8 overflow-hidden rounded-full">
+                                            {project.users?.slice(0, 3).map((user, index) => (
+                                                <Avatar key={user.id} className="w-6 h-6 overflow-hidden rounded-full border border-white dark:border-gray-800">
                                                     <AvatarImage
                                                         src={`/storage/${user.image}`}
                                                         alt={user.name}
                                                     />
-                                                    <AvatarFallback className="rounded-lg text-sm bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                    <AvatarFallback className="rounded-lg text-xs bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                         {getInitials(user.name)}
                                                     </AvatarFallback>
                                                 </Avatar>
                                             ))}
-                                            {project.users_count > 4 && (
-                                                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-xs font-medium border-2 border-white dark:border-gray-800">
-                                                    +{project.users_count - 4}
+                                            {project.users_count > 3 && (
+                                                <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-xs font-medium border border-white dark:border-gray-800">
+                                                    +{project.users_count - 3}
                                                 </div>
                                             )}
                                         </div>
@@ -392,16 +394,32 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex items-center gap-1 text-xs h-7"
-                                        onClick={(e) => { e.stopPropagation(); handleInvite(project); }}
-                                    >
-                                        <UserPlus className="h-3 w-3" />
-                                        Invite
-                                    </Button>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex items-center gap-1 text-xs h-6 px-2"
+                                            onClick={(e) => { e.stopPropagation(); handleInvite(project); }}
+                                        >
+                                            <UserPlus className="h-3 w-3" />
+                                            Invite
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="flex items-center gap-1 text-xs h-6 px-2"
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                const inviteLink = `${window.location.origin}/projects/${project.id}/join`;
+                                                navigator.clipboard.writeText(inviteLink);
+                                                // You could add a toast notification here
+                                            }}
+                                        >
+                                            <Share2 className="h-3 w-3" />
+                                            Copy Link
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
                                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                             <Star className="h-3 w-3" />
                                             <span>0</span>
@@ -775,7 +793,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
             </Dialog>
 
             {/* Invite Modal */}
-            <InviteModal
+            <AdvancedInviteModal
                 isOpen={isInviteModalOpen}
                 onClose={() => {
                     setIsInviteModalOpen(false);
@@ -783,6 +801,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash }) => {
                 }}
                 projectId={invitingProject?.id}
                 projectName={invitingProject?.name}
+                users={users}
             />
         </AppLayout>
     );

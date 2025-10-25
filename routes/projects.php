@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\TaskCommentController;
 use App\Http\Controllers\Admin\AttachmentController;
 use Illuminate\Support\Facades\Route;
 
+// Public join route (no auth required)
+Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join'])->name('projects.join');
+
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Project routes
     Route::resource('projects', ProjectController::class);

@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Task;
 use App\Models\Attachment;
+use App\Models\ProjectInvitation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -51,10 +52,14 @@ class ProjectController extends Controller
             'cancelled' => Project::where('status', 'cancelled')->count(),
         ];
 
+        // Get all users for invite suggestions
+        $users = User::select('id', 'name', 'email', 'image')->get();
+
         return Inertia::render('admin/projects/index', [
             'projects' => $projects,
             'stats' => $stats,
             'filters' => $request->only(['search', 'status', 'sort_by', 'sort_order']),
+            'users' => $users,
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error')
@@ -147,7 +152,7 @@ class ProjectController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                // 'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'status' => 'required|in:active,completed,on_hold,cancelled',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
@@ -214,37 +219,52 @@ class ProjectController extends Controller
     public function invite(Request $request)
     {
         $request->validate([
-            'emails' => 'required|array|min:1',
+            'emails' => 'nullable|array',
             'emails.*' => 'required|email',
+            'usernames' => 'nullable|array',
+            'usernames.*' => 'required|string',
             'role' => 'required|in:admin,member',
             'message' => 'nullable|string|max:500',
             'project_id' => 'required|exists:projects,id'
         ]);
 
         $project = Project::findOrFail($request->project_id);
-        $emails = $request->emails;
+        $emails = $request->emails ?? [];
+        $usernames = $request->usernames ?? [];
         $role = $request->role;
         $message = $request->message;
 
-        // Here you would typically send email invitations
-        // For now, we'll just log the invitation
-        foreach ($emails as $email) {
-            // Check if user exists with this email
-            $user = User::where('email', $email)->first();
+        $invitedUsers = [];
 
-            if ($user) {
-                // User exists, add them to project
-                if (!$project->users()->where('user_id', $user->id)->exists()) {
-                    $project->users()->attach($user->id, [
-                        'role' => $role,
-                        'invited_at' => now(),
-                        'joined_at' => now()
-                    ]);
-                }
+        // Process email invitations
+        foreach ($emails as $email) {
+            $user = User::where('email', $email)->first();
+            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
+                $project->users()->attach($user->id, [
+                    'role' => $role,
+                    'invited_at' => now(),
+                    'joined_at' => now()
+                ]);
+                $invitedUsers[] = $user->name;
             } else {
-                // User doesn't exist, you might want to create a pending invitation
-                // or send them an email to register first
-                \Log::info("Invitation sent to non-existing user: {$email} for project: {$project->name}");
+                // Create invitation token for non-existing users
+                ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+            }
+        }
+
+        // Process username invitations
+        foreach ($usernames as $username) {
+            $user = User::where('name', $username)->first();
+            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
+                $project->users()->attach($user->id, [
+                    'role' => $role,
+                    'invited_at' => now(),
+                    'joined_at' => now()
+                ]);
+                $invitedUsers[] = $user->name;
+            } else {
+                // Create invitation token for non-existing users
+                ProjectInvitation::createInvitation($project->id, null, $username, $role, $message);
             }
         }
 
@@ -317,5 +337,61 @@ class ProjectController extends Controller
         ];
 
         return response()->json($stats);
+    }
+
+    /**
+     * Join project via invitation token
+     */
+    public function join(Project $project, $token)
+    {
+        $invitation = ProjectInvitation::where('token', $token)
+            ->where('project_id', $project->id)
+            ->first();
+
+        if (!$invitation) {
+            return redirect('/')->with('error', 'Invalid invitation link.');
+        }
+
+        if (!$invitation->isValid()) {
+            return redirect('/')->with('error', 'This invitation has expired or has already been used.');
+        }
+
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please log in to join the project.');
+        }
+
+        $user = Auth::user();
+
+        // Check if user matches invitation (by email or username)
+        $canJoin = false;
+        if ($invitation->email && $user->email === $invitation->email) {
+            $canJoin = true;
+        } elseif ($invitation->username && $user->name === $invitation->username) {
+            $canJoin = true;
+        }
+
+        if (!$canJoin) {
+            return redirect('/')->with('error', 'This invitation is not for your account.');
+        }
+
+        // Check if user is already in the project
+        if ($project->users()->where('user_id', $user->id)->exists()) {
+            return redirect()->route('admin.projects.show', $project->id)
+                ->with('info', 'You are already a member of this project.');
+        }
+
+        // Add user to project
+        $project->users()->attach($user->id, [
+            'role' => $invitation->role,
+            'invited_at' => $invitation->created_at,
+            'joined_at' => now()
+        ]);
+
+        // Mark invitation as used
+        $invitation->update(['is_used' => true]);
+
+        return redirect()->route('admin.projects.show', $project->id)
+            ->with('success', "You have successfully joined the project: {$project->name}");
     }
 }
