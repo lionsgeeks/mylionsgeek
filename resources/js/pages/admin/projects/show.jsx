@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { isToday, parseISO } from 'date-fns';
 
 // Import partial components
 import ProjectHeader from './partials/ProjectHeader';
@@ -14,6 +15,7 @@ import Activity from './partials/Activity';
 import Team from './partials/Team';
 import Sidebar from './partials/Sidebar';
 import Chat from './partials/Chat';
+import ProjectAttachments from './partials/ProjectAttachments';
 
 // Sample data
 const events = [
@@ -149,77 +151,6 @@ const messages = [
     },
 ];
 
-const todaysTasks = [
-    {
-        id: "1",
-        title: "Review authentication code",
-        priority: "high",
-        status: "todo",
-        dueTime: "5:00 PM",
-    },
-    {
-        id: "2",
-        title: "Update project documentation",
-        priority: "medium",
-        status: "in-progress",
-        dueTime: "3:00 PM",
-    },
-    {
-        id: "3",
-        title: "Client feedback review",
-        priority: "high",
-        status: "todo",
-        dueTime: "4:30 PM",
-    },
-];
-
-const recentActivities = [
-    {
-        id: "1",
-        type: "task_update",
-        user: {
-            id: "1",
-            name: "John Doe",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        action: "marked task as completed",
-        target: "Implement user authentication",
-        timestamp: "2024-02-15T14:30:00",
-        read: false,
-    },
-    {
-        id: "2",
-        type: "github_commit",
-        user: {
-            id: "2",
-            name: "Jane Smith",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        action: "pushed 2 commits to",
-        target: "feature/landing-page",
-        details: {
-            repo: "project-alpha",
-            commitHash: "a1b2c3d",
-            message: "Update landing page layout and add responsive styles",
-        },
-        timestamp: "2024-02-15T13:45:00",
-        read: true,
-    },
-    {
-        id: "3",
-        type: "task_update",
-        user: {
-            id: "3",
-            name: "Mike Johnson",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        action: "started working on",
-        target: "Database optimization",
-        timestamp: "2024-02-15T11:20:00",
-        read: false,
-    },
-];
-
 const files = [
     {
         id: "1",
@@ -252,6 +183,82 @@ const files = [
 const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
     const [activeTab, setActiveTab] = useState("overview");
     const [chatMessages, setChatMessages] = useState(messages);
+
+    const todaysTasks = useMemo(() => {
+        const today = new Date();
+        return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
+    }, [tasks]);
+
+    const recentActivities = useMemo(() => {
+        const activities = [];
+
+        // Project creation
+        activities.push({
+            id: `project-created-${project.id}`,
+            type: 'project_creation',
+            user: project.creator,
+            action: 'created the project',
+            target: project.name,
+            timestamp: project.created_at,
+            read: false,
+        });
+
+        // Task-related activities
+        tasks.forEach(task => {
+            // Task creation
+            activities.push({
+                id: `task-created-${task.id}`,
+                type: 'task_creation',
+                user: task.creator,
+                action: 'created task',
+                target: task.title,
+                timestamp: task.created_at,
+                read: false,
+            });
+
+            // Task status updates
+            if (task.status !== 'todo') {
+                activities.push({
+                    id: `task-status-${task.id}`,
+                    type: 'task_status_update',
+                    user: task.creator, // Assuming the creator is the one updating for simplicity for now
+                    action: `updated task status to ${task.status}`,
+                    target: task.title,
+                    timestamp: task.updated_at,
+                    read: false,
+                });
+            }
+
+            // Task comments
+            (task.comments || []).forEach(comment => {
+                activities.push({
+                    id: `task-comment-${comment.id}`,
+                    type: 'task_comment',
+                    user: comment.user,
+                    action: 'commented on task',
+                    target: task.title,
+                    timestamp: comment.created_at,
+                    read: false,
+                });
+            });
+        });
+
+        // Project notes
+        (project.notes || []).forEach(note => {
+            activities.push({
+                id: `note-created-${note.id}`,
+                type: 'note_creation',
+                user: note.user,
+                action: 'added a note',
+                target: note.title,
+                timestamp: note.created_at,
+                read: false,
+            });
+        });
+
+        // Sort by timestamp descending
+        return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }, [project, tasks]);
 
     const handleSendMessage = (message) => {
         const newMessage = {
@@ -292,6 +299,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="tasks">Tasks</TabsTrigger>
                                     <TabsTrigger value="files">Files</TabsTrigger>
+                                    <TabsTrigger value="attachments">Attachments</TabsTrigger>
                                     <TabsTrigger value="notes">Notes</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
                                         Activity
@@ -308,7 +316,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                     <Overview
                             project={project}
                             teamMembers={teamMembers}
-                                        tasks={sampleTasks}
+                                        tasks={tasks}
                         />
                     </TabsContent>
 
@@ -322,6 +330,10 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
 
                                 <TabsContent value="files" className="mt-6">
                                     <Files files={files} />
+                                </TabsContent>
+
+                                <TabsContent value="attachments" className="mt-6">
+                                    <ProjectAttachments attachments={attachments} />
                                 </TabsContent>
 
                                 <TabsContent value="notes" className="mt-6">

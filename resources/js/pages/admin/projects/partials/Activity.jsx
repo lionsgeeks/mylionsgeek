@@ -3,13 +3,32 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
 import { 
     CheckCircle,
     GitBranch,
     GitCommit,
     GitPullRequest,
-    MessageSquare
+    MessageSquare,
+    PlusCircle,
+    FileText as FileTextIcon,
+    Briefcase,
+    FolderOpen
 } from 'lucide-react';
+
+// Helper to format relative time
+const formatRelativeTime = (dateString) => {
+    const date = parseISO(dateString);
+    if (isToday(date)) {
+        return formatDistanceToNow(date, { addSuffix: true });
+    } else if (isYesterday(date)) {
+        return 'Yesterday at ' + format(date, 'HH:mm');
+    } else if (Date.now() - date.getTime() < 2 * 24 * 60 * 60 * 1000) { // Less than 2 days ago
+        return formatDistanceToNow(date, { addSuffix: true });
+    } else {
+        return format(date, 'd/M/y HH:mm');
+    }
+};
 
 const Activity = ({ activities = [] }) => {
     const [notificationTab, setNotificationTab] = useState("all");
@@ -33,12 +52,20 @@ const Activity = ({ activities = [] }) => {
 
     const getActivityIcon = (type) => {
         switch (type) {
+            case 'project_creation':
+                return <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'task_creation':
+                return <PlusCircle className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'task_status_update':
+                return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'task_comment':
+                return <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'note_creation':
+                return <FileTextIcon className="h-3.5 w-3.5 text-muted-foreground" />;
             case 'github_commit':
                 return <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />;
             case 'github_pr':
                 return <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground" />;
-            case 'comment':
-                return <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />;
             default:
                 return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />;
         }
@@ -64,7 +91,11 @@ const Activity = ({ activities = [] }) => {
                                 </span>
                             )}
                         </TabsTrigger>
-                        <TabsTrigger value="task">Tasks</TabsTrigger>
+                        <TabsTrigger value="task_creation">Task Creation</TabsTrigger>
+                        <TabsTrigger value="task_status_update">Task Status</TabsTrigger>
+                        <TabsTrigger value="task_comment">Comments</TabsTrigger>
+                        <TabsTrigger value="note_creation">Notes</TabsTrigger>
+                        <TabsTrigger value="project_creation">Project</TabsTrigger>
                         <TabsTrigger value="github">GitHub</TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -91,23 +122,24 @@ const Activity = ({ activities = [] }) => {
                             }`}
                         >
                             <Avatar className="h-10 w-10 flex-shrink-0">
-                                <AvatarImage src={activity.user.avatar} alt={activity.user.name} />
-                                <AvatarFallback>{activity.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                                <AvatarImage src={activity.user?.image ? `/storage/${activity.user.image}` : null} alt={activity.user?.name} />
+                                <AvatarFallback>{activity.user?.name?.substring(0, 2).toUpperCase() || '??'}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                                 <div className="flex items-baseline gap-1 flex-wrap">
-                                    <span className="font-medium">{activity.user.name}</span>
+                                    <span className="font-medium">{activity.user?.name || 'Unknown User'}</span>
                                     <span className="text-muted-foreground">{activity.action}</span>
-                                    <span className="font-medium">
-                                        {activity.type === "github_commit" || activity.type === "github_pr" ? (
-                                            <span className="flex items-center gap-1">
-                                                {activity.target}
-                                                {getActivityIcon(activity.type)}
-                                            </span>
-                                        ) : (
-                                            activity.target
-                                        )}
-                                    </span>
+                                    {(activity.target && !activity.type.startsWith('github')) && (
+                                        <span className="font-medium text-primary-foreground/80 dark:text-primary-foreground/90">
+                                            {activity.target}
+                                        </span>
+                                    )}
+                                    {activity.type.startsWith('github') && (
+                                        <span className="flex items-center gap-1 font-medium">
+                                            {activity.target}
+                                            {getActivityIcon(activity.type)}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* GitHub Commit Details */}
@@ -152,12 +184,7 @@ const Activity = ({ activities = [] }) => {
                                 )}
 
                                 <div className="text-xs text-muted-foreground mt-2">
-                                    {new Date(activity.timestamp).toLocaleString(undefined, {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        day: "numeric",
-                                        month: "short",
-                                    })}
+                                    {formatRelativeTime(activity.timestamp)}
                                 </div>
                             </div>
 

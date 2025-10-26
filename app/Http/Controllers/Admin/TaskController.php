@@ -173,6 +173,15 @@ class TaskController extends Controller
             'status' => 'required|in:todo,in_progress,review,completed'
         ]);
 
+            if ($request->status === 'completed') {
+                $subtasks = json_decode($task->subtasks, true) ?? [];
+                $hasIncompleteSubtasks = collect($subtasks)->contains(fn($subtask) => !($subtask['completed'] ?? false));
+
+                if ($hasIncompleteSubtasks) {
+                    return response()->json(['success' => false, 'message' => 'Cannot mark task as complete. Please complete all subtasks first.'], 400);
+                }
+            }
+
             $data = ['status' => $request->status];
             
             // Handle status changes
@@ -193,13 +202,7 @@ class TaskController extends Controller
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
 
-        // Update project last activity
-        $task->project->update([
-            'last_activity' => now(),
-            'is_updated' => true
-        ]);
-
-            return back()->with('success', 'Task status updated successfully!');
+            return response()->json(['success' => true, 'message' => 'Task status updated successfully!']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to update task status: ' . $e->getMessage()], 500);
         }

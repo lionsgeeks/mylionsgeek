@@ -29,11 +29,25 @@ import {
     Tag,
     FileText,
     MessageSquare,
-    Paperclip
+    Paperclip,
+    Eye
 } from 'lucide-react';
 import { useForm, router, usePage } from '@inertiajs/react';
 import TaskModal from '../components/TaskModal';
 import FlashMessage from '@/components/FlashMessage';
+import ConfirmationModal from '@/components/ConfirmationModal';
+
+// Helper to calculate overall task progress
+const getTaskOverallProgress = (task) => {
+    if (task.subtasks && task.subtasks.length > 0) {
+        const completedSubtasks = task.subtasks.filter(subtask => subtask.completed).length;
+        return Math.round((completedSubtasks / task.subtasks.length) * 100);
+    } else if (task.status === 'completed') {
+        return 100;
+    } else {
+        return 0;
+    }
+};
 
 const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     // Ensure we have safe defaults
@@ -48,7 +62,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [focusCommentInput, setFocusCommentInput] = useState(false);
     const [flashMessage, setFlashMessage] = useState(null);
+    const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [sortCriteria, setSortCriteria] = useState('due_date'); // 'due_date', 'priority', 'status'
+    const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
     
     // Get flash messages from Inertia
     const { flash } = usePage().props;
@@ -76,7 +95,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     });
 
     const filteredTasks = useMemo(() => {
-        return safeTasks.filter((task) => {
+        let filtered = safeTasks.filter((task) => {
             if (searchTerm && !(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) && 
                 !(task.description || '').toLowerCase().includes(searchTerm.toLowerCase())) {
                 return false;
@@ -89,7 +108,30 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             }
             return true;
         });
-    }, [safeTasks, searchTerm, taskFilter]);
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            // Pinned tasks always come first
+            if (a.is_pinned && !b.is_pinned) return -1;
+            if (!a.is_pinned && b.is_pinned) return 1;
+
+            let compareValue = 0;
+
+            if (sortCriteria === 'priority') {
+                const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+                compareValue = priorityOrder[b.priority] - priorityOrder[a.priority];
+            } else if (sortCriteria === 'due_date') {
+                const dateA = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+                const dateB = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+                compareValue = dateA - dateB;
+            }
+            // Add other sorting criteria here if needed
+
+            return sortDirection === 'asc' ? compareValue : -compareValue;
+        });
+
+        return filtered;
+    }, [safeTasks, searchTerm, taskFilter, sortCriteria, sortDirection]);
 
     const handleCreateTask = (e) => {
         e.preventDefault();
@@ -129,6 +171,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const handleTaskClick = (task) => {
         setSelectedTask(task);
         setIsTaskDetailModalOpen(true);
+        setFocusCommentInput(false); // Reset focus when opening normally
+    };
+
+    const handleOpenTaskDetailAndFocusComment = (task) => {
+        setSelectedTask(task);
+        setIsTaskDetailModalOpen(true);
+        setFocusCommentInput(true);
     };
 
     const handleUpdateTask = (updatedTask) => {
@@ -169,16 +218,25 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     };
 
     const handleDeleteTask = (task) => {
-        if (confirm('Are you sure you want to delete this task?')) {
-            router.delete(`/admin/tasks/${task.id}`, {
+        setTaskToDelete(task);
+        setIsConfirmDeleteModalOpen(true);
+    };
+
+    const confirmDeleteTask = () => {
+        if (taskToDelete) {
+            router.delete(`/admin/tasks/${taskToDelete.id}`, {
                 onSuccess: () => {
                     setFlashMessage({ message: 'Task deleted successfully!', type: 'success' });
+                    setIsConfirmDeleteModalOpen(false);
+                    setTaskToDelete(null);
                 },
                 onError: (errors) => {
                     setFlashMessage({ 
                         message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '), 
                         type: 'error' 
                     });
+                    setIsConfirmDeleteModalOpen(false);
+                    setTaskToDelete(null);
                 }
             });
         }
@@ -308,6 +366,32 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select>
 
+                    <Select
+                        value={sortCriteria}
+                        onValueChange={setSortCriteria}
+                    >
+                        <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="Sort By" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="due_date">Due Date</SelectItem>
+                            <SelectItem value="priority">Priority</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={sortDirection}
+                        onValueChange={setSortDirection}
+                    >
+                        <SelectTrigger className="w-[130px]">
+                            <SelectValue placeholder="Order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="asc">Ascending</SelectItem>
+                            <SelectItem value="desc">Descending</SelectItem>
+                        </SelectContent>
+                    </Select>
+
                     <Button onClick={() => setIsCreateModalOpen(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Task
@@ -343,13 +427,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                     className={`cursor-pointer hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
                                     onClick={() => handleTaskClick(task)}
                                 >
-                                    <TableCell>
+                                    <TableCell className="w-[300px]">
                                         <div className='py-2'>
                                             <div className="flex items-center gap-2">
                                                 {task.is_pinned && <Pin className="h-4 w-4 text-yellow-600" />}
                                                 <div className="font-medium">{task.title || 'Untitled Task'}</div>
                                             </div>
-                                            <div className="text-sm text-muted-foreground line-clamp-2">{task.description || 'No description'}</div>
+                                            <div className="text-sm text-muted-foreground  truncate w-50">{task.description || 'No description'}</div>
                                             {task.tags && task.tags.length > 0 && (
                                                 <div className="flex gap-1 mt-1">
                                                     {task.tags.map((tag, index) => (
@@ -395,8 +479,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Progress value={task.progress || 0} className="w-16 h-2" />
-                                            <span className="text-xs text-muted-foreground">{task.progress || 0}%</span>
+                                            <Progress value={getTaskOverallProgress(task)} className="w-16 h-2" />
+                                            <span className="text-xs text-muted-foreground">{getTaskOverallProgress(task)}%</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -410,15 +494,19 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         variant="ghost" 
                                                         size="sm" 
                                                         className="h-8 w-8 p-0"
-                                                        onClick={(e) => e.stopPropagation()}
+                                                        onClick={(e) => e.stopPropagation()} // Prevent row click
                                                     >
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => handleTaskClick(task)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        <Eye className="mr-2 h-4 w-4" />
                                                         <span>View Details</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        <span>Edit Task</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleTogglePin(task)}>
                                                         {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
@@ -428,13 +516,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <CheckCircle className="mr-2 h-4 w-4" />
                                                         <span>Mark as Completed</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                    {(task.status === 'completed' || task.status === 'review') && (
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in-progress')}>
+                                                            <AlertCircle className="mr-2 h-4 w-4" />
+                                                            <span>Mark as Incomplete</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem onClick={() => handleOpenTaskDetailAndFocusComment(task)}>
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
-                                                        <FileText className="mr-2 h-4 w-4" />
-                                                        <span>Add Note</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem 
@@ -602,6 +692,17 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 selectedTask={selectedTask}
                 teamMembers={safeTeamMembers}
                 onUpdateTask={handleUpdateTask}
+                focusCommentInput={focusCommentInput}
+            />
+
+            {/* Confirmation Modal for Deletion */}
+            <ConfirmationModal
+                isOpen={isConfirmDeleteModalOpen}
+                onClose={() => setIsConfirmDeleteModalOpen(false)}
+                onConfirm={confirmDeleteTask}
+                title="Confirm Task Deletion"
+                description={`Are you sure you want to delete task "${taskToDelete?.title || 'this task'}" (ID: ${taskToDelete?.id})? This action cannot be undone.`}
+                isDestructive={true}
             />
         </div>
     );

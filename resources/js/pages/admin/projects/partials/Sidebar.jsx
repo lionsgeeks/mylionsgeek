@@ -79,7 +79,7 @@ const Sidebar = ({ todaysTasks = [] }) => {
                                                         {task.priority}
                                                     </Badge>
                                                     <span className="text-xs text-muted-foreground">
-                                                        Due {task.dueTime}
+                                                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'}
                                                     </span>
                                                 </div>
                                             </div>

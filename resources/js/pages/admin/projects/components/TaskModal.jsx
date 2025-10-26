@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { FileText, Edit, Share2, Plus, X, Pin, PinOff, MessageSquare, Paperclip, CheckSquare, Calendar, User, Tag, CheckCircle, Clock, AlertCircle, MoreHorizontal, Eye, Trash2, AtSign, Star, Flag, Zap, UploadCloud, Download, Archive, Image, File, FileCode, FileSpreadsheet, FileAudio, FileVideo, FileArchive, FileQuestion } from 'lucide-react';
 import { useForm, router, usePage } from '@inertiajs/react';
 import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 // Helper to get file icon based on type
 const getFileIcon = (mimeType, fileName) => {
@@ -163,8 +164,10 @@ const TaskModal = ({
     onClose,
     selectedTask,
     teamMembers = [],
-    onUpdateTask
+    onUpdateTask,
+    focusCommentInput = false
 }) => {
+    const commentInputRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
     const [isEditingPriority, setIsEditingPriority] = useState(false);
@@ -182,6 +185,11 @@ const TaskModal = ({
     const [editingComment, setEditingComment] = useState(null);
     const [editingSubtask, setEditingSubtask] = useState(null);
     const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
+    const [isConfirmCommentDeleteModalOpen, setIsConfirmCommentDeleteModalOpen] = useState(false);
+    const [commentToDelete, setCommentToDelete] = useState(null);
+    const [isConfirmTaskArchiveModalOpen, setIsConfirmTaskArchiveModalOpen] = useState(false);
+    const [isConfirmTaskDeleteModalOpen, setIsConfirmTaskDeleteModalOpen] = useState(false);
+    const [taskToActOn, setTaskToActOn] = useState(null);
 
     const { data: taskData, setData: setTaskData, put: updateTask, processing: isUpdating, reset } = useForm({
         title: '',
@@ -223,6 +231,12 @@ const TaskModal = ({
             }
         }
     }, [selectedTask]);
+
+    useEffect(() => {
+        if (isOpen && focusCommentInput && commentInputRef.current) {
+            commentInputRef.current.focus();
+        }
+    }, [isOpen, focusCommentInput]);
 
     const updateTaskData = (data) => {
         setTaskData(data);
@@ -328,6 +342,14 @@ const TaskModal = ({
     };
 
     const handleUpdateStatus = (status) => {
+        if (status === 'completed') {
+            const hasIncompleteSubtasks = (taskData.subtasks || []).some(subtask => !subtask.completed);
+            if (hasIncompleteSubtasks) {
+                alert('Cannot mark task as complete. Please complete all subtasks first.'); // Will be replaced by modal
+                return;
+            }
+        }
+
         setTaskData('status', status);
         router.patch(`/admin/tasks/${selectedTask.id}/status`, {
             status: status
@@ -384,8 +406,8 @@ const TaskModal = ({
 
         if (editingComment) {
             // Update existing comment
-            const updatedComments = (taskData.comments || []).map(comment => 
-                comment.id === editingComment.id 
+            const updatedComments = (taskData.comments || []).map(comment =>
+                comment.id === editingComment.id
                     ? { ...comment, content: newComment, updated_at: new Date().toISOString() }
                     : comment
             );
@@ -406,8 +428,8 @@ const TaskModal = ({
             const newCommentItem = {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 content: newComment,
-                user_id: 1, // Current user ID
-                user: { id: 1, name: 'Current User', email: 'user@example.com', image: null },
+                user_id: auth.user.id,
+                user: { id: auth.user.id, name: auth.user.name, email: auth.user.email, image: auth.user.image },
                 created_at: new Date().toISOString()
             };
 
@@ -452,8 +474,8 @@ const TaskModal = ({
 
     const handleToggleSubtask = (subtaskId) => {
         // Update UI instantly
-        const updatedSubtasks = (taskData.subtasks || []).map(subtask => 
-            subtask.id === subtaskId 
+        const updatedSubtasks = (taskData.subtasks || []).map(subtask =>
+            subtask.id === subtaskId
                 ? { ...subtask, completed: !subtask.completed }
                 : subtask
         );
@@ -494,8 +516,8 @@ const TaskModal = ({
         if (!editingSubtaskTitle.trim()) return;
 
         // Update UI instantly
-        const updatedSubtasks = (taskData.subtasks || []).map(subtask => 
-            subtask.id === editingSubtask.id 
+        const updatedSubtasks = (taskData.subtasks || []).map(subtask =>
+            subtask.id === editingSubtask.id
                 ? { ...subtask, title: editingSubtaskTitle }
                 : subtask
         );
@@ -515,9 +537,9 @@ const TaskModal = ({
     };
 
     const getSubtaskProgress = () => {
-        if (!selectedTask.subtasks || selectedTask.subtasks.length === 0) return 0;
-        const completed = selectedTask.subtasks.filter(s => s.completed).length;
-        return Math.round((completed / selectedTask.subtasks.length) * 100);
+        if (!taskData.subtasks || taskData.subtasks.length === 0) return 0;
+        const completed = taskData.subtasks.filter(s => s.completed).length;
+        return Math.round((completed / taskData.subtasks.length) * 100);
     };
 
     // Tag handlers
@@ -608,40 +630,76 @@ const TaskModal = ({
         setNewComment(comment.content);
     };
 
-    const handleDeleteComment = (commentId) => {
-        if (confirm('Are you sure you want to delete this comment?')) {
+    const handleDeleteComment = (comment) => {
+        setCommentToDelete(comment);
+        setIsConfirmCommentDeleteModalOpen(true);
+    };
+
+    const confirmDeleteComment = () => {
+        if (commentToDelete) {
             // Update UI instantly
-            const updatedComments = (taskData.comments || []).filter(comment => comment.id !== commentId);
+            const updatedComments = (taskData.comments || []).filter(comment => comment.id !== commentToDelete.id);
             setTaskData('comments', updatedComments);
 
             // Send to backend
-            router.delete(`/admin/tasks/${selectedTask.id}/comments/${commentId}`, {}, {
+            router.delete(`/admin/tasks/${selectedTask.id}/comments/${commentToDelete.id}`, {}, {
                 onSuccess: () => {
                     updateTask();
+                    setIsConfirmCommentDeleteModalOpen(false);
+                    setCommentToDelete(null);
+                },
+                onError: () => {
+                    setIsConfirmCommentDeleteModalOpen(false);
+                    setCommentToDelete(null);
+                    alert('Failed to delete comment.');
                 }
             });
         }
     };
 
     const handleArchiveTask = () => {
-        if (confirm('Are you sure you want to archive this task?')) {
-            router.patch(`/admin/tasks/${selectedTask.id}/status`, { status: 'archived' }, {
+        setTaskToActOn(selectedTask);
+        setIsConfirmTaskArchiveModalOpen(true);
+    };
+
+    const confirmArchiveTask = () => {
+        if (taskToActOn) {
+            router.patch(`/admin/tasks/${taskToActOn.id}/status`, { status: 'archived' }, {
                 onSuccess: () => {
-                    updateTask()
+                    updateTask();
                     onUpdateTask?.();
+                    setIsConfirmTaskArchiveModalOpen(false);
+                    setTaskToActOn(null);
                     onClose();
+                },
+                onError: () => {
+                    setIsConfirmTaskArchiveModalOpen(false);
+                    setTaskToActOn(null);
+                    alert('Failed to archive task.');
                 }
             });
         }
     };
 
     const handleDeleteTask = () => {
-        if (confirm('Are you sure you want to delete this task?')) {
-            router.delete(`/admin/tasks/${selectedTask.id}`, {
+        setTaskToActOn(selectedTask);
+        setIsConfirmTaskDeleteModalOpen(true);
+    };
+
+    const confirmDeleteTask = () => {
+        if (taskToActOn) {
+            router.delete(`/admin/tasks/${taskToActOn.id}`, {
                 onSuccess: () => {
-                    updateTask()
+                    updateTask();
                     onUpdateTask?.();
+                    setIsConfirmTaskDeleteModalOpen(false);
+                    setTaskToActOn(null);
                     onClose();
+                },
+                onError: () => {
+                    setIsConfirmTaskDeleteModalOpen(false);
+                    setTaskToActOn(null);
+                    alert('Failed to delete task.');
                 }
             });
         }
@@ -652,7 +710,7 @@ const TaskModal = ({
             <DialogContent className="!max-w-4xl max-h-[90vh] !w-[90vw] p-0 bg-background border-border shadow-2xl rounded-lg">
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-light dark:bg-dark">
+                <div className="flex items-center justify-between px-6 py-1 border-b border-border bg-light dark:bg-dark">
                     <div className="flex items-center gap-4">
                         {/* Status Badge */}
                         <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusBadgeClass(taskData.status)}`}>
@@ -691,7 +749,7 @@ const TaskModal = ({
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Button variant="ghost" size="icon" onClick={onClose} className="text-dark dark:text-light hover:bg-alpha/20">
-                            <X className="h-5 w-5" />
+                            {/* <X className="h-5 w-5" /> */}
                         </Button>
                     </div>
                 </div>
@@ -825,7 +883,7 @@ const TaskModal = ({
                                                 <span className="text-sm font-medium text-dark/80 dark:text-light/80">Progress</span>
                                                 <span className="text-sm font-bold text-alpha">{getSubtaskProgress()}%</span>
                                             </div>
-                                            <Progress value={getSubtaskProgress()} className="h-2 bg-light/40 dark:bg-dark/40 rounded-full overflow-hidden" indicatorClassName="bg-gradient-to-r from-alpha to-alpha/80" />
+                                            <Progress value={getSubtaskProgress()} className="h-2 bg-light/40 dark:bg-dark/40 rounded-full overflow-hidden" indicatorClassName="bg-gradient-to-r from-alpha to-alpha/80 transition-all duration-500 ease-in-out" />
                                         </div>
 
                                         {/* Subtasks List - Elegant */}
@@ -912,23 +970,23 @@ const TaskModal = ({
                                             <span className="text-sm font-semibold text-alpha">{(taskData.attachments || []).length} files</span>
                                         </div>
                                     </div>
-                                     {/* Upload Button */}
-                                     <div className="  border border-alpha/20 rounded-lg">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                                                className="hidden"
-                                                id="file-upload"
-                                            />
-                                            <label
-                                                htmlFor="file-upload"
-                                                className="inline-flex items-center px-4 py-2  border border-zinc-700 text-sm font-medium rounded-md text-neutral-800 dark:text-light hover:text-white hover:bg-zinc-700 cursor-pointer transition-colors"
-                                            >
-                                                <UploadCloud className="h-4 w-4 mr-2" />
-                                                Upload Files
-                                            </label>
-                                        </div>
+                                    {/* Upload Button */}
+                                    <div className="  border border-alpha/20 rounded-lg">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                                            className="hidden"
+                                            id="file-upload"
+                                        />
+                                        <label
+                                            htmlFor="file-upload"
+                                            className="inline-flex items-center px-4 py-2  border border-zinc-700 text-sm font-medium rounded-md text-neutral-800 dark:text-light hover:text-white hover:bg-zinc-700 cursor-pointer transition-colors"
+                                        >
+                                            <UploadCloud className="h-4 w-4 mr-2" />
+                                            Upload Files
+                                        </label>
+                                    </div>
                                     {/* <Button variant="ghost" size="sm" onClick={() => setShowAttachments(!showAttachments)} className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/20 text-sm px-4 py-2 rounded-lg">
                                         {showAttachments ? 'Hide' : 'Show'}
                                     </Button> */}
@@ -991,7 +1049,7 @@ const TaskModal = ({
                                             </div>
                                         )}
 
-                                       
+
                                     </div>
                                 )}
                             </div>
@@ -1053,8 +1111,9 @@ const TaskModal = ({
                                 <h3 className="text-sm font-semibold text-dark dark:text-light">Comments</h3>
                             </div>
 
-                           {/* New Comment Input */}
-                           <div className="mb-4">
+
+                            {/* New Comment Input */}
+                            <div className="mb-4 ">
                                 <Textarea
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
@@ -1074,36 +1133,47 @@ const TaskModal = ({
                                 )}
                             </div>
 
-                            {/* Activity Feed */}
-                            <ScrollArea className="h-[calc(75vh-300px)]">
+                            {/* Comments List */}
+                            <ScrollArea className="h-[calc(75vh-300px)] pr-4">
                                 <div className="space-y-4">
                                     {(taskData.comments || []).map(comment => (
-                                        <div key={comment.id} className="flex gap-4 p-4 bg-gradient-to-r from-light/60 to-light/40 dark:from-dark/60 dark:to-dark/40 rounded-xl border border-alpha/20 hover:border-alpha/40 group transition-all duration-300 backdrop-blur-sm">
+                                        <div key={comment.id} className="flex gap-4 p-4 bg-light/80 dark:bg-neutral-800 rounded-xl border border-alpha/20 shadow-sm">
                                             <Avatar className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(comment.user)}>
                                                 <AvatarImage src={comment.user?.image ? `/storage/${comment.user.image}` : null} alt={comment.user?.name} />
                                                 <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{comment.user?.name?.slice(0, 2).toUpperCase() || '??'}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1">
-                                                <div className="flex items-baseline gap-2 mb-2">
-                                                    <span 
-                                                        className="text-xs font-medium text-dark dark:text-light cursor-pointer hover:text-alpha transition-colors"
-                                                        // onClick={}
-                                                    >
-                                                        {comment.user?.name === auth.user.name ? 'You' : comment.user?.name || 'Unknown User'}
-                                                    </span>
-                                                    <span className="text-xs text-dark/50 dark:text-light/50">
-                                                        {formatRelativeTime(comment.created_at)}
-                                                    </span>
-                                                </div>
-                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleEditComment(comment)} className="h-7 w-7 text-dark/60 dark:text-light/60 hover:text-alpha hover:bg-alpha/20 rounded-md">
-                                                            <Edit className="h-2 w-2" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteComment(comment.id)} className="h-7 w-7 text-dark/60 dark:text-light/60 hover:text-error hover:bg-error/20 rounded-md">
-                                                            <Trash2 className="h-2 w-2" />
-                                                        </Button>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span
+                                                            className="text-sm font-semibold text-dark dark:text-light cursor-pointer hover:text-alpha transition-colors"
+                                                            onClick={() => handleUserClick(comment.user)}
+                                                        >
+                                                            {comment.user?.name === auth.user.name ? 'You' : comment.user?.name || 'Unknown User'}
+                                                        </span>
+                                                        <span className="text-xs text-dark/50 dark:text-light/50">
+                                                            {formatRelativeTime(comment.created_at)}
+                                                        </span>
                                                     </div>
-                                                <p className="text-dark/80 dark:text-light/80 leading-relaxed">{comment.content}</p>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/10">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleEditComment(comment)}>
+                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                <span>Edit</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDeleteComment(comment)} className="text-red-600 dark:text-red-400">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                                <p className="text-sm text-dark/80 dark:text-light/80 leading-relaxed">{comment.content}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -1117,10 +1187,10 @@ const TaskModal = ({
 
             </DialogContent>
 
-            {/* User Detail Modal */}
+            {/* User Profile Dialog */}
             {showUserModal && selectedUser && (
                 <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-md bg-background dark:bg-dark border-border dark:border-alpha/20 rounded-lg shadow-lg">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-dark dark:text-light">User Profile</h2>
                             <Button variant="ghost" size="icon" onClick={() => setShowUserModal(false)} className="text-dark dark:text-light hover:bg-alpha/20">
@@ -1171,6 +1241,36 @@ const TaskModal = ({
                     </DialogContent>
                 </Dialog>
             )}
+
+            {/* Confirmation Modal for Comment Deletion */}
+            <ConfirmationModal
+                isOpen={isConfirmCommentDeleteModalOpen}
+                onClose={() => setIsConfirmCommentDeleteModalOpen(false)}
+                onConfirm={confirmDeleteComment}
+                title="Confirm Comment Deletion"
+                description="Are you sure you want to delete this comment? This action cannot be undone."
+                isDestructive={true}
+            />
+
+            {/* Confirmation Modal for Task Archive */}
+            <ConfirmationModal
+                isOpen={isConfirmTaskArchiveModalOpen}
+                onClose={() => setIsConfirmTaskArchiveModalOpen(false)}
+                onConfirm={confirmArchiveTask}
+                title="Confirm Task Archive"
+                description="Are you sure you want to archive this task? This action cannot be undone."
+                isDestructive={true}
+            />
+
+            {/* Confirmation Modal for Task Deletion */}
+            <ConfirmationModal
+                isOpen={isConfirmTaskDeleteModalOpen}
+                onClose={() => setIsConfirmTaskDeleteModalOpen(false)}
+                onConfirm={confirmDeleteTask}
+                title="Confirm Task Deletion"
+                description="Are you sure you want to delete this task? This action cannot be undone."
+                isDestructive={true}
+            />
         </Dialog>
     );
 };
