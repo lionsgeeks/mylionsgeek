@@ -71,7 +71,6 @@ class TaskController extends Controller
         return redirect()->back()
                 ->with('success', 'Task created successfully!');
         } catch (\Exception $e) {
-            \Log::error('Task creation failed: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Failed to create task: ' . $e->getMessage());
         }
@@ -84,7 +83,7 @@ class TaskController extends Controller
     {
         try {
         $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
                 'priority' => 'nullable|in:low,medium,high,urgent',
                 'status' => 'nullable|in:todo,in_progress,review,completed',
@@ -137,7 +136,6 @@ class TaskController extends Controller
         return redirect()->back()
                 ->with('success', 'Task updated successfully!');
         } catch (\Exception $e) {
-            \Log::error('Task update failed: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Failed to update task: ' . $e->getMessage());
         }
@@ -160,7 +158,6 @@ class TaskController extends Controller
             return redirect()->back()
                 ->with('success', 'Task deleted successfully!');
         } catch (\Exception $e) {
-            \Log::error('Task deletion failed: ' . $e->getMessage());
         return redirect()->back()
                 ->with('error', 'Failed to delete task: ' . $e->getMessage());
         }
@@ -202,9 +199,8 @@ class TaskController extends Controller
             'is_updated' => true
         ]);
 
-            return response()->json(['success' => true, 'message' => 'Task status updated successfully!']);
+            return back()->with('success', 'Task status updated successfully!');
         } catch (\Exception $e) {
-            \Log::error('Task status update failed: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to update task status: ' . $e->getMessage()], 500);
         }
     }
@@ -240,23 +236,36 @@ class TaskController extends Controller
     {
         $request->validate([
             'subtask_id' => 'required|string',
-            'title' => 'required|string|max:255',
-            'completed' => 'boolean'
+            'title' => 'nullable|string|max:255',
+            'completed' => 'nullable|boolean'
         ]);
 
         $subtasks = $task->subtasks ?? [];
         $subtaskIndex = array_search($request->subtask_id, array_column($subtasks, 'id'));
         
         if ($subtaskIndex !== false) {
-            $subtasks[$subtaskIndex]['title'] = $request->title;
-            $subtasks[$subtaskIndex]['completed'] = $request->completed ?? false;
+            if ($request->has('title')) {
+                $subtasks[$subtaskIndex]['title'] = $request->title;
+            }
+            if ($request->has('completed')) {
+                $subtasks[$subtaskIndex]['completed'] = $request->completed;
+            }
             $subtasks[$subtaskIndex]['updated_at'] = now()->toISOString();
             
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
+            
             $task->update(['subtasks' => $subtasks]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return redirect()->back()
+                ->with('success', 'Subtask updated successfully.');
         }
 
         return redirect()->back()
-            ->with('success', 'Subtask updated successfully.');
+            ->with('error', 'Subtask not found.');
     }
 
     /**
@@ -277,31 +286,6 @@ class TaskController extends Controller
             ->with('success', 'Subtask deleted successfully.');
     }
 
-    /**
-     * Add comment to task
-     */
-    public function addComment(Request $request, Task $task)
-    {
-        $request->validate([
-            'content' => 'required|string',
-            'mentions' => 'nullable|array',
-            'mentions.*' => 'exists:users,id'
-        ]);
-
-        $comments = $task->comments ?? [];
-        $comments[] = [
-            'id' => uniqid(),
-            'user_id' => Auth::id(),
-            'content' => $request->content,
-            'mentions' => $request->mentions ?? [],
-            'created_at' => now()->toISOString()
-        ];
-
-        $task->update(['comments' => $comments]);
-
-        return redirect()->back()
-            ->with('success', 'Comment added successfully.');
-    }
 
     /**
      * Toggle task pin status
@@ -320,9 +304,248 @@ class TaskController extends Controller
             return redirect()->back()
                 ->with('success', $task->is_pinned ? 'Task pinned successfully!' : 'Task unpinned successfully!');
         } catch (\Exception $e) {
-            \Log::error('Task pin toggle failed: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Failed to toggle task pin: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update task title
+     */
+    public function updateTitle(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'title' => 'required|string|max:255'
+            ]);
+
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
+            
+            $task->update(['title' => $request->title]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return back()->with('success', 'Task title updated successfully!');
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update task title: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update task description
+     */
+    public function updateDescription(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'description' => 'nullable|string'
+            ]);
+
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
+            
+            $task->update(['description' => $request->description]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return redirect()->back()->with('success', 'Task description updated successfully!');
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update task description: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Update task priority
+     */
+    public function updatePriority(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'priority' => 'required|in:low,medium,high,urgent'
+            ]);
+
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
+            
+            $task->update(['priority' => $request->priority]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return redirect()->back()->with('success', 'Task priority updated successfully!');
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update task priority: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Add attachment to task
+     */
+    public function addAttachment(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|max:10240', // 10MB max
+                'name' => 'nullable|string|max:255'
+            ]);
+
+            $file = $request->file('file');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('task-attachments', $filename, 'public');
+
+            $attachments = $task->attachments ?? [];
+            $attachments[] = [
+                'id' => uniqid(),
+                'name' => $request->name ?? $file->getClientOriginalName(),
+                'path' => $path,
+                'size' => $file->getSize(),
+                'type' => $file->getMimeType(),
+                'uploaded_by' => Auth::id(),
+                'uploaded_at' => now()->toISOString()
+            ];
+
+            $task->update(['attachments' => $attachments]);
+
+            return redirect()->back()
+                ->with('success', 'Attachment added successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to upload attachment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove attachment from task
+     */
+    public function removeAttachment(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'attachment_id' => 'required|string'
+            ]);
+
+            $attachments = $task->attachments ?? [];
+            $attachments = array_filter($attachments, fn($attachment) => $attachment['id'] !== $request->attachment_id);
+            
+            $task->update(['attachments' => array_values($attachments)]);
+
+            return redirect()->back()
+                ->with('success', 'Attachment removed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to remove attachment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update task assignees
+     */
+    public function updateAssignees(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'assignees' => 'nullable|array',
+                'assignees.*' => 'exists:users,id'
+            ]);
+
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
+            
+            $task->update(['assignees' => $request->assignees ?? []]);
+            
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return redirect()->back()->with('success', 'Task assignees updated successfully!');
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to update task assignees: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Add comment to task
+     */
+    public function addComment(Request $request, Task $task)
+    {
+        try {
+            $request->validate([
+                'content' => 'required|string|max:1000'
+            ]);
+
+            $comments = $task->comments ?? [];
+            $comments[] = [
+                'id' => uniqid(),
+                'content' => $request->content,
+                'user_id' => Auth::id(),
+                'user' => Auth::user()->only('id', 'name', 'email', 'image'),
+                'created_at' => now()->toISOString()
+            ];
+
+            $task->update(['comments' => $comments]);
+
+            return redirect()->back()
+                ->with('success', 'Comment added successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to add comment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update comment
+     */
+    public function updateComment(Request $request, Task $task, $commentId)
+    {
+        try {
+            $request->validate([
+                'content' => 'required|string|max:1000'
+            ]);
+
+            $comments = $task->comments ?? [];
+            $commentIndex = array_search($commentId, array_column($comments, 'id'));
+            
+            if ($commentIndex !== false) {
+                $comments[$commentIndex]['content'] = $request->content;
+                $comments[$commentIndex]['updated_at'] = now()->toISOString();
+                $task->update(['comments' => $comments]);
+                
+                return redirect()->back()
+                    ->with('success', 'Comment updated successfully.');
+            }
+
+            return redirect()->back()
+                ->with('error', 'Comment not found.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to update comment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete comment
+     */
+    public function deleteComment(Request $request, Task $task, $commentId)
+    {
+        try {
+            $comments = $task->comments ?? [];
+            $commentIndex = array_search($commentId, array_column($comments, 'id'));
+            
+            if ($commentIndex !== false) {
+                unset($comments[$commentIndex]);
+                $task->update(['comments' => array_values($comments)]);
+                
+                return redirect()->back()
+                    ->with('success', 'Comment deleted successfully.');
+            }
+
+            return redirect()->back()
+                ->with('error', 'Comment not found.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to delete comment: ' . $e->getMessage());
         }
     }
 }

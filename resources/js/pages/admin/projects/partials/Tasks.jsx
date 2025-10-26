@@ -596,6 +596,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             {/* Task Detail Modal */}
             <TaskModal
                 isOpen={isTaskDetailModalOpen}
+                projectId={projectId}
+                setSelectedTask={setSelectedTask}
                 onClose={() => setIsTaskDetailModalOpen(false)}
                 selectedTask={selectedTask}
                 teamMembers={safeTeamMembers}

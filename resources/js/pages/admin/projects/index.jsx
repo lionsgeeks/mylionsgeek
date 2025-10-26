@@ -225,7 +225,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     return (
         <AppLayout>
             <Head title="Projects Management" />
-
+            
             <Banner
                 illustration={illustration}
                 greeting="Welcome"
@@ -256,13 +256,13 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                            <Input
-                                placeholder="Search projects..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                    <Input
+                                        placeholder="Search projects..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 w-64"
-                            />
-                        </div>
+                                    />
+                                </div>
                         <Button
                             variant="outline"
                             onClick={() => setIsFiltersOpen(true)}
@@ -270,20 +270,20 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                         >
                             <Filter className="h-4 w-4" />
                             Filters
-                        </Button>
+                                </Button>
                         <Button
                             onClick={() => setIsCreateModalOpen(true)}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
                         >
-                            <Plus className="h-4 w-4 mr-2" />
-                            New Project
-                        </Button>
-                    </div>
-                </div>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    New Project
+                                </Button>
+                            </div>
+                        </div>
 
                 {/* Projects Grid - Compact Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {projects.data.map((project) => (
+                            {projects.data.map((project) => (
                         <div
                             key={project.id}
                             className="group relative bg-white dark:bg-transparent rounded-lg border border-dark/10 dark:border-light/30 hover:border-[var(--color-alpha)] dark:hover:border-[var(--color-alpha)] transition-all duration-200 hover:shadow-lg dark:hover:shadow-xl cursor-pointer flex flex-col h-80"
@@ -293,56 +293,56 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             <div className="p-3 border-b border-gray-100 dark:border-gray-700">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        {project.photo ? (
-                                            <img
-                                                src={`/storage/${project.photo}`}
-                                                alt={project.name}
+                                                {project.photo ? (
+                                                    <img
+                                                        src={`/storage/${project.photo}`}
+                                                        alt={project.name}
                                                 className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-                                            />
-                                        ) : (
+                                                    />
+                                                ) : (
                                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80 flex items-center justify-center flex-shrink-0">
                                                 <FolderOpen className="h-4 w-4 text-white" />
-                                            </div>
-                                        )}
+                                                    </div>
+                                                )}
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-semibold text-gray-900 dark:text-white truncate text-sm">{project.name}</h3>
                                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                by {project.creator?.name}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <DropdownMenu>
+                                                        by {project.creator?.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <DropdownMenu>
                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                             <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0">
                                                 <MoreVertical className="h-3 w-3" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.get(`/admin/projects/${project.id}`); }}>
                                                 <Eye className="h-4 w-4 mr-2" />
-                                                View Details
-                                            </DropdownMenuItem>
+                                                        View Details
+                                                    </DropdownMenuItem>
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(project); }}>
-                                                <Pencil className="h-4 w-4 mr-2" />
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
+                                                        <Pencil className="h-4 w-4 mr-2" />
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem 
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(project); }}
-                                                className="text-red-600"
-                                            >
-                                                <Trash className="h-4 w-4 mr-2" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                                                        className="text-red-600"
+                                                    >
+                                                        <Trash className="h-4 w-4 mr-2" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
 
-                                <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between">
                                     <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 text-xs px-2 py-1`}>
-                                        {getStatusIcon(project.status)}
+                                                {getStatusIcon(project.status)}
                                         <span className="capitalize text-xs">{project.status.replace('_', ' ')}</span>
-                                    </Badge>
+                                            </Badge>
                                     <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                         <div className="flex items-center gap-1">
                                             <CheckSquare className="h-3 w-3" />
@@ -361,18 +361,18 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-5  overflow-hidden">
                                     {project.description || 'No description provided'}
                                 </p>
-                            </div>
+                                        </div>
 
                             {/* Progress Section - Compact */}
-                            {project.tasks_count > 0 && (
+                                        {project.tasks_count > 0 && (
                                 <div className="px-3 pb-2">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Progress</span>
                                         <span className="text-xs font-semibold text-[var(--color-alpha)]">{project.progress_percentage || 0}%</span>
-                                    </div>
+                                                </div>
                                     <Progress value={project.progress_percentage || 0} className="h-1" />
-                                </div>
-                            )}
+                                            </div>
+                                        )}
 
                             {/* Footer - Fixed Height */}
                             <div className="p-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
@@ -400,7 +400,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                     </div>
                                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                         <Calendar className="h-3 w-3" />
-                                        <span>{new Date(project.created_at).toLocaleDateString()}</span>
+                                            <span>{new Date(project.created_at).toLocaleDateString()}</span>
                                     </div>
                                 </div>
 
@@ -444,9 +444,9 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             </div>
                         </div>
                     ))}
-                </div>
+                        </div>
 
-                {projects.data.length === 0 && (
+                        {projects.data.length === 0 && (
                     <div className="text-center py-16">
                         <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[var(--color-alpha)]/10 to-[var(--color-alpha)]/5 flex items-center justify-center">
                             <FolderOpen className="h-12 w-12 text-[var(--color-alpha)]" />
@@ -460,8 +460,8 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             <Plus className="h-4 w-4 mr-2" />
                             Create Project
                         </Button>
-                    </div>
-                )}
+                            </div>
+                        )}
             </div>
 
             {/* Project Filters Sidebar */}
