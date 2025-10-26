@@ -165,7 +165,7 @@ class ProjectController extends Controller
             $data['last_activity'] = now();
             
             // Debug: Log what we're receiving
-            \Log::info('Update request data:', [
+            Log::info('Update request data:', [
                 'all' => $request->all(),
                 'hasFile' => $request->hasFile('photo'),
                 'file' => $request->file('photo'),
@@ -395,5 +395,76 @@ class ProjectController extends Controller
 
         return redirect()->route('admin.projects.show', $project->id)
             ->with('success', "You have successfully joined the project: {$project->name}");
+    }
+
+    /**
+     * Upload attachment to project
+     */
+    public function uploadAttachment(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10MB max
+            'project_id' => 'required|exists:projects,id'
+        ]);
+
+        $project = Project::findOrFail($request->project_id);
+        
+        // Check if user has access to this project
+        if (!$project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
+            return redirect()->back()->with('error', 'You do not have permission to upload files to this project.');
+        }
+
+        try {
+            $file = $request->file('file');
+            $originalName = $file->getClientOriginalName();
+            $mimeType = $file->getMimeType();
+            $size = $file->getSize();
+            
+            // Generate unique filename
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('attachments', $filename, 'public');
+
+            // Create attachment record
+            $attachment = $project->attachments()->create([
+                'name' => $filename,
+                'original_name' => $originalName,
+                'path' => $path,
+                'mime_type' => $mimeType,
+                'size' => $size,
+                'uploaded_by' => Auth::id()
+            ]);
+
+            return redirect()->back()->with('success', 'File uploaded successfully.');
+        } catch (\Exception $e) {
+            Log::error('File upload failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to upload file: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete project attachment
+     */
+    public function deleteAttachment(Attachment $attachment)
+    {
+        try {
+            // Check if user has permission to delete this attachment
+            $project = $attachment->project;
+            if (!$project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
+                return redirect()->back()->with('error', 'You do not have permission to delete this file.');
+            }
+
+            // Delete file from storage
+            if ($attachment->path && Storage::disk('public')->exists($attachment->path)) {
+                Storage::disk('public')->delete($attachment->path);
+            }
+
+            // Delete attachment record
+            $attachment->delete();
+
+            return redirect()->back()->with('success', 'File deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('File deletion failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete file: ' . $e->getMessage());
+        }
     }
 }

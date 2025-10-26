@@ -47,4 +47,8 @@ Route::delete('tasks/{task}/comments/{comment}', [TaskController::class, 'delete
     // Attachment routes
     Route::resource('attachments', AttachmentController::class)->only(['store', 'destroy']);
     Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
+    
+    // Project attachment routes
+    Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
+    Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');
 });

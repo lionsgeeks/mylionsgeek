@@ -189,6 +189,23 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
         return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
     }, [tasks]);
 
+    // Collect all task attachments
+    const allTaskAttachments = useMemo(() => {
+        const taskAttachments = [];
+        tasks.forEach(task => {
+            if (task.attachments && Array.isArray(task.attachments)) {
+                task.attachments.forEach(attachment => {
+                    taskAttachments.push({
+                        ...attachment,
+                        task_id: task.id,
+                        task_title: task.title
+                    });
+                });
+            }
+        });
+        return taskAttachments;
+    }, [tasks]);
+
     const recentActivities = useMemo(() => {
         const activities = [];
 
@@ -283,6 +300,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                 <ProjectHeader
                     project={project}
                     teamMembers={teamMembers}
+                    tasks={tasks}
                 />
 
                 {/* Main Content with Sidebar */}
@@ -296,58 +314,62 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                         <div className="mb-6 py-3">
                             <Tabs defaultValue="overview" onValueChange={setActiveTab} value={activeTab}>
                                 <TabsList className="grid grid-cols-6 w-full">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
                                     <TabsTrigger value="files">Files</TabsTrigger>
-                                    <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                                    {/* <TabsTrigger value="attachments">Attachments</TabsTrigger> */}
                                     <TabsTrigger value="notes">Notes</TabsTrigger>
+                                    <TabsTrigger value="team">Team</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
                                         Activity
                                         {recentActivities.filter(a => !a.read).length > 0 && (
-                                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] text-primary-foreground">
                                                 {recentActivities.filter(a => !a.read).length}
                                             </span>
                                         )}
                                     </TabsTrigger>
-                        <TabsTrigger value="team">Team</TabsTrigger>
-                    </TabsList>
+                                </TabsList>
 
                                 <TabsContent value="overview" className="mt-6">
                                     <Overview
-                            project={project}
-                            teamMembers={teamMembers}
+                                        project={project}
+                                        teamMembers={teamMembers}
                                         tasks={tasks}
-                        />
-                    </TabsContent>
+                                    />
+                                </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
                                     <Tasks
-                            tasks={tasks}
-                            teamMembers={teamMembers}
+                                        tasks={tasks}
+                                        teamMembers={teamMembers}
                                         projectId={project.id}
-                        />
-                    </TabsContent>
+                                    />
+                                </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
-                                    <Files files={files} />
+                                    <Files 
+                                        projectAttachments={attachments} 
+                                        taskAttachments={allTaskAttachments}
+                                        projectId={project.id}
+                                    />
                                 </TabsContent>
 
-                                <TabsContent value="attachments" className="mt-6">
+                                {/* <TabsContent value="attachments" className="mt-6">
                                     <ProjectAttachments attachments={attachments} />
-                                </TabsContent>
+                                </TabsContent> */}
 
                                 <TabsContent value="notes" className="mt-6">
-                                    <Notes notes={notes} />
+                                    <Notes notes={notes} projectId={project.id} />
                                 </TabsContent>
 
                                 <TabsContent value="activity" className="mt-6">
                                     <Activity activities={recentActivities} />
-                    </TabsContent>
+                                </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
                                     <Team teamMembers={teamMembers} />
-                    </TabsContent>
-                </Tabs>
+                                </TabsContent>
+                            </Tabs>
                         </div>
                     </div>
 

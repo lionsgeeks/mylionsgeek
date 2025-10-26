@@ -304,8 +304,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             )}
             
             {/* Header and Filters */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row justify-between items-start items-center gap-2">
+                <div className="flex items-center rounded-lg bg-neutral-200 dark:bg-neutral-800 gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input 
@@ -379,7 +379,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select>
 
-                    <Select
+                    {/* <Select
                         value={sortDirection}
                         onValueChange={setSortDirection}
                     >
@@ -390,13 +390,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             <SelectItem value="asc">Ascending</SelectItem>
                             <SelectItem value="desc">Descending</SelectItem>
                         </SelectContent>
-                    </Select>
+                    </Select> */}
 
+                </div>
                     <Button onClick={() => setIsCreateModalOpen(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Task
                     </Button>
-                </div>
             </div>
 
             {/* Tasks Table */}

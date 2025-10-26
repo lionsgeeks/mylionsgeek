@@ -34,7 +34,7 @@ import {
     Star
 } from 'lucide-react';
 
-const ProjectHeader = ({ project, teamMembers }) => {
+const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
@@ -59,6 +59,23 @@ const ProjectHeader = ({ project, teamMembers }) => {
             default: return <FolderOpen className="h-4 w-4" />;
         }
     };
+
+    // Calculate dynamic project stats
+    const completedTasks = tasks.filter(task => task.status === 'completed').length;
+    const totalTasks = tasks.length;
+    const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    // Calculate days until deadline
+    const getDaysUntilDeadline = () => {
+        if (!project.end_date) return null;
+        const today = new Date();
+        const deadline = new Date(project.end_date);
+        const diffTime = deadline - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    const daysUntilDeadline = getDaysUntilDeadline();
 
     return (
         <>
@@ -178,7 +195,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Progress</p>
-                                    <p className="text-2xl font-bold text-foreground">75%</p>
+                                    <p className="text-2xl font-bold text-foreground">{progressPercentage}%</p>
                                 </div>
                                 <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
                                     <TrendingUp className="h-5 w-5 text-[var(--color-alpha)]" />
@@ -192,7 +209,7 @@ const ProjectHeader = ({ project, teamMembers }) => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Tasks</p>
-                                    <p className="text-2xl font-bold text-foreground">24</p>
+                                    <p className="text-2xl font-bold text-foreground">{totalTasks}</p>
                                 </div>
                                 <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
                                     <CheckCircle className="h-5 w-5 text-[var(--color-alpha)]" />
@@ -220,7 +237,11 @@ const ProjectHeader = ({ project, teamMembers }) => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Deadline</p>
-                                    <p className="text-2xl font-bold text-foreground">15</p>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {daysUntilDeadline !== null ? (
+                                            daysUntilDeadline > 0 ? `${daysUntilDeadline}` : 'Overdue'
+                                        ) : 'No deadline'}
+                                    </p>
                                 </div>
                                 <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
                                     <Target className="h-5 w-5 text-[var(--color-alpha)]" />

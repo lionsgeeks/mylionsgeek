@@ -118,7 +118,7 @@ const Overview = ({ project, teamMembers, tasks = [] }) => {
                             <div className="flex items-center justify-between">
                                 <span className="text-sm font-medium">Due Date</span>
                                 <span className="text-sm text-muted-foreground">
-                                    {project.due_date ? new Date(project.due_date).toLocaleDateString() : 'Not set'}
+                                    {project.end_date ? new Date(project.end_date).toLocaleDateString() : 'Not set'}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">

@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useForm, router } from '@inertiajs/react';
 import { 
     MoreHorizontal, 
     Edit, 
@@ -14,18 +16,22 @@ import {
     Trash, 
     Plus,
     Search,
-    StickyNote
+    StickyNote,
+    Pin,
+    PinOff
 } from 'lucide-react';
 
-const Notes = ({ notes = [] }) => {
+const Notes = ({ notes = [], projectId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedNote, setSelectedNote] = useState(null);
-    const [newNote, setNewNote] = useState({
+
+    const { data: newNote, setData: setNewNote, post: createNote, put: updateNote, delete: deleteNote } = useForm({
         title: '',
         content: '',
-        color: 'bg-amber-50 dark:bg-amber-950/50'
+        color: 'bg-amber-50 dark:bg-amber-950/50',
+        project_id: projectId
     });
 
     const filteredNotes = notes.filter(note => 
@@ -43,18 +49,61 @@ const Notes = ({ notes = [] }) => {
     ];
 
     const handleCreateNote = () => {
-        console.log('Creating note:', newNote);
-        setNewNote({
-            title: '',
-            content: '',
-            color: 'bg-amber-50 dark:bg-amber-950/50'
+        createNote('/admin/project-notes', {
+            onSuccess: () => {
+                setNewNote({
+                    title: '',
+                    content: '',
+                    color: 'bg-amber-50 dark:bg-amber-950/50',
+                    project_id: projectId
+                });
+                setIsCreateModalOpen(false);
+            },
+            onError: (errors) => {
+                console.error('Failed to create note:', errors);
+                alert('Failed to create note: ' + (errors.message || 'Unknown error'));
+            }
         });
-        setIsCreateModalOpen(false);
     };
 
     const handleEditNote = (note) => {
         setSelectedNote(note);
         setIsEditModalOpen(true);
+    };
+
+    const handleUpdateNote = () => {
+        if (!selectedNote) return;
+        
+        updateNote(`/admin/project-notes/${selectedNote.id}`, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                setSelectedNote(null);
+            },
+            onError: (errors) => {
+                console.error('Failed to update note:', errors);
+                alert('Failed to update note: ' + (errors.message || 'Unknown error'));
+            }
+        });
+    };
+
+    const handleDeleteNote = (noteId) => {
+        if (confirm('Are you sure you want to delete this note?')) {
+            deleteNote(`/admin/project-notes/${noteId}`, {
+                onError: (errors) => {
+                    console.error('Failed to delete note:', errors);
+                    alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
+                }
+            });
+        }
+    };
+
+    const handleTogglePin = (noteId) => {
+        router.post(`/admin/project-notes/${noteId}/pin`, {}, {
+            onError: (errors) => {
+                console.error('Failed to toggle pin:', errors);
+                alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
+            }
+        });
     };
 
     return (
@@ -90,11 +139,14 @@ const Notes = ({ notes = [] }) => {
                     filteredNotes.map((note) => (
                         <Card
                             key={note.id}
-                            className={`${note.color} border shadow-sm hover:shadow-md transition-shadow duration-200`}
+                            className={`${note.color || 'bg-amber-50 dark:bg-amber-950/50'} border shadow-sm hover:shadow-md transition-shadow duration-200`}
                         >
                             <CardHeader className="p-4 pb-2">
                                 <div className="flex items-start justify-between">
-                                    <CardTitle className="text-lg">{note.title}</CardTitle>
+                                    <div className="flex items-center gap-2">
+                                        {note.is_pinned && <Pin className="h-4 w-4 text-amber-600" />}
+                                        <CardTitle className="text-lg">{note.title}</CardTitle>
+                                    </div>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -106,20 +158,52 @@ const Notes = ({ notes = [] }) => {
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 <span>Edit</span>
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleTogglePin(note.id)}>
+                                                {note.is_pinned ? (
+                                                    <>
+                                                        <PinOff className="mr-2 h-4 w-4" />
+                                                        <span>Unpin</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Pin className="mr-2 h-4 w-4" />
+                                                        <span>Pin</span>
+                                                    </>
+                                                )}
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem>
                                                 <ArrowRight className="mr-2 h-4 w-4" />
                                                 <span>Share</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="text-destructive">
+                                            <DropdownMenuItem 
+                                                className="text-destructive"
+                                                onClick={() => handleDeleteNote(note.id)}
+                                            >
                                                 <Trash className="mr-2 h-4 w-4" />
                                                 <span>Delete</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
-                                <div className="text-xs text-muted-foreground">
-                                    Last updated: {new Date(note.updatedAt).toLocaleDateString()}
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage 
+                                                src={note.user?.image ? `/storage/${note.user.image}` : null} 
+                                                alt={note.user?.name} 
+                                            />
+                                            <AvatarFallback>
+                                                {note.user?.name?.substring(0, 2).toUpperCase() || '??'}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs text-muted-foreground">
+                                            {note.user?.name || 'Unknown User'}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {new Date(note.updated_at).toLocaleDateString()}
+                                    </div>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0">
@@ -145,7 +229,7 @@ const Notes = ({ notes = [] }) => {
                             <Input 
                                 id="title" 
                                 value={newNote.title}
-                                onChange={(e) => setNewNote({...newNote, title: e.target.value})}
+                                onChange={(e) => setNewNote('title', e.target.value)}
                                 placeholder="Enter note title..."
                             />
                         </div>
@@ -154,7 +238,7 @@ const Notes = ({ notes = [] }) => {
                             <Textarea 
                                 id="content" 
                                 value={newNote.content}
-                                onChange={(e) => setNewNote({...newNote, content: e.target.value})}
+                                onChange={(e) => setNewNote('content', e.target.value)}
                                 placeholder="Enter note content..."
                                 rows={6}
                             />
@@ -163,7 +247,7 @@ const Notes = ({ notes = [] }) => {
                             <Label htmlFor="color">Color Theme</Label>
                             <Select 
                                 value={newNote.color} 
-                                onValueChange={(value) => setNewNote({...newNote, color: value})}
+                                onValueChange={(value) => setNewNote('color', value)}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
@@ -204,20 +288,25 @@ const Notes = ({ notes = [] }) => {
                                 <Label htmlFor="edit-title">Note Title</Label>
                                 <Input 
                                     id="edit-title" 
-                                    defaultValue={selectedNote.title}
+                                    value={selectedNote.title}
+                                    onChange={(e) => setSelectedNote({...selectedNote, title: e.target.value})}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-content">Content</Label>
                                 <Textarea 
                                     id="edit-content" 
-                                    defaultValue={selectedNote.content}
+                                    value={selectedNote.content}
+                                    onChange={(e) => setSelectedNote({...selectedNote, content: e.target.value})}
                                     rows={6}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-color">Color Theme</Label>
-                                <Select defaultValue={selectedNote.color}>
+                                <Select 
+                                    value={selectedNote.color || 'bg-amber-50 dark:bg-amber-950/50'}
+                                    onValueChange={(value) => setSelectedNote({...selectedNote, color: value})}
+                                >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -236,7 +325,7 @@ const Notes = ({ notes = [] }) => {
                         <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={() => setIsEditModalOpen(false)}>
+                        <Button onClick={handleUpdateNote}>
                             Save Changes
                         </Button>
                     </DialogFooter>
