@@ -1176,6 +1176,128 @@ class ReservationsController extends Controller
     }
 
     /**
+     * Show reservation details page
+     */
+    public function details(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservations table missing');
+        }
+
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
+            ->first();
+
+        if (!$reservationData) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservation not found');
+        }
+
+        // Get equipment details
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+            
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            
+            $equipments = $query->get()
+                ->map(function ($equipment) {
+                    $img = isset($equipment->image) ? $equipment->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $equipment->id,
+                        'reference' => $equipment->reference,
+                        'mark' => $equipment->mark,
+                        'type_name' => $equipment->type_name,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get team members
+        $teamMembers = [];
+        if (Schema::hasTable('reservation_teams')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('u.id', 'u.name', 'u.email');
+            
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+            
+            $teamMembers = $query->get()
+                ->map(function ($member) {
+                    $img = isset($member->image) ? $member->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'email' => $member->email,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get approver details
+        $approverName = null;
+        if ($reservationData->approve_id) {
+            $approver = DB::table('users')->where('id', $reservationData->approve_id)->first();
+            $approverName = $approver ? $approver->name : null;
+        }
+
+        return Inertia::render('admin/reservations/details', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'user_name' => $reservationData->user_name,
+                'user_email' => $reservationData->user_email,
+                'date' => $reservationData->date ?? $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'type' => $reservationData->type,
+                'studio_name' => $reservationData->studio_name,
+                'approved' => (bool) ($reservationData->approved ?? 0),
+                'canceled' => (bool) ($reservationData->canceled ?? 0),
+                'passed' => (bool) ($reservationData->passed ?? 0),
+                'start_signed' => (bool) ($reservationData->start_signed ?? 0),
+                'end_signed' => (bool) ($reservationData->end_signed ?? 0),
+                'approver_name' => $approverName,
+                'created_at' => $reservationData->created_at,
+                'updated_at' => $reservationData->updated_at,
+            ],
+            'equipments' => $equipments,
+            'teamMembers' => $teamMembers,
+        ]);
+    }
+
+    /**
      * Download verification report PDF
      */
     public function downloadReport(int $reservation)

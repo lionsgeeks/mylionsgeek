@@ -34,8 +34,15 @@
             </p>
         </div>
 
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ url('/admin/reservations/' . $reservation->id . '/details') }}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                📋 View Reservation Details
+            </a>
+        </div>
+
         <p style="font-size: 16px; line-height: 1.6;">
-            You can manage this reservation by logging into the admin panel and navigating to the reservations section.
+            You can also manage this reservation by logging into the admin panel and navigating to the reservations section.
         </p>
 
         <p style="margin-top: 40px; font-size: 15px;">

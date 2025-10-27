@@ -752,6 +752,16 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 cursor-pointer"
+                            onClick={() => {
+                                router.visit(`/admin/reservations/${reservation.id}/details`);
+                            }}
+                        >
+                            <FileText className="h-4 w-4 mr-1" /> View Full Details
+                        </Button>
                         {reservation.approved && reservation.type !== 'cowork' && (
                             <Button
                                 size="sm"

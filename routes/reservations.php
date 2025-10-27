@@ -11,6 +11,8 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
         ->name('admin.reservations.cancel');
     Route::get('/reservations/{reservation}/info', [ReservationsController::class, 'info'])
         ->name('admin.reservations.info');
+    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'details'])
+        ->name('admin.reservations.details');
     Route::get('/reservations/{reservation}/pdf', [ReservationsController::class, 'generatePdf'])
         ->name('admin.reservations.pdf');
     Route::get('/places/{type}/{id}/reservations', [ReservationsController::class, 'byPlace'])
