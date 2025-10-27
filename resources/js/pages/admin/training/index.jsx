@@ -85,15 +85,19 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
             <Head title="Training" />
 
             <div className="min-h-screen p-4 md:p-6">
+                <Banner
+                    illustration={illustration}
+                    size={400}
+                />
                 {/* Premium Header */}
                 <div className="mb-8 relative overflow-hidden rounded-3xl  p-8 ">
 
 
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                            {/* <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                                 <GraduationCap className="w-8 h-8 text-white" />
-                            </div>
+                            </div> */}
                             <div>
                                 <h1 className="dark:text-white text-4xl md:text-5xl font-black text-black mb-1 flex items-center gap-2">
                                     Training Programs
