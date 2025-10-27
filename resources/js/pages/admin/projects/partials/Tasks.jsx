@@ -304,7 +304,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             )}
             
             {/* Header and Filters */}
-            <div className="flex flex-col md:flex-row justify-between items-start items-center gap-2">
+            <div className="flex flex-col md:flex-row justify-between  items-center gap-2">
                 <div className="flex items-center rounded-lg bg-neutral-200 dark:bg-neutral-800 gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

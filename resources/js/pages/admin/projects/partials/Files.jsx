@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm, router } from '@inertiajs/react';
 import { 
     FileText, 
@@ -37,6 +38,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [uploadFile, setUploadFile] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [fileFilter, setFileFilter] = useState('all');
 
     // Combine all attachments (project + task attachments)
     const allAttachments = [
@@ -44,10 +46,30 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         ...taskAttachments.map(att => ({ ...att, source: 'task' }))
     ];
 
-    const filteredFiles = allAttachments.filter(file => 
-        file.original_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-        file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase())
-    );
+    const filteredFiles = allAttachments.filter(file => {
+        const matchesSearch = file.original_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+                             file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
+        
+        if (!matchesSearch) return false;
+        
+        if (fileFilter === 'all') return true;
+        
+        const mimeType = file.mime_type || file.type || '';
+        switch (fileFilter) {
+            case 'images':
+                return mimeType.startsWith('image/');
+            case 'documents':
+                return mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text');
+            case 'videos':
+                return mimeType.startsWith('video/');
+            case 'audio':
+                return mimeType.startsWith('audio/');
+            case 'archives':
+                return mimeType.includes('zip') || mimeType.includes('archive') || mimeType.includes('rar');
+            default:
+                return true;
+        }
+    });
 
     const getFileIcon = (mimeType, fileName) => {
         if (mimeType?.startsWith('image/')) return <Image className="h-12 w-12 text-pink-500" />;
@@ -112,7 +134,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         <div className="space-y-6">
             {/* Header and Search */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input 
@@ -123,6 +145,21 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    
+                    {/* File Type Filter */}
+                    <Select value={fileFilter} onValueChange={setFileFilter}>
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Filter by type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Files</SelectItem>
+                            <SelectItem value="images">Images</SelectItem>
+                            <SelectItem value="documents">Documents</SelectItem>
+                            <SelectItem value="videos">Videos</SelectItem>
+                            <SelectItem value="audio">Audio</SelectItem>
+                            <SelectItem value="archives">Archives</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <Button onClick={() => setIsUploadModalOpen(true)}>

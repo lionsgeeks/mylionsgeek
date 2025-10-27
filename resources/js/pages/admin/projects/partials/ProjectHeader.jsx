@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm, router } from '@inertiajs/react';
 import { 
     Settings, 
     Share2, 
@@ -39,6 +40,14 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    const { data: editData, setData: setEditData, put: updateProject } = useForm({
+        name: project.name || '',
+        description: project.description || '',
+        status: project.status || 'active',
+        start_date: project.start_date || '',
+        end_date: project.end_date || ''
+    });
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -77,6 +86,30 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
 
     const daysUntilDeadline = getDaysUntilDeadline();
 
+    const handleUpdateProject = () => {
+        updateProject(`/admin/projects/${project.id}`, {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+            },
+            onError: (errors) => {
+                console.error('Failed to update project:', errors);
+                alert('Failed to update project: ' + (errors.message || 'Unknown error'));
+            }
+        });
+    };
+
+    const handleDeleteProject = () => {
+        router.delete(`/admin/projects/${project.id}`, {
+            onSuccess: () => {
+                router.visit('/admin/projects');
+            },
+            onError: (errors) => {
+                console.error('Failed to delete project:', errors);
+                alert('Failed to delete project: ' + (errors.message || 'Unknown error'));
+            }
+        });
+    };
+
     return (
         <>
             {/* Project Banner */}
@@ -112,17 +145,14 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                                <Star className="h-4 w-4 mr-2" />
-                                Bookmark
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-white hover:bg-white/20"
+                                onClick={() => setIsShareModalOpen(true)}
+                            >
                                 <Share2 className="h-4 w-4 mr-2" />
                                 Share
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                                <Settings className="h-4 w-4 mr-2" />
-                                Settings
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -139,19 +169,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                                         <Users className="mr-2 h-4 w-4" />
                                         Invite Members
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        Export Data
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Import Data
-                                    </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => setIsArchiveModalOpen(true)}>
-                                        <Archive className="mr-2 h-4 w-4" />
-                                        Archive Project
-                                    </DropdownMenuItem>
                                     <DropdownMenuItem 
                                         onClick={() => setIsDeleteModalOpen(true)}
                                         className="text-destructive"
@@ -264,16 +282,27 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="name">Project Name</Label>
-                            <Input id="name" defaultValue={project.name} />
+                            <Input 
+                                id="name" 
+                                value={editData.name}
+                                onChange={(e) => setEditData('name', e.target.value)}
+                            />
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Textarea id="description" defaultValue={project.description} />
+                            <Textarea 
+                                id="description" 
+                                value={editData.description}
+                                onChange={(e) => setEditData('description', e.target.value)}
+                            />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select defaultValue={project.status}>
+                                <Select 
+                                    value={editData.status}
+                                    onValueChange={(value) => setEditData('status', value)}
+                                >
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -286,25 +315,30 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="priority">Priority</Label>
-                                <Select defaultValue="medium">
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="start_date">Start Date</Label>
+                                <Input 
+                                    id="start_date" 
+                                    type="date"
+                                    value={editData.start_date}
+                                    onChange={(e) => setEditData('start_date', e.target.value)}
+                                />
                             </div>
+                        </div>
+                        <div>
+                            <Label htmlFor="end_date">End Date</Label>
+                            <Input 
+                                id="end_date" 
+                                type="date"
+                                value={editData.end_date}
+                                onChange={(e) => setEditData('end_date', e.target.value)}
+                            />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button>Save Changes</Button>
+                        <Button onClick={handleUpdateProject}>Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -377,7 +411,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                         <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive">Delete Project</Button>
+                        <Button variant="destructive" onClick={handleDeleteProject}>Delete Project</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -316,7 +316,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                 <TabsList className="grid grid-cols-6 w-full">
                                     <TabsTrigger value="overview">Overview</TabsTrigger>
                                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                                    <TabsTrigger value="files">Files</TabsTrigger>
+                                    <TabsTrigger value="files">Attachments</TabsTrigger>
                                     {/* <TabsTrigger value="attachments">Attachments</TabsTrigger> */}
                                     <TabsTrigger value="notes">Notes</TabsTrigger>
                                     <TabsTrigger value="team">Team</TabsTrigger>

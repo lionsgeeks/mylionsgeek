@@ -14,13 +14,12 @@ class ProjectNote extends Model
         'content',
         'is_pinned',
         'tags',
-        'attachments'
+        'color'
     ];
 
     protected $casts = [
         'is_pinned' => 'boolean',
-        'tags' => 'array',
-        'attachments' => 'array'
+        'tags' => 'array'
     ];
 
     public function project(): BelongsTo
