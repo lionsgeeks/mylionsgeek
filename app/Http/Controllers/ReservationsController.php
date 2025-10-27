@@ -1344,6 +1344,236 @@ class ReservationsController extends Controller
                 ->with('error', 'Failed to generate PDF. Please try again.');
         }
     }
+
+    /**
+     * Show analytics and reporting page
+     */
+    public function analytics()
+    {
+        $analytics = [];
+        
+        // Studio Reservations Count
+        $studioReservationsCount = [];
+        if (Schema::hasTable('reservations') && Schema::hasTable('studios')) {
+            $studioReservationsCount = DB::table('reservations as r')
+                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+                ->select('s.name as studio_name', DB::raw('COUNT(*) as count'))
+                ->where('r.type', 'studio')
+                ->where('r.canceled', 0)
+                ->groupBy('s.id', 's.name')
+                ->orderByDesc('count')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->studio_name ?? 'Unknown',
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Most Active Times (Hours)
+        $timeSlotStats = [];
+        if (Schema::hasTable('reservations')) {
+            $timeSlots = DB::table('reservations')
+                ->select('start', DB::raw('COUNT(*) as count'))
+                ->where('canceled', 0)
+                ->whereNotNull('start')
+                ->groupBy('start')
+                ->orderByDesc('count')
+                ->get()
+                ->toArray();
+
+            $timeSlotStats = [
+                'most_reserved' => count($timeSlots) > 0 ? [
+                    'time' => $timeSlots[0]->start,
+                    'count' => $timeSlots[0]->count
+                ] : null,
+                'least_reserved' => count($timeSlots) > 0 ? [
+                    'time' => end($timeSlots)->start,
+                    'count' => end($timeSlots)->count
+                ] : null,
+            ];
+        }
+
+        // Most Active Users
+        $topUsers = [];
+        if (Schema::hasTable('reservations')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('u.name', 'u.email', DB::raw('COUNT(*) as count'));
+            
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+            
+            $topUsers = $query
+                ->where('r.canceled', 0)
+                ->groupBy('u.id', 'u.name', 'u.email')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get()
+                ->map(function ($user) {
+                    $img = isset($user->image) ? $user->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'name' => $user->name ?? 'Unknown',
+                        'email' => $user->email ?? '',
+                        'count' => $user->count,
+                        'image' => $img
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Most Reserved Equipment
+        $topEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            
+            // First get the count per equipment
+            $topEquipmentData = DB::table('reservation_equipment as re')
+                ->select('re.equipment_id', DB::raw('COUNT(*) as count'))
+                ->groupBy('re.equipment_id')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get();
+            
+            // Then get equipment details with images
+            $equipmentIds = $topEquipmentData->pluck('equipment_id')->toArray();
+            
+            if (!empty($equipmentIds)) {
+                $query = DB::table('equipment as e')
+                    ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+                
+                if ($hasEquipmentImage) {
+                    $query->addSelect('e.image');
+                }
+                
+                $equipmentDetails = $query->whereIn('e.id', $equipmentIds)->get()->keyBy('id');
+                
+                $topEquipment = $topEquipmentData->map(function ($item) use ($equipmentDetails) {
+                    $eq = $equipmentDetails->get($item->equipment_id);
+                    if (!$eq) return null;
+                    
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    
+                    return [
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'count' => $item->count,
+                        'image' => $img
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->toArray();
+            }
+        }
+
+        // Equipment Not Reserved
+        $unusedEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $usedEquipmentIds = DB::table('reservation_equipment')
+                ->distinct()
+                ->pluck('equipment_id')
+                ->toArray();
+            
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+            
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            
+            $unusedEquipment = $query
+                ->whereNotIn('e.id', $usedEquipmentIds)
+                ->limit(10)
+                ->get()
+                ->map(function ($eq) {
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $eq->id,
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'image' => $img
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Monthly reservations trend
+        $monthlyTrend = [];
+        if (Schema::hasTable('reservations')) {
+            // Use SQLite-compatible date formatting
+            $monthlyTrend = DB::table('reservations')
+                ->select(
+                    DB::raw("strftime('%Y-%m', created_at) as month"),
+                    DB::raw('COUNT(*) as count')
+                )
+                ->where('canceled', 0)
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'month' => $item->month,
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Total Statistics
+        $totalStats = [
+            'total_reservations' => DB::table('reservations')->where('canceled', 0)->count(),
+            'total_cowork_reservations' => Schema::hasTable('reservation_coworks') 
+                ? DB::table('reservation_coworks')->where('canceled', 0)->count() 
+                : 0,
+            'total_equipment' => Schema::hasTable('equipment') 
+                ? DB::table('equipment')->count() 
+                : 0,
+            'total_users' => DB::table('users')->count(),
+            'total_studios' => Schema::hasTable('studios') 
+                ? DB::table('studios')->count() 
+                : 0,
+        ];
+
+        $analytics = [
+            'totalStats' => $totalStats,
+            'studioReservations' => $studioReservationsCount,
+            'timeSlotStats' => $timeSlotStats,
+            'topUsers' => $topUsers,
+            'topEquipment' => $topEquipment,
+            'unusedEquipment' => $unusedEquipment,
+            'monthlyTrend' => $monthlyTrend,
+        ];
+
+        return Inertia::render('admin/reservations/analytics', $analytics);
+    }
 }
 
 
