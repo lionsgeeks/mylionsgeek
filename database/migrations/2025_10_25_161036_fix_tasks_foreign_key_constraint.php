@@ -36,14 +36,14 @@ return new class extends Migration
                 $table->json('tags')->nullable();
                 $table->timestamp('started_at')->nullable();
                 $table->timestamp('completed_at')->nullable();
-                $table->integer('estimated_hours')->nullable();
-                $table->integer('actual_hours')->nullable();
+                // $table->integer('estimated_hours')->nullable();
+                // $table->integer('actual_hours')->nullable();
                 $table->timestamps();
             });
             
             // Copy data from old table to new table with proper defaults
-            DB::statement('INSERT INTO tasks_new (id, title, description, priority, status, project_id, created_by, due_date, sort_order, subtasks, assignees, is_pinned, is_editable, progress, tags, started_at, completed_at, estimated_hours, actual_hours, created_at, updated_at) 
-                SELECT id, title, description, COALESCE(priority, "medium"), COALESCE(status, "todo"), project_id, created_by, due_date, COALESCE(sort_order, 0), subtasks, assignees, COALESCE(is_pinned, 0), COALESCE(is_editable, 1), COALESCE(progress, 0), tags, started_at, completed_at, estimated_hours, actual_hours, created_at, updated_at FROM tasks');
+            DB::statement('INSERT INTO tasks_new (id, title, description, priority, status, project_id, created_by, due_date, sort_order, subtasks, assignees, is_pinned, is_editable, progress, tags, started_at, completed_at, created_at, updated_at) 
+                SELECT id, title, description, COALESCE(priority, "medium"), COALESCE(status, "todo"), project_id, created_by, due_date, COALESCE(sort_order, 0), subtasks, assignees, COALESCE(is_pinned, 0), COALESCE(is_editable, 1), COALESCE(progress, 0), tags, started_at, completed_at, created_at, updated_at FROM tasks');
             
             // Drop old table
             Schema::dropIfExists('tasks');

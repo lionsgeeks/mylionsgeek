@@ -13,24 +13,28 @@ return new class extends Migration
             return;
         }
 
-        // Create a correct table structure with autoincrement PK and unique name
+        // Disable FK checks for SQLite
+        DB::statement('PRAGMA foreign_keys = OFF;');
+
+        // Drop leftover temp table if exists
+        Schema::dropIfExists('equipment_types_tmp');
+
         Schema::create('equipment_types_tmp', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
             $table->timestamps();
         });
 
-        // Copy distinct existing data if any
+        // Copy old data
         $existing = DB::table('equipment_types')->select('name', 'created_at', 'updated_at')->get();
         foreach ($existing as $row) {
-            // Will assign new autoincrement id
             DB::table('equipment_types_tmp')->updateOrInsert(
                 ['name' => strtolower(trim($row->name))],
                 ['created_at' => $row->created_at, 'updated_at' => $row->updated_at]
             );
         }
 
-        // If empty, seed defaults in a deterministic order so ids are stable
+        // Seed defaults if empty
         if (DB::table('equipment_types_tmp')->count() === 0) {
             $now = now();
             DB::table('equipment_types_tmp')->insert([
@@ -43,15 +47,16 @@ return new class extends Migration
             ]);
         }
 
-        // Replace old table
+        // Replace old table safely
         Schema::drop('equipment_types');
         Schema::rename('equipment_types_tmp', 'equipment_types');
+
+        // Re-enable FK checks
+        DB::statement('PRAGMA foreign_keys = ON;');
     }
 
     public function down(): void
     {
-        // No-op rollback; keeping the corrected structure
+        // no rollback
     }
 };
-
-
