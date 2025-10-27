@@ -551,14 +551,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={18} className="h-4 w-4" />
+                                                <Pencil size={18} className="text-alpha" />
                                             </button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={18} className="h-4 w-4" />
+                                                <Trash size={18} className="text-error" />
                                             </button>
                                         </div>
                                     </td>
