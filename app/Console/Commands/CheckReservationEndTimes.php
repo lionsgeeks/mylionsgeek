@@ -65,8 +65,8 @@ class CheckReservationEndTimes extends Command
                 }
 
                 // Send the email
-                $verificationLink = url("/reservations/{$reservation->id}/verify-end");
-                Mail::to("boujjarr@gmail.com")->send(new ReservationEndedMail($user, $reservation, $verificationLink));
+                $verificationPath = "reservations/{$reservation->id}/verify-end";
+                Mail::to("boujjarr@gmail.com")->send(new ReservationEndedMail($user, $reservation, $verificationPath));
 
                 // Mark the reservation as passed to avoid duplicate emails
                 DB::table('reservations')->where('id', $reservation->id)->update(['passed' => true]);

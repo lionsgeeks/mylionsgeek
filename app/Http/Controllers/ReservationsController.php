@@ -158,6 +158,15 @@ class ReservationsController extends Controller
         // Cowork reservations (own table)
         $coworkReservations = [];
         if (Schema::hasTable('reservation_coworks')) {
+            // Auto-approve any pending cowork reservations
+            DB::table('reservation_coworks')
+                ->where('approved', 0)
+                ->where('canceled', 0)
+                ->update([
+                    'approved' => 1,
+                    'updated_at' => now(),
+                ]);
+            
             $coworkReservations = DB::table('reservation_coworks as rc')
                 ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
                 ->select('rc.*', 'u.name as user_name')
@@ -782,16 +791,18 @@ class ReservationsController extends Controller
         }
 
         // Create cowork reservation as auto-approved
-        $reservation = ReservationCowork::create([
+        DB::table('reservation_coworks')->insert([
             'id' => $reservationId,
             'table' => $request->cowork_id,
             'user_id' => Auth::id(),
             'day' => $request->day,
             'start' => $request->start,
             'end' => $request->end,
-            'passed' => false,
+            'passed' => 0,
             'approved' => 1,
-            'canceled' => false,
+            'canceled' => 0,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
         ]);
 
         // Send approval email for auto-approved cowork reservation
@@ -941,6 +952,627 @@ class ReservationsController extends Controller
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
 
         return $response;
+    }
+
+    /**
+     * Show material verification page for reservation end
+     */
+    public function verifyEnd(int $reservation)
+    {
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name')
+            ->first();
+
+        if (!$reservationData) {
+            return redirect()->route('home')->with('error', 'Reservation not found');
+        }
+
+        // Check if reservation has already been verified
+        if ($reservationData->end_signed) {
+            return redirect()->route('home')->with('info', 'This reservation has already been verified.');
+        }
+
+        // Get equipment/materials for this reservation
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'e.state', 'et.name as type_name')
+                ->get()
+                ->map(function ($e) {
+                    $img = $e->image;
+                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    return [
+                        'id' => $e->id,
+                        'reference' => $e->reference,
+                        'mark' => $e->mark,
+                        'image' => $img ? asset($img) : null,
+                        'state' => (bool) $e->state,
+                        'type_name' => $e->type_name ?? 'Unknown',
+                    ];
+                })
+                ->toArray();
+        }
+
+        return Inertia::render('reservations/verify-end', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'day' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'user_name' => $reservationData->user_name,
+            ],
+            'equipments' => $equipments,
+        ]);
+    }
+
+    /**
+     * Submit material verification
+     */
+    public function submitVerification(Request $request, int $reservation)
+    {
+        $request->validate([
+            'equipment_status' => 'required|array',
+            'equipment_status.*' => 'required|array',
+            'equipment_status.*.goodCondition' => 'nullable|boolean',
+            'equipment_status.*.badCondition' => 'nullable|boolean',
+            'equipment_status.*.notReturned' => 'nullable|boolean',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $verificationData = null;
+
+            DB::transaction(function () use ($request, $reservation, &$verificationData) {
+                // Update reservation as verified
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'end_signed' => true,
+                    'updated_at' => now(),
+                ]);
+
+                // Update equipment states and record status
+                $equipmentStatus = $request->input('equipment_status', []);
+                $notes = $request->input('notes', '');
+
+                // Get equipment details for PDF
+                $equipments = [];
+                if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+                    $equipments = DB::table('reservation_equipment as re')
+                        ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                        ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                        ->where('re.reservation_id', $reservation)
+                        ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                        ->get()
+                        ->map(function ($e) use ($equipmentStatus) {
+                            $status = $equipmentStatus[$e->id] ?? [];
+                            return [
+                                'id' => $e->id,
+                                'reference' => $e->reference,
+                                'mark' => $e->mark,
+                                'type_name' => $e->type_name ?? 'Unknown',
+                                'goodCondition' => isset($status['goodCondition']) ? (bool) $status['goodCondition'] : false,
+                                'badCondition' => isset($status['badCondition']) ? (bool) $status['badCondition'] : false,
+                                'notReturned' => isset($status['notReturned']) ? (bool) $status['notReturned'] : false,
+                            ];
+                        })
+                        ->toArray();
+                }
+
+                // Get reservation details for PDF
+                $reservationData = DB::table('reservations as r')
+                    ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                    ->where('r.id', $reservation)
+                    ->select('r.*', 'u.name as user_name')
+                    ->first();
+
+                $verificationData = [
+                    'reservation' => [
+                        'id' => $reservationData->id,
+                        'title' => $reservationData->title,
+                        'description' => $reservationData->description,
+                        'day' => $reservationData->day,
+                        'start' => $reservationData->start,
+                        'end' => $reservationData->end,
+                        'user_name' => $reservationData->user_name,
+                    ],
+                    'equipments' => $equipments,
+                    'notes' => $notes,
+                ];
+
+                // Log the verification data for debugging
+                \Log::info('Verification data for PDF:', $verificationData);
+
+                foreach ($equipmentStatus as $equipmentId => $status) {
+                    // Determine equipment state based on checkboxes
+                    $isGood = isset($status['goodCondition']) && $status['goodCondition'];
+                    $isBad = isset($status['badCondition']) && $status['badCondition'];
+                    $isNotReturned = isset($status['notReturned']) && $status['notReturned'];
+
+                    // Set equipment state (good = 1, bad/not returned = 0)
+                    $equipmentState = $isGood ? 1 : 0;
+
+                    DB::table('equipment')->where('id', $equipmentId)->update([
+                        'state' => $equipmentState,
+                        'updated_at' => now(),
+                    ]);
+
+                    // Optionally, persist status flags on pivot if columns exist
+                    if (Schema::hasTable('reservation_equipment')) {
+                        $updateData = ['updated_at' => now()];
+
+                        if (Schema::hasColumn('reservation_equipment', 'good_condition')) {
+                            $updateData['good_condition'] = $isGood ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'bad_condition')) {
+                            $updateData['bad_condition'] = $isBad ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'not_returned')) {
+                            $updateData['not_returned'] = $isNotReturned ? 1 : 0;
+                        }
+
+                        if (count($updateData) > 1) { // More than just updated_at
+                            DB::table('reservation_equipment')
+                                ->where('reservation_id', $reservation)
+                                ->where('equipment_id', $equipmentId)
+                                ->update($updateData);
+                        }
+                    }
+                }
+
+                // Store verification notes if provided
+                if ($request->filled('notes')) {
+                    \Log::info("Reservation {$reservation} verification notes: " . $request->input('notes'));
+                }
+            });
+
+            // Generate and download PDF
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
+
+            $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
+            $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $filename = "Verification_Report_{$userName}_{$date}.pdf";
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Check if this is an Inertia request
+            if (request()->header('X-Inertia')) {
+                // Return JSON for Inertia requests
+                $downloadUrl = route('reservations.download-report', $reservation);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Verification completed successfully!',
+                    'downloadUrl' => $downloadUrl
+                ]);
+            } else {
+                // Redirect directly to download for regular form submissions
+                return redirect()->route('reservations.download-report', $reservation);
+            }
+        } catch (\Exception $e) {
+            \Log::error('PDF generation failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Verification completed successfully! PDF generation failed, but data was saved.');
+        }
+    }
+
+    /**
+     * Show reservation details page
+     */
+    public function details(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservations table missing');
+        }
+
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
+            ->first();
+
+        if (!$reservationData) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservation not found');
+        }
+
+        // Get equipment details
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+            
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            
+            $equipments = $query->get()
+                ->map(function ($equipment) {
+                    $img = isset($equipment->image) ? $equipment->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $equipment->id,
+                        'reference' => $equipment->reference,
+                        'mark' => $equipment->mark,
+                        'type_name' => $equipment->type_name,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get team members
+        $teamMembers = [];
+        if (Schema::hasTable('reservation_teams')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('u.id', 'u.name', 'u.email');
+            
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+            
+            $teamMembers = $query->get()
+                ->map(function ($member) {
+                    $img = isset($member->image) ? $member->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'email' => $member->email,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get approver details
+        $approverName = null;
+        if ($reservationData->approve_id) {
+            $approver = DB::table('users')->where('id', $reservationData->approve_id)->first();
+            $approverName = $approver ? $approver->name : null;
+        }
+
+        return Inertia::render('admin/reservations/details', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'user_name' => $reservationData->user_name,
+                'user_email' => $reservationData->user_email,
+                'date' => $reservationData->date ?? $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'type' => $reservationData->type,
+                'studio_name' => $reservationData->studio_name,
+                'approved' => (bool) ($reservationData->approved ?? 0),
+                'canceled' => (bool) ($reservationData->canceled ?? 0),
+                'passed' => (bool) ($reservationData->passed ?? 0),
+                'start_signed' => (bool) ($reservationData->start_signed ?? 0),
+                'end_signed' => (bool) ($reservationData->end_signed ?? 0),
+                'approver_name' => $approverName,
+                'created_at' => $reservationData->created_at,
+                'updated_at' => $reservationData->updated_at,
+            ],
+            'equipments' => $equipments,
+            'teamMembers' => $teamMembers,
+        ]);
+    }
+
+    /**
+     * Download verification report PDF
+     */
+    public function downloadReport(int $reservation)
+    {
+        $pdfData = session('verification_pdf_data');
+
+        if (!$pdfData) {
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'No verification data found. Please submit the verification form first.');
+        }
+
+        try {
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $pdfData['reservation'],
+                'verificationData' => $pdfData['verificationData']
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
+
+            // Clear the session data after download
+            session()->forget('verification_pdf_data');
+
+            return $pdf->download($pdfData['filename']);
+        } catch (\Exception $e) {
+            \Log::error('PDF download failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Failed to generate PDF. Please try again.');
+        }
+    }
+
+    /**
+     * Show analytics and reporting page
+     */
+    public function analytics()
+    {
+        $analytics = [];
+        
+        // Studio Reservations Count
+        $studioReservationsCount = [];
+        if (Schema::hasTable('reservations') && Schema::hasTable('studios')) {
+            $studioReservationsCount = DB::table('reservations as r')
+                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+                ->select('s.name as studio_name', DB::raw('COUNT(*) as count'))
+                ->where('r.type', 'studio')
+                ->where('r.canceled', 0)
+                ->groupBy('s.id', 's.name')
+                ->orderByDesc('count')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->studio_name ?? 'Unknown',
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Most Active Times (Hours)
+        $timeSlotStats = [];
+        if (Schema::hasTable('reservations')) {
+            $timeSlots = DB::table('reservations')
+                ->select('start', DB::raw('COUNT(*) as count'))
+                ->where('canceled', 0)
+                ->whereNotNull('start')
+                ->groupBy('start')
+                ->orderByDesc('count')
+                ->get()
+                ->toArray();
+
+            $timeSlotStats = [
+                'most_reserved' => count($timeSlots) > 0 ? [
+                    'time' => $timeSlots[0]->start,
+                    'count' => $timeSlots[0]->count
+                ] : null,
+                'least_reserved' => count($timeSlots) > 0 ? [
+                    'time' => end($timeSlots)->start,
+                    'count' => end($timeSlots)->count
+                ] : null,
+            ];
+        }
+
+        // Most Active Users
+        $topUsers = [];
+        if (Schema::hasTable('reservations')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('u.name', 'u.email', DB::raw('COUNT(*) as count'));
+            
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+            
+            $topUsers = $query
+                ->where('r.canceled', 0)
+                ->groupBy('u.id', 'u.name', 'u.email')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get()
+                ->map(function ($user) {
+                    $img = isset($user->image) ? $user->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'name' => $user->name ?? 'Unknown',
+                        'email' => $user->email ?? '',
+                        'count' => $user->count,
+                        'image' => $img
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Most Reserved Equipment
+        $topEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            
+            // First get the count per equipment
+            $topEquipmentData = DB::table('reservation_equipment as re')
+                ->select('re.equipment_id', DB::raw('COUNT(*) as count'))
+                ->groupBy('re.equipment_id')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get();
+            
+            // Then get equipment details with images
+            $equipmentIds = $topEquipmentData->pluck('equipment_id')->toArray();
+            
+            if (!empty($equipmentIds)) {
+                $query = DB::table('equipment as e')
+                    ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+                
+                if ($hasEquipmentImage) {
+                    $query->addSelect('e.image');
+                }
+                
+                $equipmentDetails = $query->whereIn('e.id', $equipmentIds)->get()->keyBy('id');
+                
+                $topEquipment = $topEquipmentData->map(function ($item) use ($equipmentDetails) {
+                    $eq = $equipmentDetails->get($item->equipment_id);
+                    if (!$eq) return null;
+                    
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    
+                    return [
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'count' => $item->count,
+                        'image' => $img
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->toArray();
+            }
+        }
+
+        // Equipment Not Reserved
+        $unusedEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $usedEquipmentIds = DB::table('reservation_equipment')
+                ->distinct()
+                ->pluck('equipment_id')
+                ->toArray();
+            
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+            
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            
+            $unusedEquipment = $query
+                ->whereNotIn('e.id', $usedEquipmentIds)
+                ->limit(10)
+                ->get()
+                ->map(function ($eq) {
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $eq->id,
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'image' => $img
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Monthly reservations trend
+        $monthlyTrend = [];
+        if (Schema::hasTable('reservations')) {
+            // Use SQLite-compatible date formatting
+            $monthlyTrend = DB::table('reservations')
+                ->select(
+                    DB::raw("strftime('%Y-%m', created_at) as month"),
+                    DB::raw('COUNT(*) as count')
+                )
+                ->where('canceled', 0)
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'month' => $item->month,
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Total Statistics
+        $totalStats = [
+            'total_reservations' => DB::table('reservations')->where('canceled', 0)->count(),
+            'total_cowork_reservations' => Schema::hasTable('reservation_coworks') 
+                ? DB::table('reservation_coworks')->where('canceled', 0)->count() 
+                : 0,
+            'total_equipment' => Schema::hasTable('equipment') 
+                ? DB::table('equipment')->count() 
+                : 0,
+            'total_users' => DB::table('users')->count(),
+            'total_studios' => Schema::hasTable('studios') 
+                ? DB::table('studios')->count() 
+                : 0,
+        ];
+
+        $analytics = [
+            'totalStats' => $totalStats,
+            'studioReservations' => $studioReservationsCount,
+            'timeSlotStats' => $timeSlotStats,
+            'topUsers' => $topUsers,
+            'topEquipment' => $topEquipment,
+            'unusedEquipment' => $unusedEquipment,
+            'monthlyTrend' => $monthlyTrend,
+        ];
+
+        return Inertia::render('admin/reservations/analytics', $analytics);
     }
 }
 
