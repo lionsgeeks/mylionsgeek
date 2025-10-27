@@ -158,6 +158,15 @@ class ReservationsController extends Controller
         // Cowork reservations (own table)
         $coworkReservations = [];
         if (Schema::hasTable('reservation_coworks')) {
+            // Auto-approve any pending cowork reservations
+            DB::table('reservation_coworks')
+                ->where('approved', 0)
+                ->where('canceled', 0)
+                ->update([
+                    'approved' => 1,
+                    'updated_at' => now(),
+                ]);
+            
             $coworkReservations = DB::table('reservation_coworks as rc')
                 ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
                 ->select('rc.*', 'u.name as user_name')
@@ -782,16 +791,18 @@ class ReservationsController extends Controller
         }
 
         // Create cowork reservation as auto-approved
-        $reservation = ReservationCowork::create([
+        DB::table('reservation_coworks')->insert([
             'id' => $reservationId,
             'table' => $request->cowork_id,
             'user_id' => Auth::id(),
             'day' => $request->day,
             'start' => $request->start,
             'end' => $request->end,
-            'passed' => false,
+            'passed' => 0,
             'approved' => 1,
-            'canceled' => false,
+            'canceled' => 0,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
         ]);
 
         // Send approval email for auto-approved cowork reservation
