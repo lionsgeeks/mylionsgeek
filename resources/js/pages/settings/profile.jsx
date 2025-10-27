@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
+import { useInitials } from '@/hooks/use-initials';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const breadcrumbs = [
     {
@@ -22,7 +24,7 @@ const breadcrumbs = [
 
 export default function Profile({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
-
+    const getInitials = useInitials();
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile settings" />
@@ -44,15 +46,15 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-1">
                                         <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                            <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
-                                                {auth.user.image ? (
-                                                    <img src={auth.user.image} alt={auth.user.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xl font-semibold">
-                                                        {auth.user.name?.charAt(0)?.toUpperCase()}
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <Avatar className="h-24 w-24 overflow-hidden rounded-full">
+                                                <AvatarImage
+                                                    src={auth.user.image ? `/storage/${auth.user.image}` : null}
+                                                    alt={auth.user.name}
+                                                />
+                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                    {getInitials(auth.user.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
 
                                             <div className="w-full">
                                                 <Label htmlFor="image">Avatar</Label>
