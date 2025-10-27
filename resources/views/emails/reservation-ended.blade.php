@@ -23,7 +23,7 @@
         <p>Please verify that you have completed your reservation by clicking the link below:</p>
         
         <div style="text-align: center; margin: 30px 0;">
-            <a href="{{ $verificationLink }}" 
+            <a href="http://127.0.0.1:8000/{{ $verificationLink }}" 
                style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                 Verify Reservation Completion
             </a>

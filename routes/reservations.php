@@ -38,5 +38,43 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
 
 });
 
+// Public route for material verification (no auth required for email links)
+Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
+    ->name('reservations.verify-end');
+Route::post('/reservations/{reservation}/verify-end', [ReservationsController::class, 'submitVerification'])
+    ->name('reservations.submit-verification');
+Route::get('/reservations/{reservation}/download-report', [ReservationsController::class, 'downloadReport'])
+    ->name('reservations.download-report');
+
+// Test PDF route
+Route::get('/test-pdf', function() {
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.verification_report_simple', [
+        'reservation' => [
+            'id' => 1,
+            'title' => 'Test Reservation',
+            'day' => '2025-10-27',
+            'start' => '10:00',
+            'end' => '11:00',
+            'user_name' => 'Test User'
+        ],
+        'verificationData' => [
+            'equipments' => [
+                [
+                    'id' => 1,
+                    'reference' => 'TEST-001',
+                    'mark' => 'Test Equipment',
+                    'type_name' => 'Test Type',
+                    'goodCondition' => true,
+                    'badCondition' => false,
+                    'notReturned' => false
+                ]
+            ],
+            'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.'
+        ]
+    ])->setPaper('a4', 'portrait');
+    
+    return $pdf->download('test_verification_report.pdf');
+});
+
 
 

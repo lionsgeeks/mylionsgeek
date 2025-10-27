@@ -942,6 +942,275 @@ class ReservationsController extends Controller
 
         return $response;
     }
+
+    /**
+     * Show material verification page for reservation end
+     */
+    public function verifyEnd(int $reservation)
+    {
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name')
+            ->first();
+
+        if (!$reservationData) {
+            return redirect()->route('home')->with('error', 'Reservation not found');
+        }
+
+        // Check if reservation has already been verified
+        if ($reservationData->end_signed) {
+            return redirect()->route('home')->with('info', 'This reservation has already been verified.');
+        }
+
+        // Get equipment/materials for this reservation
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'e.state', 'et.name as type_name')
+                ->get()
+                ->map(function ($e) {
+                    $img = $e->image;
+                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    return [
+                        'id' => $e->id,
+                        'reference' => $e->reference,
+                        'mark' => $e->mark,
+                        'image' => $img ? asset($img) : null,
+                        'state' => (bool) $e->state,
+                        'type_name' => $e->type_name ?? 'Unknown',
+                    ];
+                })
+                ->toArray();
+        }
+
+        return Inertia::render('reservations/verify-end', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'day' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'user_name' => $reservationData->user_name,
+            ],
+            'equipments' => $equipments,
+        ]);
+    }
+
+    /**
+     * Submit material verification
+     */
+    public function submitVerification(Request $request, int $reservation)
+    {
+        $request->validate([
+            'equipment_status' => 'required|array',
+            'equipment_status.*' => 'required|array',
+            'equipment_status.*.goodCondition' => 'nullable|boolean',
+            'equipment_status.*.badCondition' => 'nullable|boolean',
+            'equipment_status.*.notReturned' => 'nullable|boolean',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $verificationData = null;
+
+            DB::transaction(function () use ($request, $reservation, &$verificationData) {
+                // Update reservation as verified
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'end_signed' => true,
+                    'updated_at' => now(),
+                ]);
+
+                // Update equipment states and record status
+                $equipmentStatus = $request->input('equipment_status', []);
+                $notes = $request->input('notes', '');
+
+                // Get equipment details for PDF
+                $equipments = [];
+                if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+                    $equipments = DB::table('reservation_equipment as re')
+                        ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                        ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                        ->where('re.reservation_id', $reservation)
+                        ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                        ->get()
+                        ->map(function ($e) use ($equipmentStatus) {
+                            $status = $equipmentStatus[$e->id] ?? [];
+                            return [
+                                'id' => $e->id,
+                                'reference' => $e->reference,
+                                'mark' => $e->mark,
+                                'type_name' => $e->type_name ?? 'Unknown',
+                                'goodCondition' => isset($status['goodCondition']) ? (bool) $status['goodCondition'] : false,
+                                'badCondition' => isset($status['badCondition']) ? (bool) $status['badCondition'] : false,
+                                'notReturned' => isset($status['notReturned']) ? (bool) $status['notReturned'] : false,
+                            ];
+                        })
+                        ->toArray();
+                }
+
+                // Get reservation details for PDF
+                $reservationData = DB::table('reservations as r')
+                    ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                    ->where('r.id', $reservation)
+                    ->select('r.*', 'u.name as user_name')
+                    ->first();
+
+                $verificationData = [
+                    'reservation' => [
+                        'id' => $reservationData->id,
+                        'title' => $reservationData->title,
+                        'description' => $reservationData->description,
+                        'day' => $reservationData->day,
+                        'start' => $reservationData->start,
+                        'end' => $reservationData->end,
+                        'user_name' => $reservationData->user_name,
+                    ],
+                    'equipments' => $equipments,
+                    'notes' => $notes,
+                ];
+
+                // Log the verification data for debugging
+                \Log::info('Verification data for PDF:', $verificationData);
+
+                foreach ($equipmentStatus as $equipmentId => $status) {
+                    // Determine equipment state based on checkboxes
+                    $isGood = isset($status['goodCondition']) && $status['goodCondition'];
+                    $isBad = isset($status['badCondition']) && $status['badCondition'];
+                    $isNotReturned = isset($status['notReturned']) && $status['notReturned'];
+
+                    // Set equipment state (good = 1, bad/not returned = 0)
+                    $equipmentState = $isGood ? 1 : 0;
+
+                    DB::table('equipment')->where('id', $equipmentId)->update([
+                        'state' => $equipmentState,
+                        'updated_at' => now(),
+                    ]);
+
+                    // Optionally, persist status flags on pivot if columns exist
+                    if (Schema::hasTable('reservation_equipment')) {
+                        $updateData = ['updated_at' => now()];
+
+                        if (Schema::hasColumn('reservation_equipment', 'good_condition')) {
+                            $updateData['good_condition'] = $isGood ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'bad_condition')) {
+                            $updateData['bad_condition'] = $isBad ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'not_returned')) {
+                            $updateData['not_returned'] = $isNotReturned ? 1 : 0;
+                        }
+
+                        if (count($updateData) > 1) { // More than just updated_at
+                            DB::table('reservation_equipment')
+                                ->where('reservation_id', $reservation)
+                                ->where('equipment_id', $equipmentId)
+                                ->update($updateData);
+                        }
+                    }
+                }
+
+                // Store verification notes if provided
+                if ($request->filled('notes')) {
+                    \Log::info("Reservation {$reservation} verification notes: " . $request->input('notes'));
+                }
+            });
+
+            // Generate and download PDF
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
+
+            $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
+            $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $filename = "Verification_Report_{$userName}_{$date}.pdf";
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Check if this is an Inertia request
+            if (request()->header('X-Inertia')) {
+                // Return JSON for Inertia requests
+                $downloadUrl = route('reservations.download-report', $reservation);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Verification completed successfully!',
+                    'downloadUrl' => $downloadUrl
+                ]);
+            } else {
+                // Redirect directly to download for regular form submissions
+                return redirect()->route('reservations.download-report', $reservation);
+            }
+        } catch (\Exception $e) {
+            \Log::error('PDF generation failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Verification completed successfully! PDF generation failed, but data was saved.');
+        }
+    }
+
+    /**
+     * Download verification report PDF
+     */
+    public function downloadReport(int $reservation)
+    {
+        $pdfData = session('verification_pdf_data');
+
+        if (!$pdfData) {
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'No verification data found. Please submit the verification form first.');
+        }
+
+        try {
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $pdfData['reservation'],
+                'verificationData' => $pdfData['verificationData']
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
+
+            // Clear the session data after download
+            session()->forget('verification_pdf_data');
+
+            return $pdf->download($pdfData['filename']);
+        } catch (\Exception $e) {
+            \Log::error('PDF download failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Failed to generate PDF. Please try again.');
+        }
+    }
 }
 
 
