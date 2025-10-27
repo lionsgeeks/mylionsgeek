@@ -57,7 +57,7 @@ export default function UpdateTraining({ training, coaches }) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="flex items-center bg-transparent gap-2 rounded-lg text-yellow-600 border border-transparent  hover:border-yellow-600  px-3 cursor-pointer active:scale-95 hover:bg-transparent">
-          <Pencil size={18} />
+          <Pencil size={1} />
         </Button>
       </DialogTrigger>
 

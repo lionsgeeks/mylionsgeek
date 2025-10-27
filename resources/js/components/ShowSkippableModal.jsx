@@ -61,17 +61,17 @@ export default function ShowSkippableModal() {
   //             Vérifier la réservation
   //           </h3>
   //           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-  //             Veuillez confirmer les détails de votre réservation avant de continuer.
+  //             Please confirm your reservation details before continuing.
   //           </p>
   //         </div>
 
   //         <div className="text-sm text-red-500 dark:text-red-400 font-medium space-y-1">
   //           {reservationStats.reservation.notProcessed > 0 && (
-  //             <p>{reservationStats.reservation.notProcessed} réservation(s) non traitée(s)</p>
+  //             <p>{reservationStats.reservation.notProcessed} unprocessed reservation(s)</p>
   //           )}
 
   //           {reservationStats.cowork.notProcessed > 0 && (
-  //             <p>{reservationStats.cowork.notProcessed} coworking non traité(s)</p>
+  //             <p>{reservationStats.cowork.notProcessed} unprocessed coworking(s))</p>
   //           )}
 
   //         </div>
@@ -87,7 +87,7 @@ export default function ShowSkippableModal() {
   //             onClick={goToReservations}
   //             className="flex items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-transparent hover:text-black dark:hover:text-[var(--color-alpha)]"
   //           >
-  //             Aller à la page des réservations
+  //             Go to Reservations Page
   //           </button>
   //         </div>
   //       </div>
