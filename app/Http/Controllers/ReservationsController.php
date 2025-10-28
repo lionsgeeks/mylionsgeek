@@ -1365,7 +1365,7 @@ class ReservationsController extends Controller
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'name' => $item->studio_name ?? 'Unknown',
+                        'name' => $item->studio_name ? $item->studio_name : 'Exterior',
                         'count' => $item->count
                     ];
                 })
@@ -1485,28 +1485,61 @@ class ReservationsController extends Controller
             }
         }
 
-        // Equipment Not Reserved
-        $unusedEquipment = [];
-        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
-            $usedEquipmentIds = DB::table('reservation_equipment')
-                ->distinct()
-                ->pluck('equipment_id')
-                ->toArray();
-            
+        // Damaged equipment (state = 0)
+        $damagedEquipment = [];
+        if (Schema::hasTable('equipment')) {
             $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
             $query = DB::table('equipment as e')
                 ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
-                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
-            
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                ->where('e.state', 0)
+                ->limit(10);
             if ($hasEquipmentImage) {
                 $query->addSelect('e.image');
             }
-            
-            $unusedEquipment = $query
-                ->whereNotIn('e.id', $usedEquipmentIds)
-                ->limit(10)
-                ->get()
-                ->map(function ($eq) {
+            $damagedEquipment = $query->get()->map(function ($eq) {
+                $img = isset($eq->image) ? $eq->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+                return [
+                    'id' => $eq->id,
+                    'reference' => $eq->reference ?? 'Unknown',
+                    'mark' => $eq->mark ?? '',
+                    'type_name' => $eq->type_name ?? 'Unknown',
+                    'image' => $img
+                ];
+            })->toArray();
+        }
+
+        // Equipment in active reservations (now between start and end on the reservation day)
+        $activeEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('reservations') && Schema::hasTable('equipment')) {
+            $now = now()->format('Y-m-d H:i:s');
+            $activeEquipmentIds = DB::table('reservation_equipment as re')
+                ->leftJoin('reservations as r', 'r.id', '=', 're.reservation_id')
+                ->where('r.canceled', 0)
+                // SQLite-friendly datetime comparison using concatenation of day + time
+                ->whereRaw("datetime(r.day || ' ' || r.start) <= ?", [$now])
+                ->whereRaw("datetime(r.day || ' ' || r.end) >= ?", [$now])
+                ->distinct()
+                ->pluck('re.equipment_id')
+                ->toArray();
+
+            if (!empty($activeEquipmentIds)) {
+                $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+                $query = DB::table('equipment as e')
+                    ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                    ->whereIn('e.id', $activeEquipmentIds)
+                    ->limit(10);
+                if ($hasEquipmentImage) {
+                    $query->addSelect('e.image');
+                }
+                $activeEquipment = $query->get()->map(function ($eq) {
                     $img = isset($eq->image) ? $eq->image : null;
                     if ($img) {
                         if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
@@ -1521,8 +1554,8 @@ class ReservationsController extends Controller
                         'type_name' => $eq->type_name ?? 'Unknown',
                         'image' => $img
                     ];
-                })
-                ->toArray();
+                })->toArray();
+            }
         }
 
         // Monthly reservations trend
@@ -1568,7 +1601,8 @@ class ReservationsController extends Controller
             'timeSlotStats' => $timeSlotStats,
             'topUsers' => $topUsers,
             'topEquipment' => $topEquipment,
-            'unusedEquipment' => $unusedEquipment,
+            'damagedEquipment' => $damagedEquipment,
+            'activeEquipment' => $activeEquipment,
             'monthlyTrend' => $monthlyTrend,
         ];
 

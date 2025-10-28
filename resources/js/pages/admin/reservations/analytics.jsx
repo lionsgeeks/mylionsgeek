@@ -9,43 +9,46 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 const ITEMS_PER_PAGE = 5;
 
-export default function Analytics({ 
-    totalStats, 
-    studioReservations, 
-    timeSlotStats, 
-    topUsers, 
-    topEquipment, 
-    unusedEquipment, 
-    monthlyTrend 
+export default function Analytics({
+    totalStats = {},
+    studioReservations = [],
+    timeSlotStats = {},
+    topUsers = [],
+    topEquipment = [],
+    damagedEquipment = [],
+    activeEquipment = [],
+    monthlyTrend = []
 }) {
     const [userPage, setUserPage] = useState(1);
     const [equipmentPage, setEquipmentPage] = useState(1);
-    const [unusedPage, setUnusedPage] = useState(1);
+    const [damagedPage, setDamagedPage] = useState(1);
+    const [activePage, setActivePage] = useState(1);
 
     const paginate = (items, page) => {
         const startIndex = (page - 1) * ITEMS_PER_PAGE;
         return items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     };
 
-    const totalUserPages = Math.ceil(topUsers.length / ITEMS_PER_PAGE);
-    const totalEquipmentPages = Math.ceil(topEquipment.length / ITEMS_PER_PAGE);
-    const totalUnusedPages = Math.ceil(unusedEquipment.length / ITEMS_PER_PAGE);
+    const totalUserPages = Math.ceil((topUsers?.length || 0) / ITEMS_PER_PAGE);
+    const totalEquipmentPages = Math.ceil((topEquipment?.length || 0) / ITEMS_PER_PAGE);
+    const totalDamagedPages = Math.ceil((damagedEquipment?.length || 0) / ITEMS_PER_PAGE);
+    const totalActivePages = Math.ceil((activeEquipment?.length || 0) / ITEMS_PER_PAGE);
 
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
-            
+
             <div className="px-4 py-6 sm:p-8 lg:p-10">
                 {/* Header */}
                 <div className="mb-6">
-                    <Link 
-                        href="/admin/reservations" 
+                    <Link
+                        href="/admin/reservations"
                         className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Reservations
                     </Link>
-                    
+
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">Reservation Analytics & Reporting</h1>
                     <p className="text-gray-600">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
@@ -116,7 +119,7 @@ export default function Analytics({
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={studioReservations}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
+                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
                                     <YAxis />
                                     <Tooltip />
                                     <Bar dataKey="count" fill="#3b82f6" />
@@ -213,29 +216,29 @@ export default function Analytics({
                         </CardContent>
                     </Card>
 
-                    {/* Unused Equipment */}
+                    {/* Damaged Equipment */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-orange-600" />
-                                Unused Equipment
+                                <Package className="w-5 h-5 mr-2 text-red-600" />
+                                Damaged Equipment
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {unusedEquipment.length > 0 ? (
+                                {(damagedEquipment?.length || 0) > 0 ? (
                                     <>
-                                        {paginate(unusedEquipment, unusedPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg hover:shadow-md transition-shadow">
+                                        {paginate(damagedEquipment, damagedPage).map((eq, index) => (
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-orange-200 flex-shrink-0"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-red-200 flex-shrink-0"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                        <Package className="h-8 w-8 text-orange-600" />
+                                                    <div className="h-16 w-16 bg-red-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <Package className="h-8 w-8 text-red-600" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
@@ -245,22 +248,22 @@ export default function Analytics({
                                                 </div>
                                             </div>
                                         ))}
-                                        {totalUnusedPages > 1 && (
+                                        {totalDamagedPages > 1 && (
                                             <div className="flex items-center justify-center gap-2 pt-3 border-t">
                                                 <button
-                                                    onClick={() => setUnusedPage(p => Math.max(1, p - 1))}
-                                                    disabled={unusedPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    onClick={() => setDamagedPage(p => Math.max(1, p - 1))}
+                                                    disabled={damagedPage === 1}
+                                                    className="p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronLeft className="w-5 h-5" />
                                                 </button>
                                                 <span className="text-sm text-gray-600">
-                                                    Page {unusedPage} of {totalUnusedPages}
+                                                    Page {damagedPage} of {totalDamagedPages}
                                                 </span>
                                                 <button
-                                                    onClick={() => setUnusedPage(p => Math.min(totalUnusedPages, p + 1))}
-                                                    disabled={unusedPage === totalUnusedPages}
-                                                    className="p-2 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    onClick={() => setDamagedPage(p => Math.min(totalDamagedPages, p + 1))}
+                                                    disabled={damagedPage === totalDamagedPages}
+                                                    className="p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
@@ -268,9 +271,110 @@ export default function Analytics({
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">All equipment is being used</p>
+                                    <p className="text-gray-500 text-center py-8">No damaged equipment</p>
                                 )}
                             </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Active Equipment */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <Package className="w-5 h-5 mr-2 text-blue-600" />
+                                    Active Equipment
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {(activeEquipment?.length || 0) > 0 ? (
+                                    <>
+                                        {paginate(activeEquipment, activePage).map((eq, index) => (
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:shadow-md transition-shadow">
+                                                {eq.image ? (
+                                                    <img
+                                                        src={eq.image}
+                                                        alt={eq.mark}
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 flex-shrink-0"
+                                                    />
+                                                ) : (
+                                                    <div className="h-16 w-16 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <Package className="h-8 w-8 text-blue-600" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-gray-900">{eq.mark}</p>
+                                                    <p className="text-sm text-gray-600">{eq.reference}</p>
+                                                    <p className="text-xs text-gray-500">{eq.type_name}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {totalActivePages > 1 && (
+                                            <div className="flex items-center justify-center gap-2 pt-3 border-t">
+                                                <button
+                                                    onClick={() => setActivePage(p => Math.max(1, p - 1))}
+                                                    disabled={activePage === 1}
+                                                    className="p-2 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronLeft className="w-5 h-5" />
+                                                </button>
+                                                <span className="text-sm text-gray-600">
+                                                    Page {activePage} of {totalActivePages}
+                                                </span>
+                                                <button
+                                                    onClick={() => setActivePage(p => Math.min(totalActivePages, p + 1))}
+                                                    disabled={activePage === totalActivePages}
+                                                    className="p-2 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <ChevronRight className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-gray-500 text-center py-8">No active equipment right now</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Active Equipment by Type */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <BarChart3 className="w-5 h-5 mr-2 text-indigo-600" />
+                                Active Equipment by Type
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {(() => {
+                                const counts = (activeEquipment || []).reduce((acc, item) => {
+                                    const key = item?.type_name || 'Unknown';
+                                    acc[key] = (acc[key] || 0) + 1;
+                                    return acc;
+                                }, {});
+                                const data = Object.entries(counts).map(([name, value]) => ({ name, value }));
+                                if (data.length === 0) {
+                                    return <p className="text-gray-500 text-center py-8">No active equipment data</p>;
+                                }
+                                return (
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                                                    {data.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                                <Legend />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </div>
@@ -286,7 +390,7 @@ export default function Analytics({
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {topUsers.length > 0 ? (
+                                {(topUsers?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topUsers, userPage).map((user, index) => (
                                             <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md transition-shadow">
@@ -361,7 +465,7 @@ export default function Analytics({
                                         <p className="text-sm text-green-700">{timeSlotStats.most_reserved.count} reservations</p>
                                     </div>
                                 )}
-                                
+
                                 {timeSlotStats.least_reserved && (
                                     <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                                         <div className="flex items-center justify-between mb-2">
