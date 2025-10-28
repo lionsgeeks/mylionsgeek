@@ -118,5 +118,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Reservation::class, 'reservation_teams', 'user_id', 'reservation_id')->withTimestamps();
     }
+    public function badges()
+    {
+        return $this->belongsToMany(Badge::class)->withTimestamps();
+    }
 
 }
