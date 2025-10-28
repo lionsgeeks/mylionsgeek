@@ -2,12 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash, Settings, History } from 'lucide-react';
+import { Pencil, Trash, Settings, History, Plus, MessageSquare, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import {
     BarChart, Bar, PieChart, Pie, LineChart, Line, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -36,6 +37,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [historyEquipment, setHistoryEquipment] = useState(null);
     const [historyItems, setHistoryItems] = useState([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [historyTab, setHistoryTab] = useState('usage'); // usage, notes
+    const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
+    
 
     // Type management state
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
@@ -66,6 +70,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         name: '',
     });
 
+    // Note form
+    const { data: noteData, setData: setNoteData, post: postNote, processing: noteProcessing, reset: resetNote, errors: noteErrors } = useForm({
+        note: '',
+        type: 'general',
+    });
+
+    
+
     const handleEdit = (equipment) => {
         // Set the equipment being edited
         setEditingEquipment(equipment);
@@ -94,10 +106,22 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         setIsHistoryOpen(true);
         setIsLoadingHistory(true);
         try {
-            const res = await fetch(`/admin/equipements/${equipment.id}/history`);
-            if (!res.ok) throw new Error('Failed to load history');
-            const json = await res.json();
-            setHistoryItems(Array.isArray(json.history) ? json.history : []);
+            
+            const [usageRes, notesRes] = await Promise.all([
+                fetch(`/admin/equipements/${equipment.id}/usage-activities`),
+                fetch(`/admin/equipements/${equipment.id}/notes`)
+            ]);
+            
+            const usageData = usageRes.ok ? await usageRes.json() : { usage_activities: [] };
+            const notesData = notesRes.ok ? await notesRes.json() : { notes: [] };
+            
+            
+            const combinedHistory = [
+                ...usageData.usage_activities.map(item => ({ ...item, type: 'usage' })),
+                ...notesData.notes.map(item => ({ ...item, type: 'note' }))
+            ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            setHistoryItems(combinedHistory);
         } catch (err) {
             console.error(err);
             setHistoryItems([]);
@@ -105,6 +129,23 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             setIsLoadingHistory(false);
         }
     };
+
+    const handleAddNote = () => {
+        if (!noteData.note.trim() || !historyEquipment) return;
+
+        postNote(``, {
+            onSuccess: () => {
+                resetNote();
+                setIsAddNoteOpen(false);
+                openHistory(historyEquipment);
+            },
+            onError: (errors) => {
+                console.log('Note validation errors:', errors);
+            }
+        });
+    };
+
+    
 
     const handleUpdateEquipment = () => {
         put(`/admin/equipements/${editingEquipment.id}`, {
@@ -530,7 +571,15 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                             <div className="h-10 w-10 rounded bg-muted" />
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-sm">{e.reference}</td>
+                                    <td className="px-4 py-3 text-sm">
+                                        <button
+                                            onClick={() => openHistory(e)}
+                                            className="text-left hover:text-[var(--color-alpha)] hover:underline cursor-pointer transition-colors"
+                                            title="Click to view history"
+                                        >
+                                            {e.reference}
+                                        </button>
+                                    </td>
                                     <td className="px-4 py-3 text-sm">{e.mark}</td>
                                     <td className="px-4 py-3 text-sm">
                                         <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
@@ -551,14 +600,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={18} className="h-4 w-4" />
+                                                <Pencil size={18} className="text-alpha" />
                                             </button>
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={18} className="h-4 w-4" />
+                                                <Trash size={18} className="text-error" />
                                             </button>
                                         </div>
                                     </td>
@@ -997,74 +1046,204 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                     </DialogContent>
                 </Dialog>
 
-                {/* Reservation History Modal */}
+                {/* Enhanced History Modal */}
                 <Dialog open={isHistoryOpen} onOpenChange={(open) => {
                     setIsHistoryOpen(open);
                     if (!open) {
                         setHistoryItems([]);
                         setHistoryEquipment(null);
+                        setHistoryTab('usage');
                     }
                 }}>
-                    <DialogContent className="max-w-2xl bg-light text-dark dark:bg-dark dark:text-light">
+                    <DialogContent className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-medium">Reservation History</h2>
+                                    <h2 className="text-xl font-medium">Equipment History</h2>
                                     {historyEquipment && (
                                         <p className="text-sm text-muted-foreground">
                                             {historyEquipment.reference} — {historyEquipment.mark}
                                         </p>
                                     )}
                                 </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsAddNoteOpen(true)}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <MessageSquare className="h-4 w-4" />
+                                        Add Note
+                                    </Button>
+                                </div>
                             </div>
 
+                            {/* History Tabs */}
+                            <div className="flex border-b border-sidebar-border/70">
+                                <button
+                                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                        historyTab === 'usage'
+                                            ? 'border-[var(--color-alpha)] text-[var(--color-alpha)]'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                                    onClick={() => setHistoryTab('usage')}
+                                >
+                                    Usage History
+                                </button>
+                                <button
+                                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                        historyTab === 'notes'
+                                            ? 'border-[var(--color-alpha)] text-[var(--color-alpha)]'
+                                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                                    onClick={() => setHistoryTab('notes')}
+                                >
+                                    Notes
+                                </button>
+                            </div>
+
+                            {/* History Content */}
                             <div className="rounded-xl border border-sidebar-border/70 overflow-hidden">
                                 <div className="bg-secondary/50 px-4 py-3 text-sm font-medium flex items-center justify-between">
-                                    <span>Last reservations</span>
+                                    <span>
+                                        {historyTab === 'usage' && 'Usage History'}
+                                        {historyTab === 'notes' && 'Notes'}
+                                    </span>
                                     {isLoadingHistory && <span className="text-muted-foreground text-xs">Loading…</span>}
                                 </div>
+                                
                                 {historyItems.length === 0 ? (
                                     <div className="p-6 text-sm text-muted-foreground text-center">
-                                        {isLoadingHistory ? 'Fetching history…' : 'No reservation history found.'}
+                                        {isLoadingHistory ? 'Fetching history…' : 'No history found.'}
                                     </div>
                                 ) : (
-                                    <div className="divide-y divide-sidebar-border/70">
-                                        {historyItems.map((h) => {
-                                            const status = h.canceled ? 'Canceled' : (h.approved ? 'Approved' : 'Pending');
-                                            const statusClasses = h.canceled
-                                                ? 'bg-red-500/15 text-red-700 dark:text-red-300'
-                                                : (h.approved ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-yellow-500/20 text-yellow-800 dark:text-yellow-300');
-                                            return (
-                                                <div key={`${h.reservation_id}-${h.day}-${h.start}`} className="px-4 py-3 flex items-center gap-4">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${statusClasses}`}>{status}</span>
-                                                            {h.day && (
-                                                                <span className="text-sm font-medium">
-                                                                    {h.day}
-                                                                </span>
-                                                            )}
-                                                            {(h.start || h.end) && (
-                                                                <span className="text-sm text-muted-foreground">
-                                                                    {h.start || '--'} — {h.end || '--'}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {h.user_name && (
-                                                            <div className="text-sm text-muted-foreground truncate">
-                                                                Reserved by {h.user_name}
+                                    <div className="divide-y divide-sidebar-border/70 max-h-96 overflow-y-auto">
+                                        {historyItems
+                                            .filter(item => {
+                                                if (historyTab === 'usage') return item.type === 'usage';
+                                                if (historyTab === 'notes') return item.type === 'note';
+                                                return true;
+                                            })
+                                            .map((item, index) => {
+                                                if (item.type === 'usage') {
+                                                    return (
+                                                        <div key={`usage-${item.id}-${index}`} className="px-4 py-3 flex items-start gap-4">
+                                                            <div className="flex-shrink-0 mt-1">
+                                                                <Activity className="h-4 w-4 text-green-500" />
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-green-500/15 text-green-700 dark:text-green-300">
+                                                                        {item.action?.replace('_', ' ').toUpperCase()}
+                                                                    </span>
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {new Date(item.created_at).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-sm font-medium mb-1">
+                                                                    {item.description || `${item.action?.replace('_', ' ')} activity`}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground mb-1">
+                                                                    Used by: {item.user_name}
+                                                                </div>
+                                                                {(item.started_at || item.ended_at) && (
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {item.started_at && (
+                                                                            <span className="mr-4">
+                                                                                Started: {new Date(item.started_at).toLocaleString()}
+                                                                            </span>
+                                                                        )}
+                                                                        {item.ended_at && (
+                                                                            <span>
+                                                                                Ended: {new Date(item.ended_at).toLocaleString()}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                if (item.type === 'note') {
+                                                    return (
+                                                        <div key={`note-${item.id}-${index}`} className="px-4 py-3 flex items-start gap-4">
+                                                            <div className="flex-shrink-0 mt-1">
+                                                                <MessageSquare className="h-4 w-4 text-blue-500" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-blue-500/15 text-blue-700 dark:text-blue-300">
+                                                                        {item.type?.toUpperCase()}
+                                                                    </span>
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {new Date(item.created_at).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-sm font-medium mb-1">
+                                                                    {item.note}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    Added by: {item.user_name}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                return null;
+                                            })}
                                     </div>
                                 )}
                             </div>
                         </div>
                     </DialogContent>
                 </Dialog>
+
+                {/* Add Note Modal */}
+                <Dialog open={isAddNoteOpen} onOpenChange={setIsAddNoteOpen}>
+                    <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light">
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-medium">Add Note</h2>
+                            {historyEquipment && (
+                                <p className="text-sm text-muted-foreground">
+                                    Adding note for {historyEquipment.reference} — {historyEquipment.mark}
+                                </p>
+                            )}
+                            <div className="grid gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="note-content">Note Content</Label>
+                                    <Textarea
+                                        id="note-content"
+                                        placeholder="Enter your note here..."
+                                        value={noteData.note}
+                                        onChange={(e) => setNoteData('note', e.target.value)}
+                                        rows={4}
+                                    />
+                                    {noteErrors.note && <p className="text-xs text-destructive">{noteErrors.note}</p>}
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <Button variant="outline" onClick={() => {
+                                    resetNote();
+                                    setIsAddNoteOpen(false);
+                                }}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                    disabled={noteProcessing || !noteData.note.trim()}
+                                    onClick={handleAddNote}
+                                >
+                                    Add Note
+                                </Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                
             </div>
         </AppLayout>
     );
