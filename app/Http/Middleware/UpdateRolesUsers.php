@@ -20,7 +20,7 @@ class UpdateRolesUsers
             if ($months > 6) {
                 foreach ($formation->users as $user) {
                     if ($user->role === 'student') {
-                        $user->role = 'Graduated';
+                        // $user->role = 'Graduated';
                         $user->save();
                     }
                 }
