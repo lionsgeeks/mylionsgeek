@@ -34,11 +34,18 @@ export default function Analytics({
     const totalDamagedPages = Math.ceil((damagedEquipment?.length || 0) / ITEMS_PER_PAGE);
     const totalActivePages = Math.ceil((activeEquipment?.length || 0) / ITEMS_PER_PAGE);
 
+    // Aggregates for small badges
+    const studioTotal = (studioReservations || []).reduce((sum, s) => sum + (s.count || 0), 0);
+    const topEquipmentTotal = topEquipment?.length || 0;
+    const damagedTotal = damagedEquipment?.length || 0;
+    const activeTotal = activeEquipment?.length || 0;
+    const usersTotal = topUsers?.length || 0;
+
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
 
-            <div className="px-4 py-6 sm:p-8 lg:p-10">
+            <div className="px-4 py-6 sm:p-8 lg:p-10 max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-6">
                     <Link
@@ -106,20 +113,21 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Studio Reservations Chart */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Building2 className="w-5 h-5 mr-2 text-blue-600" />
                                 Studio Reservations
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{studioTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={studioReservations}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} />
+                                    <XAxis dataKey="name" interval={0} angle={-20} textAnchor="end" height={60} tick={{ fontSize: 12 }} />
                                     <YAxis />
                                     <Tooltip />
                                     <Bar dataKey="count" fill="#3b82f6" />
@@ -137,7 +145,7 @@ export default function Analytics({
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={320}>
                                 <LineChart data={monthlyTrend}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis dataKey="month" />
@@ -150,29 +158,30 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Top Equipment */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-purple-600" />
                                 Most Reserved Equipment
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">{topEquipmentTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {topEquipment.length > 0 ? (
+                                {(topEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topEquipment, equipmentPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-purple-200"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-purple-200 shadow-sm"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <div className="h-16 w-16 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
                                                         <Package className="h-8 w-8 text-purple-600" />
                                                     </div>
                                                 )}
@@ -222,6 +231,7 @@ export default function Analytics({
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-red-600" />
                                 Damaged Equipment
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{damagedTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -229,7 +239,7 @@ export default function Analytics({
                                 {(damagedEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(damagedEquipment, damagedPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
@@ -237,7 +247,7 @@ export default function Analytics({
                                                         className="h-16 w-16 object-cover rounded-lg border-2 border-red-200 flex-shrink-0"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-red-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <div className="h-16 w-16 bg-red-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
                                                         <Package className="h-8 w-8 text-red-600" />
                                                     </div>
                                                 )}
@@ -278,13 +288,14 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Active Equipment */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-blue-600" />
                                     Active Equipment
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{activeTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -292,15 +303,15 @@ export default function Analytics({
                                 {(activeEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(activeEquipment, activePage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 flex-shrink-0"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 flex-shrink-0 shadow-sm"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <div className="h-16 w-16 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
                                                         <Package className="h-8 w-8 text-blue-600" />
                                                     </div>
                                                 )}
@@ -360,7 +371,7 @@ export default function Analytics({
                                     return <p className="text-gray-500 text-center py-8">No active equipment data</p>;
                                 }
                                 return (
-                                    <div className="h-64">
+                                    <div className="h-72">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
@@ -379,13 +390,14 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
                     {/* Top Users */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Users className="w-5 h-5 mr-2 text-green-600" />
                                 Most Active Users
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">{usersTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -393,7 +405,7 @@ export default function Analytics({
                                 {(topUsers?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topUsers, userPage).map((user, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl hover:shadow-md transition-shadow">
                                                 {user.image ? (
                                                     <img
                                                         src={user.image}
@@ -408,7 +420,7 @@ export default function Analytics({
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-gray-900">{user.name}</p>
+                                                    <p className="font-bold text-gray-900"># {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}</p>
                                                     <p className="text-sm text-gray-600 truncate">{user.email}</p>
                                                 </div>
                                                 <div className="text-right flex-shrink-0">
