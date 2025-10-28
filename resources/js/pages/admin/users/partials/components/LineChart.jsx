@@ -15,8 +15,8 @@ import {
 
 export const description = "Monthly absence overview chart"
 
-const LineStatistic = ({ user }) => {
-    console.log(user)
+const LineStatistic = ({ MonthlyAbsence }) => {
+    console.log('hello this is the attendance'+ MonthlyAbsence)
 
     const chartData = [
         { month: "يناير", absence: 2 },

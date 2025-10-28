@@ -588,8 +588,30 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
-    public function UserAttendanceChart($id){
-        $userAttendance = AttendanceListe::where('user_id' , $id)->get() ;
-        dd($userAttendance);
+    public function UserAttendanceChart($id)
+    {
+        $attendances = AttendanceListe::where('user_id', $id)->get(['attendance_day', 'morning', 'lunch', 'evening']);
+        $monthlyAbsences = $attendances
+            ->groupBy(function ($record) {
+                // Group by month name, e.g., "October"
+                return Carbon::parse($record->attendance_day)->format('F');
+            })
+            ->map(function ($records) {
+                $totalAbsent = 0;
+
+                foreach ($records as $r) {
+                    if ($r->morning === 'Absent') $totalAbsent++;
+                    if ($r->lunch === 'Absent') $totalAbsent++;
+                    if ($r->evening === 'Absent') $totalAbsent++;
+                }
+
+                return [
+                    'month' => Carbon::parse($records->first()->attendance_day)->format('F'),
+                    'absent' => $totalAbsent,
+                ];
+            })
+            ->values(); // reset keys
+
+        return $monthlyAbsences;
     }
 }

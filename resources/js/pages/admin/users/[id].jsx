@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import React, { useMemo } from 'react';
 
 export default function AdminUserProfile() {
+  
   const { props } = usePage();
   const user = props.user;
   const projects = props.projects || [];
@@ -109,7 +110,7 @@ export default function AdminUserProfile() {
               {certificates && certificates.length > 0 ? (
                 <ul className="list-disc pl-5 text-sm">
                   {certificates.map((c, i) => (
-                    <li key={i}><a href={c.url} target="_blank" rel="noreferrer" className="text-alpha underline">{c.name || `Certificate ${i+1}`}</a></li>
+                    <li key={i}><a href={c.url} target="_blank" rel="noreferrer" className="text-alpha underline">{c.name || `Certificate ${i + 1}`}</a></li>
                   ))}
                 </ul>
               ) : (
@@ -167,9 +168,9 @@ export default function AdminUserProfile() {
                       <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2">
                         <div className="text-sm font-medium">{new Date(row.date).toLocaleDateString()}</div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
                         </div>
                       </div>
                     ))}
@@ -223,9 +224,9 @@ export default function AdminUserProfile() {
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold">{new Date(row.date).toLocaleDateString()}</div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
                         </div>
                       </div>
                       {Array.isArray(row.notes) && row.notes.length > 0 && (
@@ -242,12 +243,12 @@ export default function AdminUserProfile() {
                     <div className="flex items-center justify-end gap-2 pt-2">
                       <a
                         className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
-                        href={`?page=${Math.max(1, (absences.meta.current_page||1)-1)}`}
+                        href={`?page=${Math.max(1, (absences.meta.current_page || 1) - 1)}`}
                       >Prev</a>
                       <span className="text-xs text-neutral-500">Page {absences.meta.current_page} / {absences.meta.last_page}</span>
                       <a
                         className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
-                        href={`?page=${Math.min(absences.meta.last_page||1, (absences.meta.current_page||1)+1)}`}
+                        href={`?page=${Math.min(absences.meta.last_page || 1, (absences.meta.current_page || 1) + 1)}`}
                       >Next</a>
                     </div>
                   )}
