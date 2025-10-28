@@ -308,7 +308,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                     {/* Main Content */}
                     <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
                         {/* Calendar Section */}
-                        {/* <Calendar events={events} /> */}
+                        <Calendar events={events} /> 
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
