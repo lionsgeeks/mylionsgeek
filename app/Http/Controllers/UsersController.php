@@ -588,9 +588,9 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
-    public function UserAttendanceChart($id)
+    public function UserAttendanceChart(User $user)
     {
-        $attendances = AttendanceListe::where('user_id', $id)->get(['attendance_day', 'morning', 'lunch', 'evening']);
+        $attendances = AttendanceListe::where('user_id', $user->id)->get(['attendance_day', 'morning', 'lunch', 'evening']);
         $monthlyAbsences = $attendances
             ->groupBy(function ($record) {
                 // Group by month name, e.g., "October"
@@ -600,18 +600,18 @@ class UsersController extends Controller
                 $totalAbsent = 0;
 
                 foreach ($records as $r) {
-                    if ($r->morning === 'Absent') $totalAbsent++;
-                    if ($r->lunch === 'Absent') $totalAbsent++;
-                    if ($r->evening === 'Absent') $totalAbsent++;
+                    if (strtolower((string) $r->morning) === 'absent') $totalAbsent++;
+                    if (strtolower((string) $r->lunch) === 'absent') $totalAbsent++;
+                    if (strtolower((string) $r->evening) === 'absent') $totalAbsent++;
                 }
 
                 return [
                     'month' => Carbon::parse($records->first()->attendance_day)->format('F'),
-                    'absent' => $totalAbsent,
+                    'absence' => $totalAbsent,
                 ];
             })
             ->values(); // reset keys
 
-        return $monthlyAbsences;
+        return response()->json($monthlyAbsences);
     }
 }

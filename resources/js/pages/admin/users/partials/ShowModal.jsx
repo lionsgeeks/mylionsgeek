@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,20 @@ const User = ({ user, trainings, close, open }) => {
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
     const [notes, setNotes] = useState([]);
     const [docs, setDocs] = useState({ contracts: [], medicals: [] });
+    const [chartData, setChartData] = useState();
+
+
+    const fetchChart = async () => {
+        const res = await fetch(`/admin/users/${user?.id}/attendance-chart`)
+        const data = await res.json()
+        setChartData(data)
+    }
+    useEffect(() => {
+
+        fetchChart()
+
+    }, [user?.id])
+
 
     React.useEffect(() => {
         if (!open) return;
@@ -43,19 +57,19 @@ const User = ({ user, trainings, close, open }) => {
 
 
     function timeAgo(timestamp) {
-    if (!timestamp) return 'Never';
+        if (!timestamp) return 'Never';
 
-    const now = new Date();
-    const last = new Date(timestamp + 'Z');
+        const now = new Date();
+        const last = new Date(timestamp + 'Z');
 
-    const diff = Math.floor(( now - last ) / 1000); // seconds
+        const diff = Math.floor((now - last) / 1000); // seconds
 
-    if (diff < 60) return 'Online now';
-    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
-    if (diff < 172800) return 'Yesterday';
-    return last.toLocaleDateString();
-}
+        if (diff < 60) return 'Online now';
+        if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+        if (diff < 172800) return 'Yesterday';
+        return last.toLocaleDateString();
+    }
 
     return (
         <Dialog open={open} onOpenChange={close}>
@@ -84,17 +98,16 @@ const User = ({ user, trainings, close, open }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4">
                         <div className="md:col-span-1">
                             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 mb-2.5 text-center">
-                                <div className="text-sm text-neutral-500">Last active</div> 
+                                <div className="text-sm text-neutral-500">Last active</div>
                                 <div
-  className={`font-medium text-sm ${
-    timeAgo(user.last_online) === 'Online now' ? 'text-green-500' : 'text-red-500'
-  }`}
->
-  {timeAgo(user.last_online)}
-</div>
+                                    className={`font-medium text-sm ${timeAgo(user.last_online) === 'Online now' ? 'text-green-500' : 'text-red-500'
+                                        }`}
+                                >
+                                    {timeAgo(user.last_online)}
+                                </div>
 
 
-</div>
+                            </div>
                             <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                                 <div className="relative w-24 h-24">
                                     <Avatar className="w-24 h-24 rounded-full overflow-hidden">
@@ -104,9 +117,9 @@ const User = ({ user, trainings, close, open }) => {
                                                 alt={user?.name}
                                             />
                                         ) : (
-                                        <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                            {getInitials(user?.name)}
-                                        </AvatarFallback>
+                                            <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                {getInitials(user?.name)}
+                                            </AvatarFallback>
                                         )}
                                     </Avatar>
                                 </div>
@@ -182,16 +195,16 @@ const User = ({ user, trainings, close, open }) => {
                         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                             <Label>Quick actions</Label>
                             <div className="mt-2 flex flex-wrap gap-2">
-                                <Button  disabled={processing} onClick={() => router.visit(`/admin/users/${user.id}`)} variant="secondary">Open full profile</Button>
-                                <Button 
-                                disabled={processing} onClick={() => {
-                                    setProcessing(true);
-                                    const newState = user.account_state === 1 ? 0 : 1;
-                                    router.post(`/admin/users/update/${user.id}/account-state`, { _method: 'put', account_state: newState }, {
-                                        onFinish: () => setProcessing(false)
-                                    });
-                                }}
-                                variant={ user.account_state ? 'default' : 'danger'}
+                                <Button disabled={processing} onClick={() => router.visit(`/admin/users/${user.id}`)} variant="secondary">Open full profile</Button>
+                                <Button
+                                    disabled={processing} onClick={() => {
+                                        setProcessing(true);
+                                        const newState = user.account_state === 1 ? 0 : 1;
+                                        router.post(`/admin/users/update/${user.id}/account-state`, { _method: 'put', account_state: newState }, {
+                                            onFinish: () => setProcessing(false)
+                                        });
+                                    }}
+                                    variant={user.account_state ? 'default' : 'danger'}
                                 >{user.account_state ? 'Activate' : 'Suspend'}</Button>
                             </div>
                         </div>
@@ -202,7 +215,7 @@ const User = ({ user, trainings, close, open }) => {
                     <div style={{ overflowX: 'auto' }} className="mt-4  rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                         {/* Monthly full-day absences summary */}
                         {/* <div className="mt-4 "> */}
-                            {/* <Label>Full-day absences per month</Label>
+                        {/* <Label>Full-day absences per month</Label>
                             {Array.isArray(summary.monthlyFullDayAbsences) && summary.monthlyFullDayAbsences.length > 0 ? (
                                 <div className="mt-2 pb-2 -mx-3 px-3 w-full overflow-x-auto custom-scrollbar">
                                     <div className="grid grid-flow-col auto-cols-[220px] gap-3 pr-3">
@@ -249,7 +262,7 @@ const User = ({ user, trainings, close, open }) => {
                             <span className="px-2 py-0.5 rounded-full bg-error/10 text-error">absent</span>
                             <span className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">present/other</span>
                         </div> */}
-                        <LineStatistic />
+                        <LineStatistic chartData={chartData} />
                     </div>
                 )}
 
@@ -422,7 +435,7 @@ const User = ({ user, trainings, close, open }) => {
                                         setNotes(Array.isArray(d?.notes) ? d.notes : []);
                                         if (input) input.value = '';
                                     }
-                                } catch {}
+                                } catch { }
                             }}
                         >
                             <input name="newNote" type="text" placeholder="Add a note and press Enter" className="flex-1 rounded-md border border-alpha/20 px-3 py-2 bg-transparent" />
@@ -446,7 +459,7 @@ const User = ({ user, trainings, close, open }) => {
 
                 <div className="flex justify-end gap-2 mt-5">
                     <Button onClick={close} variant="secondary">Close</Button>
-                    <Button  onClick={() => router.visit(`/admin/users/${user.id}`)} className="">View full profile</Button>
+                    <Button onClick={() => router.visit(`/admin/users/${user.id}`)} className="">View full profile</Button>
                 </div>
             </DialogContent>
         </Dialog>
