@@ -26,17 +26,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
 {
-public function index()
-{
-    $allUsers = User::where('role', '!=', 'admin')->orderBy('created_at', 'desc')->get();
-    
-    $allFormation = Formation::orderBy('created_at', 'desc')->get();
+    public function index()
+    {
+        $allUsers = User::where('role', '!=', 'admin')->orderBy('created_at', 'desc')->get();
 
-    return Inertia::render('admin/users/index', [
-        'users' => $allUsers,
-        'trainings' => $allFormation,
-    ]);
-}
+        $allFormation = Formation::orderBy('created_at', 'desc')->get();
+
+        return Inertia::render('admin/users/index', [
+            'users' => $allUsers,
+            'trainings' => $allFormation,
+        ]);
+    }
 
 
     public function export(Request $request): StreamedResponse
@@ -263,7 +263,7 @@ public function index()
 
         return response()->json(['status' => 'ok']);
     }
-    
+
     // Documents API
     public function documents(User $user)
     {
@@ -285,7 +285,7 @@ public function index()
 
         $contracts = Contract::where('user_id', $user->id)
             ->orderByDesc('created_at')
-            ->get(['id','contract','type','created_at'])
+            ->get(['id', 'contract', 'type', 'created_at'])
             ->map(function ($c) {
                 return [
                     'id' => (int) $c->id,
@@ -305,7 +305,7 @@ public function index()
 
         $medicals = Medical::where('user_id', $user->id)
             ->orderByDesc('created_at')
-            ->get(['id','mc_document','description','created_at'])
+            ->get(['id', 'mc_document', 'description', 'created_at'])
             ->map(function ($m) {
                 return [
                     'id' => (int) $m->id,
@@ -587,5 +587,9 @@ public function index()
             'recentAbsences' => $rows,
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
+    }
+    public function UserAttendanceChart($id){
+        $userAttendance = AttendanceListe::where('user_id' , $id)->get() ;
+        dd($userAttendance);
     }
 }

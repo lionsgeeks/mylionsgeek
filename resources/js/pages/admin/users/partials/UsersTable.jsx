@@ -43,6 +43,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
     const onShow = (user) => {
         setShowedUser(user);
         setOpenShow(true);
+        router.get('/admin/users/attendance-chart/'+user.id)
     };
 
     // Change account status or delete user logic

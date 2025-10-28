@@ -1,6 +1,8 @@
 <?php
 
 // use App\Http\Controllers\CompleteProfile;
+
+use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +24,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
+    Route::get('/users/attendance-chart/{id}', [UsersController::class, 'UserAttendanceChart']);
 });
 
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
