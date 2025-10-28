@@ -10,6 +10,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);
     Route::get('/users/{user}', [UsersController::class, 'show']);
+    Route::get('/users/{user}/attendance-chart', [UsersController::class, 'UserAttendanceChart']); //! chart route
     Route::get('/users/{user}/attendance-summary', [UsersController::class, 'attendanceSummary']);
     Route::get('/users/{user}/notes', [UsersController::class, 'notes']);
     Route::post('/users/{user}/notes', [UsersController::class, 'storeNote']);

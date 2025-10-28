@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import React, { useMemo } from 'react';
+import LineStatistic from './partials/components/LineChart';
 
 export default function AdminUserProfile() {
   const { props } = usePage();
@@ -178,6 +179,11 @@ export default function AdminUserProfile() {
                   <div className="text-sm text-neutral-500">No absences yet.</div>
                 )}
               </div>
+            </div>
+
+            {/* Attendance Line Chart */}
+            <div className="rounded-xl border border-alpha/20 p-4">
+              <LineStatistic user={user} />
             </div>
 
             <div className="rounded-xl border border-alpha/20 p-4">
