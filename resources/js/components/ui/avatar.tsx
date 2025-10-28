@@ -30,7 +30,7 @@ function AvatarImage({
       {...props}
     />
   )
-}jar
+}
 
 function AvatarFallback({
   className,
