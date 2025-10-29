@@ -166,7 +166,7 @@ class ReservationsController extends Controller
                     'approved' => 1,
                     'updated_at' => now(),
                 ]);
-            
+
             $coworkReservations = DB::table('reservation_coworks as rc')
                 ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
                 ->select('rc.*', 'u.name as user_name')
@@ -234,6 +234,65 @@ class ReservationsController extends Controller
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
+        }
+
+        // Log equipment usage to activity_log (one row per equipment) on approval
+        try {
+            if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                $equipmentLinks = DB::table('reservation_equipment')
+                    ->where('reservation_id', $reservation)
+                    ->get();
+
+                if ($equipmentLinks->count() > 0) {
+                    $rowsToInsert = [];
+                    foreach ($equipmentLinks as $link) {
+                        $day = $link->day ?? ($reservationData->day ?? null);
+                        $start = $link->start ?? ($reservationData->start ?? null);
+                        $end = $link->end ?? ($reservationData->end ?? null);
+
+                        // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
+                        $startDate = (string) ($day ?? '');
+                        $endDate = (string) ($day ?? '');
+                        $properties = json_encode([
+                            'start' => $startDate,
+                            'end' => $endDate,
+                        ]);
+
+                        // Idempotency guard to avoid duplicate rows on repeated approvals
+                        $exists = DB::table('activity_log')
+                            ->where('log_name', 'equipment')
+                            ->where('description', 'equipment history')
+                            ->where('subject_type', 'App\\Models\\Equipment')
+                            ->where('subject_id', $link->equipment_id)
+                            ->where('causer_type', 'App\\Models\\User')
+                            ->where('causer_id', $reservationData->user_id)
+                            ->where('event', 'approved')
+                            ->where('properties', $properties)
+                            ->exists();
+
+                        if (!$exists) {
+                            $rowsToInsert[] = [
+                                'log_name' => 'equipment',
+                                'description' => 'equipment history',
+                                'subject_type' => 'App\\Models\\Equipment',
+                                'subject_id' => $link->equipment_id,
+                                'event' => 'approved',
+                                'causer_type' => 'App\\Models\\User',
+                                'causer_id' => $reservationData->user_id,
+                                'properties' => $properties,
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }
+                    }
+
+                    if (!empty($rowsToInsert)) {
+                        DB::table('activity_log')->insert($rowsToInsert);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Reservation approved');
@@ -839,6 +898,18 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name')
             ->orderByDesc('r.created_at');
 
+        // If client provides a list of reservation IDs (from filtered UI), restrict export to those
+        $idsParam = (string) $request->query('ids', '');
+        if ($idsParam !== '') {
+            $ids = array_values(array_filter(array_map(function ($v) {
+                $n = (int) trim($v);
+                return $n > 0 ? $n : null;
+            }, explode(',', $idsParam))));
+            if (!empty($ids)) {
+                $query->whereIn('r.id', $ids);
+            }
+        }
+
         $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
         $placeByReservation = [];
 
@@ -929,57 +1000,237 @@ public function meetingRoomCalendar(int $meetingRoom)
     ]);
 }
 
-public function storeReservationMeetingRoom(Request $request)
-{
-    $request->validate([
-        'meeting_room_id' => 'required|exists:meeting_rooms,id',
-        'day' => 'required|date',
-        'start' => 'required',
-        'end' => 'required',
-    ]);
+            // Generate and download PDF
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
 
-    $lastId = (int) (DB::table('reservation_meeting_rooms')->max('id') ?? 0);
-    $reservationId = $lastId + 1;
+            // Log equipment usage to activity_log on end verification (event = verified_end)
+            try {
+                if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                    $reservationDataForLog = DB::table('reservations')->where('id', $reservation)->first();
+                    $equipmentLinksForLog = DB::table('reservation_equipment')
+                        ->where('reservation_id', $reservation)
+                        ->get();
 
-    // Get user data for email
-    $user = DB::table('users')->where('id', Auth::id())->first();
-    if (!$user) {
-        return back()->with('error', 'User not found');
+                    if ($reservationDataForLog && $equipmentLinksForLog->count() > 0) {
+                        $rowsToInsert = [];
+                        foreach ($equipmentLinksForLog as $link) {
+                            $day = $link->day ?? ($reservationDataForLog->day ?? null);
+                            $start = $link->start ?? ($reservationDataForLog->start ?? null);
+                            $end = $link->end ?? ($reservationDataForLog->end ?? null);
+
+                            // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
+                            $startDate = (string) ($day ?? '');
+                            $endDate = (string) ($day ?? '');
+                            $properties = json_encode([
+                                'start' => $startDate,
+                                'end' => $endDate,
+                            ]);
+
+                            $exists = DB::table('activity_log')
+                                ->where('log_name', 'equipment')
+                                ->where('description', 'equipment history')
+                                ->where('subject_type', 'App\\Models\\Equipment')
+                                ->where('subject_id', $link->equipment_id)
+                                ->where('causer_type', 'App\\Models\\User')
+                                ->where('causer_id', $reservationDataForLog->user_id)
+                                ->where('event', 'verified_end')
+                                ->where('properties', $properties)
+                                ->exists();
+
+                            if (!$exists) {
+                                $rowsToInsert[] = [
+                                    'log_name' => 'equipment',
+                                    'description' => 'equipment history',
+                                    'subject_type' => 'App\\Models\\Equipment',
+                                    'subject_id' => $link->equipment_id,
+                                    'event' => 'verified_end',
+                                    'causer_type' => 'App\\Models\\User',
+                                    'causer_id' => $reservationDataForLog->user_id,
+                                    'properties' => $properties,
+                                    'created_at' => now()->toDateTimeString(),
+                                    'updated_at' => now()->toDateTimeString(),
+                                ];
+                            }
+                        }
+
+                        if (!empty($rowsToInsert)) {
+                            DB::table('activity_log')->insert($rowsToInsert);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
+            }
+
+            $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
+            $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
+            $filename = "Verification_Report_{$userName}_{$date}.pdf";
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Store PDF data in session for download
+            session(['verification_pdf_data' => [
+                'reservation' => $verificationData['reservation'],
+                'verificationData' => $verificationData,
+                'filename' => $filename
+            ]]);
+
+            // Check if this is an Inertia request
+            if (request()->header('X-Inertia')) {
+                // Return JSON for Inertia requests
+                $downloadUrl = route('reservations.download-report', $reservation);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Verification completed successfully!',
+                    'downloadUrl' => $downloadUrl
+                ]);
+            } else {
+                // Redirect directly to download for regular form submissions
+                return redirect()->route('reservations.download-report', $reservation);
+            }
+        } catch (\Exception $e) {
+            \Log::error('PDF generation failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Verification completed successfully! PDF generation failed, but data was saved.');
+        }
     }
 
-    // Get meeting room name
-    $meetingRoom = DB::table('meeting_rooms')->where('id', $request->meeting_room_id)->first();
+    /**
+     * Show reservation details page
+     */
+    public function details(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservations table missing');
+        }
 
-    // Create meeting room reservation as auto-approved
-    DB::table('reservation_meeting_rooms')->insert([
-        'id' => $reservationId,
-        'meeting_room_id' => $request->meeting_room_id,
-        'user_id' => Auth::id(),
-        'day' => $request->day,
-        'start' => $request->start,
-        'end' => $request->end,
-        'passed' => 0,
-        'approved' => 1,
-        'canceled' => 0,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
+            ->first();
 
-    // Send approval email for auto-approved meeting room reservation
-    try {
-        $reservationData = (object) [
-            'id' => $reservationId,
-            'title' => "Meeting Room - {$meetingRoom->name}",
-            'date' => $request->day,
-            'start' => $request->start,
-            'end' => $request->end,
-            'description' => 'Meeting room reservation',
-            'type' => 'meeting_room'
-        ];
+        if (!$reservationData) {
+            return redirect()->route('admin.reservations')->with('error', 'Reservation not found');
+        }
 
-        Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
-    } catch (\Exception $e) {
-        \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
+        // Get equipment details
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+
+            $equipments = $query->get()
+                ->map(function ($equipment) {
+                    $img = isset($equipment->image) ? $equipment->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $equipment->id,
+                        'reference' => $equipment->reference,
+                        'mark' => $equipment->mark,
+                        'type_name' => $equipment->type_name,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get team members
+        $teamMembers = [];
+        if (Schema::hasTable('reservation_teams')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('u.id', 'u.name', 'u.email');
+
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+
+            $teamMembers = $query->get()
+                ->map(function ($member) {
+                    $img = isset($member->image) ? $member->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'email' => $member->email,
+                        'image' => $img,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        // Get approver details
+        $approverName = null;
+        if ($reservationData->approve_id) {
+            $approver = DB::table('users')->where('id', $reservationData->approve_id)->first();
+            $approverName = $approver ? $approver->name : null;
+        }
+
+        return Inertia::render('admin/reservations/[id]', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'user_name' => $reservationData->user_name,
+                'user_email' => $reservationData->user_email,
+                'date' => $reservationData->date ?? $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'type' => $reservationData->type,
+                'studio_name' => $reservationData->studio_name,
+                'approved' => (bool) ($reservationData->approved ?? 0),
+                'canceled' => (bool) ($reservationData->canceled ?? 0),
+                'passed' => (bool) ($reservationData->passed ?? 0),
+                'start_signed' => (bool) ($reservationData->start_signed ?? 0),
+                'end_signed' => (bool) ($reservationData->end_signed ?? 0),
+                'approver_name' => $approverName,
+                'created_at' => $reservationData->created_at,
+                'updated_at' => $reservationData->updated_at,
+            ],
+            'equipments' => $equipments,
+            'teamMembers' => $teamMembers,
+        ]);
     }
 
     return back()->with('success', 'Meeting room reservation created and approved automatically');
@@ -991,45 +1242,402 @@ public function cancelMeetingRoom(int $reservation)
         return back()->with('error', 'Reservation meeting rooms table missing');
     }
 
-    $reservationData = DB::table('reservation_meeting_rooms')->where('id', $reservation)->first();
-    if (!$reservationData) {
-        return back()->with('error', 'Meeting room reservation not found');
-    }
+    /**
+     * Show analytics and reporting page
+     */
+    public function analytics()
+    {
+        $analytics = [];
 
-    $user = DB::table('users')->where('id', $reservationData->user_id)->first();
-    if (!$user) {
-        return back()->with('error', 'User not found');
-    }
+        // Studio Reservations Count
+        $studioReservationsCount = [];
+        if (Schema::hasTable('reservations') && Schema::hasTable('studios')) {
+            $studioReservationsCount = DB::table('reservations as r')
+                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+                ->select('s.name as studio_name', DB::raw('COUNT(*) as count'))
+                ->where('r.type', 'studio')
+                ->where('r.canceled', 0)
+                ->groupBy('s.id', 's.name')
+                ->orderByDesc('count')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'name' => $item->studio_name ? $item->studio_name : 'Exterior',
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
 
-    $meetingRoom = DB::table('meeting_rooms')->where('id', $reservationData->meeting_room_id)->first();
+        // Most Active Times (Hours)
+        $timeSlotStats = [];
+        if (Schema::hasTable('reservations')) {
+            $timeSlots = DB::table('reservations')
+                ->select('start', DB::raw('COUNT(*) as count'))
+                ->where('canceled', 0)
+                ->whereNotNull('start')
+                ->groupBy('start')
+                ->orderByDesc('count')
+                ->get()
+                ->toArray();
 
-    DB::table('reservation_meeting_rooms')->where('id', $reservation)->update([
-        'canceled' => 1,
-        'approved' => 0,
-        'updated_at' => now(),
-    ]);
+            $timeSlotStats = [
+                'most_reserved' => count($timeSlots) > 0 ? [
+                    'time' => $timeSlots[0]->start,
+                    'count' => $timeSlots[0]->count
+                ] : null,
+                'least_reserved' => count($timeSlots) > 0 ? [
+                    'time' => end($timeSlots)->start,
+                    'count' => end($timeSlots)->count
+                ] : null,
+            ];
+        }
 
-    try {
-        $reservationForEmail = (object) [
-            'id' => $reservationData->id,
-            'title' => "Meeting Room - {$meetingRoom->name}",
-            'date' => $reservationData->day,
-            'start' => $reservationData->start,
-            'end' => $reservationData->end,
-            'description' => 'Meeting room reservation',
-            'type' => 'meeting_room'
-        ];
+        // Most Active Users
+        $topUsers = [];
+        if (Schema::hasTable('reservations')) {
+            $userImageColumn = Schema::hasColumn('users', 'image') ? 'image' : (Schema::hasColumn('users', 'profile_photo_path') ? 'profile_photo_path' : null);
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('u.name', 'u.email', DB::raw('COUNT(*) as count'));
 
-        Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
-    } catch (\Exception $e) {
-        \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
-    }
+            if ($userImageColumn) {
+                $query->addSelect('u.' . $userImageColumn . ' as image');
+            }
+
+            $topUsers = $query
+                ->where('r.canceled', 0)
+                ->groupBy('u.id', 'u.name', 'u.email')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get()
+                ->map(function ($user) {
+                    $img = isset($user->image) ? $user->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'name' => $user->name ?? 'Unknown',
+                        'email' => $user->email ?? '',
+                        'count' => $user->count,
+                        'image' => $img
+                    ];
+                })
+                ->toArray();
+        }
+
+        // Most Reserved Equipment
+        $topEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+
+            // First get the count per equipment
+            $topEquipmentData = DB::table('reservation_equipment as re')
+                ->select('re.equipment_id', DB::raw('COUNT(*) as count'))
+                ->groupBy('re.equipment_id')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get();
+
+            // Then get equipment details with images
+            $equipmentIds = $topEquipmentData->pluck('equipment_id')->toArray();
+
+            if (!empty($equipmentIds)) {
+                $query = DB::table('equipment as e')
+                    ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+
+                if ($hasEquipmentImage) {
+                    $query->addSelect('e.image');
+                }
+
+                $equipmentDetails = $query->whereIn('e.id', $equipmentIds)->get()->keyBy('id');
+
+                $topEquipment = $topEquipmentData->map(function ($item) use ($equipmentDetails) {
+                    $eq = $equipmentDetails->get($item->equipment_id);
+                    if (!$eq) return null;
+
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+
+                    return [
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'count' => $item->count,
+                        'image' => $img
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->toArray();
+            }
+        }
+
+        // Damaged equipment (state = 0)
+        $damagedEquipment = [];
+        if (Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                ->where('e.state', 0)
+                ->limit(10);
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+            $damagedEquipment = $query->get()->map(function ($eq) {
+                $img = isset($eq->image) ? $eq->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+                return [
+                    'id' => $eq->id,
+                    'reference' => $eq->reference ?? 'Unknown',
+                    'mark' => $eq->mark ?? '',
+                    'type_name' => $eq->type_name ?? 'Unknown',
+                    'image' => $img
+                ];
+            })->toArray();
+        }
+
+        // Equipment in active reservations (now between start and end on the reservation day)
+        $activeEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('reservations') && Schema::hasTable('equipment')) {
+            $now = now()->format('Y-m-d H:i:s');
+            $activeEquipmentIds = DB::table('reservation_equipment as re')
+                ->leftJoin('reservations as r', 'r.id', '=', 're.reservation_id')
+                ->where('r.canceled', 0)
+                // SQLite-friendly datetime comparison using concatenation of day + time
+                ->whereRaw("datetime(r.day || ' ' || r.start) <= ?", [$now])
+                ->whereRaw("datetime(r.day || ' ' || r.end) >= ?", [$now])
+                ->distinct()
+                ->pluck('re.equipment_id')
+                ->toArray();
+
+            if (!empty($activeEquipmentIds)) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $query = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                    ->whereIn('e.id', $activeEquipmentIds)
+                    ->limit(10);
+            if ($hasEquipmentImage) {
+                $query->addSelect('e.image');
+            }
+                $activeEquipment = $query->get()->map(function ($eq) {
+                    $img = isset($eq->image) ? $eq->image : null;
+                    if ($img) {
+                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        }
+                        $img = asset($img);
+                    }
+                    return [
+                        'id' => $eq->id,
+                        'reference' => $eq->reference ?? 'Unknown',
+                        'mark' => $eq->mark ?? '',
+                        'type_name' => $eq->type_name ?? 'Unknown',
+                        'image' => $img
+                    ];
+                })->toArray();
+            }
+        }
 
     return back()->with('success', 'Meeting room reservation canceled');
 }
 
+        // Total Statistics
+        $totalStats = [
+            'total_reservations' => DB::table('reservations')->where('canceled', 0)->count(),
+            'total_cowork_reservations' => Schema::hasTable('reservation_coworks')
+                ? DB::table('reservation_coworks')->where('canceled', 0)->count()
+                : 0,
+            'total_equipment' => Schema::hasTable('equipment')
+                ? DB::table('equipment')->count()
+                : 0,
+            'total_users' => DB::table('users')->count(),
+            'total_studios' => Schema::hasTable('studios')
+                ? DB::table('studios')->count()
+                : 0,
+        ];
 
+        $analytics = [
+            'totalStats' => $totalStats,
+            'studioReservations' => $studioReservationsCount,
+            'timeSlotStats' => $timeSlotStats,
+            'topUsers' => $topUsers,
+            'topEquipment' => $topEquipment,
+            'damagedEquipment' => $damagedEquipment,
+            'activeEquipment' => $activeEquipment,
+            'monthlyTrend' => $monthlyTrend,
+        ];
 
+        return Inertia::render('admin/reservations/analytics', $analytics);
+    }
+
+    /**
+     * Show reservation history page
+     */
+    /**
+     * Show individual reservation details
+     */
+    public function show(int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return Inertia::render('reservations/ReservationDetails', [
+                'reservation' => null
+            ]);
+        }
+
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+            ->where('r.id', $reservation)
+            ->select(
+                'r.*',
+                'u.name as user_name',
+                'u.email as user_email',
+                'u.phone as user_phone',
+                'u.image as user_avatar',
+                's.name as studio_name'
+            )
+            ->first();
+
+        if (!$reservationData) {
+            return Inertia::render('reservations/ReservationDetails', [
+                'reservation' => null
+            ]);
+        }
+
+        // Normalize user avatar path
+        $userAvatar = $reservationData->user_avatar ?? null;
+        if ($userAvatar && !Str::startsWith($userAvatar, ['http://', 'https://', 'storage/'])) {
+            $userAvatar = 'img/profile/' . ltrim($userAvatar, '/');
+        }
+
+        // Get approver details
+        $approverName = null;
+        if ($reservationData->approve_id) {
+            $approver = DB::table('users')->where('id', $reservationData->approve_id)->first();
+            $approverName = $approver ? $approver->name : null;
+        }
+
+        // Determine status
+        $status = 'ended';
+        if ($reservationData->canceled) {
+            $status = 'cancelled';
+        } elseif ($reservationData->approved && $reservationData->day > now()->toDateString()) {
+            $status = 'upcoming';
+        } elseif ($reservationData->approved && $reservationData->day == now()->toDateString()) {
+            $status = 'active';
+        }
+
+        // Get equipment information
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select(
+                    'e.id',
+                    'e.reference',
+                    'e.mark',
+                    'e.image',
+                    'et.name as type_name',
+                    're.day as equipment_day',
+                    're.start as equipment_start',
+                    're.end as equipment_end'
+                )
+                ->get()
+                ->map(function ($equipment) {
+                    $img = $equipment->image ?? null;
+                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'img/equipment/' . ltrim($img, '/');
+                    }
+                    return [
+                        'id' => $equipment->id,
+                        'reference' => $equipment->reference,
+                        'mark' => $equipment->mark,
+                        'name' => $equipment->reference . ' - ' . $equipment->mark,
+                        'image' => $img,
+                        'type_name' => $equipment->type_name,
+                        'day' => $equipment->equipment_day,
+                        'start' => $equipment->equipment_start,
+                        'end' => $equipment->equipment_end,
+                    ];
+                });
+        }
+
+        // Get team members
+        $members = [];
+        if (Schema::hasTable('reservation_teams')) {
+            $members = DB::table('reservation_teams as rt')
+                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+                ->where('rt.reservation_id', $reservation)
+                ->select('u.name', 'u.email', 'u.image as avatar', 'u.phone')
+                ->get()
+                ->map(function ($member) {
+                    $img = $member->avatar ?? null;
+                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'img/profile/' . ltrim($img, '/');
+                    }
+                    return [
+                        'name' => $member->name,
+                        'email' => $member->email,
+                        'phone' => $member->phone,
+                        'avatar' => $img,
+                        'role' => 'Team Member'
+                    ];
+                });
+        }
+
+        $reservation = [
+            'id' => $reservationData->id,
+            'title' => $reservationData->title,
+            'description' => $reservationData->description,
+            'type' => $reservationData->type,
+            'day' => $reservationData->day,
+            'start' => $reservationData->start,
+            'end' => $reservationData->end,
+            'start_time' => $reservationData->day . ' ' . $reservationData->start,
+            'end_time' => $reservationData->day . ' ' . $reservationData->end,
+            'status' => $status,
+            'approved' => (bool) $reservationData->approved,
+            'canceled' => (bool) $reservationData->canceled,
+            'passed' => (bool) $reservationData->passed,
+            'start_signed' => (bool) $reservationData->start_signed,
+            'end_signed' => (bool) $reservationData->end_signed,
+            'notes' => $reservationData->description,
+            'created_at' => $reservationData->created_at,
+            'updated_at' => $reservationData->updated_at,
+            'user_name' => $reservationData->user_name,
+            'user_email' => $reservationData->user_email,
+            'user_phone' => $reservationData->user_phone,
+            'user_avatar' => $userAvatar,
+            'studio_name' => $reservationData->studio_name,
+            'approver_name' => $approverName,
+            'equipments' => $equipments,
+            'members' => $members,
+        ];
+
+        return Inertia::render('admin/reservations/[id]', [
+            'reservation' => $reservation
+        ]);
+    }
 }
 
 

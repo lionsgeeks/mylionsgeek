@@ -17,7 +17,7 @@ export default function ShowSkippableModal() {
 
   useEffect(() => {
     if (
-      (auth.user.role === 'admin' || auth.user.role === 'coach') &&
+      (auth.user.role.includes('admin') || auth.user.role.includes('coach')) &&
       window.location.pathname !== '/admin/reservations'
     ) {
       const showModal = () => {
