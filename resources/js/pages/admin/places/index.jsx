@@ -13,6 +13,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ReservationModal from './studios/components/ReservationModal';
 import ReservationModalCowork from './coworks/components/ReservationModalCowork';
+import ReservationModalMeetingRoom from './meeting_room/components/ReservationModalMeetingRoom';
 import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
 
@@ -28,18 +29,43 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     loadCalendarEvents(place);
   };
 
-  const loadCalendarEvents = (place) => {
-    setLoadingEvents(true);
-    const placeType = place.place_type === 'studio' ? 'studio' : 'cowork';
-    fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
-      headers: { 'Accept': 'application/json' },
-      credentials: 'same-origin',
-    })
-      .then((r) => r.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : []))
-      .catch(() => setEvents([]))
-      .finally(() => setLoadingEvents(false));
-  };
+    const loadCalendarEvents = (place) => {
+        setLoadingEvents(true);
+        
+        // Determine place type
+        let placeType = 'studio';
+        if (place.place_type === 'cowork') {
+            placeType = 'cowork';
+        } else if (place.place_type === 'meeting_room') {
+            placeType = 'meeting_room';
+        }
+        
+        fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+        })
+        .then((r) => r.json())
+        .then((data) => setEvents(Array.isArray(data) ? data : []))
+        .catch(() => setEvents([]))
+        .finally(() => setLoadingEvents(false));
+    };
+
+    const handleDateSelect = (selectInfo) => {
+        const start = selectInfo.start;
+        const end = selectInfo.end;
+
+        const day = start.toISOString().split('T')[0];
+        const startTime = start.toTimeString().slice(0, 5);
+        const endTime = end.toTimeString().slice(0, 5);
+
+        setSelectedRange({
+            day,
+            start: startTime,
+            end: endTime,
+        });
+
+        setIsReservationModalOpen(true);
+    };
 
 
     const [previewSrc, setPreviewSrc] = useState(null);
@@ -783,16 +809,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         events={events}
                         selectable={true}
                         selectMirror={true}
+                        select={handleDateSelect}
                         selectOverlap={false}
                         editable={false}
-                        select={(selectInfo) => {
-                            const { start, end } = selectInfo;
-                            const day = start.toISOString().split('T')[0];
-                            const startTime = start.toTimeString().slice(0, 5);
-                            const endTime = end.toTimeString().slice(0, 5);
-                            setSelectedRange({ day, start: startTime, end: endTime });
-                            setIsReservationModalOpen(true);
-                        }}
                         height="88%"
                         eventColor="#FFC801"
                         eventTextColor="#000000"
@@ -827,6 +846,19 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     loadCalendarEvents(selectedPlace);
                     }}
                 />
+                )}
+
+                {selectedPlace?.place_type === 'meeting_room' && (
+                    <ReservationModalMeetingRoom
+                        isOpen={isReservationModalOpen}
+                        onClose={() => setIsReservationModalOpen(false)}
+                        meetingRoom={selectedPlace}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsReservationModalOpen(false);
+                            loadCalendarEvents(selectedPlace);
+                        }}
+                    />
                 )}
 
             </div>

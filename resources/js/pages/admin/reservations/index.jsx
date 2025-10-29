@@ -98,9 +98,19 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             end: c.end,
             place_type: 'cowork'
         }));
-
-        const mixed = [...reservations, ...normalizedCowork];
-
+        
+        const normalizedMeetingRooms = meetingRoomReservations.map(m => ({
+            ...m,
+            type: 'meeting_room',
+            title: `Meeting Room - ${m.room_name || 'Room'}`,
+            date: m.day,
+            start: m.start,
+            end: m.end,
+            place_type: 'meeting_room'
+        }));
+        
+        const mixed = [...reservations, ...normalizedCowork, ...normalizedMeetingRooms];
+        
         const parseDateTime = (item) => {
             const dateStr = item?.date || item?.day || '';
             const timeStr = item?.start || '00:00:00';
@@ -108,9 +118,9 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             const ts = Date.parse(iso);
             return Number.isFinite(ts) ? ts : 0;
         };
-
+        
         return mixed.sort((a, b) => parseDateTime(b) - parseDateTime(a));
-    }, [reservations, coworkReservations]);
+    }, [reservations, coworkReservations, meetingRoomReservations]);
 
     // Derived stats (global, not range-filtered)
     const stats = useMemo(() => {

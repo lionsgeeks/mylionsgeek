@@ -39,6 +39,16 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
     Route::post('/reservations/cowork/{reservation}/cancel', [ReservationsController::class, 'cancelCowork'])
         ->name('admin.reservations.cowork.cancel');
 
+    Route::post('/reservations/storeReservationMeetingRoom', [ReservationsController::class, 'storeReservationMeetingRoom'])
+    ->name('admin.reservations.storeReservationMeetingRoom');
+
+    Route::post('/reservations/meeting-room/{id}/cancel', [ReservationsController::class, 'cancelMeetingRoom'])
+    ->name('admin.reservations.meetingRoom.cancel');
+
+    Route::post('/reservations/storeReservationMeetingRoom', [ReservationsController::class, 'storeReservationMeetingRoom'])
+    ->name('admin.reservations.storeReservationMeetingRoom');
+
+
 });
 
 // Public route for material verification (no auth required for email links)
