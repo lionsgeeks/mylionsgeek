@@ -18,6 +18,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Mail\ReservationApprovedMail;
 use App\Mail\ReservationCanceledMail;
 use App\Mail\ReservationCreatedAdminMail;
+use App\Mail\ReservationTimeAcceptedAdminMail;
+use App\Mail\ReservationTimeDeclinedAdminMail;
+use App\Mail\ReservationTimeSuggestedAdminMail;
 
 class ReservationsController extends Controller
 {
@@ -136,6 +139,7 @@ class ReservationsController extends Controller
                 'end_signed' => (bool) ($r->end_signed ?? 0),
                 'canceled' => (bool) ($r->canceled ?? 0),
                 'passed' => (bool) ($r->passed ?? 0),
+                'created_at' => $r->created_at ?? null,
                 'place_name' => $place['place_name'] ?? null,
                 'place_type' => $place['place_type'] ?? null,
                 'equipments' => $equipmentsByReservation[$r->id] ?? [],
@@ -909,6 +913,245 @@ class ReservationsController extends Controller
         }
 
         return back()->with('success', 'Cowork reservation canceled');
+    }
+
+    public function proposeNewTime(Request $request, int $reservation)
+    {
+        $request->validate([
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+        ]);
+
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.email as user_email', 'u.name as user_name')
+            ->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Reservation not found');
+        }
+
+        // Build a signed token containing reservation id and proposed times (no DB storage)
+        $token = $this->buildProposalToken([
+            'reservation_id' => (int) $reservation,
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'ts' => time(),
+        ]);
+
+        $acceptUrl = route('reservations.proposal.accept', ['token' => $token]);
+        $cancelUrl = route('reservations.proposal.cancel', ['token' => $token]);
+        $suggestUrl = route('reservations.proposal.suggest', ['token' => $token]);
+
+        try {
+            Mail::to($reservationData->user_email)->send(new ReservationTimeProposalMail([
+                'user_name' => $reservationData->user_name,
+                'proposed_day' => $request->day,
+                'proposed_start' => $request->start,
+                'proposed_end' => $request->end,
+                'accept_url' => $acceptUrl,
+                'cancel_url' => $cancelUrl,
+                'suggest_url' => $suggestUrl,
+            ]));
+        } catch (\Throwable $e) {
+            \Log::error('Failed sending proposal mail: '.$e->getMessage());
+        }
+
+        return back()->with('success', 'Proposal sent to user');
+    }
+
+    public function acceptProposal(string $token)
+    {
+        $data = $this->parseProposalToken($token);
+        if (!$data) {
+            return response()->view('proposal_invalid', [], 400);
+        }
+        // Update only existing columns (reservations has 'day', 'start', 'end')
+        DB::table('reservations')->where('id', (int) $data['reservation_id'])->update([
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        // Notify admins that the time was accepted
+        try {
+            $reservationRow = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->where('r.id', (int) $data['reservation_id'])
+                ->select('r.id as reservation_id', 'u.name as user_name')
+                ->first();
+
+            $admins = DB::table('users')->whereIn('role', ['admin', 'super_admin'])->select('email')->get();
+            foreach ($admins as $admin) {
+                if (!empty($admin->email)) {
+                    $detailsUrl = route('admin.reservations.details', ['reservation' => (int) ($reservationRow->reservation_id ?? $data['reservation_id'])]);
+                    Mail::to("boujjarr@gmail.com")->send(new ReservationTimeAcceptedAdminMail([
+                        'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                        'user_name' => $reservationRow->user_name ?? 'User',
+                        'day' => $data['day'],
+                        'start' => $data['start'],
+                        'end' => $data['end'],
+                        'details_url' => $detailsUrl,
+                    ]));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to notify admins about accepted reservation time: '.$e->getMessage());
+        }
+        return response()->view('proposal_accepted');
+    }
+
+    public function cancelProposal(string $token)
+    {
+        $data = $this->parseProposalToken($token);
+        if (!$data) {
+            return response()->view('proposal_invalid', [], 400);
+        }
+        // Notify admins of decline
+        try {
+            $reservationRow = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->where('r.id', (int) $data['reservation_id'])
+                ->select('r.id as reservation_id', 'u.name as user_name')
+                ->first();
+
+            // Follow existing convention used in repo
+            Mail::to("boujjarr@gmail.com")->send(new ReservationTimeDeclinedAdminMail([
+                'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                'user_name' => $reservationRow->user_name ?? 'User',
+                'day' => $data['day'],
+                'start' => $data['start'],
+                'end' => $data['end'],
+            ]));
+        } catch (\Throwable $e) {
+            \Log::error('Failed to notify admins about declined reservation time: '.$e->getMessage());
+        }
+        // No DB change on decline, just show a message
+        return response()->view('proposal_declined');
+    }
+
+    public function showSuggestForm(string $token)
+    {
+        $data = $this->parseProposalToken($token);
+        if (!$data) {
+            return response()->view('proposal_invalid', [], 400);
+        }
+        // Load reservation to infer place type and id for calendar
+        $placeType = null;
+        $placeId = null;
+        $row = DB::table('reservations')->where('id', (int) $data['reservation_id'])->first();
+        if ($row) {
+            if (($row->type ?? null) === 'studio' && isset($row->studio_id)) {
+                $placeType = 'studio';
+                $placeId = $row->studio_id;
+            } elseif (($row->type ?? null) === 'meeting_room' && Schema::hasColumn('reservations', 'meeting_room_id')) {
+                $placeType = 'meeting_room';
+                $placeId = $row->meeting_room_id;
+            }
+        }
+
+        return view('proposal_suggest_form', [
+            'token' => $token,
+            'reservation_id' => (int) $data['reservation_id'],
+            'proposed_day' => $data['day'],
+            'proposed_start' => $data['start'],
+            'proposed_end' => $data['end'],
+            'place_type' => $placeType,
+            'place_id' => $placeId,
+        ]);
+    }
+
+    public function submitSuggestForm(Request $request, string $token)
+    {
+        $data = $this->parseProposalToken($token);
+        if (!$data) {
+            return response()->view('proposal_invalid', [], 400);
+        }
+        $request->validate([
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+        ]);
+
+        try {
+            $reservationRow = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->where('r.id', (int) $data['reservation_id'])
+                ->select('r.id as reservation_id', 'u.name as user_name')
+                ->first();
+            // Build approval link for admins to apply this suggested time
+            $approveToken = $this->buildProposalToken([
+                'reservation_id' => (int) ($reservationRow->reservation_id ?? $data['reservation_id']),
+                'day' => $request->day,
+                'start' => $request->start,
+                'end' => $request->end,
+                'ts' => time(),
+            ]);
+            $approveUrl = route('reservations.suggest.approve', ['token' => $approveToken]);
+            $detailsUrl = route('admin.reservations.details', ['reservation' => (int) ($reservationRow->reservation_id ?? $data['reservation_id'])]);
+            Mail::to("boujjarr@gmail.com")->send(new ReservationTimeSuggestedAdminMail([
+                'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                'user_name' => $reservationRow->user_name ?? 'User',
+                'suggested_day' => $request->day,
+                'suggested_start' => $request->start,
+                'suggested_end' => $request->end,
+                'proposed_day' => $data['day'],
+                'proposed_start' => $data['start'],
+                'proposed_end' => $data['end'],
+                'approve_url' => $approveUrl,
+                'details_url' => $detailsUrl,
+            ]));
+        } catch (\Throwable $e) {
+            \Log::error('Failed to notify admins about suggested reservation time: '.$e->getMessage());
+        }
+        return response()->view('proposal_suggested');
+    }
+
+    public function approveSuggested(string $token)
+    {
+        $data = $this->parseProposalToken($token);
+        if (!$data) {
+            return response()->view('proposal_invalid', [], 400);
+        }
+        DB::table('reservations')->where('id', (int) $data['reservation_id'])->update([
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+        return response()->view('proposal_accepted');
+    }
+
+    // Public calendar feed for place reservations (used by suggestion page)
+    public function byPlacePublic(string $type, int $id)
+    {
+        return $this->byPlace($type, $id);
+    }
+
+    private function buildProposalToken(array $payload): string
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $b64 = rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+        $sig = hash_hmac('sha256', $b64, config('app.key'));
+        return $b64.'.'.$sig;
+    }
+
+    private function parseProposalToken(string $token): array|false
+    {
+        $parts = explode('.', $token, 2);
+        if (count($parts) !== 2) return false;
+        [$b64, $sig] = $parts;
+        $calc = hash_hmac('sha256', $b64, config('app.key'));
+        if (!hash_equals($calc, $sig)) return false;
+        $json = base64_decode(strtr($b64, '-_', '+/'));
+        $data = json_decode($json, true);
+        if (!is_array($data)) return false;
+        // Optional: expire after 7 days
+        if (!isset($data['ts']) || $data['ts'] < time() - 60 * 60 * 24 * 7) return false;
+        return $data;
     }
 
     private function exportData(Request $request)

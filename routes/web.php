@@ -45,3 +45,4 @@ require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';
 require __DIR__ . '/projects.php';
 require __DIR__ . '/recuiter.php';
+require __DIR__ . '/games.php';
