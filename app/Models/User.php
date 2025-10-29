@@ -66,6 +66,10 @@ class User extends Authenticatable
         ];
     }
 
+    protected $casts = [
+        'role' => 'array',
+    ];
+
 
     public function access(): HasOne
     {

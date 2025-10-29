@@ -461,7 +461,8 @@ class UsersController extends Controller
             'formation_id' => 'required|exists:formations,id', // Assumes foreign key to formations table
             'access_studio' => 'required|integer|in:0,1', // Assumes foreign key to formations table
             'access_cowork' => 'required|integer|in:0,1', // Assumes foreign key to formations table
-            'role' => 'required|string', // Assumes foreign key to formations table
+            'roles' => 'required|array|min:1',
+            'roles.*' => 'required|string',
             'entreprise' => 'nullable|string', // Assumes foreign key to formations table
         ]);
         $existing = User::query()->where('email', $validated['email'])->first();
@@ -492,7 +493,7 @@ class UsersController extends Controller
             'account_state' => $validated['account_state'] ?? 'active',
             'access_studio' => $validated['access_studio'],
             'access_cowork' => $validated['access_cowork'],
-            'role' => $validated['role'],
+            'role' => $validated['roles'],
             'entreprise' => $validated['entreprise'] ?? null,
             'remember_token' => null,
             'email_verified_at' => null,
