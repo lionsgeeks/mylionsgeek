@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
@@ -512,12 +512,23 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 )}
                 <div className="flex items-center justify-between">
                     <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
+                    <div className='flex gap-x-2'>
 
-                    <Button onClick={() => setShowExportModal(true)}
-                        className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
-                    >
-                        <Download /> Export
-                    </Button>
+                        <Button onClick={() => setShowExportModal(true)}
+                            className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                        >
+                            <Download /> Export
+                        </Button>
+
+                        <Link
+                            href="/admin/reservations/analytics"
+                            className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
+                        >
+                            <Activity className="w-6 h-4" />
+                            Analytics
+                        </Link>
+
+                    </div>
                 </div>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
@@ -678,7 +689,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             <ExportModal
                 open={showExportModal}
                 onClose={() => setShowExportModal(false)}
-                reservations={allReservations}
+                reservations={filteredReservations}
             />
         </AppLayout>
     );

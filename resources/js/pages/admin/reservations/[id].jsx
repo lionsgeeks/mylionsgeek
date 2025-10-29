@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import {
     Settings
 } from 'lucide-react';
 
-export default function ReservationDetails({ reservation }) {
+export default function AdminReservationDetails({ reservation }) {
     if (!reservation) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -37,10 +37,10 @@ export default function ReservationDetails({ reservation }) {
                         <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-2">Reservation not found</h3>
                         <p className="text-gray-600 mb-4">The requested reservation could not be found.</p>
-                        <Link href="/reservations">
+                        <Link href="/admin/reservations">
                             <Button variant="outline">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to History
+                                Back to reservations
                             </Button>
                         </Link>
                     </CardContent>
@@ -50,7 +50,6 @@ export default function ReservationDetails({ reservation }) {
     }
 
     const getStatusBadge = () => {
-        // Mirror admin index logic: Canceled > Approved > Pending
         if (reservation.canceled) {
             return (
                 <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-red-100 text-red-800 border-red-200`}>
@@ -73,18 +72,6 @@ export default function ReservationDetails({ reservation }) {
                 Pending
             </span>
         );
-    };
-
-    const formatDateTime = (dateTime) => {
-        if (!dateTime) return 'Not specified';
-        return new Date(dateTime).toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
     };
 
     const formatTime = (dateTime) => {
@@ -111,29 +98,29 @@ export default function ReservationDetails({ reservation }) {
 
     const normalizeImageUrl = (imagePath) => {
         if (!imagePath) return null;
-
-        // If it's already a full URL, return as is
         if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
             return imagePath;
         }
-
-        // If it already starts with /storage, return as is
         if (imagePath.startsWith('/storage/')) {
             return imagePath;
         }
-
-        // If it starts with storage/, add leading /
         if (imagePath.startsWith('storage/')) {
             return `/${imagePath}`;
         }
-
-        // If it starts with img/, add /storage/ prefix
         if (imagePath.startsWith('img/')) {
             return `/storage/${imagePath}`;
         }
-
-        // Default: add /storage/img/profile/ for user avatars or /storage/img/equipment/ for equipment
         return `/storage/${imagePath}`;
+    };
+
+    const isPending = !reservation.canceled && !reservation.approved;
+
+    const handleApprove = () => {
+        router.post(`/admin/reservations/${reservation.id}/approve`);
+    };
+
+    const handleCancel = () => {
+        router.post(`/admin/reservations/${reservation.id}/cancel`);
     };
 
     return (
@@ -141,7 +128,6 @@ export default function ReservationDetails({ reservation }) {
             <Head title={`Reservation Details - #${reservation.id}`} />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
                         <Link href="/admin/reservations">
@@ -160,13 +146,31 @@ export default function ReservationDetails({ reservation }) {
                         <span className="text-sm text-gray-500">
                             Created {new Date(reservation.created_at).toLocaleDateString()}
                         </span>
+                        {isPending && (
+                            <div className="ml-auto flex items-center gap-2">
+                                <Button
+                                    onClick={handleApprove}
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                    size="sm"
+                                >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Approve
+                                </Button>
+                                <Button
+                                    onClick={handleCancel}
+                                    variant="destructive"
+                                    size="sm"
+                                >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Cancel
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Content */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Reservation Information */}
                         <Card className="shadow-sm">
                             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
                                 <CardTitle className="flex items-center gap-2">
@@ -230,7 +234,7 @@ export default function ReservationDetails({ reservation }) {
                                 </div>
                             </CardContent>
                         </Card>
-                        {/* Equipment Information */}
+
                         <Card className="shadow-sm">
                             <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
                                 <CardTitle className="flex items-center gap-2">
@@ -261,14 +265,12 @@ export default function ReservationDetails({ reservation }) {
                                                         <h4 className="text-sm font-semibold text-gray-900 truncate">
                                                             {equipment.name}
                                                         </h4>
-
                                                         {equipment.type_name && (
                                                             <div className="flex items-center gap-1 mt-2">
                                                                 <MapPin className="w-3 h-3 text-gray-400" />
                                                                 <span className="text-xs text-gray-500">{equipment.type_name}</span>
                                                             </div>
                                                         )}
-
                                                     </div>
                                                 </div>
                                             </div>
@@ -292,7 +294,6 @@ export default function ReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        {/* Timing Information */}
                         <Card className="shadow-sm">
                             <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50">
                                 <CardTitle className="flex items-center gap-2">
@@ -369,7 +370,6 @@ export default function ReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        {/* Notes/Comments */}
                         {reservation.notes && (
                             <Card className="shadow-sm">
                                 <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50">
@@ -387,9 +387,7 @@ export default function ReservationDetails({ reservation }) {
                         )}
                     </div>
 
-                    {/* Sidebar */}
                     <div className="space-y-6">
-                        {/* Reservation User */}
                         <Card className="shadow-sm">
                             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
                                 <CardTitle className="flex items-center gap-2">
@@ -426,7 +424,6 @@ export default function ReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        {/* Team Members */}
                         {reservation.members && reservation.members.length > 0 && (
                             <Card className="shadow-sm">
                                 <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50">
@@ -473,7 +470,6 @@ export default function ReservationDetails({ reservation }) {
                             </Card>
                         )}
 
-                        {/* Quick Actions */}
                         <Card className="shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-lg">Quick Actions</CardTitle>
@@ -507,3 +503,6 @@ export default function ReservationDetails({ reservation }) {
         </AppLayout>
     );
 }
+
+
+

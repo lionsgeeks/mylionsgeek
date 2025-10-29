@@ -887,6 +887,18 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name')
             ->orderByDesc('r.created_at');
 
+        // If client provides a list of reservation IDs (from filtered UI), restrict export to those
+        $idsParam = (string) $request->query('ids', '');
+        if ($idsParam !== '') {
+            $ids = array_values(array_filter(array_map(function ($v) {
+                $n = (int) trim($v);
+                return $n > 0 ? $n : null;
+            }, explode(',', $idsParam))));
+            if (!empty($ids)) {
+                $query->whereIn('r.id', $ids);
+            }
+        }
+
         $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
         $placeByReservation = [];
 
@@ -1282,7 +1294,7 @@ class ReservationsController extends Controller
             $approverName = $approver ? $approver->name : null;
         }
 
-        return Inertia::render('admin/reservations/details', [
+        return Inertia::render('admin/reservations/[id]', [
             'reservation' => [
                 'id' => $reservationData->id,
                 'user_name' => $reservationData->user_name,
@@ -1756,7 +1768,7 @@ class ReservationsController extends Controller
             'members' => $members,
         ];
 
-        return Inertia::render('reservations/ReservationDetails', [
+        return Inertia::render('admin/reservations/[id]', [
             'reservation' => $reservation
         ]);
     }
