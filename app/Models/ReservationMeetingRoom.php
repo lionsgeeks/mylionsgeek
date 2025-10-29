@@ -4,20 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ReservationCowork extends Model
+class ReservationMeetingRoom extends Model
 {
-    protected $table = 'reservation_coworks';
-    
     protected $fillable = [
-        'table',
-        'seats',
+        'meeting_room_id',
         'day',
         'start',
         'end',
-        'user_id',
-        'approved',
         'canceled',
-        'passed'
+        'passed',
+        'approved',
+        'user_id',
     ];
 
     protected $casts = [
@@ -31,9 +28,8 @@ class ReservationCowork extends Model
         return $this->belongsTo(User::class);
     }
 
-    // ✅ Relationship with Cowork (optional)
-    public function cowork()
+    public function meetingRoom()
     {
-        return $this->belongsTo(cowork::class, 'table', 'id');
+        return $this->belongsTo(MeetingRoom::class);
     }
 }

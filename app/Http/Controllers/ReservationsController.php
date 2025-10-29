@@ -187,18 +187,12 @@ class ReservationsController extends Controller
         }
 
         // Meeting room reservations (type=meeting_room with meeting_room_id)
-        $meetingRoomReservations = [];
-        if (Schema::hasTable('reservations')) {
-            $query = DB::table('reservations as r')
-                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                ->select('r.*', 'u.name as user_name')
-                ->where('r.type', 'meeting_room');
-            if (Schema::hasTable('meeting_rooms') && Schema::hasColumn('reservations', 'meeting_room_id')) {
-                $query->leftJoin('meeting_rooms as m', 'm.id', '=', 'r.meeting_room_id')
-                    ->addSelect('m.name as room_name');
-            }
-            $meetingRoomReservations = $query->orderByDesc('r.created_at')->get();
-        }
+        $meetingRoomReservations = DB::table('reservation_meeting_rooms as rm')
+            ->leftJoin('users as u', 'u.id', '=', 'rm.user_id')
+            ->leftJoin('meeting_rooms as m', 'm.id', '=', 'rm.meeting_room_id')
+            ->select('rm.*', 'u.name as user_name', 'm.name as room_name')
+            ->orderByDesc('rm.created_at')
+            ->get();
 
         return Inertia::render('admin/reservations/index', [
             'reservations' => $enriched,
@@ -240,65 +234,6 @@ class ReservationsController extends Controller
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
-        }
-
-        // Log equipment usage to activity_log (one row per equipment) on approval
-        try {
-            if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
-                $equipmentLinks = DB::table('reservation_equipment')
-                    ->where('reservation_id', $reservation)
-                    ->get();
-
-                if ($equipmentLinks->count() > 0) {
-                    $rowsToInsert = [];
-                    foreach ($equipmentLinks as $link) {
-                        $day = $link->day ?? ($reservationData->day ?? null);
-                        $start = $link->start ?? ($reservationData->start ?? null);
-                        $end = $link->end ?? ($reservationData->end ?? null);
-
-                        // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
-                        $startDate = (string) ($day ?? '');
-                        $endDate = (string) ($day ?? '');
-                        $properties = json_encode([
-                            'start' => $startDate,
-                            'end' => $endDate,
-                        ]);
-
-                        // Idempotency guard to avoid duplicate rows on repeated approvals
-                        $exists = DB::table('activity_log')
-                            ->where('log_name', 'equipment')
-                            ->where('description', 'equipment history')
-                            ->where('subject_type', 'App\\Models\\Equipment')
-                            ->where('subject_id', $link->equipment_id)
-                            ->where('causer_type', 'App\\Models\\User')
-                            ->where('causer_id', $reservationData->user_id)
-                            ->where('event', 'approved')
-                            ->where('properties', $properties)
-                            ->exists();
-
-                        if (!$exists) {
-                            $rowsToInsert[] = [
-                                'log_name' => 'equipment',
-                                'description' => 'equipment history',
-                                'subject_type' => 'App\\Models\\Equipment',
-                                'subject_id' => $link->equipment_id,
-                                'event' => 'approved',
-                                'causer_type' => 'App\\Models\\User',
-                                'causer_id' => $reservationData->user_id,
-                                'properties' => $properties,
-                                'created_at' => now()->toDateTimeString(),
-                                'updated_at' => now()->toDateTimeString(),
-                            ];
-                        }
-                    }
-
-                    if (!empty($rowsToInsert)) {
-                        DB::table('activity_log')->insert($rowsToInsert);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Reservation approved');
@@ -436,99 +371,87 @@ class ReservationsController extends Controller
 
     public function byPlace(string $type, int $id)
     {
-        // Normalize events to FullCalendar format
-        $events = [];
+        $reservations = [];
 
-        if ($type === 'cowork' && Schema::hasTable('reservation_coworks')) {
-            $rows = DB::table('reservation_coworks as rc')
-                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
-                ->select('rc.*', 'u.name as user_name')
-                ->where('rc.table', $id)
-                ->where('rc.canceled', 0)
-                ->get();
-
-            foreach ($rows as $r) {
-                $events[] = [
-                    'title' => 'Cowork — Table ' . $r->table . ($r->user_name ? ' — ' . $r->user_name : ''),
-                    'start' => trim(($r->day ?? '') . 'T' . ($r->start ?? '')),
-                    'end' => trim(($r->day ?? '') . 'T' . ($r->end ?? '')),
-                    'allDay' => false,
-                    'extendedProps' => [
-                        'approved' => (bool) ($r->approved ?? 0),
-                        'canceled' => (bool) ($r->canceled ?? 0),
-                        'passed' => (bool) ($r->passed ?? 0),
-                        'user_name' => $r->user_name,
-                        'type' => 'cowork',
-                    ],
-                ];
-            }
-        }
-
-        if ($type === 'studio' && Schema::hasTable('reservations')) {
-            $rows = DB::table('reservations as r')
+        if ($type === 'studio') {
+            $reservations = DB::table('reservations as r')
                 ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
-                ->select('r.*', 'u.name as user_name', 's.name as studio_name')
-                ->where('r.type', 'studio')
                 ->where('r.studio_id', $id)
-                ->where('r.canceled', 0)
-                ->get();
-
-            foreach ($rows as $r) {
-                $date = $r->date ?? $r->day ?? null;
-                $events[] = [
-                    'title' => ($r->title ?: 'Studio') . ($r->studio_name ? ' — ' . $r->studio_name : '') . ($r->user_name ? ' — ' . $r->user_name : ''),
-                    'start' => $date ? trim($date . 'T' . ($r->start ?? '')) : null,
-                    'end' => $date ? trim($date . 'T' . ($r->end ?? '')) : null,
-                    'allDay' => false,
-                    'extendedProps' => [
-                        'approved' => (bool) ($r->approved ?? 0),
-                        'canceled' => (bool) ($r->canceled ?? 0),
-                        'passed' => (bool) ($r->passed ?? 0),
-                        'user_name' => $r->user_name,
-                        'type' => 'studio',
-                        'description' => $r->description,
-                        'studio_name' => $r->studio_name,
-                    ],
-                ];
-            }
+                ->select(
+                    'r.id', 
+                    'r.day as start', 
+                    'r.start as startTime', 
+                    'r.end as endTime', 
+                    'r.title', 
+                    'r.approved', 
+                    'r.canceled',
+                    'u.name as user_name'
+                )
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'title' => $r->title . ' — ' . $r->user_name,
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                    ];
+                });
         }
 
-        if ($type === 'meeting_room' && Schema::hasTable('reservations')) {
-            $hasMeetingRooms = Schema::hasTable('meeting_rooms');
-            $query = DB::table('reservations as r')
-                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                ->select('r.*', 'u.name as user_name');
-            if ($hasMeetingRooms) {
-                $query->leftJoin('meeting_rooms as m', 'm.id', '=', 'r.meeting_room_id')
-                    ->addSelect('m.name as room_name');
-            }
-            $rows = $query
-                ->where('r.type', 'meeting_room')
-                ->where('r.meeting_room_id', $id)
-                ->where('r.canceled', 0)
-                ->get();
-
-            foreach ($rows as $r) {
-                $date = $r->date ?? $r->day ?? null;
-                $events[] = [
-                    'title' => ($r->title ?: 'Meeting') . ((isset($r->room_name) && $r->room_name) ? ' — ' . $r->room_name : '') . ($r->user_name ? ' — ' . $r->user_name : ''),
-                    'start' => $date ? trim($date . 'T' . ($r->start ?? '')) : null,
-                    'end' => $date ? trim($date . 'T' . ($r->end ?? '')) : null,
-                    'allDay' => false,
-                    'extendedProps' => [
-                        'approved' => (bool) ($r->approved ?? 0),
-                        'canceled' => (bool) ($r->canceled ?? 0),
-                        'passed' => (bool) ($r->passed ?? 0),
-                        'user_name' => $r->user_name,
-                        'type' => 'meeting_room',
-                        'description' => $r->description,
-                    ],
-                ];
-            }
+        if ($type === 'cowork') {
+            $reservations = DB::table('reservation_coworks as rc')
+                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+                ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
+                ->where('rc.table', $id)
+                ->select(
+                    'rc.id', 
+                    'rc.day as start', 
+                    'rc.start as startTime', 
+                    'rc.end as endTime', 
+                    'rc.approved', 
+                    'rc.canceled',
+                    'u.name as user_name',
+                    'c.table as table_number'
+                )
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'title' => 'Table ' . $r->table_number . ' — ' . $r->user_name,
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                    ];
+                });
         }
 
-        return response()->json($events);
+        if ($type === 'meeting_room') {
+            $reservations = DB::table('reservation_meeting_rooms as rmr')
+                ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
+                ->where('rmr.meeting_room_id', $id)
+                ->select(
+                    'rmr.id', 
+                    'rmr.day as start', 
+                    'rmr.start as startTime', 
+                    'rmr.end as endTime', 
+                    'rmr.approved', 
+                    'rmr.canceled',
+                    'u.name as user_name'
+                )
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'title' => 'Meeting Room — ' . $r->user_name,
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                    ];
+                });
+        }
+
+        return response()->json($reservations);
     }
 
     /**
@@ -834,14 +757,12 @@ class ReservationsController extends Controller
     public function storeReservationCowork(Request $request)
     {
         $request->validate([
-            'cowork_id' => 'required|exists:coworks,id',
+            'table' => 'required|integer',
+            'seats' => 'required|integer|min:1',
             'day' => 'required|date',
             'start' => 'required',
             'end' => 'required',
         ]);
-
-        $lastId = (int) (DB::table('reservation_coworks')->max('id') ?? 0);
-        $reservationId = $lastId + 1;
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
@@ -849,31 +770,28 @@ class ReservationsController extends Controller
             return back()->with('error', 'User not found');
         }
 
-        // Create cowork reservation as auto-approved
-        DB::table('reservation_coworks')->insert([
-            'id' => $reservationId,
-            'table' => $request->cowork_id,
-            'user_id' => Auth::id(),
+        // Create cowork reservation using Eloquent Model (cleaner)
+        $reservation = ReservationCowork::create([
+            'table' => $request->table,
+            'seats' => $request->seats,
             'day' => $request->day,
             'start' => $request->start,
             'end' => $request->end,
-            'passed' => 0,
+            'user_id' => Auth::id(),
             'approved' => 1,
             'canceled' => 0,
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
+            'passed' => 0,
         ]);
 
         // Send approval email for auto-approved cowork reservation
         try {
-            // Create a reservation-like object for the email
             $reservationData = (object) [
-                'id' => $reservationId,
-                'title' => "Cowork - Table {$request->cowork_id}",
+                'id' => $reservation->id,
+                'title' => "Cowork - Table {$request->table}",
                 'date' => $request->day,
                 'start' => $request->start,
                 'end' => $request->end,
-                'description' => 'Cowork space reservation',
+                'description' => "Cowork space reservation ({$request->seats} seats)",
                 'type' => 'cowork'
             ];
 
@@ -885,6 +803,7 @@ class ReservationsController extends Controller
 
         return back()->with('success', 'Cowork reservation created and approved automatically');
     }
+
 
     public function cancelCowork(int $reservation)
     {
@@ -1218,65 +1137,6 @@ class ReservationsController extends Controller
                 'isPhpEnabled' => true,
                 'isFontSubsettingEnabled' => true
             ]);
-
-            // Log equipment usage to activity_log on end verification (event = verified_end)
-            try {
-                if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
-                    $reservationDataForLog = DB::table('reservations')->where('id', $reservation)->first();
-                    $equipmentLinksForLog = DB::table('reservation_equipment')
-                        ->where('reservation_id', $reservation)
-                        ->get();
-
-                    if ($reservationDataForLog && $equipmentLinksForLog->count() > 0) {
-                        $rowsToInsert = [];
-                        foreach ($equipmentLinksForLog as $link) {
-                            $day = $link->day ?? ($reservationDataForLog->day ?? null);
-                            $start = $link->start ?? ($reservationDataForLog->start ?? null);
-                            $end = $link->end ?? ($reservationDataForLog->end ?? null);
-
-                            // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
-                            $startDate = (string) ($day ?? '');
-                            $endDate = (string) ($day ?? '');
-                            $properties = json_encode([
-                                'start' => $startDate,
-                                'end' => $endDate,
-                            ]);
-
-                            $exists = DB::table('activity_log')
-                                ->where('log_name', 'equipment')
-                                ->where('description', 'equipment history')
-                                ->where('subject_type', 'App\\Models\\Equipment')
-                                ->where('subject_id', $link->equipment_id)
-                                ->where('causer_type', 'App\\Models\\User')
-                                ->where('causer_id', $reservationDataForLog->user_id)
-                                ->where('event', 'verified_end')
-                                ->where('properties', $properties)
-                                ->exists();
-
-                            if (!$exists) {
-                                $rowsToInsert[] = [
-                                    'log_name' => 'equipment',
-                                    'description' => 'equipment history',
-                                    'subject_type' => 'App\\Models\\Equipment',
-                                    'subject_id' => $link->equipment_id,
-                                    'event' => 'verified_end',
-                                    'causer_type' => 'App\\Models\\User',
-                                    'causer_id' => $reservationDataForLog->user_id,
-                                    'properties' => $properties,
-                                    'created_at' => now()->toDateTimeString(),
-                                    'updated_at' => now()->toDateTimeString(),
-                                ];
-                            }
-                        }
-
-                        if (!empty($rowsToInsert)) {
-                            DB::table('activity_log')->insert($rowsToInsert);
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
-            }
 
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
@@ -1889,6 +1749,105 @@ class ReservationsController extends Controller
         return Inertia::render('admin/reservations/[id]', [
             'reservation' => $reservation
         ]);
+    }
+
+    public function storeReservationMeetingRoom(Request $request)
+    {
+        $request->validate([
+            'meeting_room_id' => 'required|exists:meeting_rooms,id',
+            'day' => 'required|date',
+            'start' => 'required',
+            'end' => 'required',
+        ]);
+
+        $lastId = (int) (DB::table('reservation_meeting_rooms')->max('id') ?? 0);
+        $reservationId = $lastId + 1;
+
+        // Get user data for email
+        $user = DB::table('users')->where('id', Auth::id())->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        // Get meeting room name
+        $meetingRoom = DB::table('meeting_rooms')->where('id', $request->meeting_room_id)->first();
+
+        // Create meeting room reservation as auto-approved
+        DB::table('reservation_meeting_rooms')->insert([
+            'id' => $reservationId,
+            'meeting_room_id' => $request->meeting_room_id,
+            'user_id' => Auth::id(),
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'passed' => 0,
+            'approved' => 1,
+            'canceled' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Send approval email for auto-approved meeting room reservation
+        try {
+            $reservationData = (object) [
+                'id' => $reservationId,
+                'title' => "Meeting Room - {$meetingRoom->name}",
+                'date' => $request->day,
+                'start' => $request->start,
+                'end' => $request->end,
+                'description' => 'Meeting room reservation',
+                'type' => 'meeting_room'
+            ];
+
+            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Meeting room reservation created and approved automatically');
+    }
+
+    public function cancelMeetingRoom(int $reservation)
+    {
+        if (!Schema::hasTable('reservation_meeting_rooms')) {
+            return back()->with('error', 'Reservation meeting rooms table missing');
+        }
+
+        $reservationData = DB::table('reservation_meeting_rooms')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Meeting room reservation not found');
+        }
+
+        $user = DB::table('users')->where('id', $reservationData->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        $meetingRoom = DB::table('meeting_rooms')->where('id', $reservationData->meeting_room_id)->first();
+
+        DB::table('reservation_meeting_rooms')->where('id', $reservation)->update([
+            'canceled' => 1,
+            'approved' => 0,
+            'updated_at' => now(),
+        ]);
+
+        try {
+            $reservationForEmail = (object) [
+                'id' => $reservationData->id,
+                'title' => "Meeting Room - {$meetingRoom->name}",
+                'date' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'description' => 'Meeting room reservation',
+                'type' => 'meeting_room'
+            ];
+
+            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Meeting room reservation canceled');
     }
 }
 
