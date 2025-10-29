@@ -22,6 +22,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         phone: '',
         cin: '',
         image: null,
+        access_studio: '', // Add default value for access_studio
+        access_cowork: '', // Add default value for access_cowork
     });
 
     // Load user data into form when modal opens or user changes
@@ -49,6 +51,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                 phone: editedUser.phone || '',
                 cin: editedUser.cin || '',
                 image: editedUser.image || null, // User's image from DB (if exists)
+                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
+                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
             });
         }
     }, [editedUser]);
@@ -68,6 +72,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
         form.append('formation_id', formData.formation_id || '');
+
+        // Convert Yes/No back to 1/0 for submission
+        form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
+        form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
 
         // Append image ONLY if it's a File
         if (formData.image instanceof File) {
@@ -200,21 +208,39 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         <Label htmlFor="roles">Roles</Label>
                         <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
                     </div>
-                    <div className="col-span-1 md:col-span-2">
-                        <Label>Training</Label>
+
+                    {/* Access Studio Field */}
+                    <div className='flex flex-col gap-2'>
+                        <Label htmlFor="access-studio">Access Studio</Label>
                         <Select
-                            value={formData.formation_id ? String(formData.formation_id) : ''}
-                            onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
+                            id="access-studio"
+                            value={formData.access_studio}
+                            onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select training" />
+                                <SelectValue placeholder="Select Access Studio" />
                             </SelectTrigger>
                             <SelectContent>
-                                {trainings.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>
-                                        {t.name}
-                                    </SelectItem>
-                                ))}
+                                <SelectItem value={'Yes'}>Yes</SelectItem>
+                                <SelectItem value={'No'}>No</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Access Cowork Field */}
+                    <div className='flex flex-col gap-2'>
+                        <Label htmlFor="access-cowork">Access Cowork</Label>
+                        <Select
+                            id="access-cowork"
+                            value={formData.access_cowork}
+                            onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Access Cowork" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={'Yes'}>Yes</SelectItem>
+                                <SelectItem value={'No'}>No</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
