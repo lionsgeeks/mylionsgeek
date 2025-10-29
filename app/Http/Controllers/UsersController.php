@@ -426,9 +426,18 @@ class UsersController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('users', 'public');
-            $validated['image'] = '/storage/' . $path;
+            $file = $request->file('image');
+
+            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
+            $filename = $file->hashName();
+
+            // Move the file to public/img/profile/
+            $file->move(public_path('/storage/img/profile'), $filename);
+
+            // Store only the filename in database
+            $validated['image'] = $filename;
         }
+
 
         // Map roles (array) to 'role' JSON column, lowercased
         if ($request->has('roles')) {
@@ -484,8 +493,16 @@ class UsersController extends Controller
             ]);
         }
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('users', 'public');
-            $validated['image'] = '/storage/' . $path;
+            $file = $request->file('image');
+
+            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
+            $filename = $file->hashName();
+
+            // Move the file to public/img/profile/
+            $file->move(public_path('/storage/img/profile'), $filename);
+
+            // Store only the filename in database
+            $validated['image'] = $filename;
         }
         $plainPassword = Str::random(12);
         $token = (string) Str::uuid();

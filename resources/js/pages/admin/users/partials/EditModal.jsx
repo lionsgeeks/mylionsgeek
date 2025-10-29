@@ -227,7 +227,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 <Button
                                     onClick={() => resendLink(editedUser.id)}
                                     type="button"
-                                    className="dark:bg-dark_gray dark:text-white bg-dark"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+
                                 >
                                     Resend Link
                                 </Button>
@@ -235,7 +236,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 <Button
                                     onClick={() => resetPassword(editedUser.id)}
                                     type="button"
-                                    variant="secondary"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+
                                 >
                                     Reset Password
                                 </Button>
@@ -243,7 +245,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" onClick={onClose}>
+                                <Button type="button"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                                    onClick={onClose}>
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save changes</Button>

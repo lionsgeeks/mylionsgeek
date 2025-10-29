@@ -150,7 +150,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={handleCopyEmails}
-                        className="bg-[#262626] cursor-pointer py-1 px-2 w-fit flex gap-2 items-center text-light rounded-lg"
+                        className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
                         disabled={!emailsToCopy}
                     >
                         {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
@@ -159,7 +159,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
                     <Dialog open={exportOpen} onOpenChange={setExportOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-alpha text-black cursor-pointer rounded-lg px-7 py-4">
+                            <Button className="bg-alpha text-black hover:bg-alpha hover:text-beta cursor-pointer rounded-lg px-7 py-4">
                                 Export Students
                             </Button>
                         </DialogTrigger>
@@ -207,7 +207,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
                     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-alpha flex gap-2 items-center text-black cursor-pointer rounded-lg px-7 py-4">
+                            <Button className="bg-alpha hover:bg-alpha hover:text-beta flex gap-2 items-center text-black cursor-pointer rounded-lg px-7 py-4">
                                 <Plus />
                                 Add User
                             </Button>
