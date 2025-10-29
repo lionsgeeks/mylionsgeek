@@ -39,7 +39,7 @@ class FormationController extends Controller
 
         $trainings = $query->orderBy('created_at', 'desc')->get();
 
-        $coaches = User::where('role', 'coach')->get();
+       $coaches = User::whereJsonContains('role', 'coach')->get();
         $tracks = Formation::select('category')->distinct()->pluck('category');
         $promos = Formation::select('promo')->distinct()->pluck('promo');
 
