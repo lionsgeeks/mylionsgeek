@@ -242,6 +242,65 @@ class ReservationsController extends Controller
             \Log::error('Failed to send approval email: ' . $e->getMessage());
         }
 
+        // Log equipment usage to activity_log (one row per equipment) on approval
+        try {
+            if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                $equipmentLinks = DB::table('reservation_equipment')
+                    ->where('reservation_id', $reservation)
+                    ->get();
+
+                if ($equipmentLinks->count() > 0) {
+                    $rowsToInsert = [];
+                    foreach ($equipmentLinks as $link) {
+                        $day = $link->day ?? ($reservationData->day ?? null);
+                        $start = $link->start ?? ($reservationData->start ?? null);
+                        $end = $link->end ?? ($reservationData->end ?? null);
+
+                        // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
+                        $startDate = (string) ($day ?? '');
+                        $endDate = (string) ($day ?? '');
+                        $properties = json_encode([
+                            'start' => $startDate,
+                            'end' => $endDate,
+                        ]);
+
+                        // Idempotency guard to avoid duplicate rows on repeated approvals
+                        $exists = DB::table('activity_log')
+                            ->where('log_name', 'equipment')
+                            ->where('description', 'equipment history')
+                            ->where('subject_type', 'App\\Models\\Equipment')
+                            ->where('subject_id', $link->equipment_id)
+                            ->where('causer_type', 'App\\Models\\User')
+                            ->where('causer_id', $reservationData->user_id)
+                            ->where('event', 'approved')
+                            ->where('properties', $properties)
+                            ->exists();
+
+                        if (!$exists) {
+                            $rowsToInsert[] = [
+                                'log_name' => 'equipment',
+                                'description' => 'equipment history',
+                                'subject_type' => 'App\\Models\\Equipment',
+                                'subject_id' => $link->equipment_id,
+                                'event' => 'approved',
+                                'causer_type' => 'App\\Models\\User',
+                                'causer_id' => $reservationData->user_id,
+                                'properties' => $properties,
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }
+                    }
+
+                    if (!empty($rowsToInsert)) {
+                        DB::table('activity_log')->insert($rowsToInsert);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
+        }
+
         return back()->with('success', 'Reservation approved');
     }
 
@@ -1159,6 +1218,65 @@ class ReservationsController extends Controller
                 'isPhpEnabled' => true,
                 'isFontSubsettingEnabled' => true
             ]);
+
+            // Log equipment usage to activity_log on end verification (event = verified_end)
+            try {
+                if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                    $reservationDataForLog = DB::table('reservations')->where('id', $reservation)->first();
+                    $equipmentLinksForLog = DB::table('reservation_equipment')
+                        ->where('reservation_id', $reservation)
+                        ->get();
+
+                    if ($reservationDataForLog && $equipmentLinksForLog->count() > 0) {
+                        $rowsToInsert = [];
+                        foreach ($equipmentLinksForLog as $link) {
+                            $day = $link->day ?? ($reservationDataForLog->day ?? null);
+                            $start = $link->start ?? ($reservationDataForLog->start ?? null);
+                            $end = $link->end ?? ($reservationDataForLog->end ?? null);
+
+                            // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
+                            $startDate = (string) ($day ?? '');
+                            $endDate = (string) ($day ?? '');
+                            $properties = json_encode([
+                                'start' => $startDate,
+                                'end' => $endDate,
+                            ]);
+
+                            $exists = DB::table('activity_log')
+                                ->where('log_name', 'equipment')
+                                ->where('description', 'equipment history')
+                                ->where('subject_type', 'App\\Models\\Equipment')
+                                ->where('subject_id', $link->equipment_id)
+                                ->where('causer_type', 'App\\Models\\User')
+                                ->where('causer_id', $reservationDataForLog->user_id)
+                                ->where('event', 'verified_end')
+                                ->where('properties', $properties)
+                                ->exists();
+
+                            if (!$exists) {
+                                $rowsToInsert[] = [
+                                    'log_name' => 'equipment',
+                                    'description' => 'equipment history',
+                                    'subject_type' => 'App\\Models\\Equipment',
+                                    'subject_id' => $link->equipment_id,
+                                    'event' => 'verified_end',
+                                    'causer_type' => 'App\\Models\\User',
+                                    'causer_id' => $reservationDataForLog->user_id,
+                                    'properties' => $properties,
+                                    'created_at' => now()->toDateTimeString(),
+                                    'updated_at' => now()->toDateTimeString(),
+                                ];
+                            }
+                        }
+
+                        if (!empty($rowsToInsert)) {
+                            DB::table('activity_log')->insert($rowsToInsert);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
+            }
 
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');

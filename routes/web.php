@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Jobs\CreateInvitedUser;
 use App\Models\User;
 
+
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -14,11 +15,20 @@ Route::get('/', function () {
     return Inertia::render('Welcome/index');
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
+// Protect admin dashboard
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 });
+
+// Route::middleware(['auth', 'verified', 'role:student'])->prefix('student')->group(function () {
+//     Route::get('dashboard', function () {
+//         return Inertia::render('Student/Dashboard');
+//     })->name('student.dashboard');
+// });
+
+
 
 
 
@@ -34,3 +44,4 @@ require __DIR__ . '/equipment.php';
 require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';
 require __DIR__ . '/projects.php';
+require __DIR__ . '/recuiter.php';
