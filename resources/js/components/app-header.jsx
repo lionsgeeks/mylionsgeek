@@ -14,6 +14,7 @@ import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, W
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
+import SearchDialog from './search-dialog';
 
 
 
@@ -43,7 +44,14 @@ export function AppHeader({ breadcrumbs = [] }) {
             <div className="border-sidebar-border/80 border-b">
                 <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
-                    <div className="lg:hidden">
+                    <div className="lg:hidden flex items-center gap-2">
+                        <SearchDialog 
+                            trigger={
+                                <Button variant="ghost" size="icon" className="h-[34px] w-[34px]">
+                                    <Search className="h-5 w-5" />
+                                </Button>
+                            }
+                        />
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="ghost" size="icon" className="mr-2 h-[34px] w-[34px]">
@@ -106,6 +114,7 @@ export function AppHeader({ breadcrumbs = [] }) {
 
                     <div className="ml-auto flex items-center space-x-2">
                 <div className="flex items-center gap-4">
+                    <SearchDialog className="hidden sm:flex" />
                     <div className="">
                         {/* component change mode */}
                         <ThemeToggle />
