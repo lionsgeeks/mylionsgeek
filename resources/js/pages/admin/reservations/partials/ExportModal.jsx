@@ -64,6 +64,14 @@ const ExportModal = ({ open, onClose, reservations }) => {
         const params = new URLSearchParams();
         params.append('export', 'true');
         params.append('fields', selectedFields.join(','));
+        try {
+            const ids = Array.isArray(reservations) ? reservations.map(r => r.id).filter(Boolean) : [];
+            if (ids.length > 0) {
+                params.append('ids', ids.join(','));
+            }
+        } catch (e) {
+            // ignore
+        }
         
         window.location.href = `/admin/reservations?${params.toString()}`;
         
