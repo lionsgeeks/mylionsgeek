@@ -4,7 +4,7 @@ import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import React from 'react';
 import Logo from '/public/assets/images/lionsgeek_logo_2.png'
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Camera, Eye, EyeOff } from 'lucide-react';
@@ -125,7 +125,7 @@ const CompleteProfile = ({ user }) => {
                                 <div className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-5 rounded-lg transition-all duration-200 text-sm">
                                     Upload Image
                                 </div>
-                                <input
+                                <Input
                                     id="image-upload"
                                     type="file"
                                     accept="image/*"
@@ -146,26 +146,14 @@ const CompleteProfile = ({ user }) => {
                                     <Label htmlFor="phone" className="block text-gray-600 text-sm font-medium mb-2">
                                         Phone Number
                                     </Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="phone"
-                                            type="number"
-                                            value={data.phone}
-                                            onChange={(e) => {
-                                                setData("phone", e.target.value);
-                                                setValidationErrors({ ...validationErrors, phone: '' });
-                                            }}
-                                            placeholder="+212 600 000 000"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors"
-                                        />
-                                        {data.phone && (
-                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
-                                                    <span className="text-white text-xs">✓</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <Input
+                                        id="phone"
+                                        type="text"
+                                        value={data.phone}
+                                        onChange={(e) => setData("phone", e.target.value)}
+                                        placeholder="+212 600 000 000"
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-black focus:border-green-500 focus:outline-none"
+                                    />
                                     {(validationErrors.phone || errors.phone) && (
                                         <span className="text-red-500 text-sm mt-1 block">{validationErrors.phone || errors.phone}</span>
                                     )}
@@ -179,12 +167,9 @@ const CompleteProfile = ({ user }) => {
                                         id="cin"
                                         type="text"
                                         value={data.cin}
-                                        onChange={(e) => {
-                                            setData("cin", e.target.value);
-                                            setValidationErrors({ ...validationErrors, cin: '' });
-                                        }}
+                                        onChange={(e) => setData("cin", e.target.value)}
                                         placeholder="Enter your CIN"
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors"
+                                        className="w-full px-4 text-black py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                                     />
                                     {(validationErrors.cin || errors.cin) && (
                                         <span className="text-red-500 text-sm mt-1 block">{validationErrors.cin || errors.cin}</span>
@@ -201,12 +186,9 @@ const CompleteProfile = ({ user }) => {
                                     id="entreprise"
                                     type="text"
                                     value={data.entreprise}
-                                    onChange={(e) => {
-                                        setData("entreprise", e.target.value);
-                                        setValidationErrors({ ...validationErrors, entreprise: '' });
-                                    }}
+                                    onChange={(e) => setData("entreprise", e.target.value)}
                                     placeholder="Enter your company name"
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors"
+                                    className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                                 />
                                 {(validationErrors.entreprise || errors.entreprise) && (
                                     <span className="text-red-500 text-sm mt-1 block">{validationErrors.entreprise || errors.entreprise}</span>
@@ -224,13 +206,9 @@ const CompleteProfile = ({ user }) => {
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             value={data.password}
-                                            onChange={(e) => {
-                                                setData("password", e.target.value);
-                                                setError("password", null);
-                                                setValidationErrors({ ...validationErrors, password: '' });
-                                            }}
+                                            onChange={(e) => setData("password", e.target.value)}
                                             placeholder="Enter your password"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors"
+                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                                         />
                                         <button
                                             type="button"
@@ -254,13 +232,9 @@ const CompleteProfile = ({ user }) => {
                                             id="password_confirmation"
                                             type={showConfirmPassword ? "text" : "password"}
                                             value={data.password_confirmation}
-                                            onChange={(e) => {
-                                                setData("password_confirmation", e.target.value);
-                                                setError("password_confirmation", null);
-                                                setValidationErrors({ ...validationErrors, password_confirmation: '' });
-                                            }}
+                                            onChange={(e) => setData("password_confirmation", e.target.value)}
                                             placeholder="Confirm your password"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none transition-colors"
+                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                                         />
                                         <button
                                             type="button"
@@ -289,6 +263,7 @@ const CompleteProfile = ({ user }) => {
                             </Button>
                         </div>
                     </form>
+
                 </div>
             </div>
         </div>
