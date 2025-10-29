@@ -36,7 +36,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
     const confirmDelete = () => {
         if (trainingToDelete) {
-            router.delete(`/trainings/${trainingToDelete.id}`, {
+            router.delete(`/trainings/${trainingToDelete?.id}`, {
                 onSuccess: () => closeDeleteModal(),
             });
         }
@@ -62,7 +62,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
         setSelectedTrack(value);
         applyFilters(value, selectedCoach, selectedPromo);
     };
-    const filteredCoach = coaches.find((c) => c.id == selectedCoach) || null;
+    const filteredCoach = coaches.find((c) => c?.id == selectedCoach) || null;
 
     const handlePromoChange = (e) => {
         const value = e.target.value;
@@ -79,6 +79,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     };
 
     const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
+     const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
 
     return (
         <AppLayout>
@@ -188,7 +189,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                             >
                                 <option value="">All Coaches</option>
                                 {coaches.map((c) => (
-                                    <option key={c.id} value={c.id}>
+                                    <option key={c?.id} value={c?.id}>
                                         {c.name}
                                     </option>
                                 ))}
@@ -267,11 +268,11 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                     {trainings && trainings.length > 0 ? (
                         trainings.map((training) => (
                             <div
-                                key={training.id}
-                                onMouseEnter={() => setHoveredCard(training.id)}
+                                key={training?.id}
+                                onMouseEnter={() => setHoveredCard(training?.id)}
                                 onMouseLeave={() => setHoveredCard(null)}
                                 className="group relative overflow-hidden rounded-2xl border-2 border-yellow-200 dark:border-yellow-600/30 bg-white dark:bg-[#1c1c1c] transition-all duration-300 hover:border-yellow-400 dark:hover:border-yellow-400  cursor-pointer shadow-lg hover:shadow-2xl"
-                                onClick={() => router.visit(`/trainings/${training.id}`)}
+                                onClick={() => router.visit(`/trainings/${training?.id}`)}
                             >
 
 
@@ -344,7 +345,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    setSelectedCoach(training.coach.id)
+                                                    setSelectedCoach(training.coach?.id)
                                                     setModalOpen(true)
                                                 }}
                                                 className="absolute text-black inset-0 flex items-center justify-center bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-600/30 dark:text-yellow-400 text-sm font-semibold rounded-xl
@@ -505,11 +506,11 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                 </div>
                                             )}
 
-                                            {trainings[0]?.category && (
+                                            {coachTraining?.category && (
                                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg border border-yellow-300/50 dark:border-yellow-600/30">
                                                     <Award size={14} className="text-yellow-600 dark:text-yellow-400" />
                                                     <span className="text-sm font-semibold text-yellow-700 dark:text-yellow-300">
-                                                        {trainings[0].category}
+                                                        {coachTraining.category}
                                                     </span>
                                                 </div>
                                             )}
@@ -557,11 +558,11 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                 (now.getFullYear() - startDate.getFullYear()) * 12 +
                                                 (now.getMonth() - startDate.getMonth());
 
-                                            return t.coach.id === selectedCoach && diffMonths >= durationMonths;
+                                            return t.coach?.id === selectedCoach && diffMonths >= durationMonths;
                                         }).length;
-                                        const trainingsActiv = trainings.filter(t => getTrainingStatus(t) === 'active' && t.coach.id == selectedCoach).length
-                                        const trainingsTotal = trainings.filter(t => t.coach && t.coach.id == selectedCoach).length
-                                        const pendingCount = trainings.filter(t => t.coach && t.coach.id === selectedCoach).length - completedCount - trainingsActiv;
+                                        const trainingsActiv = trainings.filter(t => getTrainingStatus(t) === 'active' && t.coach?.id == selectedCoach).length
+                                        const trainingsTotal = trainings.filter(t => t.coach && t.coach?.id == selectedCoach).length
+                                        const pendingCount = trainings.filter(t => t.coach && t.coach?.id === selectedCoach).length - completedCount - trainingsActiv;
 
                                         return (
                                             <>
@@ -591,7 +592,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {/* Buttons */}
                                     <div className="flex gap-3 pt-4">
                                         <button
-                                            onClick={() => router.visit(`/admin/users/${filteredCoach.id}`)}
+                                            onClick={() => router.visit(`/admin/users/${filteredCoach?.id}`)}
                                             className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0"
                                         >
                                             <Calendar size={20} />
