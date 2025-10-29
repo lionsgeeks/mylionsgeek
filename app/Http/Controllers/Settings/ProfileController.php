@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
-use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,26 +29,39 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        $user = $request->user();
         $data = $request->validated();
+
+        // Check if user has 2FA enabled and is changing email
+        if ($user->hasConfirmedTwoFactorAuthentication() && $request->has('email') && $request->email !== $user->email) {
+            $request->validate([
+                'two_factor_code' => ['required', 'string', 'size:6'],
+            ]);
+
+            // Verify the 2FA code
+            $google2fa = app('pragmarx.google2fa');
+            $secret = decrypt($user->two_factor_secret);
+            
+            if (!$google2fa->verifyKey($secret, $request->two_factor_code)) {
+                return back()->withErrors([
+                    'two_factor_code' => 'The provided two factor authentication code was invalid.',
+                ]);
+            }
+        }
 
         // Handle avatar upload if provided
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('users', 'public');
-            $data['image'] = $path; // Store just the path without /storage/ prefix
+            $data['image'] = '/storage/' . $path;
         }
 
-        // Only update the fields that are actually in the database
-        $allowedFields = ['name', 'email', 'phone', 'cin', 'wakatime_api_key', 'image'];
-        $updateData = array_intersect_key($data, array_flip($allowedFields));
+        $user->fill($data);
 
-        // Use a fresh user instance to avoid virtual attributes
-        $userId = $request->user()->id;
-        User::where('id', $userId)->update($updateData);
-
-        // Check if email was changed and reset verification
-        if (isset($updateData['email']) && $updateData['email'] !== $request->user()->getOriginal('email')) {
-            User::where('id', $userId)->update(['email_verified_at' => null]);
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
+
+        $user->save();
 
         return to_route('profile.edit');
     }

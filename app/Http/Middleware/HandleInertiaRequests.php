@@ -52,20 +52,6 @@ class HandleInertiaRequests extends Middleware
                     if ($user && Schema::hasTable('accesses')) {
                         $user->loadMissing('access');
                     }
-                    if ($user) {
-                        $rawImage = $user->image ?? null;
-                        $avatarUrl = null;
-
-                        if ($rawImage) {
-                            // Accept absolute URLs as-is; otherwise, fallback to storage path
-                            $avatarUrl = Str::startsWith($rawImage, ['http://', 'https://'])
-                                ? $rawImage
-                                : asset('storage/' . ltrim($rawImage, '/'));
-                        }
-
-                        $user->setAttribute('avatarUrl', $avatarUrl);
-                        $user->setAttribute('isProfileImageMissing', empty($avatarUrl));
-                    }
                 }),
             ],
             'flash' => [

@@ -39,7 +39,10 @@ class User extends Authenticatable
         'updated_at',
         'wakatime_api_key',
         'last_online',
-        'activation_token'
+        'activation_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at'
     ];
 
     /**
@@ -50,6 +53,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -63,11 +68,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'array',
+            'two_factor_recovery_codes' => 'array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
-    protected $casts = [
-        'role' => 'array',
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'has_two_factor_authentication',
+        'has_confirmed_two_factor_authentication',
     ];
 
 
@@ -123,8 +136,66 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Reservation::class, 'reservation_teams', 'user_id', 'reservation_id')->withTimestamps();
     }
+
+    /**
+     * User badges relationship
+     */
     public function badges()
     {
         return $this->belongsToMany(Badge::class)->withTimestamps();
     }
+
+    /**
+     * Determine if the user has two-factor authentication enabled.
+     */
+    public function hasTwoFactorAuthentication(): bool
+    {
+        return !is_null($this->two_factor_secret);
+    }
+
+    /**
+     * Determine if two-factor authentication is confirmed.
+     */
+    public function hasConfirmedTwoFactorAuthentication(): bool
+    {
+        return !is_null($this->two_factor_confirmed_at);
+    }
+
+    /**
+     * Get the user's two factor authentication status.
+     */
+    public function getHasTwoFactorAuthenticationAttribute(): bool
+    {
+        return $this->hasTwoFactorAuthentication();
+    }
+
+    /**
+     * Get the user's two factor authentication confirmation status.
+     */
+    public function getHasConfirmedTwoFactorAuthenticationAttribute(): bool
+    {
+        return $this->hasConfirmedTwoFactorAuthentication();
+    }
+
+    /**
+     * Get the user's recovery codes.
+     */
+    public function recoveryCodes(): array
+    {
+        return $this->two_factor_recovery_codes ?? [];
+    }
+
+    /**
+     * Replace the given recovery code with a new one in the user's array of recovery codes.
+     */
+    public function replaceRecoveryCode(string $code): void
+    {
+        $this->forceFill([
+            'two_factor_recovery_codes' => collect($this->recoveryCodes())
+                ->reject(fn ($recoveryCode) => $recoveryCode === $code)
+                ->values()
+                ->all(),
+        ])->save();
+    }
+
 }

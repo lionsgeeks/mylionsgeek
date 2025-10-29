@@ -6,14 +6,13 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
+import TwoFactorAuthSection from '@/components/TwoFactorAuthSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
-import { useInitials } from '@/hooks/use-initials';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const breadcrumbs = [
     {
@@ -24,7 +23,7 @@ const breadcrumbs = [
 
 export default function Profile({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
-    const getInitials = useInitials();
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile settings" />
@@ -46,15 +45,15 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-1">
                                         <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                            <Avatar className="h-24 w-24 overflow-hidden rounded-full">
-                                                <AvatarImage
-                                                    src={auth.user.image ? `/storage/${auth.user.image}` : null}
-                                                    alt={auth.user.name}
-                                                />
-                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                    {getInitials(auth.user.name)}
-                                                </AvatarFallback>
-                                            </Avatar>
+                                            <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
+                                                {auth.user.image ? (
+                                                    <img src={auth.user.image} alt={auth.user.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xl font-semibold">
+                                                        {auth.user.name?.charAt(0)?.toUpperCase()}
+                                                    </span>
+                                                )}
+                                            </div>
 
                                             <div className="w-full">
                                                 <Label htmlFor="image">Avatar</Label>
@@ -93,6 +92,24 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             />
                                             <InputError className="mt-2" message={errors.email} />
                                         </div>
+
+                                        {auth?.user?.has_confirmed_two_factor_authentication && (
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="two_factor_code">Two-Factor Authentication Code</Label>
+                                                <Input
+                                                    id="two_factor_code"
+                                                    name="two_factor_code"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength="6"
+                                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] text-center text-lg tracking-widest"
+                                                    placeholder="000000"
+                                                    autoComplete="one-time-code"
+                                                />
+                                                <InputError className="mt-2" message={errors.two_factor_code} />
+                                            </div>
+                                        )}
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="grid gap-2">
@@ -157,6 +174,9 @@ export default function Profile({ mustVerifyEmail, status }) {
                         )}
                     </Form>
                 </div>
+
+                {/* Two-Factor Authentication Section */}
+                <TwoFactorAuthSection />
 
                 <DeleteUser />
             </SettingsLayout>

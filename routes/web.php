@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use App\Jobs\CreateInvitedUser;
 use App\Models\User;
 
-
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -31,8 +30,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->group(fu
 
 
 
-
-
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/users.php';
@@ -45,3 +42,14 @@ require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';
 require __DIR__ . '/projects.php';
 require __DIR__ . '/recuiter.php';
+
+// Two-Factor Authentication Routes
+Route::middleware('auth')->prefix('api')->group(function () {
+    Route::post('/two-factor-authentication', [App\Http\Controllers\TwoFactorController::class, 'store']);
+    Route::delete('/two-factor-authentication', [App\Http\Controllers\TwoFactorController::class, 'destroy']);
+    Route::get('/two-factor-qr-code', [App\Http\Controllers\TwoFactorController::class, 'showQrCode']);
+    Route::get('/two-factor-recovery-codes', [App\Http\Controllers\TwoFactorController::class, 'showRecoveryCodes']);
+    Route::post('/two-factor-recovery-codes', [App\Http\Controllers\TwoFactorController::class, 'storeRecoveryCodes']);
+    Route::post('/two-factor-confirm', [App\Http\Controllers\TwoFactorController::class, 'confirm']);
+    Route::post('/two-factor-verify', [App\Http\Controllers\TwoFactorController::class, 'verify']);
+});

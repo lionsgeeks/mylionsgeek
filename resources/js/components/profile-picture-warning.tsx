@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 
 export default function ProfilePictureWarning() {
     const page = usePage();
-    const { auth, session } = page.props as { auth: { user?: { id: string; name: string; avatarUrl?: string | null; isProfileImageMissing?: boolean } }, session: { id: string } };
+    const { auth, session } = page.props as { auth: { user?: { id: string; name: string; image?: string | null } }, session: { id: string } };
 
     const userId = auth?.user?.id;
-    const isMissing = !!auth?.user && !!auth?.user?.isProfileImageMissing;
+    // Check if profile image is missing
+    const isMissing = !!auth?.user && !auth?.user?.image;
 
     const cookieKey = useMemo(() => (userId && session?.id ? `dismiss_profile_image_warning_${userId}_${session.id}` : null), [userId, session?.id]);
 

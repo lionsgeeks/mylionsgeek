@@ -3,7 +3,7 @@ import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { Transition } from '@headlessui/react';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { useMemo, useRef, useState } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
@@ -20,6 +20,7 @@ const breadcrumbs = [
 ];
 
 export default function Password() {
+    const { auth } = usePage().props;
     const passwordInput = useRef(null);
     const currentPasswordInput = useRef(null);
     const [showCurrent, setShowCurrent] = useState(false);
@@ -136,6 +137,24 @@ export default function Password() {
 
                                     <InputError message={errors.password_confirmation} />
                                 </div>
+
+                                {auth?.user?.has_confirmed_two_factor_authentication && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="two_factor_code">Two-Factor Authentication Code</Label>
+                                        <Input
+                                            id="two_factor_code"
+                                            name="two_factor_code"
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            maxLength="6"
+                                            className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] text-center text-lg tracking-widest"
+                                            placeholder="000000"
+                                            autoComplete="one-time-code"
+                                        />
+                                        <InputError message={errors.two_factor_code} />
+                                    </div>
+                                )}
 
                                 <div className="flex items-center gap-4">
                                     <Button disabled={processing} data-test="update-password-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save password</Button>
