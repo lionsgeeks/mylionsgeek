@@ -4,7 +4,7 @@ import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import React from 'react';
 import Logo from '/public/assets/images/lionsgeek_logo_2.png'
-import { Input } from "@/components/ui/Input";
+// import { input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Camera, Eye, EyeOff } from 'lucide-react';
@@ -125,7 +125,7 @@ const CompleteProfile = ({ user }) => {
                                 <div className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-5 rounded-lg transition-all duration-200 text-sm">
                                     Upload Image
                                 </div>
-                                <Input
+                                <input
                                     id="image-upload"
                                     type="file"
                                     accept="image/*"
@@ -146,7 +146,7 @@ const CompleteProfile = ({ user }) => {
                                     <Label htmlFor="phone" className="block text-gray-600 text-sm font-medium mb-2">
                                         Phone Number
                                     </Label>
-                                    <Input
+                                    <input
                                         id="phone"
                                         type="text"
                                         value={data.phone}
@@ -163,7 +163,7 @@ const CompleteProfile = ({ user }) => {
                                     <Label htmlFor="cin" className="block text-gray-600 text-sm font-medium mb-2">
                                         CIN
                                     </Label>
-                                    <Input
+                                    <input
                                         id="cin"
                                         type="text"
                                         value={data.cin}
@@ -182,7 +182,7 @@ const CompleteProfile = ({ user }) => {
                                 <Label htmlFor="entreprise" className="block text-gray-600 text-sm font-medium mb-2">
                                     Entreprise
                                 </Label>
-                                <Input
+                                <input
                                     id="entreprise"
                                     type="text"
                                     value={data.entreprise}
@@ -202,7 +202,7 @@ const CompleteProfile = ({ user }) => {
                                         Password
                                     </Label>
                                     <div className="relative">
-                                        <Input
+                                        <input
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             value={data.password}
@@ -228,7 +228,7 @@ const CompleteProfile = ({ user }) => {
                                         Confirm Password
                                     </Label>
                                     <div className="relative">
-                                        <Input
+                                        <input
                                             id="password_confirmation"
                                             type={showConfirmPassword ? "text" : "password"}
                                             value={data.password_confirmation}
