@@ -79,6 +79,8 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [filterType, setFilterType] = useState(''); // '', 'cowork', 'studio', 'meeting_room', 'exterior'
     const [filterStatus, setFilterStatus] = useState(''); // '', 'approved', 'canceled', 'pending'
     const [showCharts, setShowCharts] = useState(false); // New state for chart visibility
+    const [proposeFor, setProposeFor] = useState(null);
+    const [proposal, setProposal] = useState({ day: '', start: '', end: '' });
 
     const onTypeChange = (v) => setFilterType(v === 'all' ? '' : v);
     const onStatusChange = (v) => setFilterStatus(v === 'all' ? '' : v);
@@ -652,6 +654,22 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                         <X className="h-4 w-4" />
                                                     </Button>
                                                 )}
+
+                                                {/* Propose new time - available for non-cowork */}
+                                                {r.type !== 'cowork' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 px-2 cursor-pointer"
+                                                        onClick={() => {
+                                                            setProposeFor(r);
+                                                            setProposal({ day: r.date || '', start: r.start || '', end: r.end || '' });
+                                                        }}
+                                                        title="Propose a new date/time"
+                                                    >
+                                                        Propose time
+                                                    </Button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -691,6 +709,54 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 onClose={() => setShowExportModal(false)}
                 reservations={filteredReservations}
             />
+
+            {/* Propose new time modal */}
+            <Dialog open={!!proposeFor} onOpenChange={() => setProposeFor(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Propose new time</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-3">
+                        <div className="grid grid-cols-1 gap-2">
+                            <label className="text-sm text-muted-foreground">Date</label>
+                            <Input type="date" value={proposal.day} onChange={(e) => setProposal(p => ({ ...p, day: e.target.value }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-sm text-muted-foreground">Start</label>
+                                <Input type="time" value={proposal.start} onChange={(e) => setProposal(p => ({ ...p, start: e.target.value }))} />
+                            </div>
+                            <div>
+                                <label className="text-sm text-muted-foreground">End</label>
+                                <Input type="time" value={proposal.end} onChange={(e) => setProposal(p => ({ ...p, end: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="outline" className="cursor-pointer" onClick={() => setProposeFor(null)}>Cancel</Button>
+                            <Button
+                                className="cursor-pointer bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                onClick={() => {
+                                    if (!proposal.day || !proposal.start || !proposal.end) {
+                                        alert('Please provide date, start and end.');
+                                        return;
+                                    }
+                                    router.post(`/admin/reservations/${proposeFor.id}/propose`, {
+                                        day: proposal.day,
+                                        start: proposal.start,
+                                        end: proposal.end,
+                                    }, {
+                                        onFinish: () => {
+                                            setProposeFor(null);
+                                        }
+                                    });
+                                }}
+                            >
+                                Send proposal
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 };
