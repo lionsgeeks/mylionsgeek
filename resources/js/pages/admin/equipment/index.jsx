@@ -1137,9 +1137,6 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                                     <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-green-500/15 text-green-700 dark:text-green-300">
                                                                         {item.action?.replace('_', ' ').toUpperCase()}
                                                                     </span>
-                                                                    <span className="text-sm text-muted-foreground">
-                                                                        {new Date(item.created_at).toLocaleString()}
-                                                                    </span>
                                                                 </div>
                                                                 <div className="text-sm font-medium mb-1">
                                                                     {item.description || `${item.action?.replace('_', ' ')} activity`}

@@ -64,7 +64,7 @@ class ReservationsController extends Controller
                 $img = isset($row->image) ? $row->image : null;
                 if ($img) {
                     if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/'.ltrim($img, '/');
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
@@ -93,11 +93,11 @@ class ReservationsController extends Controller
                 $uimg = isset($m->image) ? $m->image : null;
                 if ($uimg) {
                     if (!Str::startsWith($uimg, ['http://', 'https://', 'storage/'])) {
-                        $uimg = 'storage/img/profile/'.ltrim($uimg, '/');
+                        $uimg = 'storage/img/profile/' . ltrim($uimg, '/');
                     }
                     $uimg = asset($uimg);
                 }
-                $teamsByReservation[$m->reservation_id] = $teamsByReservation[$m->reservation_id] ?? [ 'team_name' => null, 'members' => [] ];
+                $teamsByReservation[$m->reservation_id] = $teamsByReservation[$m->reservation_id] ?? ['team_name' => null, 'members' => []];
                 $teamsByReservation[$m->reservation_id]['members'][] = [
                     'id' => $m->user_id,
                     'name' => $m->name,
@@ -236,6 +236,65 @@ class ReservationsController extends Controller
             \Log::error('Failed to send approval email: ' . $e->getMessage());
         }
 
+        // Log equipment usage to activity_log (one row per equipment) on approval
+        try {
+            if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                $equipmentLinks = DB::table('reservation_equipment')
+                    ->where('reservation_id', $reservation)
+                    ->get();
+
+                if ($equipmentLinks->count() > 0) {
+                    $rowsToInsert = [];
+                    foreach ($equipmentLinks as $link) {
+                        $day = $link->day ?? ($reservationData->day ?? null);
+                        $startTime = $link->start ?? ($reservationData->start ?? null);
+                        $endTime  = $link->end ?? ($reservationData->end ?? null);
+
+                        
+                        $startDate = (string) ($day ?? ''). ' ' . ($startTime ?? '');
+                        $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
+                        $properties = json_encode([
+                            'start' => $startDate,
+                            'end' => $endDate,
+                        ]);
+
+                        // Idempotency guard to avoid duplicate rows on repeated approvals
+                        $exists = DB::table('activity_log')
+                            ->where('log_name', 'equipment')
+                            ->where('description', 'equipment history')
+                            ->where('subject_type', 'App\\Models\\Equipment')
+                            ->where('subject_id', $link->equipment_id)
+                            ->where('causer_type', 'App\\Models\\User')
+                            ->where('causer_id', $reservationData->user_id)
+                            ->where('event', 'approved')
+                            ->where('properties', $properties)
+                            ->exists();
+
+                        if (!$exists) {
+                            $rowsToInsert[] = [
+                                'log_name' => 'equipment',
+                                'description' => 'equipment history',
+                                'subject_type' => 'App\\Models\\Equipment',
+                                'subject_id' => $link->equipment_id,
+                                'event' => 'approved',
+                                'causer_type' => 'App\\Models\\User',
+                                'causer_id' => $reservationData->user_id,
+                                'properties' => $properties,
+                                'created_at' => now()->toDateTimeString(),
+                                'updated_at' => now()->toDateTimeString(),
+                            ];
+                        }
+                    }
+
+                    if (!empty($rowsToInsert)) {
+                        DB::table('activity_log')->insert($rowsToInsert);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
+        }
+
         return back()->with('success', 'Reservation approved');
     }
 
@@ -326,7 +385,7 @@ class ReservationsController extends Controller
                 $img = isset($u->image) ? $u->image : null;
                 if ($img) {
                     if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/profile/'.ltrim($img, '/');
+                        $img = 'storage/img/profile/' . ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
@@ -353,7 +412,7 @@ class ReservationsController extends Controller
                 $img = isset($e->image) ? $e->image : null;
                 if ($img) {
                     if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/'.ltrim($img, '/');
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
@@ -865,18 +924,6 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name')
             ->orderByDesc('r.created_at');
 
-        // If client provides a list of reservation IDs (from filtered UI), restrict export to those
-        $idsParam = (string) $request->query('ids', '');
-        if ($idsParam !== '') {
-            $ids = array_values(array_filter(array_map(function ($v) {
-                $n = (int) trim($v);
-                return $n > 0 ? $n : null;
-            }, explode(',', $idsParam))));
-            if (!empty($ids)) {
-                $query->whereIn('r.id', $ids);
-            }
-        }
-
         $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
         $placeByReservation = [];
 
@@ -899,7 +946,7 @@ class ReservationsController extends Controller
             $handle = fopen('php://output', 'w');
 
             // Add BOM for Excel UTF-8 compatibility
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
             // Use semicolon delimiter for Excel
             fputcsv($handle, $requestedFields, ';');
@@ -1129,15 +1176,74 @@ class ReservationsController extends Controller
                 'reservation' => $verificationData['reservation'],
                 'verificationData' => $verificationData
             ])
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'defaultFont' => 'Arial',
-                'isPhpEnabled' => true,
-                'isFontSubsettingEnabled' => true
-            ]);
+                ->setPaper('a4', 'portrait')
+                ->setOptions([
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                    'defaultFont' => 'Arial',
+                    'isPhpEnabled' => true,
+                    'isFontSubsettingEnabled' => true
+                ]);
 
+            // Log equipment usage to activity_log on end verification (event = verified_end)
+            try {
+                if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
+                    $reservationDataForLog = DB::table('reservations')->where('id', $reservation)->first();
+                    $equipmentLinksForLog = DB::table('reservation_equipment')
+                        ->where('reservation_id', $reservation)
+                        ->get();
+
+                    if ($reservationDataForLog && $equipmentLinksForLog->count() > 0) {
+                        $rowsToInsert = [];
+                        foreach ($equipmentLinksForLog as $link) {
+                            $day = $link->day ?? ($reservationDataForLog->day ?? null);
+                            $startTime = $link->start ?? ($reservationDataForLog->start ?? null);
+                            $endTime = $link->end ?? ($reservationDataForLog->end ?? null);
+
+                            
+                            $startDate = (string) ($day ?? '') . ' ' . ($startTime ?? '');
+                            $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
+
+                            $properties = json_encode([
+                                'start' => $startDate,
+                                'end' => $endDate,
+                            ]);
+
+                            $exists = DB::table('activity_log')
+                                ->where('log_name', 'equipment')
+                                ->where('description', 'equipment history')
+                                ->where('subject_type', 'App\\Models\\Equipment')
+                                ->where('subject_id', $link->equipment_id)
+                                ->where('causer_type', 'App\\Models\\User')
+                                ->where('causer_id', $reservationDataForLog->user_id)
+                                ->where('event', 'verified_end')
+                                ->where('properties', $properties)
+                                ->exists();
+
+                            if (!$exists) {
+                                $rowsToInsert[] = [
+                                    'log_name' => 'equipment',
+                                    'description' => 'equipment history',
+                                    'subject_type' => 'App\\Models\\Equipment',
+                                    'subject_id' => $link->equipment_id,
+                                    'event' => 'verified_end',
+                                    'causer_type' => 'App\\Models\\User',
+                                    'causer_id' => $reservationDataForLog->user_id,
+                                    'properties' => $properties,
+                                    'created_at' => now()->toDateTimeString(),
+                                    'updated_at' => now()->toDateTimeString(),
+                                ];
+                            }
+                        }
+
+                        if (!empty($rowsToInsert)) {
+                            DB::table('activity_log')->insert($rowsToInsert);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
+            }
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $filename = "Verification_Report_{$userName}_{$date}.pdf";
@@ -1272,7 +1378,7 @@ class ReservationsController extends Controller
             $approverName = $approver ? $approver->name : null;
         }
 
-        return Inertia::render('admin/reservations/[id]', [
+        return Inertia::render('admin/reservations/details', [
             'reservation' => [
                 'id' => $reservationData->id,
                 'user_name' => $reservationData->user_name,
@@ -1315,14 +1421,14 @@ class ReservationsController extends Controller
                 'reservation' => $pdfData['reservation'],
                 'verificationData' => $pdfData['verificationData']
             ])
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'defaultFont' => 'Arial',
-                'isPhpEnabled' => true,
-                'isFontSubsettingEnabled' => true
-            ]);
+                ->setPaper('a4', 'portrait')
+                ->setOptions([
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                    'defaultFont' => 'Arial',
+                    'isPhpEnabled' => true,
+                    'isFontSubsettingEnabled' => true
+                ]);
 
             // Clear the session data after download
             session()->forget('verification_pdf_data');
@@ -1355,7 +1461,7 @@ class ReservationsController extends Controller
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'name' => $item->studio_name ? $item->studio_name : 'Exterior',
+                        'name' => $item->studio_name ?? 'Unknown',
                         'count' => $item->count
                     ];
                 })
@@ -1469,67 +1575,34 @@ class ReservationsController extends Controller
                         'image' => $img
                     ];
                 })
-                ->filter()
-                ->values()
-                ->toArray();
+                    ->filter()
+                    ->values()
+                    ->toArray();
             }
         }
 
-        // Damaged equipment (state = 0)
-        $damagedEquipment = [];
-        if (Schema::hasTable('equipment')) {
-            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
-            $query = DB::table('equipment as e')
-                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
-                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
-                ->where('e.state', 0)
-                ->limit(10);
-            if ($hasEquipmentImage) {
-                $query->addSelect('e.image');
-            }
-            $damagedEquipment = $query->get()->map(function ($eq) {
-                $img = isset($eq->image) ? $eq->image : null;
-                if ($img) {
-                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/' . ltrim($img, '/');
-                    }
-                    $img = asset($img);
-                }
-                return [
-                    'id' => $eq->id,
-                    'reference' => $eq->reference ?? 'Unknown',
-                    'mark' => $eq->mark ?? '',
-                    'type_name' => $eq->type_name ?? 'Unknown',
-                    'image' => $img
-                ];
-            })->toArray();
-        }
-
-        // Equipment in active reservations (now between start and end on the reservation day)
-        $activeEquipment = [];
-        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('reservations') && Schema::hasTable('equipment')) {
-            $now = now()->format('Y-m-d H:i:s');
-            $activeEquipmentIds = DB::table('reservation_equipment as re')
-                ->leftJoin('reservations as r', 'r.id', '=', 're.reservation_id')
-                ->where('r.canceled', 0)
-                // SQLite-friendly datetime comparison using concatenation of day + time
-                ->whereRaw("datetime(r.day || ' ' || r.start) <= ?", [$now])
-                ->whereRaw("datetime(r.day || ' ' || r.end) >= ?", [$now])
+        // Equipment Not Reserved
+        $unusedEquipment = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $usedEquipmentIds = DB::table('reservation_equipment')
                 ->distinct()
-                ->pluck('re.equipment_id')
+                ->pluck('equipment_id')
                 ->toArray();
 
-            if (!empty($activeEquipmentIds)) {
             $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
             $query = DB::table('equipment as e')
                 ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
-                    ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
-                    ->whereIn('e.id', $activeEquipmentIds)
-                    ->limit(10);
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
+
             if ($hasEquipmentImage) {
                 $query->addSelect('e.image');
             }
-                $activeEquipment = $query->get()->map(function ($eq) {
+
+            $unusedEquipment = $query
+                ->whereNotIn('e.id', $usedEquipmentIds)
+                ->limit(10)
+                ->get()
+                ->map(function ($eq) {
                     $img = isset($eq->image) ? $eq->image : null;
                     if ($img) {
                         if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
@@ -1544,8 +1617,8 @@ class ReservationsController extends Controller
                         'type_name' => $eq->type_name ?? 'Unknown',
                         'image' => $img
                     ];
-                })->toArray();
-            }
+                })
+                ->toArray();
         }
 
         // Monthly reservations trend
@@ -1591,8 +1664,7 @@ class ReservationsController extends Controller
             'timeSlotStats' => $timeSlotStats,
             'topUsers' => $topUsers,
             'topEquipment' => $topEquipment,
-            'damagedEquipment' => $damagedEquipment,
-            'activeEquipment' => $activeEquipment,
+            'unusedEquipment' => $unusedEquipment,
             'monthlyTrend' => $monthlyTrend,
         ];
 
@@ -1850,5 +1922,3 @@ class ReservationsController extends Controller
         return back()->with('success', 'Meeting room reservation canceled');
     }
 }
-
-
