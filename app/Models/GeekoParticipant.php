@@ -61,12 +61,12 @@ class GeekoParticipant extends Model
     {
         $questionScores = $this->question_scores ?? [];
         $questionScores[$questionId] = $score;
-        
+
         $this->update([
             'question_scores' => $questionScores,
             'total_score' => $this->total_score + $score,
             'correct_answers' => $isCorrect ? $this->correct_answers + 1 : $this->correct_answers,
-            'wrong_answers' => !$isCorrect ? $this->wrong_answers + 1 : $this->wrong_answers,
+            'wrong_answers' => ! $isCorrect ? $this->wrong_answers + 1 : $this->wrong_answers,
             'last_activity' => now(),
         ]);
     }
@@ -77,6 +77,7 @@ class GeekoParticipant extends Model
     public function getAccuracy(): float
     {
         $totalAnswered = $this->correct_answers + $this->wrong_answers;
+
         return $totalAnswered > 0 ? ($this->correct_answers / $totalAnswered) * 100 : 0;
     }
 

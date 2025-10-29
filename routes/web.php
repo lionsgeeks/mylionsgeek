@@ -1,16 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Illuminate\Http\Request;
-use App\Jobs\CreateInvitedUser;
-use App\Models\User;
 
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
+
     return Inertia::render('Welcome/index');
 })->name('home');
 
@@ -27,21 +25,18 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->group(fu
 //     })->name('student.dashboard');
 // });
 
-
-
-
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
-require __DIR__ . '/users.php';
-require __DIR__ . '/computers.php';
-require __DIR__ . '/leaderboard.php';
-require __DIR__ . '/training.php';
-require __DIR__ . '/geeko.php';
-require __DIR__ . '/equipment.php';
-require __DIR__ . '/places.php';
-require __DIR__ . '/reservations.php';
-require __DIR__ . '/projects.php';
-require __DIR__ . '/recuiter.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
+require __DIR__.'/users.php';
+require __DIR__.'/computers.php';
+require __DIR__.'/leaderboard.php';
+require __DIR__.'/training.php';
+require __DIR__.'/geeko.php';
+require __DIR__.'/equipment.php';
+require __DIR__.'/places.php';
+require __DIR__.'/reservations.php';
+require __DIR__.'/projects.php';
+require __DIR__.'/recuiter.php';
 
 // Two-Factor Authentication Routes
 Route::middleware('auth')->prefix('api')->group(function () {

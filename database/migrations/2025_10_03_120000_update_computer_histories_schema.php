@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('computer_histories')) {
+        if (! Schema::hasTable('computer_histories')) {
             Schema::create('computer_histories', function (Blueprint $table) {
                 $table->id();
                 $table->uuid('computer_id');
@@ -20,6 +20,7 @@ return new class extends Migration
                 $table->timestamps();
                 $table->index(['computer_id', 'start']);
             });
+
             return;
         }
 
@@ -70,8 +71,6 @@ return new class extends Migration
             $table->dropForeign(['user_id']);
             $table->dropIndex(['computer_id', 'start']);
         });
-        
+
     }
 };
-
-

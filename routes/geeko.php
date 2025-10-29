@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\GeekoController;
-use App\Http\Controllers\GeekoSessionController;
 use App\Http\Controllers\GeekoPlayController;
+use App\Http\Controllers\GeekoSessionController;
 use Illuminate\Support\Facades\Route;
 
 // Admin/Coach routes for managing Geekos
@@ -41,7 +41,7 @@ Route::middleware(['auth', 'role:student'])->group(function () {
     // Join game routes
     Route::get('/geeko/join', [GeekoPlayController::class, 'join'])->name('geeko.play.join');
     Route::post('/geeko/join', [GeekoPlayController::class, 'joinWithPin'])->name('geeko.play.join-with-pin');
-    
+
     // Game play routes
     Route::get('/geeko/play/{session}/lobby', [GeekoPlayController::class, 'lobby'])->name('geeko.play.lobby');
     Route::get('/geeko/play/{session}/question', [GeekoPlayController::class, 'question'])->name('geeko.play.question');
@@ -56,4 +56,3 @@ Route::middleware(['auth', 'role:student'])->group(function () {
 Route::get('/geeko/{sessionCode}', function ($sessionCode) {
     return redirect()->route('geeko.play.join', ['session_code' => $sessionCode]);
 })->name('geeko.public.join');
-

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -30,8 +30,8 @@ return new class extends Migration
                         'reservation_id' => isset($row->reservation_id) ? (int) $row->reservation_id : null,
                         'contract' => (string) ($row->contract ?? ''),
                         'type' => isset($row->type) ? (string) $row->type : null,
-                        'created_at' => isset($row->created_at) && !empty($row->created_at) ? (string) $row->created_at : now(),
-                        'updated_at' => isset($row->updated_at) && !empty($row->updated_at) ? (string) $row->updated_at : now(),
+                        'created_at' => isset($row->created_at) && ! empty($row->created_at) ? (string) $row->created_at : now(),
+                        'updated_at' => isset($row->updated_at) && ! empty($row->updated_at) ? (string) $row->updated_at : now(),
                     ]);
                 }
             } catch (\Throwable $e) {
@@ -61,8 +61,8 @@ return new class extends Migration
                         'mc_document' => (string) ($row->mc_document ?? ''),
                         'description' => isset($row->description) ? (string) $row->description : null,
                         'author' => isset($row->author) ? (string) $row->author : null,
-                        'created_at' => isset($row->created_at) && !empty($row->created_at) ? (string) $row->created_at : now(),
-                        'updated_at' => isset($row->updated_at) && !empty($row->updated_at) ? (string) $row->updated_at : now(),
+                        'created_at' => isset($row->created_at) && ! empty($row->created_at) ? (string) $row->created_at : now(),
+                        'updated_at' => isset($row->updated_at) && ! empty($row->updated_at) ? (string) $row->updated_at : now(),
                     ]);
                 }
             } catch (\Throwable $e) {
@@ -79,5 +79,3 @@ return new class extends Migration
         // No-op safe down: do not attempt to restore old broken schemas
     }
 };
-
-

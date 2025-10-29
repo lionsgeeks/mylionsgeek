@@ -3,10 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Geeko;
-use App\Models\GeekoSession;
-use App\Models\GeekoParticipant;
 use App\Models\GeekoAnswer;
-use App\Models\User;
+use App\Models\GeekoParticipant;
+use App\Models\GeekoSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -21,7 +20,7 @@ class GeekoSessionController extends Controller
         $geeko = Geeko::with(['formation', 'questions'])->findOrFail($geekoId);
 
         // Check if Geeko is ready
-        if (!$geeko->isReady()) {
+        if (! $geeko->isReady()) {
             return back()->withErrors(['error' => 'This Geeko is not ready to be played!']);
         }
 
@@ -69,7 +68,7 @@ class GeekoSessionController extends Controller
             'geeko.formation',
             'geeko.questions',
             'participants.user',
-            'starter'
+            'starter',
         ])->findOrFail($sessionId);
 
         $currentQuestion = $session->currentQuestion();
@@ -125,9 +124,10 @@ class GeekoSessionController extends Controller
             return back()->withErrors(['error' => 'Session is not in progress!']);
         }
 
-        if (!$session->moveToNextQuestion()) {
+        if (! $session->moveToNextQuestion()) {
             // No more questions, complete the session
             $session->complete();
+
             return back()->with('success', 'Game completed!');
         }
 
@@ -142,7 +142,7 @@ class GeekoSessionController extends Controller
         $session = GeekoSession::findOrFail($sessionId);
         $currentQuestion = $session->currentQuestion();
 
-        if (!$currentQuestion) {
+        if (! $currentQuestion) {
             return back()->withErrors(['error' => 'No current question!']);
         }
 
@@ -178,7 +178,7 @@ class GeekoSessionController extends Controller
     public function cancel($formationId, $geekoId, $sessionId)
     {
         $session = GeekoSession::findOrFail($sessionId);
-        
+
         $session->update([
             'status' => 'cancelled',
             'ended_at' => now(),
@@ -198,18 +198,18 @@ class GeekoSessionController extends Controller
             'geeko.questions',
             'participants.user',
             'answers.question',
-            'answers.user'
+            'answers.user',
         ])->findOrFail($sessionId);
 
         $leaderboard = $session->getLeaderboard();
-        
+
         // Question-wise statistics
         $questionStats = [];
         foreach ($session->geeko->questions as $question) {
             $questionAnswers = $session->answers()->where('question_id', $question->id)->get();
             $correctCount = $questionAnswers->where('is_correct', true)->count();
             $totalCount = $questionAnswers->count();
-            
+
             $questionStats[] = [
                 'question' => $question,
                 'correct_count' => $correctCount,
@@ -234,12 +234,12 @@ class GeekoSessionController extends Controller
     {
         $session = GeekoSession::with([
             'participants.user',
-            'geeko.questions'
+            'geeko.questions',
         ])->findOrFail($sessionId);
 
         $currentQuestion = $session->currentQuestion();
         $leaderboard = $session->getLeaderboard();
-        
+
         // Count answers for current question
         $currentAnswerCount = 0;
         if ($currentQuestion) {
@@ -252,7 +252,7 @@ class GeekoSessionController extends Controller
             if (is_string($options)) {
                 $options = json_decode($options, true) ?: [];
             }
-            if (!is_array($options)) {
+            if (! is_array($options)) {
                 $options = [];
             }
             $optionCounts = array_fill(0, count($options), 0);
@@ -274,7 +274,7 @@ class GeekoSessionController extends Controller
 
                 foreach ($selectedValues as $val) {
                     if (is_numeric($val)) {
-                        $idx = (int)$val;
+                        $idx = (int) $val;
                         if ($idx >= 0 && $idx < count($optionCounts)) {
                             $optionCounts[$idx]++;
                         }

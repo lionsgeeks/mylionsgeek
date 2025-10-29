@@ -1,13 +1,3 @@
-import { useState, useEffect } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Pencil, Trash, CircleCheckBig, CameraIcon, UsersRoundIcon, ChevronsLeft, ChevronsRight, RefreshCcw } from 'lucide-react';
-import { router, usePage } from '@inertiajs/react';
-import { useInitials } from '@/hooks/use-initials';
-import EditModal from './EditModal';
-import User from './ShowModal';
-import RoleBadge from '@/pages/admin/users/partials/RoleBadge';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,7 +7,17 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useInitials } from '@/hooks/use-initials';
+import RoleBadge from '@/pages/admin/users/partials/RoleBadge';
+import { router, usePage } from '@inertiajs/react';
+import { CameraIcon, ChevronsLeft, ChevronsRight, CircleCheckBig, Pencil, Trash, UsersRoundIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import EditModal from './EditModal';
+import User from './ShowModal';
 
 const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
     const { auth } = usePage().props;
@@ -48,7 +48,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
     // Change account status or delete user logic
     const changeAccountStatus = (user) => {
         setDeleteUser(user); // Set the user to be deleted
-        setOpenDelete(true);  // Open the delete confirmation dialog
+        setOpenDelete(true); // Open the delete confirmation dialog
     };
 
     // Actually delete the user
@@ -56,25 +56,27 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
         if (deleteUser) {
             // Assuming the delete endpoint is something like this
             const newState = deleteUser.account_state === 1 ? 0 : 1;
-            router.post(`/admin/users/update/${deleteUser.id}/account-state`, {
-                _method: 'put',
-                account_state: newState,
-            }, {
-                onSuccess: () => {
-                    // Handle success
-                    setOpenDelete(false); // Close the delete dialog
-                    setDeleteUser(null); // Clear the delete user state
+            router.post(
+                `/admin/users/update/${deleteUser.id}/account-state`,
+                {
+                    _method: 'put',
+                    account_state: newState,
                 },
-                onError: () => {
-                    // Handle error
-                    setOpenDelete(false); // Close the delete dialog in case of error
-                    setDeleteUser(null); // Clear the delete user state
-                }
-            });
+                {
+                    onSuccess: () => {
+                        // Handle success
+                        setOpenDelete(false); // Close the delete dialog
+                        setDeleteUser(null); // Clear the delete user state
+                    },
+                    onError: () => {
+                        // Handle error
+                        setOpenDelete(false); // Close the delete dialog in case of error
+                        setDeleteUser(null); // Clear the delete user state
+                    },
+                },
+            );
         }
     };
-
-
 
     // console.log('All users:', currentItems);
     // console.log('First user roles:', currentItems[0]?.roles);
@@ -94,46 +96,31 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                 <TableBody>
                     {currentItems.map((user) => (
                         <TableRow key={user.id} className="cursor-pointer">
-                            <TableCell
-                                className="font-medium flex gap-4 items-center"
-                                onClick={() => onShow(user)}
-                            >
+                            <TableCell className="flex items-center gap-4 font-medium" onClick={() => onShow(user)}>
                                 <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                                    <AvatarImage
-                                        src={`/storage/img/profile/${user.image}`}
-                                        alt={user.name}
-                                    />
+                                    <AvatarImage src={`/storage/img/profile/${user.image}`} alt={user.name} />
                                     <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                         {getInitials(user.name)}
                                     </AvatarFallback>
                                 </Avatar>
 
-
                                 <div className="flex flex-col">
                                     <h1 className="capitalize">{user.name}</h1>
-                                    {auth.user.role.includes('admin') &&
-                                        <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>
-                                    }
+                                    {auth.user.role.includes('admin') && (
+                                        <span className="text-[0.8rem] font-medium text-dark/80 dark:text-light/80">{user.cin}</span>
+                                    )}
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">
                                 <div className="flex items-center gap-3">
                                     {user.access_cowork === 1 && (
-                                        <UsersRoundIcon
-                                            size={20}
-                                            className="text-alpha cursor-pointer"
-                                            aria-label="Coworking Access"
-                                        />
+                                        <UsersRoundIcon size={20} className="cursor-pointer text-alpha" aria-label="Coworking Access" />
                                     )}
                                     {user.access_studio === 1 && (
-                                        <CameraIcon
-                                            size={20}
-                                            className="text-alpha cursor-pointer"
-                                            aria-label="Studio Access"
-                                        />
+                                        <CameraIcon size={20} className="cursor-pointer text-alpha" aria-label="Studio Access" />
                                     )}
-                                    {(user.access_studio === 0 && user.access_cowork === 0) && (
-                                        <span className="dark:text-light text-dark text-sm">No Access</span>
+                                    {user.access_studio === 0 && user.access_cowork === 0 && (
+                                        <span className="text-sm text-dark dark:text-light">No Access</span>
                                     )}
                                 </div>
                             </TableCell>
@@ -141,25 +128,20 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                             <TableCell className="font-medium">{user.status}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-2">
-                                    {user.role ? (
-                                        <RoleBadge role={user.role} />
-                                    ) : (
-                                        <span className="text-gray-400 text-xs">No role</span>
-                                    )}
+                                    {user.role ? <RoleBadge role={user.role} /> : <span className="text-xs text-gray-400">No role</span>}
                                 </div>
                             </TableCell>
 
-                            <TableCell className="font-medium flex gap-2 items-center">
+                            <TableCell className="flex items-center gap-2 font-medium">
                                 <Button
-                                    className="p-2 bg-transparent hover:bg-transparent duration-200"
+                                    className="bg-transparent p-2 duration-200 hover:bg-transparent"
                                     title="Edit"
                                     onClick={() => setOpenEditUser(user)}
                                 >
                                     <Pencil size={20} className="text-alpha" />
                                 </Button>
                                 <Button
-
-                                    className="p-2 bg-transparent hover:bg-transparent duration-200 cursor-pointer"
+                                    className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
                                     title={user.account_state ? 'Active' : 'Suspend'}
                                     onClick={() => changeAccountStatus(user)} // Open delete confirmation dialog
                                 >
@@ -180,19 +162,27 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                 <AlertDialog open={openDelete}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle className='text-dark dark:text-light'>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription className='text-dark dark:text-light'>
-                                {deleteUser.account_state ? 'This will reactivate this account and restore access to this account data.' : 'This will temporarily suspend this account and prevent access to this account data until reactivated.'}
+                            <AlertDialogTitle className="text-dark dark:text-light">Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-dark dark:text-light">
+                                {deleteUser.account_state
+                                    ? 'This will reactivate this account and restore access to this account data.'
+                                    : 'This will temporarily suspend this account and prevent access to this account data until reactivated.'}
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                            <AlertDialogCancel className='cursor-pointer' onClick={() => setOpenDelete(false)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction className={`cursor-pointer ${deleteUser.account_state ? 'text-dark bg-alpha hover:bg-alpha/80' : 'text-light bg-error hover:bg-error/80'}`} onClick={deleteConfirmedUser}>Continue</AlertDialogAction>
+                            <AlertDialogCancel className="cursor-pointer" onClick={() => setOpenDelete(false)}>
+                                Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                className={`cursor-pointer ${deleteUser.account_state ? 'bg-alpha text-dark hover:bg-alpha/80' : 'bg-error text-light hover:bg-error/80'}`}
+                                onClick={deleteConfirmedUser}
+                            >
+                                Continue
+                            </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
             )}
-
 
             {/* edit modal */}
             <EditModal
@@ -205,21 +195,14 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             />
 
             {/* Show User Dialog */}
-            {openShow && (
-                <User
-                    open={openShow}
-                    close={() => setOpenShow(false)}
-                    user={showedUser}
-                    trainings={trainings}
-                />
-            )}
+            {openShow && <User open={openShow} close={() => setOpenShow(false)} user={showedUser} trainings={trainings} />}
 
             {/* Pagination */}
-            <div className="flex gap-5 mt-10 w-full items-center justify-center">
+            <div className="mt-10 flex w-full items-center justify-center gap-5">
                 <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((prev) => prev - 1)}
-                    className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer"
+                    className="cursor-pointer rounded-lg bg-beta p-2 text-light dark:bg-light dark:text-dark"
                 >
                     <ChevronsLeft />
                 </button>
@@ -231,7 +214,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                 <button
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage((prev) => prev + 1)}
-                    className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer"
+                    className="cursor-pointer rounded-lg bg-beta p-2 text-light dark:bg-light dark:text-dark"
                 >
                     <ChevronsRight />
                 </button>
@@ -241,4 +224,3 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
 };
 
 export default UsersTable;
-

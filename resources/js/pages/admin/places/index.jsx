@@ -1,44 +1,43 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import FullCalendar from '@fullcalendar/react';
+import AppLayout from '@/layouts/app-layout';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import ReservationModal from './studios/components/ReservationModal';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { Head, router, useForm } from '@inertiajs/react';
+import { ChevronsLeft, ChevronsRight, Grid3X3, List, Pencil, Trash } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import ReservationModalCowork from './coworks/components/ReservationModalCowork';
+import ReservationModal from './studios/components/ReservationModal';
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
-  const [selectedRange, setSelectedRange] = useState(null);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [selectedPlace, setSelectedPlace] = useState(null);
+    const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+    const [selectedRange, setSelectedRange] = useState(null);
 
     const handleViewCalendar = (place) => {
-    setSelectedPlace(place);
-    setIsCalendarOpen(true);
-    loadCalendarEvents(place);
-  };
+        setSelectedPlace(place);
+        setIsCalendarOpen(true);
+        loadCalendarEvents(place);
+    };
 
-  const loadCalendarEvents = (place) => {
-    setLoadingEvents(true);
-    const placeType = place.place_type === 'studio' ? 'studio' : 'cowork';
-    fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
-      headers: { 'Accept': 'application/json' },
-      credentials: 'same-origin',
-    })
-      .then((r) => r.json())
-      .then((data) => setEvents(Array.isArray(data) ? data : []))
-      .catch(() => setEvents([]))
-      .finally(() => setLoadingEvents(false));
-  };
-
+    const loadCalendarEvents = (place) => {
+        setLoadingEvents(true);
+        const placeType = place.place_type === 'studio' ? 'studio' : 'cowork';
+        fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        })
+            .then((r) => r.json())
+            .then((data) => setEvents(Array.isArray(data) ? data : []))
+            .catch(() => setEvents([]))
+            .finally(() => setLoadingEvents(false));
+    };
 
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -59,7 +58,14 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         state: '',
         image: null,
     });
-    const { data: editData, setData: setEditData, put, processing: editProcessing, reset: resetEdit, errors: editErrors } = useForm({
+    const {
+        data: editData,
+        setData: setEditData,
+        put,
+        processing: editProcessing,
+        reset: resetEdit,
+        errors: editErrors,
+    } = useForm({
         name: '',
         place_type: '',
         state: '',
@@ -89,13 +95,16 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 onSuccess: () => {
                     setIsDeleteOpen(false);
                     setDeletingPlace(null);
-                }
+                },
             });
         }
     };
 
-    const normalizeType = (v) => String(v || '').toLowerCase().replace(/\s+/g, '_');
-    const filteredPlaces = places.filter(place => {
+    const normalizeType = (v) =>
+        String(v || '')
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+    const filteredPlaces = places.filter((place) => {
         const matchesType = normalizeType(filterType) === 'all' || normalizeType(place.place_type) === normalizeType(filterType);
         const matchesSearch = !searchQuery || place.name.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesType && matchesSearch;
@@ -118,7 +127,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         if (!calendarFor) return;
         setLoadingEvents(true);
         fetch(`/admin/places/${calendarFor.place_type}/${calendarFor.id}/reservations`, {
-            headers: { 'Accept': 'application/json' },
+            headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         })
             .then((r) => r.json())
@@ -130,14 +139,14 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     return (
         <AppLayout>
             <Head title="Places" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="flex flex-col gap-6 px-4 py-6 sm:p-8 lg:gap-10 lg:p-10">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Places</h1>
                         <p className="text-sm text-muted-foreground">{filteredPlaces.length} places</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1 border border-sidebar-border/70 rounded-lg p-1">
+                        <div className="flex items-center gap-1 rounded-lg border border-sidebar-border/70 p-1">
                             <Button
                                 variant={viewMode === 'table' ? 'default' : 'ghost'}
                                 size="sm"
@@ -155,7 +164,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 <Grid3X3 className="h-4 w-4" />
                             </Button>
                         </div>
-                        <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
+                        <button
+                            onClick={() => setIsAddOpen(true)}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-transparent hover:text-[var(--color-alpha)]"
+                        >
                             Add place
                         </button>
                     </div>
@@ -163,7 +175,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
 
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
+                        <Label htmlFor="search" className="text-sm font-medium">
+                            Search:
+                        </Label>
                         <Input
                             id="search"
                             type="text"
@@ -174,7 +188,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         />
                     </div>
                     <div className="flex items-center gap-2">
-                        <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
+                        <Label htmlFor="filter-type" className="text-sm font-medium">
+                            Filter by type:
+                        </Label>
                         <Select value={filterType} onValueChange={setFilterType}>
                             <SelectTrigger className="w-48">
                                 <SelectValue placeholder="All types" />
@@ -182,7 +198,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
                                 {types.map((t) => (
-                                    <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                    <SelectItem key={t} value={t}>
+                                        {t.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                    </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -220,17 +238,26 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     <tr key={`${e.place_type}-${e.id}`} className="hover:bg-accent/30">
                                         <td className="px-4 py-3">
                                             {e.image ? (
-                                                <button onClick={() => setPreviewSrc(e.image)} className="group rounded outline-hidden cursor-pointer">
-                                                    <img src={e.image} alt={e.name} className="h-10 w-10 rounded object-cover transition group-hover:opacity-90" />
+                                                <button
+                                                    onClick={() => setPreviewSrc(e.image)}
+                                                    className="group cursor-pointer rounded outline-hidden"
+                                                >
+                                                    <img
+                                                        src={e.image}
+                                                        alt={e.name}
+                                                        className="h-10 w-10 rounded object-cover transition group-hover:opacity-90"
+                                                    />
                                                 </button>
                                             ) : (
                                                 <div className="h-10 w-10 rounded bg-muted" />
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-sm">{e.name}</td>
-                                        <td className="px-4 py-3 text-sm">{e.place_type.replace('_',' ')}</td>
+                                        <td className="px-4 py-3 text-sm">{e.place_type.replace('_', ' ')}</td>
                                         <td className="px-4 py-3 text-sm">
-                                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                                            <span
+                                                className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}
+                                            >
                                                 {e.state ? 'Available' : 'Unavailable'}
                                             </span>
                                         </td>
@@ -240,8 +267,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleViewCalendar(e)}
-                                                    className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-                                                    >
+                                                    className="h-8 cursor-pointer px-3 hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-black"
+                                                >
                                                     View Calendar
                                                 </Button>
                                             </div>
@@ -249,14 +276,14 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         <td className="px-4 py-3 text-center text-sm">
                                             <div className="inline-flex items-center gap-2">
                                                 <button
-                                                    className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
+                                                    className="cursor-pointer rounded-md border border-transparent p-2 text-foreground/70 transition-colors duration-200 hover:border hover:border-[#FFC801] hover:bg-transparent hover:text-[var(--color-alpha)]"
                                                     title="Edit"
                                                     onClick={() => handleEdit(e)}
                                                 >
                                                     <Pencil size={18} className="h-4 w-4 text-alpha" />
                                                 </button>
                                                 <button
-                                                    className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
+                                                    className="cursor-pointer rounded-md border border-transparent p-2 text-foreground/70 transition-colors duration-200 hover:border hover:border-red-600 hover:bg-transparent hover:text-red-600"
                                                     title="Delete"
                                                     onClick={() => handleDelete(e)}
                                                 >
@@ -269,7 +296,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 {filteredPlaces.length === 0 && (
                                     <tr>
                                         <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                            {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                            {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_', ' ')} found.`}
                                         </td>
                                     </tr>
                                 )}
@@ -277,59 +304,68 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </table>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {pagedPlaces.map((e) => (
-                            <div key={`${e.place_type}-${e.id}`} className="rounded-xl border border-sidebar-border/70 bg-card overflow-hidden hover:shadow-lg transition-shadow">
+                            <div
+                                key={`${e.place_type}-${e.id}`}
+                                className="overflow-hidden rounded-xl border border-sidebar-border/70 bg-card transition-shadow hover:shadow-lg"
+                            >
                                 {/* Large Profile Image */}
                                 <div className="relative h-48 w-full">
                                     {e.image ? (
-                                        <button onClick={() => setPreviewSrc(e.image)} className="group w-full h-full cursor-pointer">
-                                            <img src={e.image} alt={e.name} className="w-full h-full object-cover transition group-hover:opacity-90" />
+                                        <button onClick={() => setPreviewSrc(e.image)} className="group h-full w-full cursor-pointer">
+                                            <img
+                                                src={e.image}
+                                                alt={e.name}
+                                                className="h-full w-full object-cover transition group-hover:opacity-90"
+                                            />
                                         </button>
                                     ) : (
-                                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                                            <span className="text-muted-foreground text-sm">No Image</span>
+                                        <div className="flex h-full w-full items-center justify-center bg-muted">
+                                            <span className="text-sm text-muted-foreground">No Image</span>
                                         </div>
                                     )}
                                     {/* Status Badge */}
                                     <div className="absolute top-3 left-3">
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${e.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                                        <span
+                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${e.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}
+                                        >
                                             {e.state ? 'Available' : 'Unavailable'}
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 {/* Content Section */}
                                 <div className="p-4">
                                     <div className="mb-3">
-                                        <h3 className="font-semibold text-lg text-foreground mb-1">{e.name}</h3>
-                                        <p className="text-sm text-muted-foreground capitalize">{e.place_type.replace('_',' ')}</p>
+                                        <h3 className="mb-1 text-lg font-semibold text-foreground">{e.name}</h3>
+                                        <p className="text-sm text-muted-foreground capitalize">{e.place_type.replace('_', ' ')}</p>
                                     </div>
-                                    
+
                                     {/* Actions */}
                                     <div className="space-y-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleViewCalendar(e)}
-                                            className="w-full h-9 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                            className="h-9 w-full cursor-pointer hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-black"
                                         >
                                             View Calendar
                                         </Button>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
+                                                className="flex-1 cursor-pointer rounded-md border border-transparent p-2 text-foreground/70 transition-colors duration-200 hover:border hover:border-[#FFC801] hover:bg-transparent hover:text-[var(--color-alpha)]"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={16} className="h-4 w-4 text-alpha mx-auto" />
+                                                <Pencil size={16} className="mx-auto h-4 w-4 text-alpha" />
                                             </button>
                                             <button
-                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
+                                                className="flex-1 cursor-pointer rounded-md border border-transparent p-2 text-foreground/70 transition-colors duration-200 hover:border hover:border-red-600 hover:bg-transparent hover:text-red-600"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={16} className="h-4 w-4 text-red-600 mx-auto" />
+                                                <Trash size={16} className="mx-auto h-4 w-4 text-red-600" />
                                             </button>
                                         </div>
                                     </div>
@@ -339,7 +375,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         {filteredPlaces.length === 0 && (
                             <div className="col-span-full flex items-center justify-center py-12">
                                 <p className="text-sm text-muted-foreground">
-                                    {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                    {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_', ' ')} found.`}
                                 </p>
                             </div>
                         )}
@@ -347,11 +383,11 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 )}
 
                 {/* Pagination */}
-                <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                <div className="mt-6 flex w-full items-center justify-center gap-5">
                     <button
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50"
+                        className="cursor-pointer rounded-lg bg-beta p-2 text-light disabled:opacity-50 dark:bg-light dark:text-dark"
                         aria-label="Previous page"
                     >
                         <ChevronsLeft />
@@ -362,7 +398,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     <button
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50"
+                        className="cursor-pointer rounded-lg bg-beta p-2 text-light disabled:opacity-50 dark:bg-light dark:text-dark"
                         aria-label="Next page"
                     >
                         <ChevronsRight />
@@ -373,8 +409,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 <div className="grid gap-8">
                     {studioImages.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-medium mb-3">Studios — Gallery</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <h2 className="mb-3 text-lg font-medium">Studios — Gallery</h2>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                                 {studioImages.map((src, i) => (
                                     <img key={`studio-${i}`} src={src} alt="Studio" className="h-28 w-full rounded object-cover" />
                                 ))}
@@ -383,8 +419,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     )}
                     {meetingRoomImages.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-medium mb-3">Meeting Rooms — Gallery</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <h2 className="mb-3 text-lg font-medium">Meeting Rooms — Gallery</h2>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                                 {meetingRoomImages.map((src, i) => (
                                     <img key={`room-${i}`} src={src} alt="Meeting room" className="h-28 w-full rounded object-cover" />
                                 ))}
@@ -393,8 +429,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     )}
                     {coworkImages.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-medium mb-3">Coworks — Gallery</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <h2 className="mb-3 text-lg font-medium">Coworks — Gallery</h2>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                                 {coworkImages.map((src, i) => (
                                     <img key={`cowork-${i}`} src={src} alt="Cowork" className="h-28 w-full rounded object-cover" />
                                 ))}
@@ -403,8 +439,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     )}
                     {equipmentImages.length > 0 && (
                         <div>
-                            <h2 className="text-lg font-medium mb-3">Equipments — Gallery</h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <h2 className="mb-3 text-lg font-medium">Equipments — Gallery</h2>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                                 {equipmentImages.map((src, i) => (
                                     <img key={`equipment-${i}`} src={src} alt="Equipment" className="h-28 w-full rounded object-cover" />
                                 ))}
@@ -415,18 +451,16 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
 
                 <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>
                     <DialogContent className="max-w-3xl p-0">
-                        {previewSrc && (
-                            <img src={previewSrc} alt="Place" className="max-h-[80vh] w-full object-contain" />
-                        )}
+                        {previewSrc && <img src={previewSrc} alt="Place" className="max-h-[80vh] w-full object-contain" />}
                     </DialogContent>
                 </Dialog>
 
                 {/* Calendar modal */}
                 <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
-                    <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
+                    <DialogContent className="h-[90vh] w-[90vw] max-w-[90vw] p-0 sm:max-w-[90vw]">
                         {calendarFor && (
-                            <div className="flex flex-col w-full h-full">
-                                <div className="shrink-0 px-5 py-3 border-b border-sidebar-border/70 flex items-center justify-between">
+                            <div className="flex h-full w-full flex-col">
+                                <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border/70 px-5 py-3">
                                     <h2 className="text-base font-medium">{calendarFor.name} — Calendar</h2>
                                 </div>
                                 <div className="relative grow overflow-hidden">
@@ -440,7 +474,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                             headerToolbar={{
                                                 left: 'prev,next today',
                                                 center: 'title',
-                                                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                                                right: 'dayGridMonth,timeGridWeek,timeGridDay',
                                             }}
                                             allDaySlot={true}
                                             slotMinTime="08:00:00"
@@ -457,9 +491,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                                 setSelectedEvent({
                                                     title: ev.title,
                                                     type: props.type || calendarFor?.place_type,
-                                                    date: ev.start ? ev.start.toISOString().slice(0,10) : undefined,
-                                                    start: ev.start ? ev.start.toTimeString().slice(0,5) : undefined,
-                                                    end: ev.end ? ev.end.toTimeString().slice(0,5) : undefined,
+                                                    date: ev.start ? ev.start.toISOString().slice(0, 10) : undefined,
+                                                    start: ev.start ? ev.start.toTimeString().slice(0, 5) : undefined,
+                                                    end: ev.end ? ev.end.toTimeString().slice(0, 5) : undefined,
                                                     approved: !!props.approved,
                                                     canceled: !!props.canceled,
                                                     passed: !!props.passed,
@@ -494,7 +528,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </div>
                                     <div>
                                         <div className="text-muted-foreground">Type</div>
-                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_',' ') || '—'}</div>
+                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_', ' ') || '—'}</div>
                                     </div>
                                     {selectedEvent.type === 'studio' && (
                                         <div>
@@ -508,7 +542,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </div>
                                     <div>
                                         <div className="text-muted-foreground">Time</div>
-                                        <div className="font-medium">{selectedEvent.start || '—'}{selectedEvent.end ? ` - ${selectedEvent.end}` : ''}</div>
+                                        <div className="font-medium">
+                                            {selectedEvent.start || '—'}
+                                            {selectedEvent.end ? ` - ${selectedEvent.end}` : ''}
+                                        </div>
                                     </div>
                                     <div>
                                         <div className="text-muted-foreground">User</div>
@@ -522,7 +559,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </div>
                                     <div className="col-span-2">
                                         <div className="text-muted-foreground">Description</div>
-                                        <div className="font-medium whitespace-pre-wrap break-words">{selectedEvent.description || '—'}</div>
+                                        <div className="font-medium break-words whitespace-pre-wrap">{selectedEvent.description || '—'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -538,7 +575,13 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Place Name</Label>
-                                    <Input id="name" name="name" placeholder="name" value={data.name} onChange={(e) => setData('name', e.target.value)} />
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        placeholder="name"
+                                        value={data.name}
+                                        onChange={(e) => setData('name', e.target.value)}
+                                    />
                                     {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                                 </div>
                                 <div className="grid gap-2">
@@ -549,7 +592,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectTrigger>
                                         <SelectContent>
                                             {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                                <SelectItem key={t} value={t}>
+                                                    {t.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -557,7 +602,13 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 {data.place_type !== 'cowork' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="image">Upload Image</Label>
-                                        <Input id="image" name="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
+                                        <Input
+                                            id="image"
+                                            name="image"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => setData('image', e.target.files?.[0] ?? null)}
+                                        />
                                         {errors.image && <p className="text-xs text-destructive">{errors.image}</p>}
                                     </div>
                                 )}
@@ -576,14 +627,19 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsAddOpen(false)}>
+                                    Cancel
+                                </Button>
                                 <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                    className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     disabled={processing}
                                     onClick={() => {
                                         post('/admin/places', {
                                             forceFormData: true,
-                                            onSuccess: () => { reset(); setIsAddOpen(false); },
+                                            onSuccess: () => {
+                                                reset();
+                                                setIsAddOpen(false);
+                                            },
                                         });
                                     }}
                                 >
@@ -619,7 +675,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectTrigger>
                                         <SelectContent>
                                             {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                                <SelectItem key={t} value={t}>
+                                                    {t.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -639,7 +697,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 )}
                                 <div className="grid gap-2">
                                     <Label>State</Label>
-                                    <Select value={editData.state === '' ? '' : String(editData.state)} onValueChange={(v) => setEditData('state', v)}>
+                                    <Select
+                                        value={editData.state === '' ? '' : String(editData.state)}
+                                        onValueChange={(v) => setEditData('state', v)}
+                                    >
                                         <SelectTrigger className={editData.state === '' ? 'text-muted-foreground' : ''}>
                                             <SelectValue placeholder="Choose an option" />
                                         </SelectTrigger>
@@ -652,18 +713,28 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsEditOpen(false)}>
+                                    Cancel
+                                </Button>
                                 <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                    className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     disabled={editProcessing}
                                     onClick={() => {
-                                        router.post(`/admin/places/${editingPlace.id}`, {
-                                            ...editData,
-                                            _method: 'put',
-                                        }, {
-                                            forceFormData: true,
-                                            onSuccess: () => { resetEdit(); setIsEditOpen(false); setEditingPlace(null); },
-                                        });
+                                        router.post(
+                                            `/admin/places/${editingPlace.id}`,
+                                            {
+                                                ...editData,
+                                                _method: 'put',
+                                            },
+                                            {
+                                                forceFormData: true,
+                                                onSuccess: () => {
+                                                    resetEdit();
+                                                    setIsEditOpen(false);
+                                                    setEditingPlace(null);
+                                                },
+                                            },
+                                        );
                                     }}
                                 >
                                     Update Place
@@ -683,9 +754,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-semibold">Delete Place</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        This action cannot be undone.
-                                    </p>
+                                    <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
                                 </div>
                             </div>
 
@@ -693,15 +762,11 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 <div className="rounded-lg border bg-muted/50 p-4">
                                     <div className="flex items-center gap-3">
                                         {deletingPlace.image && (
-                                            <img
-                                                src={deletingPlace.image}
-                                                alt={deletingPlace.name}
-                                                className="h-10 w-10 rounded object-cover"
-                                            />
+                                            <img src={deletingPlace.image} alt={deletingPlace.name} className="h-10 w-10 rounded object-cover" />
                                         )}
                                         <div>
                                             <p className="font-medium">{deletingPlace.name}</p>
-                                            <p className="text-sm text-muted-foreground">{deletingPlace.place_type.replace('_',' ')}</p>
+                                            <p className="text-sm text-muted-foreground">{deletingPlace.place_type.replace('_', ' ')}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -717,10 +782,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 >
                                     Cancel
                                 </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDelete}
-                                >
+                                <Button variant="destructive" onClick={confirmDelete}>
                                     Delete Place
                                 </Button>
                             </div>
@@ -730,105 +792,101 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
 
                 {/* Calendar Modal */}
                 <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <DialogContent className="p-6 overflow-hidden"
+                    <DialogContent
+                        className="overflow-hidden p-6"
                         style={{
-                        maxWidth: '95vw',
-                        width: '95vw',
-                        height: '85vh',
-                        maxHeight: '85vh'
-                        }}>
-                    <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">
-                        Calendar - {selectedPlace?.name}
-                    </DialogTitle>
-                        <div className="flex justify-end max-md:justify-center">
-                            <button
-                                onClick={() => {
-                                    const now = new Date();
-                                    const day = now.toISOString().split('T')[0];
-                                    const startTime = now.toTimeString().slice(0, 5);
-                                    const endDate = new Date(now.getTime() + 60 * 60 * 1000);
-                                    const endTime = endDate.toTimeString().slice(0, 5);
-                                    
-                                    setSelectedRange({ day, start: startTime, end: endTime });
-                                    setIsReservationModalOpen(true);
-                                }}
-                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
-                            >
-                                + Add Reservation
-                            </button>
-                        </div>
+                            maxWidth: '95vw',
+                            width: '95vw',
+                            height: '85vh',
+                            maxHeight: '85vh',
+                        }}
+                    >
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold">Calendar - {selectedPlace?.name}</DialogTitle>
+                            <div className="flex justify-end max-md:justify-center">
+                                <button
+                                    onClick={() => {
+                                        const now = new Date();
+                                        const day = now.toISOString().split('T')[0];
+                                        const startTime = now.toTimeString().slice(0, 5);
+                                        const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                                        const endTime = endDate.toTimeString().slice(0, 5);
 
-                    </DialogHeader>
-                    
-                    {loadingEvents ? (
-                    <div className="flex justify-center items-center h-96">
-                        <p>Loading events...</p>
-                    </div>
-                    ) : (
-                    <div className="h-[calc(95vh-100px)]">
-                        <FullCalendar
-                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                        initialView="timeGridWeek"
-                        headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                        }}
-                        events={events}
-                        selectable={true}
-                        selectMirror={true}
-                        selectOverlap={false}
-                        editable={false}
-                        select={(selectInfo) => {
-                            const { start, end } = selectInfo;
-                            const day = start.toISOString().split('T')[0];
-                            const startTime = start.toTimeString().slice(0, 5);
-                            const endTime = end.toTimeString().slice(0, 5);
-                            setSelectedRange({ day, start: startTime, end: endTime });
-                            setIsReservationModalOpen(true);
-                        }}
-                        height="88%"
-                        eventColor="#FFC801"
-                        eventTextColor="#000000"
-                        />
-                    </div>
-                    )}
-                </DialogContent>
+                                        setSelectedRange({ day, start: startTime, end: endTime });
+                                        setIsReservationModalOpen(true);
+                                    }}
+                                    className="mt-3 w-fit cursor-pointer rounded-md bg-[#FFC801] px-4 py-2 font-medium text-black transition-colors duration-200 hover:bg-gray-950 hover:text-white dark:hover:bg-gray-200 dark:hover:text-black"
+                                >
+                                    + Add Reservation
+                                </button>
+                            </div>
+                        </DialogHeader>
+
+                        {loadingEvents ? (
+                            <div className="flex h-96 items-center justify-center">
+                                <p>Loading events...</p>
+                            </div>
+                        ) : (
+                            <div className="h-[calc(95vh-100px)]">
+                                <FullCalendar
+                                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                                    initialView="timeGridWeek"
+                                    headerToolbar={{
+                                        left: 'prev,next today',
+                                        center: 'title',
+                                        right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                                    }}
+                                    events={events}
+                                    selectable={true}
+                                    selectMirror={true}
+                                    selectOverlap={false}
+                                    editable={false}
+                                    select={(selectInfo) => {
+                                        const { start, end } = selectInfo;
+                                        const day = start.toISOString().split('T')[0];
+                                        const startTime = start.toTimeString().slice(0, 5);
+                                        const endTime = end.toTimeString().slice(0, 5);
+                                        setSelectedRange({ day, start: startTime, end: endTime });
+                                        setIsReservationModalOpen(true);
+                                    }}
+                                    height="88%"
+                                    eventColor="#FFC801"
+                                    eventTextColor="#000000"
+                                />
+                            </div>
+                        )}
+                    </DialogContent>
                 </Dialog>
 
                 {/* Reservation Modals */}
                 {selectedPlace?.place_type === 'studio' && (
-                <ReservationModal
-                    isOpen={isReservationModalOpen}
-                    onClose={() => setIsReservationModalOpen(false)}
-                    studio={selectedPlace}
-                    selectedRange={selectedRange}
-                    onSuccess={() => {
-                    setIsReservationModalOpen(false);
-                    loadCalendarEvents(selectedPlace);
-                    }}
-                />
+                    <ReservationModal
+                        isOpen={isReservationModalOpen}
+                        onClose={() => setIsReservationModalOpen(false)}
+                        studio={selectedPlace}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsReservationModalOpen(false);
+                            loadCalendarEvents(selectedPlace);
+                        }}
+                    />
                 )}
 
                 {selectedPlace?.place_type === 'cowork' && (
-                <ReservationModalCowork
-                    isOpen={isReservationModalOpen}
-                    onClose={() => setIsReservationModalOpen(false)}
-                    cowork={selectedPlace}
-                    selectedRange={selectedRange}
-                    onSuccess={() => {
-                    setIsReservationModalOpen(false);
-                    loadCalendarEvents(selectedPlace);
-                    }}
-                />
+                    <ReservationModalCowork
+                        isOpen={isReservationModalOpen}
+                        onClose={() => setIsReservationModalOpen(false)}
+                        cowork={selectedPlace}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsReservationModalOpen(false);
+                            loadCalendarEvents(selectedPlace);
+                        }}
+                    />
                 )}
-
             </div>
         </AppLayout>
     );
 };
 
 export default PlaceIndex;
-
-

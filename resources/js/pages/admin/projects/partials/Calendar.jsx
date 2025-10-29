@@ -1,12 +1,10 @@
-import React from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
 
 const Calendar = ({ events = [] }) => {
     return (
-        <div className="h-[50vh] mb-6">
+        <div className="mb-6 h-[50vh]">
             <FullCalendar
                 plugins={[timeGridPlugin, interactionPlugin]}
                 initialView="timeGridDay"
@@ -17,11 +15,11 @@ const Calendar = ({ events = [] }) => {
                 events={events}
                 eventContent={(eventInfo) => (
                     <div className="p-1">
-                        <div className="text-xs font-medium truncate">{eventInfo.event.title}</div>
+                        <div className="truncate text-xs font-medium">{eventInfo.event.title}</div>
                         {eventInfo.event.extendedProps?.progress && (
-                            <div className="w-full bg-muted rounded-full h-1 mt-1">
-                                <div 
-                                    className="bg-[var(--color-alpha)] h-1 rounded-full" 
+                            <div className="mt-1 h-1 w-full rounded-full bg-muted">
+                                <div
+                                    className="h-1 rounded-full bg-[var(--color-alpha)]"
                                     style={{ width: `${eventInfo.event.extendedProps.progress}%` }}
                                 ></div>
                             </div>

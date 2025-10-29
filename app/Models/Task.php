@@ -27,7 +27,7 @@ class Task extends Model
         'started_at',
         'completed_at',
         'attachments',
-        'comments'
+        'comments',
     ];
 
     protected $casts = [
@@ -40,7 +40,7 @@ class Task extends Model
         'is_editable' => 'boolean',
         'tags' => 'array',
         'attachments' => 'array',
-        'comments' => 'array'
+        'comments' => 'array',
     ];
 
     public function project(): BelongsTo
@@ -70,7 +70,7 @@ class Task extends Model
 
     public function getPriorityColorAttribute()
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             'low' => 'text-green-600 bg-green-100',
             'medium' => 'text-yellow-600 bg-yellow-100',
             'high' => 'text-orange-600 bg-orange-100',
@@ -81,7 +81,7 @@ class Task extends Model
 
     public function getStatusColorAttribute()
     {
-        return match($this->status) {
+        return match ($this->status) {
             'todo' => 'text-gray-600 bg-gray-100',
             'in_progress' => 'text-blue-600 bg-blue-100',
             'review' => 'text-purple-600 bg-purple-100',

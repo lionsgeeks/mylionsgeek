@@ -41,8 +41,8 @@ class ProfileController extends Controller
             // Verify the 2FA code
             $google2fa = app('pragmarx.google2fa');
             $secret = decrypt($user->two_factor_secret);
-            
-            if (!$google2fa->verifyKey($secret, $request->two_factor_code)) {
+
+            if (! $google2fa->verifyKey($secret, $request->two_factor_code)) {
                 return back()->withErrors([
                     'two_factor_code' => 'The provided two factor authentication code was invalid.',
                 ]);
@@ -52,7 +52,7 @@ class ProfileController extends Controller
         // Handle avatar upload if provided
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('users', 'public');
-            $data['image'] = '/storage/' . $path;
+            $data['image'] = '/storage/'.$path;
         }
 
         $user->fill($data);

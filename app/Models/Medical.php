@@ -18,6 +18,3 @@ class Medical extends Model
         'author',
     ];
 }
-
-
-

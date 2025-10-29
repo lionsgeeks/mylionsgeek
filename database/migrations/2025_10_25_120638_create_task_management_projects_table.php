@@ -23,7 +23,7 @@ return new class extends Migration
             $table->boolean('is_updated')->default(false);
             $table->timestamp('last_activity')->nullable();
             $table->timestamps();
-            
+
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
         });
     }

@@ -29,7 +29,7 @@ class RoleMiddleware
         $userRoles = is_array($user->role) ? $user->role : [$user->role];
 
         // Check if user has at least one allowed role
-        $hasAccess = !empty(array_intersect($allowedRoles, $userRoles));
+        $hasAccess = ! empty(array_intersect($allowedRoles, $userRoles));
 
         if (! $hasAccess) {
             // Redirect user to their own dashboard based on role

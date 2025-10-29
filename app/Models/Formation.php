@@ -9,7 +9,9 @@ use Illuminate\Support\Str;
 class Formation extends Model
 {
     use HasFactory;
-     public $incrementing = false; 
+
+    public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected static function boot(): void
@@ -23,13 +25,13 @@ class Formation extends Model
     }
 
     protected $fillable = [
-        "name",
-        "img",
-        "category",
-        "start_time",
-        "end_time",
-        "promo",
-        "user_id",
+        'name',
+        'img',
+        'category',
+        'start_time',
+        'end_time',
+        'promo',
+        'user_id',
     ];
 
     public function users()
@@ -37,7 +39,7 @@ class Formation extends Model
         return $this->hasMany(User::class, 'formation_id');
     }
 
-    public function coach() 
+    public function coach()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
@@ -49,5 +51,4 @@ class Formation extends Model
     {
         return $this->hasMany(Geeko::class, 'formation_id');
     }
-
 }

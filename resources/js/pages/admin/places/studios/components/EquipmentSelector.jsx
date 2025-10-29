@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
 
 const EquipmentSelector = ({ selected, onSelect }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,10 +21,8 @@ const EquipmentSelector = ({ selected, onSelect }) => {
         if (searchQuery) {
             setFilteredEquipment(
                 equipment.filter(
-                    (e) =>
-                        e.mark.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        e.reference.toLowerCase().includes(searchQuery.toLowerCase())
-                )
+                    (e) => e.mark.toLowerCase().includes(searchQuery.toLowerCase()) || e.reference.toLowerCase().includes(searchQuery.toLowerCase()),
+                ),
             );
         } else {
             setFilteredEquipment(equipment);
@@ -71,7 +69,7 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-[#FFC801] hover:bg-neutral-900 hover:text-white text-black dark:bg-[#FFC801] dark:hover:bg-gray-200 dark:text-black cursor-pointer"
+                    className="cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:bg-[#FFC801] dark:text-black dark:hover:bg-gray-200"
                 >
                     Add Equipment
                 </Button>
@@ -81,17 +79,8 @@ const EquipmentSelector = ({ selected, onSelect }) => {
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                     {selected.map((item) => (
-                        <div
-                            key={item.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                        >
-                            {item.image && (
-                                <img
-                                    src={item.image}
-                                    alt={item.mark}
-                                    className="h-10 w-10 object-cover rounded"
-                                />
-                            )}
+                        <div key={item.id} className="flex items-center gap-2 rounded-lg border p-2">
+                            {item.image && <img src={item.image} alt={item.mark} className="h-10 w-10 rounded object-cover" />}
                             <div className="flex-1">
                                 <p className="text-sm font-medium">{item.mark}</p>
                                 <p className="text-xs text-muted-foreground">{item.reference}</p>
@@ -101,7 +90,7 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleRemove(item.id)}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive cursor-pointer"
+                                className="h-6 w-6 cursor-pointer p-0 text-destructive hover:text-destructive"
                             >
                                 ×
                             </Button>
@@ -109,20 +98,18 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    No equipment selected
-                </p>
+                <p className="py-8 text-center text-sm text-muted-foreground">No equipment selected</p>
             )}
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogContent className="flex max-h-[80vh] max-w-md flex-col">
                     <DialogHeader>
                         <DialogTitle>Select Equipment</DialogTitle>
                     </DialogHeader>
 
                     {/* Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                         <Input
                             // className="block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                             placeholder="Search equipment..."
@@ -131,7 +118,7 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                         />
 
                         {loading ? (
-                            <p className="text-sm text-center py-4">Loading...</p>
+                            <p className="py-4 text-center text-sm">Loading...</p>
                         ) : filteredEquipment.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredEquipment.map((item) => {
@@ -139,45 +126,36 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                                     return (
                                         <div
                                             key={item.id}
-                                            className="flex items-center gap-3 p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-accent"
                                             onClick={() => handleToggle(item)}
                                         >
                                             <Checkbox checked={isSelected} />
-                                            {item.image && (
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.mark}
-                                                    className="h-12 w-12 object-cover rounded"
-                                                />
-                                            )}
+                                            {item.image && <img src={item.image} alt={item.mark} className="h-12 w-12 rounded object-cover" />}
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium">{item.mark}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {item.reference}
-                                                </p>
+                                                <p className="text-xs text-muted-foreground">{item.reference}</p>
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-center py-4">No equipment available</p>
+                            <p className="py-4 text-center text-sm">No equipment available</p>
                         )}
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t">
+                    <div className="border-t pt-4">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="w-full bg-[#FFC801] hover:bg-neutral-900 text-black hover:text-white cursor-pointer dark:hover:bg-gray-200 dark:hover:text-black"
+                            className="w-full cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:hover:bg-gray-200 dark:hover:text-black"
                         >
                             Done
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };

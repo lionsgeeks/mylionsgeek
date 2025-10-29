@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceListe extends Model
 {
-    protected $table = 'attendance_lists'; 
+    protected $table = 'attendance_lists';
 
     protected $fillable = [
         'user_id',
@@ -17,5 +17,5 @@ class AttendanceListe extends Model
         'evening',
     ];
 
-    public $timestamps = true; 
+    public $timestamps = true;
 }

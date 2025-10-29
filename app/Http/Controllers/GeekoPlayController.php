@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GeekoSession;
-use App\Models\GeekoParticipant;
 use App\Models\GeekoAnswer;
+use App\Models\GeekoParticipant;
+use App\Models\GeekoSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +35,7 @@ class GeekoPlayController extends Controller
             ->with('geeko.formation')
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return back()->withErrors(['session_code' => 'Invalid game PIN!']);
         }
 
@@ -84,7 +84,7 @@ class GeekoPlayController extends Controller
     {
         $session = GeekoSession::with([
             'geeko',
-            'participants.user'
+            'participants.user',
         ])->findOrFail($sessionId);
 
         $user = Auth::user();
@@ -92,7 +92,7 @@ class GeekoPlayController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('geeko.play.join')
                 ->withErrors(['error' => 'You are not part of this game!']);
         }
@@ -115,7 +115,7 @@ class GeekoPlayController extends Controller
     {
         $session = GeekoSession::with([
             'geeko',
-            'participants.user'
+            'participants.user',
         ])->findOrFail($sessionId);
 
         $user = Auth::user();
@@ -123,7 +123,7 @@ class GeekoPlayController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('geeko.play.join')
                 ->withErrors(['error' => 'You are not part of this game!']);
         }
@@ -133,13 +133,13 @@ class GeekoPlayController extends Controller
         }
 
         $currentQuestion = $session->currentQuestion();
-        
-        if (!$currentQuestion) {
+
+        if (! $currentQuestion) {
             return redirect()->route('geeko.play.completed', $sessionId);
         }
 
         // Ensure options is always an array
-        if (!is_array($currentQuestion->options)) {
+        if (! is_array($currentQuestion->options)) {
             if (is_string($currentQuestion->options)) {
                 $currentQuestion->options = json_decode($currentQuestion->options, true) ?: [];
             } else {
@@ -155,10 +155,8 @@ class GeekoPlayController extends Controller
             'options' => $currentQuestion->options,
             'options_type' => gettype($currentQuestion->options),
             'options_count' => is_array($currentQuestion->options) ? count($currentQuestion->options) : 'not array',
-            'raw_options' => $currentQuestion->getRawOriginal('options')
+            'raw_options' => $currentQuestion->getRawOriginal('options'),
         ]);
-
-
 
         // Check if student has already answered this question
         $hasAnswered = GeekoAnswer::where('session_id', $sessionId)
@@ -182,7 +180,7 @@ class GeekoPlayController extends Controller
     public function submitAnswer(Request $request, $sessionId)
     {
         Log::info('=== METHOD CALLED ===', ['method' => 'submitAnswer', 'session_id' => $sessionId]);
-        
+
         try {
             Log::info('=== ANSWER SUBMISSION START ===');
             Log::info('Request data:', $request->all());
@@ -194,12 +192,12 @@ class GeekoPlayController extends Controller
                 'selected_answer' => 'required',
                 'time_taken' => 'required|integer|min:0',
             ]);
-            
+
             Log::info('Validation passed');
 
             $session = GeekoSession::findOrFail($sessionId);
             $user = Auth::user();
-            
+
             Log::info('Session found:', ['session_id' => $session->id, 'status' => $session->status]);
             Log::info('User found:', ['user_id' => $user->id, 'name' => $user->name]);
 
@@ -209,11 +207,12 @@ class GeekoPlayController extends Controller
 
             Log::info('Participant lookup:', [
                 'participant_found' => $participant ? 'yes' : 'no',
-                'participant_data' => $participant
+                'participant_data' => $participant,
             ]);
 
-            if (!$participant) {
+            if (! $participant) {
                 Log::error('Participant not found');
+
                 return response()->json(['error' => 'You are not part of this game!'], 403);
             }
 
@@ -241,24 +240,24 @@ class GeekoPlayController extends Controller
             if ($participantsCount > 0 && $answersCount >= $participantsCount) {
                 return response()->json(['error' => 'Answering closed.'], 400);
             }
-            
+
             // Ensure options and correct_answers are arrays for logging
             $options = $question->options;
             if (is_string($options)) {
                 $options = json_decode($options, true) ?: [];
             }
-            
+
             $correctAnswers = $question->correct_answers;
             if (is_string($correctAnswers)) {
                 $correctAnswers = json_decode($correctAnswers, true) ?: [];
             }
-            
+
             Log::info('Question found:', [
                 'question_id' => $question->id,
                 'question_text' => $question->question,
                 'question_type' => $question->type,
                 'options' => $options,
-                'correct_answers' => $correctAnswers
+                'correct_answers' => $correctAnswers,
             ]);
 
             // Check if already answered
@@ -269,19 +268,20 @@ class GeekoPlayController extends Controller
 
             Log::info('Existing answer check:', [
                 'existing_answer_found' => $existingAnswer ? 'yes' : 'no',
-                'existing_answer_data' => $existingAnswer
+                'existing_answer_data' => $existingAnswer,
             ]);
 
             if ($existingAnswer) {
                 Log::warning('Answer already exists');
+
                 return response()->json(['error' => 'You have already answered this question!'], 400);
             }
 
             // Validate answer format based on question type
             $selectedAnswer = $request->selected_answer;
             Log::info('Selected answer before processing:', ['selected_answer' => $selectedAnswer, 'type' => gettype($selectedAnswer)]);
-            
-            if ($question->type === 'multiple_choice' && !is_array($selectedAnswer)) {
+
+            if ($question->type === 'multiple_choice' && ! is_array($selectedAnswer)) {
                 $selectedAnswer = [$selectedAnswer];
             }
 
@@ -289,19 +289,19 @@ class GeekoPlayController extends Controller
 
             // Check if answer is correct
             $isCorrect = $question->isCorrectAnswer($selectedAnswer);
-            
+
             Log::info('Answer validation result:', [
                 'is_correct' => $isCorrect,
                 'selected_answer' => $selectedAnswer,
                 'correct_answers' => $correctAnswers,
-                'question_type' => $question->type
+                'question_type' => $question->type,
             ]);
-            
+
             // Calculate points based on correctness and time
             $pointsEarned = 0;
             if ($isCorrect) {
                 $pointsEarned = $question->calculatePoints($request->time_taken);
-                
+
                 // Speed bonus: earlier answers get higher bonus to avoid ties
                 $participantsCount = $session->participants()->count();
                 $answerOrder = GeekoAnswer::where('session_id', $sessionId)
@@ -311,11 +311,11 @@ class GeekoPlayController extends Controller
                 $speedBonus = max(0, $participantsCount - $answerOrder);
                 $pointsEarned += $speedBonus;
             }
-            
+
             Log::info('Points calculation:', [
                 'points_earned' => $pointsEarned,
                 'time_taken' => $request->time_taken,
-                'is_correct' => $isCorrect
+                'is_correct' => $isCorrect,
             ]);
 
             // Store the answer
@@ -333,13 +333,13 @@ class GeekoPlayController extends Controller
             Log::info('Creating answer with data:', $answerData);
 
             $answer = GeekoAnswer::create($answerData);
-            
+
             Log::info('Answer created successfully:', ['answer_id' => $answer->id]);
 
             // Update participant score
             Log::info('Updating participant score...');
             $participant->addQuestionScore($question->id, $pointsEarned, $isCorrect);
-            
+
             Log::info('Participant score updated successfully');
 
             $response = [
@@ -348,23 +348,23 @@ class GeekoPlayController extends Controller
                 'points_earned' => $pointsEarned,
                 'correct_answer' => $session->geeko->show_correct_answers ? $correctAnswers : null,
             ];
-            
+
             Log::info('Returning success response:', $response);
             Log::info('=== ANSWER SUBMISSION SUCCESS ===');
 
             return response()->json($response);
-        
+
         } catch (\Exception $e) {
             Log::error('Error submitting answer:', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'request_data' => $request->all(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to submit answer. Please try again.',
-                'debug' => $e->getMessage()
+                'debug' => $e->getMessage(),
             ], 500);
         }
     }
@@ -376,7 +376,7 @@ class GeekoPlayController extends Controller
     {
         $session = GeekoSession::with([
             'geeko',
-            'participants.user'
+            'participants.user',
         ])->findOrFail($sessionId);
 
         $user = Auth::user();
@@ -384,7 +384,7 @@ class GeekoPlayController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('geeko.play.join')
                 ->withErrors(['error' => 'You are not part of this game!']);
         }
@@ -405,7 +405,7 @@ class GeekoPlayController extends Controller
     {
         $session = GeekoSession::with([
             'geeko',
-            'participants.user'
+            'participants.user',
         ])->findOrFail($sessionId);
 
         $user = Auth::user();
@@ -413,7 +413,7 @@ class GeekoPlayController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$participant) {
+        if (! $participant) {
             return redirect()->route('geeko.play.join')
                 ->withErrors(['error' => 'You are not part of this game!']);
         }
@@ -443,14 +443,14 @@ class GeekoPlayController extends Controller
      */
     public function liveData($sessionId)
     {
-        $session = GeekoSession::with(['geeko','participants.user'])->findOrFail($sessionId);
+        $session = GeekoSession::with(['geeko', 'participants.user'])->findOrFail($sessionId);
         $user = Auth::user();
 
         $participant = GeekoParticipant::where('session_id', $sessionId)
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$participant) {
+        if (! $participant) {
             return response()->json(['error' => 'Not authorized'], 403);
         }
 

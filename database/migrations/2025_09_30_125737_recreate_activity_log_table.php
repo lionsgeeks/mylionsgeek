@@ -8,21 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('activity_log')) {
+        if (! Schema::hasTable('activity_log')) {
             Schema::create('activity_log', function (Blueprint $table) {
-			$table->id();
-			$table->string('log_name')->nullable()->default('NULL');
-			$table->string('description');
-			$table->string('subject_type')->nullable()->default('NULL');
-			$table->string('event')->nullable()->default('NULL');
-			$table->integer('subject_id')->nullable()->default('NULL');
-			$table->string('causer_type')->nullable()->default('NULL');
-			$table->integer('causer_id')->nullable()->default('NULL');
-			$table->string('properties')->nullable()->default('NULL');
-			$table->string('batch_uuid')->nullable()->default('NULL');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->string('log_name')->nullable()->default('NULL');
+                $table->string('description');
+                $table->string('subject_type')->nullable()->default('NULL');
+                $table->string('event')->nullable()->default('NULL');
+                $table->integer('subject_id')->nullable()->default('NULL');
+                $table->string('causer_type')->nullable()->default('NULL');
+                $table->integer('causer_id')->nullable()->default('NULL');
+                $table->string('properties')->nullable()->default('NULL');
+                $table->string('batch_uuid')->nullable()->default('NULL');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

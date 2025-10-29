@@ -2,27 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Formation;
-use Inertia\Inertia;
-use App\Http\Controllers\Controller;
-use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
 use App\Models\AttendanceListe;
+use App\Models\Contract;
+use App\Models\Formation;
+use App\Models\Medical;
 use App\Models\User;
-use Illuminate\Support\Str;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Contract;
-use App\Models\Medical;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UsersController extends Controller
 {
@@ -38,11 +35,9 @@ class UsersController extends Controller
         ]);
     }
 
-
     public function export(Request $request): StreamedResponse
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
-
 
         $fieldMap = [
             'id' => 'id',
@@ -78,11 +73,10 @@ class UsersController extends Controller
             $query->where('formation_id', $request->query('formation_id'));
         }
 
-        $filename = 'students_export_' . now()->format('Y_m_d_H_i_s') . '.csv';
+        $filename = 'students_export_'.now()->format('Y_m_d_H_i_s').'.csv';
 
         $response = new StreamedResponse(function () use ($query, $fields) {
             $handle = fopen('php://output', 'w');
-
 
             fputcsv($handle, $fields);
 
@@ -110,11 +104,12 @@ class UsersController extends Controller
         });
 
         $response->headers->set('Content-Type', 'text/csv');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $response->headers->set('Content-Disposition', 'attachment; filename="'.$filename.'"');
 
         return $response;
     }
-    //! edit sunction
+
+    // ! edit sunction
     public function show(User $user)
     {
         if (Schema::hasTable('accesses')) {
@@ -279,6 +274,7 @@ class UsersController extends Controller
             if (str_starts_with($p, '/storage/')) {
                 return $p;
             }
+
             // Default: map storage path to public URL
             return Storage::url($p);
         };
@@ -293,9 +289,16 @@ class UsersController extends Controller
                     // Always attempt to generate a URL; legacy rows may already store '/storage/...'
                     'url' => (function ($path) {
                         $p = (string) $path;
-                        if ($p === '') return null;
-                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
-                        if (str_starts_with($p, '/storage/')) return $p;
+                        if ($p === '') {
+                            return null;
+                        }
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                            return $p;
+                        }
+                        if (str_starts_with($p, '/storage/')) {
+                            return $p;
+                        }
+
                         return Storage::url($p);
                     })($c->contract),
                     'kind' => 'contract',
@@ -312,9 +315,16 @@ class UsersController extends Controller
                     'name' => (string) ($m->description ?: 'Medical certificate'),
                     'url' => (function ($path) {
                         $p = (string) $path;
-                        if ($p === '') return null;
-                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) return $p;
-                        if (str_starts_with($p, '/storage/')) return $p;
+                        if ($p === '') {
+                            return null;
+                        }
+                        if (str_starts_with($p, 'http://') || str_starts_with($p, 'https://')) {
+                            return $p;
+                        }
+                        if (str_starts_with($p, '/storage/')) {
+                            return $p;
+                        }
+
                         return Storage::url($p);
                     })($m->mc_document),
                     'kind' => 'medical',
@@ -383,11 +393,11 @@ class UsersController extends Controller
         // as-is
         $candidates[] = $base;
         // try common directories for legacy rows that only stored filename
-        $candidates[] = 'documents/' . basename($base);
+        $candidates[] = 'documents/'.basename($base);
         if ($kind === 'contract') {
-            $candidates[] = 'contracts/' . basename($base);
+            $candidates[] = 'contracts/'.basename($base);
         } else {
-            $candidates[] = 'medicals/' . basename($base);
+            $candidates[] = 'medicals/'.basename($base);
         }
 
         $resolved = null;
@@ -402,20 +412,21 @@ class UsersController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $fullPath = storage_path('app/public/' . ltrim($resolved, '/'));
-        if (!is_file($fullPath)) {
+        $fullPath = storage_path('app/public/'.ltrim($resolved, '/'));
+        if (! is_file($fullPath)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
         return response()->file($fullPath);
     }
+
     public function update(Request $request, User $user)
     {
 
         // dd($request->all());
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'nullable|email|max:255|unique:users,email,'.$user->id,
             'roles' => 'nullable|array',
             'roles.*' => 'string',
             'status' => 'nullable|string|max:100',
@@ -438,7 +449,6 @@ class UsersController extends Controller
             $validated['image'] = $filename;
         }
 
-
         // Map roles (array) to 'role' JSON column, lowercased
         if ($request->has('roles')) {
             $roles = $request->input('roles');
@@ -454,10 +464,11 @@ class UsersController extends Controller
 
         return redirect()->back()->with('success', 'User updated successfully');
     }
+
     public function updateAccountStatus(Request $request, User $user)
     {
         $validated = $request->validate([
-            'account_state' => 'required|integer|in:0,1'
+            'account_state' => 'required|integer|in:0,1',
         ]);
 
         $user->update([
@@ -468,7 +479,7 @@ class UsersController extends Controller
         return redirect()->back()->with('success', 'User account status updated successfully');
     }
 
-    //! store function
+    // ! store function
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -489,7 +500,7 @@ class UsersController extends Controller
         $existing = User::query()->where('email', $validated['email'])->first();
         if ($existing) {
             return Inertia::render('admin/users/partials/Header', [
-                'message' => 'this email already exist'
+                'message' => 'this email already exist',
             ]);
         }
         if ($request->hasFile('image')) {
@@ -618,6 +629,7 @@ class UsersController extends Controller
             'monthlyFullDayAbsences' => $monthlyFullDayAbsences,
         ]);
     }
+
     public function UserAttendanceChart(User $user)
     {
         $attendances = AttendanceListe::where('user_id', $user->id)->get(['attendance_day', 'morning', 'lunch', 'evening']);
@@ -630,9 +642,15 @@ class UsersController extends Controller
                 $totalAbsent = 0;
 
                 foreach ($records as $r) {
-                    if (strtolower((string) $r->morning) === 'absent') $totalAbsent++;
-                    if (strtolower((string) $r->lunch) === 'absent') $totalAbsent++;
-                    if (strtolower((string) $r->evening) === 'absent') $totalAbsent++;
+                    if (strtolower((string) $r->morning) === 'absent') {
+                        $totalAbsent++;
+                    }
+                    if (strtolower((string) $r->lunch) === 'absent') {
+                        $totalAbsent++;
+                    }
+                    if (strtolower((string) $r->evening) === 'absent') {
+                        $totalAbsent++;
+                    }
                 }
 
                 return [

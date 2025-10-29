@@ -15,7 +15,7 @@ class Attachment extends Model
         'size',
         'project_id',
         'task_id',
-        'uploaded_by'
+        'uploaded_by',
     ];
 
     public function project(): BelongsTo
@@ -36,11 +36,22 @@ class Attachment extends Model
     public function getFileTypeAttribute()
     {
         $mime = $this->mime_type;
-        if (str_starts_with($mime, 'image/')) return 'image';
-        if (str_starts_with($mime, 'video/')) return 'video';
-        if (str_starts_with($mime, 'audio/')) return 'audio';
-        if (str_starts_with($mime, 'application/pdf')) return 'pdf';
-        if (str_starts_with($mime, 'application/')) return 'document';
+        if (str_starts_with($mime, 'image/')) {
+            return 'image';
+        }
+        if (str_starts_with($mime, 'video/')) {
+            return 'video';
+        }
+        if (str_starts_with($mime, 'audio/')) {
+            return 'audio';
+        }
+        if (str_starts_with($mime, 'application/pdf')) {
+            return 'pdf';
+        }
+        if (str_starts_with($mime, 'application/')) {
+            return 'document';
+        }
+
         return 'file';
     }
 
@@ -52,6 +63,7 @@ class Attachment extends Model
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
         $bytes /= pow(1024, $pow);
-        return round($bytes, 2) . ' ' . $units[$pow];
+
+        return round($bytes, 2).' '.$units[$pow];
     }
 }

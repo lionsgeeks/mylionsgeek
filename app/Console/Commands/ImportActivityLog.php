@@ -42,16 +42,19 @@ class ImportActivityLog extends Command
 
         if ($analyze) {
             $this->analyze($query);
+
             return Command::SUCCESS;
         }
 
         if ($verify) {
             $this->verifyReservations();
+
             return Command::SUCCESS;
         }
 
         if ($verifyComputers) {
             $this->verifyComputerHistories();
+
             return Command::SUCCESS;
         }
 
@@ -78,7 +81,7 @@ class ImportActivityLog extends Command
                 }
 
                 // Mirror rows only if mirror tables exist
-                if (!$dryRun && ($hasReservationMirror || $hasComputerMirror)) {
+                if (! $dryRun && ($hasReservationMirror || $hasComputerMirror)) {
                     $mirror = [
                         'log_name' => $row->log_name,
                         'description' => $row->description,
@@ -135,11 +138,12 @@ class ImportActivityLog extends Command
             $props = $this->decodeProperties($row->properties);
 
             $res = DB::table('reservations')->where('id', $row->subject_id)->first();
-            if (!$res) {
+            if (! $res) {
                 $missingReservations++;
                 if (count($missingExamples) < 10) {
                     $missingExamples[] = "activity_log id {$row->id} missing reservation id {$row->subject_id}";
                 }
+
                 continue;
             }
 
@@ -152,7 +156,7 @@ class ImportActivityLog extends Command
                         ->where('reservation_id', $res->id)
                         ->where('user_id', (int) $userId)
                         ->exists();
-                    if (!$exists) {
+                    if (! $exists) {
                         $allGood = false;
                         if (count($pivotIssueExamples) < 10) {
                             $pivotIssueExamples[] = "reservation_team missing: reservation {$res->id}, user {$userId} (activity_log {$row->id})";
@@ -165,14 +169,14 @@ class ImportActivityLog extends Command
             if (is_array($equipment)) {
                 foreach ($equipment as $eq) {
                     $equipmentId = is_array($eq) ? ($eq['equipment_id'] ?? ($eq['id'] ?? null)) : (int) $eq;
-                    if (!$equipmentId) {
+                    if (! $equipmentId) {
                         continue;
                     }
                     $exists = DB::table('reservation_equipment')
                         ->where('reservation_id', $res->id)
                         ->where('equipment_id', (int) $equipmentId)
                         ->exists();
-                    if (!$exists) {
+                    if (! $exists) {
                         $allGood = false;
                         if (count($pivotIssueExamples) < 10) {
                             $pivotIssueExamples[] = "reservation_equipment missing: reservation {$res->id}, equipment {$equipmentId} (activity_log {$row->id})";
@@ -193,16 +197,16 @@ class ImportActivityLog extends Command
         $this->line("Missing reservations: {$missingReservations}");
         $this->line("Reservations with pivot issues: {$pivotIssues}");
 
-        if (!empty($missingExamples)) {
+        if (! empty($missingExamples)) {
             $this->line('Examples of missing reservations:');
             foreach ($missingExamples as $ex) {
-                $this->line('  - ' . $ex);
+                $this->line('  - '.$ex);
             }
         }
-        if (!empty($pivotIssueExamples)) {
+        if (! empty($pivotIssueExamples)) {
             $this->line('Examples of pivot issues:');
             foreach ($pivotIssueExamples as $ex) {
-                $this->line('  - ' . $ex);
+                $this->line('  - '.$ex);
             }
         }
     }
@@ -229,12 +233,13 @@ class ImportActivityLog extends Command
             $start = $props['start'] ?? null;
             $end = $props['end'] ?? null;
 
-            if (!$computerId || !$userId || !$start || !$end) {
+            if (! $computerId || ! $userId || ! $start || ! $end) {
                 // not a complete history record; treat as missing
                 $missing++;
                 if (count($examples) < 10) {
                     $examples[] = "activity_log {$row->id} incomplete props for computer history (computer={$computerId}, user={$userId}, start={$start}, end={$end})";
                 }
+
                 continue;
             }
 
@@ -258,10 +263,10 @@ class ImportActivityLog extends Command
         $this->line("Total computer activity_log rows: {$total}");
         $this->line("Histories present: {$ok}");
         $this->line("Missing/incomplete: {$missing}");
-        if (!empty($examples)) {
+        if (! empty($examples)) {
             $this->line('Examples:');
             foreach ($examples as $ex) {
-                $this->line('  - ' . $ex);
+                $this->line('  - '.$ex);
             }
         }
     }
@@ -277,19 +282,19 @@ class ImportActivityLog extends Command
             ->get();
 
         foreach ($summaryRows as $r) {
-            $key = (($r->subject_type ?: 'null')) . ' | ' . (($r->event ?: 'null'));
-            $this->line(str_pad((string) $r->c, 7, ' ', STR_PAD_LEFT) . '  ' . $key);
+            $key = (($r->subject_type ?: 'null')).' | '.(($r->event ?: 'null'));
+            $this->line(str_pad((string) $r->c, 7, ' ', STR_PAD_LEFT).'  '.$key);
         }
 
         $id = (int) $this->option('id');
         if ($id > 0) {
-            $this->line('Inspecting specific row id=' . $id);
+            $this->line('Inspecting specific row id='.$id);
             $row = DB::table('activity_log')->where('id', $id)->first();
             if ($row) {
                 $this->line("[{$row->id}] {$row->description} | {$row->subject_type}#{$row->subject_id} | {$row->event}");
-                $this->line('  raw properties: ' . (string) $row->properties);
+                $this->line('  raw properties: '.(string) $row->properties);
                 $props = $this->decodeProperties($row->properties);
-                $this->line('  decoded: ' . $this->stringifyShort($props));
+                $this->line('  decoded: '.$this->stringifyShort($props));
             } else {
                 $this->warn('Row not found');
             }
@@ -299,7 +304,7 @@ class ImportActivityLog extends Command
             foreach ($samples as $row) {
                 $this->line("[{$row->id}] {$row->description} | {$row->subject_type}#{$row->subject_id} | {$row->event}");
                 $props = $this->decodeProperties($row->properties);
-                $this->line('  properties: ' . $this->stringifyShort($props));
+                $this->line('  properties: '.$this->stringifyShort($props));
             }
         }
     }
@@ -319,6 +324,7 @@ class ImportActivityLog extends Command
         if (is_array($raw)) {
             return $raw;
         }
+
         return [];
     }
 
@@ -326,17 +332,19 @@ class ImportActivityLog extends Command
     {
         $cur = $arr;
         foreach ($path as $segment) {
-            if (!is_array($cur) || !array_key_exists($segment, $cur)) {
+            if (! is_array($cur) || ! array_key_exists($segment, $cur)) {
                 return $default;
             }
             $cur = $cur[$segment];
         }
+
         return $cur;
     }
 
     private function stringifyShort($val): string
     {
         $json = json_encode($val, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
         return mb_strimwidth((string) $json, 0, 240, '…');
     }
 
@@ -346,7 +354,7 @@ class ImportActivityLog extends Command
         $desc = strtolower((string) ($row->description ?? ''));
 
         $looksLike = str_contains(strtolower($subjectType), 'reservation') || str_contains($desc, 'reservation');
-        if (!$looksLike) {
+        if (! $looksLike) {
             return false;
         }
 
@@ -357,13 +365,13 @@ class ImportActivityLog extends Command
         }
 
         $existing = DB::table('reservations')->where('id', $reservationId)->first();
-        if (!$existing) {
+        if (! $existing) {
             // Create a minimal reservation using available info
             $createdAt = $row->created_at ?: now()->toDateTimeString();
             $day = substr((string) $createdAt, 0, 10);
             $newReservation = [
                 'id' => $reservationId,
-                'title' => 'Reservation #' . (string) $reservationId,
+                'title' => 'Reservation #'.(string) $reservationId,
                 'description' => (string) ($row->description ?? ''),
                 'day' => (string) $day,
                 'start' => '00:00:00',
@@ -380,7 +388,7 @@ class ImportActivityLog extends Command
                 'updated_at' => $createdAt,
             ];
             if ($dryRun) {
-                $this->line('DRY-RUN create minimal reservation: ' . $this->stringifyShort($newReservation));
+                $this->line('DRY-RUN create minimal reservation: '.$this->stringifyShort($newReservation));
             } else {
                 DB::table('reservations')->insert($newReservation);
             }
@@ -390,7 +398,7 @@ class ImportActivityLog extends Command
         // Update reservation type if provided
         if (isset($props['type']) && $props['type'] !== null && $props['type'] !== '') {
             if ($dryRun) {
-                $this->line('DRY-RUN update reservation type: id=' . $reservationId . ' type=' . (string) $props['type']);
+                $this->line('DRY-RUN update reservation type: id='.$reservationId.' type='.(string) $props['type']);
             } else {
                 DB::table('reservations')->where('id', $reservationId)->update(['type' => (string) $props['type']]);
             }
@@ -400,14 +408,14 @@ class ImportActivityLog extends Command
         $descLower = strtolower((string) $row->description);
         if (str_contains($descLower, 'approved')) {
             if ($dryRun) {
-                $this->line('DRY-RUN mark reservation approved: id=' . $reservationId);
+                $this->line('DRY-RUN mark reservation approved: id='.$reservationId);
             } else {
                 DB::table('reservations')->where('id', $reservationId)->update(['approved' => 1, 'canceled' => 0]);
             }
         }
         if (str_contains($descLower, 'canceled') || str_contains($descLower, 'cancelled')) {
             if ($dryRun) {
-                $this->line('DRY-RUN mark reservation canceled: id=' . $reservationId);
+                $this->line('DRY-RUN mark reservation canceled: id='.$reservationId);
             } else {
                 DB::table('reservations')->where('id', $reservationId)->update(['canceled' => 1]);
             }
@@ -415,11 +423,11 @@ class ImportActivityLog extends Command
 
         // Team pivots
         $teamMembers = $this->get($props, ['team_members'], $this->get($props, ['team'], []));
-        if (is_array($teamMembers) && !empty($teamMembers)) {
+        if (is_array($teamMembers) && ! empty($teamMembers)) {
             foreach ($teamMembers as $userId) {
                 $pivot = ['user_id' => (int) $userId, 'reservation_id' => $reservationId];
                 if ($dryRun) {
-                    $this->line('  DRY-RUN add team member pivot: ' . $this->stringifyShort($pivot));
+                    $this->line('  DRY-RUN add team member pivot: '.$this->stringifyShort($pivot));
                 } else {
                     DB::table('reservation_teams')->updateOrInsert($pivot, $pivot);
                 }
@@ -428,7 +436,7 @@ class ImportActivityLog extends Command
 
         // Equipment pivots
         $equipmentList = $this->get($props, ['equipment'], []);
-        if (is_array($equipmentList) && !empty($equipmentList)) {
+        if (is_array($equipmentList) && ! empty($equipmentList)) {
             foreach ($equipmentList as $eq) {
                 if (is_array($eq)) {
                     $equipmentId = $eq['equipment_id'] ?? $eq['id'] ?? null;
@@ -442,7 +450,7 @@ class ImportActivityLog extends Command
                     $end = $existing->end;
                 }
 
-                if (!$equipmentId) {
+                if (! $equipmentId) {
                     continue;
                 }
 
@@ -455,7 +463,7 @@ class ImportActivityLog extends Command
                 ];
 
                 if ($dryRun) {
-                    $this->line('  DRY-RUN add equipment pivot: ' . $this->stringifyShort($pivot));
+                    $this->line('  DRY-RUN add equipment pivot: '.$this->stringifyShort($pivot));
                 } else {
                     DB::table('reservation_equipment')->updateOrInsert([
                         'reservation_id' => $pivot['reservation_id'],
@@ -477,7 +485,7 @@ class ImportActivityLog extends Command
         $desc = strtolower((string) ($row->description ?? ''));
 
         $looksLike = str_contains(strtolower($subjectType), 'computer') || str_contains($desc, 'computer');
-        if (!$looksLike) {
+        if (! $looksLike) {
             return false;
         }
 
@@ -489,7 +497,7 @@ class ImportActivityLog extends Command
         ];
 
         // Backfill rule: if start is missing but end exists, default start to activity_log.created_at
-        if (!$history['start'] && $history['end']) {
+        if (! $history['start'] && $history['end']) {
             $createdAt = (string) ($row->created_at ?? '');
             if ($createdAt !== '') {
                 // Use full timestamp if available; otherwise fallback to date part
@@ -497,12 +505,12 @@ class ImportActivityLog extends Command
             }
         }
 
-        if (!$history['computer_id'] || !$history['user_id'] || !$history['start'] || !$history['end']) {
+        if (! $history['computer_id'] || ! $history['user_id'] || ! $history['start'] || ! $history['end']) {
             return false;
         }
 
         if ($dryRun) {
-            $this->line('DRY-RUN add computer history: ' . $this->stringifyShort($history));
+            $this->line('DRY-RUN add computer history: '.$this->stringifyShort($history));
         } else {
             // Try to avoid duplicates
             DB::table('computer_histories')->updateOrInsert([
@@ -516,5 +524,3 @@ class ImportActivityLog extends Command
         return true;
     }
 }
-
-

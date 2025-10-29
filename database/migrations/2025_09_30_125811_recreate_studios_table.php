@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('studios')) {
+        if (! Schema::hasTable('studios')) {
             Schema::create('studios', function (Blueprint $table) {
-			$table->id();
-			$table->string('name');
-			$table->integer('state');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->string('name');
+                $table->integer('state');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

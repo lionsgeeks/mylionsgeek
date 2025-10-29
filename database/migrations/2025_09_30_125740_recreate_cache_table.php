@@ -8,11 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('cache')) {
+        if (! Schema::hasTable('cache')) {
             Schema::create('cache', function (Blueprint $table) {
-			$table->string('key');
-			$table->string('value');
-			$table->integer('expiration');
+                $table->string('key');
+                $table->string('value');
+                $table->integer('expiration');
             });
         }
     }

@@ -5,7 +5,6 @@ namespace App\Mail;
 use App\Models\Equipment;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -16,6 +15,7 @@ class EquipmentNonFunctionalMail extends Mailable
     use Queueable, SerializesModels;
 
     public $equipment;
+
     public $admin;
 
     /**
@@ -33,7 +33,7 @@ class EquipmentNonFunctionalMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Equipment Alert: ' . $this->equipment->reference . ' is Non-Functional',
+            subject: 'Equipment Alert: '.$this->equipment->reference.' is Non-Functional',
         );
     }
 

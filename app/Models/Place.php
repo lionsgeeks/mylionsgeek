@@ -22,5 +22,3 @@ class Place extends Model
         'state' => 'boolean',
     ];
 }
-
-

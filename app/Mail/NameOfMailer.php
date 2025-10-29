@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -24,7 +23,7 @@ class NameOfMailer extends Mailable
 
     public function build(): self
     {
-        return $this->subject(config('app.name') . ' - Your account credentials')
+        return $this->subject(config('app.name').' - Your account credentials')
             ->view('emails.user-invited-password')
             ->with([
                 'user' => $this->user,
@@ -32,6 +31,7 @@ class NameOfMailer extends Mailable
                 'loginUrl' => url('/login'),
             ]);
     }
+
     /**
      * Get the message envelope.
      */

@@ -8,10 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('role_has_permissions')) {
+        if (! Schema::hasTable('role_has_permissions')) {
             Schema::create('role_has_permissions', function (Blueprint $table) {
-			$table->integer('permission_id');
-			$table->integer('role_id');
+                $table->integer('permission_id');
+                $table->integer('role_id');
             });
         }
     }

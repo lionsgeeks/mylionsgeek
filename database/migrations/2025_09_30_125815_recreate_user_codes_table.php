@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('user_codes')) {
+        if (! Schema::hasTable('user_codes')) {
             Schema::create('user_codes', function (Blueprint $table) {
-			$table->id();
-			$table->integer('user_id');
-			$table->integer('code');
-			$table->string('expiration');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('user_id');
+                $table->integer('code');
+                $table->string('expiration');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

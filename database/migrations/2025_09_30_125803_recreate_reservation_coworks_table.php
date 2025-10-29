@@ -8,18 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('reservation_coworks')) {
+        if (! Schema::hasTable('reservation_coworks')) {
             Schema::create('reservation_coworks', function (Blueprint $table) {
-			$table->id();
-			$table->integer('table');
-			$table->string('day');
-			$table->string('start');
-			$table->string('end');
-			$table->integer('canceled')->default('0');
-			$table->integer('passed')->default('0');
-			$table->integer('approved')->default('0');
-			$table->integer('user_id');
-			$table->timestamps();
+                $table->id();
+                $table->integer('table');
+                $table->string('day');
+                $table->string('start');
+                $table->string('end');
+                $table->integer('canceled')->default('0');
+                $table->integer('passed')->default('0');
+                $table->integer('approved')->default('0');
+                $table->integer('user_id');
+                $table->timestamps();
             });
         }
     }

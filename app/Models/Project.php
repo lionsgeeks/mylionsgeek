@@ -18,14 +18,14 @@ class Project extends Model
         'end_date',
         'created_by',
         'is_updated',
-        'last_activity'
+        'last_activity',
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
         'last_activity' => 'datetime',
-        'is_updated' => 'boolean'
+        'is_updated' => 'boolean',
     ];
 
     public function creator(): BelongsTo
@@ -68,7 +68,10 @@ class Project extends Model
     public function getProgressPercentageAttribute()
     {
         $total = $this->tasks()->count();
-        if ($total === 0) return 0;
+        if ($total === 0) {
+            return 0;
+        }
+
         return round(($this->completed_tasks_count / $total) * 100);
     }
 }

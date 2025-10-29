@@ -37,7 +37,7 @@ export default function Password() {
         if (/\d/.test(pwd)) score++;
         if (/[^A-Za-z0-9]/.test(pwd)) score++;
         const labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
-        const colors = ['bg-red-500','bg-orange-500','bg-yellow-500','bg-blue-500','bg-green-500','bg-emerald-600'];
+        const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-green-500', 'bg-emerald-600'];
         return { score, label: labels[score], color: colors[score] };
     }, [pwd]);
 
@@ -78,11 +78,17 @@ export default function Password() {
                                             ref={currentPasswordInput}
                                             name="current_password"
                                             type={showCurrent ? 'text' : 'password'}
-                                            className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] pr-12"
+                                            className="mt-1 block w-full border-[#FFC801] pr-12 focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                             autoComplete="current-password"
                                             placeholder="Current password"
                                         />
-                                        <button type="button" onClick={() => setShowCurrent(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-600">{showCurrent ? 'Hide' : 'Show'}</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCurrent((v) => !v)}
+                                            className="absolute top-1/2 right-3 -translate-y-1/2 text-sm text-neutral-600"
+                                        >
+                                            {showCurrent ? 'Hide' : 'Show'}
+                                        </button>
                                     </div>
 
                                     <InputError message={errors.current_password} />
@@ -97,20 +103,26 @@ export default function Password() {
                                             ref={passwordInput}
                                             name="password"
                                             type={showNew ? 'text' : 'password'}
-                                            className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] pr-12"
+                                            className="mt-1 block w-full border-[#FFC801] pr-12 focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                             autoComplete="new-password"
                                             placeholder="New password"
                                             onChange={(e) => setPwd(e.target.value)}
                                         />
-                                        <button type="button" onClick={() => setShowNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-600">{showNew ? 'Hide' : 'Show'}</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNew((v) => !v)}
+                                            className="absolute top-1/2 right-3 -translate-y-1/2 text-sm text-neutral-600"
+                                        >
+                                            {showNew ? 'Hide' : 'Show'}
+                                        </button>
                                     </div>
 
                                     <div className="mt-2">
-                                        <div className="h-2 w-full bg-neutral-200 dark:bg-neutral-800 rounded">
-                                            <div className={`h-2 rounded ${strength.color}`} style={{ width: `${(strength.score/5)*100}%` }} />
+                                        <div className="h-2 w-full rounded bg-neutral-200 dark:bg-neutral-800">
+                                            <div className={`h-2 rounded ${strength.color}`} style={{ width: `${(strength.score / 5) * 100}%` }} />
                                         </div>
                                         <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">Strength: {strength.label}</div>
-                                        <ul className="mt-2 text-xs text-neutral-600 dark:text-neutral-400 list-disc pl-5 space-y-1">
+                                        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-neutral-600 dark:text-neutral-400">
                                             <li>At least 8 characters</li>
                                             <li>Use upper and lower case letters</li>
                                             <li>Include numbers and symbols</li>
@@ -128,11 +140,17 @@ export default function Password() {
                                             id="password_confirmation"
                                             name="password_confirmation"
                                             type={showConfirm ? 'text' : 'password'}
-                                            className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] pr-12"
+                                            className="mt-1 block w-full border-[#FFC801] pr-12 focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                             autoComplete="new-password"
                                             placeholder="Confirm password"
                                         />
-                                        <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-600">{showConfirm ? 'Hide' : 'Show'}</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirm((v) => !v)}
+                                            className="absolute top-1/2 right-3 -translate-y-1/2 text-sm text-neutral-600"
+                                        >
+                                            {showConfirm ? 'Hide' : 'Show'}
+                                        </button>
                                     </div>
 
                                     <InputError message={errors.password_confirmation} />
@@ -148,7 +166,7 @@ export default function Password() {
                                             inputMode="numeric"
                                             pattern="[0-9]*"
                                             maxLength="6"
-                                            className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] text-center text-lg tracking-widest"
+                                            className="mt-1 block w-full border-[#FFC801] text-center text-lg tracking-widest focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                             placeholder="000000"
                                             autoComplete="one-time-code"
                                         />
@@ -157,7 +175,13 @@ export default function Password() {
                                 )}
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-password-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save password</Button>
+                                    <Button
+                                        disabled={processing}
+                                        data-test="update-password-button"
+                                        className="cursor-pointer rounded-full px-12 py-5 transition-all hover:bg-[#FFC801] dark:hover:text-[#FAFAFA]"
+                                    >
+                                        Save password
+                                    </Button>
 
                                     <Transition
                                         show={recentlySuccessful}

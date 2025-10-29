@@ -12,9 +12,7 @@ class UserInvitedPasswordMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $user, public string $plainPassword)
-    {
-    }
+    public function __construct(public User $user, public string $plainPassword) {}
 
     public function build(): self
     {
@@ -27,5 +25,3 @@ class UserInvitedPasswordMail extends Mailable implements ShouldQueue
             ]);
     }
 }
-
-

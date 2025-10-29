@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\FormationController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/training', [FormationController::class, 'index'])->name('training.index');
@@ -20,4 +19,3 @@ Route::middleware(['auth', 'role:admin|coach'])->group(function () {
     Route::post('/attendances', [FormationController::class, 'attendance'])->name('attendances');
     Route::get('/training/{training}/attendance-events', [FormationController::class, 'attendanceEvents'])->name('attendance.events');
 });
-

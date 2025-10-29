@@ -18,6 +18,3 @@ class Contract extends Model
         'type',
     ];
 }
-
-
-

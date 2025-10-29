@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('reservation_teams')) {
+        if (! Schema::hasTable('reservation_teams')) {
             Schema::create('reservation_teams', function (Blueprint $table) {
-			$table->id();
-			$table->integer('user_id');
-			$table->integer('reservation_id');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('user_id');
+                $table->integer('reservation_id');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

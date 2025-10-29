@@ -8,20 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('computers')) {
+        if (! Schema::hasTable('computers')) {
             Schema::create('computers', function (Blueprint $table) {
-			$table->id();
-			$table->string('reference');
-			$table->string('cpu');
-			$table->string('gpu');
-			$table->integer('state');
-			$table->integer('user_id')->default('0');
-			$table->string('start')->nullable()->default('NULL');
-			$table->string('end')->nullable()->default('NULL');
-			$table->string('mark');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->string('reference');
+                $table->string('cpu');
+                $table->string('gpu');
+                $table->integer('state');
+                $table->integer('user_id')->default('0');
+                $table->string('start')->nullable()->default('NULL');
+                $table->string('end')->nullable()->default('NULL');
+                $table->string('mark');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

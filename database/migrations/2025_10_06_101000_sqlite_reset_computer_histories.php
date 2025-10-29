@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -11,7 +11,7 @@ return new class extends Migration
     {
         $driver = Schema::getConnection()->getDriverName();
         if ($driver !== 'sqlite') {
-            return; 
+            return;
         }
 
         Schema::disableForeignKeyConstraints();
@@ -23,11 +23,11 @@ return new class extends Migration
             Schema::drop('computer_histories');
         }
 
-        // Recreate with clean SQLite-compatible schema 
+        // Recreate with clean SQLite-compatible schema
         Schema::create('computer_histories', function (Blueprint $table) {
             $table->id();
-            $table->integer('computer_id'); 
-            $table->integer('user_id')->nullable(); 
+            $table->integer('computer_id');
+            $table->integer('user_id')->nullable();
             $table->timestamp('start');
             $table->timestamp('end')->nullable();
             $table->timestamps();
@@ -50,10 +50,5 @@ return new class extends Migration
         Schema::enableForeignKeyConstraints();
     }
 
-    public function down(): void
-    {
-        
-    }
+    public function down(): void {}
 };
-
-

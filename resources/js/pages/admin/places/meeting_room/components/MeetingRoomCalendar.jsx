@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
-import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { Head } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import ReservationModalMeetingRoom from './ReservationModalMeetingRoom';
 
 export default function MeetingRoomCalendar({ meetingRoom }) {
@@ -53,13 +53,11 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
 
             <div className="p-6">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-white">
-                        {meetingRoom.name}
-                    </h1>
+                    <h1 className="text-2xl font-bold text-white">{meetingRoom.name}</h1>
                     <p className="text-white/60">Meeting Room Calendar</p>
                 </div>
 
-                <div className="bg-black/40 border border-white/10 rounded-lg p-6">
+                <div className="rounded-lg border border-white/10 bg-black/40 p-6">
                     <FullCalendar
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                         initialView="timeGridWeek"

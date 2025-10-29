@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Clock, CheckCircle, Users, Trophy } from 'lucide-react';
+import { CheckCircle, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function GeekoQuestion({ session, participant, question, hasAnswered, questionNumber, totalQuestions }) {
     const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -29,10 +29,6 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         return [];
     })();
 
-
-
-
-
     // Apply 3s reading phase based on current_question_started_at
     useEffect(() => {
         const startedAt = session.current_question_started_at ? new Date(session.current_question_started_at) : new Date();
@@ -52,9 +48,9 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         if (isReadingPhase || hasSubmitted || timeLeft <= 0) return;
 
         const timer = setInterval(() => {
-            setTimeLeft(prev => {
+            setTimeLeft((prev) => {
                 const newTime = prev - 1;
-                setTimeTaken(prev => prev + 1);
+                setTimeTaken((prev) => prev + 1);
                 if (newTime <= 0) {
                     handleSubmit(true);
                     return 0;
@@ -71,7 +67,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
             try {
                 const response = await fetch(`/geeko/play/${session.id}/live-data`);
                 const data = await response.json();
-                
+
                 // Check if we moved to next question or game ended
                 if (data.current_question_index !== session.current_question_index) {
                     router.visit(`/geeko/play/${session.id}/question`);
@@ -88,14 +84,13 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
 
     const handleAnswerSelect = (answer) => {
         if (hasSubmitted) return;
-        
-        
+
         if (question.type === 'multiple_choice') {
             // For multiple choice, we can select multiple answers
-            setSelectedAnswer(prev => {
+            setSelectedAnswer((prev) => {
                 if (Array.isArray(prev)) {
                     if (prev.includes(answer)) {
-                        return prev.filter(a => a !== answer);
+                        return prev.filter((a) => a !== answer);
                     } else {
                         return [...prev, answer];
                     }
@@ -140,16 +135,15 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
 
             console.log('Response status:', response.status);
             console.log('Response headers:', response.headers);
-            
+
             const data = await response.json();
             console.log('Response data:', data);
-            
-            
+
             if (data.success) {
                 setHasSubmitted(true);
                 setResult(data);
                 setShowResult(true);
-                
+
                 // Hide result after 3 seconds and show waiting screen
                 setTimeout(() => {
                     router.visit(`/geeko/play/${session.id}/waiting`);
@@ -173,7 +167,7 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
     };
 
     const getProgressPercentage = () => {
-        return ((question.time_limit || session.geeko.time_limit) - timeLeft) / (question.time_limit || session.geeko.time_limit) * 100;
+        return (((question.time_limit || session.geeko.time_limit) - timeLeft) / (question.time_limit || session.geeko.time_limit)) * 100;
     };
 
     const formatAnswer = (answer, index) => {
@@ -200,55 +194,50 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         return (
             <AppLayout>
                 <Head title={`Question ${questionNumber} Result`} />
-                
-                <div className="min-h-screen bg-light dark:bg-dark flex items-center justify-center p-6">
+
+                <div className="flex min-h-screen items-center justify-center bg-light p-6 dark:bg-dark">
                     <div className="w-full max-w-2xl text-center">
-                        <div className={`text-6xl mb-6 ${result.is_correct ? 'animate-bounce text-good' : 'text-error'}`}>
+                        <div className={`mb-6 text-6xl ${result.is_correct ? 'animate-bounce text-good' : 'text-error'}`}>
                             {result.is_correct ? 'Correct' : 'Incorrect'}
                         </div>
-                        
-                        <h1 className={`text-4xl font-extrabold mb-4 ${result.is_correct ? 'text-good' : 'text-error'}`}>
+
+                        <h1 className={`mb-4 text-4xl font-extrabold ${result.is_correct ? 'text-good' : 'text-error'}`}>
                             {result.is_correct ? 'Correct!' : 'Incorrect'}
                         </h1>
-                        
-                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 shadow-xl">
+
+                        <div className="mb-8 rounded-2xl border border-white/20 bg-white/60 p-8 shadow-xl backdrop-blur-xl dark:bg-dark/50">
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="text-center">
-                                    <div className="text-3xl font-bold text-alpha mb-2">
-                                        +{result.points_earned}
-                                    </div>
+                                    <div className="mb-2 text-3xl font-bold text-alpha">+{result.points_earned}</div>
                                     <div className="text-dark/70 dark:text-light/70">Points Earned</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-3xl font-bold text-blue-500 mb-2">
-                                        {timeTaken}s
-                                    </div>
+                                    <div className="mb-2 text-3xl font-bold text-blue-500">{timeTaken}s</div>
                                     <div className="text-dark/70 dark:text-light/70">Time Taken</div>
                                 </div>
                             </div>
                         </div>
 
                         {result.correct_answer && (
-                            <div className="backdrop-blur bg-good/10 border border-good/20 rounded-2xl p-6 mb-8">
-                                <h3 className="text-lg font-bold text-good mb-3">Correct Answer:</h3>
+                            <div className="mb-8 rounded-2xl border border-good/20 bg-good/10 p-6 backdrop-blur">
+                                <h3 className="mb-3 text-lg font-bold text-good">Correct Answer:</h3>
                                 <div className="space-y-2">
-                                    {Array.isArray(result.correct_answer) ? 
+                                    {Array.isArray(result.correct_answer) ? (
                                         result.correct_answer.map((answerIndex, idx) => (
-                                            <div key={idx} className="text-dark dark:text-light font-semibold">
-                                                {safeOptions && safeOptions[answerIndex] ? formatAnswer(safeOptions[answerIndex], answerIndex) : `Answer ${answerIndex + 1}`}
+                                            <div key={idx} className="font-semibold text-dark dark:text-light">
+                                                {safeOptions && safeOptions[answerIndex]
+                                                    ? formatAnswer(safeOptions[answerIndex], answerIndex)
+                                                    : `Answer ${answerIndex + 1}`}
                                             </div>
-                                        )) :
-                                        <div className="text-dark dark:text-light font-semibold">
-                                            {result.correct_answer}
-                                        </div>
-                                    }
+                                        ))
+                                    ) : (
+                                        <div className="font-semibold text-dark dark:text-light">{result.correct_answer}</div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        <p className="text-dark/70 dark:text-light/70">
-                            Moving to next question in a moment...
-                        </p>
+                        <p className="text-dark/70 dark:text-light/70">Moving to next question in a moment...</p>
                     </div>
                 </div>
             </AppLayout>
@@ -259,26 +248,24 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         <AppLayout>
             <Head title={`Question ${questionNumber} of ${totalQuestions}`} />
 
-            <div className="min-h-screen bg-gradient-to-br from-alpha/5 to-transparent dark:from-alpha/10 dark:to-transparent p-6">
+            <div className="min-h-screen bg-gradient-to-br from-alpha/5 to-transparent p-6 dark:from-alpha/10 dark:to-transparent">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="flex items-center justify-center space-x-4 mb-4">
-                        <div className="backdrop-blur bg-alpha/80 text-dark px-4 py-2 rounded-full font-bold shadow">
+                <div className="mb-8 text-center">
+                    <div className="mb-4 flex items-center justify-center space-x-4">
+                        <div className="rounded-full bg-alpha/80 px-4 py-2 font-bold text-dark shadow backdrop-blur">
                             Question {questionNumber} of {totalQuestions}
                         </div>
-                        <div className="backdrop-blur bg-white/60 dark:bg-dark/50 border border-white/20 px-4 py-2 rounded-full shadow">
-                            <Users size={16} className="inline mr-2" />
+                        <div className="rounded-full border border-white/20 bg-white/60 px-4 py-2 shadow backdrop-blur dark:bg-dark/50">
+                            <Users size={16} className="mr-2 inline" />
                             <span className="font-semibold">{participant.total_score} pts</span>
                         </div>
                     </div>
 
                     {/* Timer */}
                     <div className="mb-6">
-                        <div className={`text-6xl font-extrabold mb-2 ${getTimeColor()}`}>
-                            {timeLeft}
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                            <div 
+                        <div className={`mb-2 text-6xl font-extrabold ${getTimeColor()}`}>{timeLeft}</div>
+                        <div className="mb-2 h-3 w-full rounded-full bg-gray-200">
+                            <div
                                 className={`h-3 rounded-full transition-all duration-1000 ${
                                     timeLeft > 10 ? 'bg-good' : timeLeft > 5 ? 'bg-alpha' : 'bg-error'
                                 }`}
@@ -290,32 +277,28 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                 </div>
 
                 {/* Question */}
-                <div className="max-w-4xl mx-auto">
-                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 text-center shadow-xl">
+                <div className="mx-auto max-w-4xl">
+                    <div className="mb-8 rounded-2xl border border-white/20 bg-white/60 p-8 text-center shadow-xl backdrop-blur-xl dark:bg-dark/50">
                         {/* Students: do not show question text; only options. Show a short reading phase overlay */}
                         {isReadingPhase && (
-                            <div className="mb-6 text-dark/70 dark:text-light/70 font-semibold">
+                            <div className="mb-6 font-semibold text-dark/70 dark:text-light/70">
                                 Get ready... The question is displayed on the instructor screen.
                             </div>
                         )}
-                        
+
                         {question.question_image && (
-                            <img 
-                                src={`/storage/${question.question_image}`} 
-                                alt="Question" 
-                                className="max-w-full h-auto rounded-lg mx-auto mb-6"
-                            />
+                            <img src={`/storage/${question.question_image}`} alt="Question" className="mx-auto mb-6 h-auto max-w-full rounded-lg" />
                         )}
 
                         {/* Answer Options */}
                         <div className="space-y-4">
                             {question.type === 'type_answer' ? (
-                                <div className="max-w-md mx-auto">
+                                <div className="mx-auto max-w-md">
                                     <input
                                         type="text"
                                         value={selectedAnswer || ''}
                                         onChange={(e) => setSelectedAnswer(e.target.value)}
-                                        className="w-full text-center text-xl border border-alpha/30 rounded-xl px-6 py-4 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                        className="w-full rounded-xl border border-alpha/30 bg-light px-6 py-4 text-center text-xl text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                         placeholder="Type your answer here..."
                                         disabled={hasSubmitted || isReadingPhase}
                                         onKeyPress={(e) => {
@@ -327,35 +310,38 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                                 </div>
                             ) : (
                                 <div className="grid gap-4 md:grid-cols-2">
-                                    {safeOptions && safeOptions.length > 0 ? safeOptions.map((option, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => handleAnswerSelect(question.type === 'true_false' ? option : index)}
-                                            disabled={hasSubmitted || isReadingPhase}
-                                            className={`p-6 rounded-2xl border-2 transition-all duration-300 text-left backdrop-blur ${
-                                                isAnswerSelected(option, index)
-                                                    ? 'border-alpha bg-alpha/20 scale-105'
-                                                    : 'border-white/20 hover:border-alpha/60 hover:bg-white/30'
-                                            } ${hasSubmitted ? 'opacity-50 cursor-not-allowed' : 'hover:scale-102'}`}
-                                        >
-                                            <div className="flex items-center space-x-4">
-                                                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold ${
+                                    {safeOptions && safeOptions.length > 0 ? (
+                                        safeOptions.map((option, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleAnswerSelect(question.type === 'true_false' ? option : index)}
+                                                disabled={hasSubmitted || isReadingPhase}
+                                                className={`rounded-2xl border-2 p-6 text-left backdrop-blur transition-all duration-300 ${
                                                     isAnswerSelected(option, index)
-                                                        ? 'border-alpha bg-alpha text-dark'
-                                                        : 'border-alpha/50 text-alpha'
-                                                }`}>
-                                                    {question.type === 'true_false' ? 
-                                                        (option === 'True' ? '✓' : '✗') :
-                                                        String.fromCharCode(65 + index)
-                                                    }
+                                                        ? 'scale-105 border-alpha bg-alpha/20'
+                                                        : 'border-white/20 hover:border-alpha/60 hover:bg-white/30'
+                                                } ${hasSubmitted ? 'cursor-not-allowed opacity-50' : 'hover:scale-102'}`}
+                                            >
+                                                <div className="flex items-center space-x-4">
+                                                    <div
+                                                        className={`flex h-8 w-8 items-center justify-center rounded-full border-2 font-bold ${
+                                                            isAnswerSelected(option, index)
+                                                                ? 'border-alpha bg-alpha text-dark'
+                                                                : 'border-alpha/50 text-alpha'
+                                                        }`}
+                                                    >
+                                                        {question.type === 'true_false'
+                                                            ? option === 'True'
+                                                                ? '✓'
+                                                                : '✗'
+                                                            : String.fromCharCode(65 + index)}
+                                                    </div>
+                                                    <span className="text-lg font-semibold text-dark dark:text-light">{option}</span>
                                                 </div>
-                                                <span className="text-lg font-semibold text-dark dark:text-light">
-                                                    {option}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    )) : (
-                                        <div className="col-span-2 text-center py-8">
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-2 py-8 text-center">
                                             <p className="text-dark/60 dark:text-light/60">No options available for this question.</p>
                                         </div>
                                     )}
@@ -367,12 +353,17 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                         {!hasSubmitted && (
                             <button
                                 onClick={() => handleSubmit()}
-                                disabled={isReadingPhase || isSubmitting || !selectedAnswer || (Array.isArray(selectedAnswer) && selectedAnswer.length === 0)}
-                                className="mt-8 bg-gradient-to-r from-alpha to-yellow-400 text-dark text-xl font-bold py-4 px-8 rounded-xl hover:from-alpha/90 hover:to-yellow-400/90 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg"
+                                disabled={
+                                    isReadingPhase ||
+                                    isSubmitting ||
+                                    !selectedAnswer ||
+                                    (Array.isArray(selectedAnswer) && selectedAnswer.length === 0)
+                                }
+                                className="mt-8 rounded-xl bg-gradient-to-r from-alpha to-yellow-400 px-8 py-4 text-xl font-bold text-dark shadow-lg transition-all duration-300 hover:scale-105 hover:from-alpha/90 hover:to-yellow-400/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                             >
                                 {isSubmitting ? (
                                     <div className="flex items-center space-x-3">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-dark border-t-transparent"></div>
+                                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-dark border-t-transparent"></div>
                                         <span>Submitting...</span>
                                     </div>
                                 ) : (
@@ -383,24 +374,20 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
 
                         {/* Already Answered */}
                         {hasSubmitted && (
-                            <div className="mt-8 bg-good/10 border border-good/20 rounded-xl p-6">
+                            <div className="mt-8 rounded-xl border border-good/20 bg-good/10 p-6">
                                 <div className="flex items-center justify-center space-x-3">
                                     <CheckCircle className="text-good" size={24} />
-                                    <span className="text-good font-bold text-lg">Answer Submitted!</span>
+                                    <span className="text-lg font-bold text-good">Answer Submitted!</span>
                                 </div>
-                                <p className="text-dark/70 dark:text-light/70 mt-2">
-                                    Waiting for other players to finish...
-                                </p>
+                                <p className="mt-2 text-dark/70 dark:text-light/70">Waiting for other players to finish...</p>
                             </div>
                         )}
                     </div>
 
                     {/* Help Text */}
-                        {question.type === 'multiple_choice' && !hasSubmitted && (
+                    {question.type === 'multiple_choice' && !hasSubmitted && (
                         <div className="text-center">
-                            <p className="text-sm text-dark/60 dark:text-light/60">
-                                Tip: You can select multiple answers if needed
-                            </p>
+                            <p className="text-sm text-dark/60 dark:text-light/60">Tip: You can select multiple answers if needed</p>
                         </div>
                     )}
                 </div>
@@ -408,4 +395,3 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
         </AppLayout>
     );
 }
-

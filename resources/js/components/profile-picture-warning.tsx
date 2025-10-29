@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Link, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function ProfilePictureWarning() {
     const page = usePage();
-    const { auth, session } = page.props as { auth: { user?: { id: string; name: string; image?: string | null } }, session: { id: string } };
+    type Shared = { auth?: { user?: { id: string; name: string; image?: string | null } }; session?: { id: string } };
+    const { auth, session } = page.props as unknown as Shared;
 
     const userId = auth?.user?.id;
     // Check if profile image is missing
@@ -47,13 +48,15 @@ export default function ProfilePictureWarning() {
                 </DialogHeader>
                 <DialogFooter>
                     <Button asChild>
-                        <Link href="/settings/profile" onClick={() => setOpen(false)}>Upload now</Link>
+                        <Link href="/settings/profile" onClick={() => setOpen(false)}>
+                            Upload now
+                        </Link>
                     </Button>
-                    <Button variant="ghost" onClick={() => handleDismiss(7)}>Skip for now</Button>
+                    <Button variant="ghost" onClick={() => handleDismiss(7)}>
+                        Skip for now
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
-
-

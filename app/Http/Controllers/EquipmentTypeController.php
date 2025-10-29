@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\EquipmentType;
 use App\Models\Equipment;
+use App\Models\EquipmentType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -31,7 +31,7 @@ class EquipmentTypeController extends Controller
     public function store(Request $request)
     {
         $name = strtolower(trim($request->name));
-        
+
         // Prevent creating "other" type manually
         if ($name === 'other') {
             return back()->withErrors(['name' => 'The "other" type is reserved for the system.']);
@@ -51,12 +51,12 @@ class EquipmentTypeController extends Controller
     public function update(Request $request, EquipmentType $equipmentType)
     {
         $name = strtolower(trim($request->name));
-        
+
         // Prevent updating to "other" type
         if ($name === 'other') {
             return back()->withErrors(['name' => 'The "other" type is reserved for the system.']);
         }
-        
+
         // Prevent updating the "other" type itself
         if ($equipmentType->name === 'other') {
             return back()->with('error', 'The "other" type cannot be modified as it is required for the system.');
@@ -87,7 +87,7 @@ class EquipmentTypeController extends Controller
 
         // Get the "other" type as fallback
         $otherType = EquipmentType::firstOrCreate(['name' => 'other']);
-        
+
         // If deleting a type that has equipment, reassign them to "other"
         $equipmentCount = $equipmentType->equipment()->count();
         if ($equipmentCount > 0) {

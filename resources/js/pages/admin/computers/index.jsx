@@ -1,17 +1,17 @@
-import React, { useMemo, useRef, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
+import Banner from '@/components/banner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Route, Search, Trash } from 'lucide-react';
-import Banner from "@/components/banner"
-import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
+import AppLayout from '@/layouts/app-layout';
+import { Head, router } from '@inertiajs/react';
+import { Pencil, Search, Trash } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import illustration from '../../../../../public/assets/images/banner/Search engines-amico.png';
 
 function findUserById(users, id) {
-    return users.find(u => u.id === id) || null;
+    return users.find((u) => u.id === id) || null;
 }
 
 export default function ComputersIndex({ computers: computersProp = [], users: usersProp = [] }) {
@@ -39,27 +39,19 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         let list = computers;
         if (query.trim()) {
             const q = query.trim().toLowerCase();
-            list = list.filter(c =>
-                [
-                    c.reference || '',
-                    c.cpu || '',
-                    c.gpu || '',
-                    findUserById(users, c.assignedUserId)?.name || ''
-                ]
-                    .join(' ')
-                    .toLowerCase()
-                    .includes(q)
+            list = list.filter((c) =>
+                [c.reference || '', c.cpu || '', c.gpu || '', findUserById(users, c.assignedUserId)?.name || ''].join(' ').toLowerCase().includes(q),
             );
         }
 
         if (damaged !== 'all') {
             const wantDamaged = damaged === 'damaged';
-            list = list.filter(c => (wantDamaged ? c.isBroken : !c.isBroken));
+            list = list.filter((c) => (wantDamaged ? c.isBroken : !c.isBroken));
         }
 
         if (assigned !== 'all') {
             const wantAssigned = assigned === 'assigned';
-            list = list.filter(c => (wantAssigned ? !!c.assignedUserId : !c.assignedUserId));
+            list = list.filter((c) => (wantAssigned ? !!c.assignedUserId : !c.assignedUserId));
         }
 
         return list;
@@ -71,7 +63,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         setAssigned('all');
         if (searchInputRef.current) {
             searchInputRef.current.value = '';
-            try { searchInputRef.current.focus(); } catch { }
+            try {
+                searchInputRef.current.focus();
+            } catch {}
         }
     }
 
@@ -85,7 +79,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             onSuccess: () => {
                 setShowAddModal(false);
                 router.reload();
-            }
+            },
         });
     }
 
@@ -112,8 +106,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         }
         router.put(`/admin/computers/${editTargetId}`, payload, {
             onSuccess: () => {
-                setComputers(prev =>
-                    prev.map(c => {
+                setComputers((prev) =>
+                    prev.map((c) => {
                         if (c.id === editTargetId) {
                             return {
                                 ...c,
@@ -124,33 +118,32 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 isBroken: editForm.state !== 'working',
                                 contractStart: editForm.start,
                                 contractEnd: editForm.end,
-                                mark: editForm.mark
+                                mark: editForm.mark,
                             };
                         }
                         return c;
-                    })
+                    }),
                 );
                 setShowEditModal(false);
-            }
+            },
         });
     }
     function handleDelete(computer) {
         setDeletingComputer(computer);
         setIsDeleteOpen(true);
-    };
+    }
     function deleteComputer() {
         if (deletingComputer) {
             router.delete(`/admin/computers/${deletingComputer.id}`, {
                 onSuccess: () => {
                     setIsDeleteOpen(false);
-                    setComputers(prev => prev.filter(c => c.id !== deletingComputer.id));
+                    setComputers((prev) => prev.filter((c) => c.id !== deletingComputer.id));
                     setDeletingComputer(null);
-                    console.log("Deleted successfully")
-                }
-            })
+                    console.log('Deleted successfully');
+                },
+            });
         }
     }
-
 
     function openHistoryModal(computer) {
         setSelectedComputer(computer);
@@ -158,7 +151,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         setHistoryLoading(true);
         setHistoryError('');
         setAssignmentHistory([]);
-        fetch(`/admin/computers/${computer.id}/history`, { headers: { 'Accept': 'application/json' } })
+        fetch(`/admin/computers/${computer.id}/history`, { headers: { Accept: 'application/json' } })
             .then(async (res) => {
                 if (!res.ok) throw new Error('Failed to load history');
                 const data = await res.json();
@@ -178,12 +171,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             <TableHead className="w-[180px]">Serial number</TableHead>
                             <TableHead>CPU/GPU</TableHead>
                             <TableHead>Assign</TableHead>
-                            <TableHead>	Start Contract</TableHead>
+                            <TableHead> Start Contract</TableHead>
                             <TableHead>Menu</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredComputers.map(c => {
+                        {filteredComputers.map((c) => {
                             const user = findUserById(users, c.assignedUserId);
                             return (
                                 <TableRow key={c.id}>
@@ -214,29 +207,33 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell>
                                         {user ? (
                                             <span className="text-sm font-medium">
-                                                <Button className="text-black hover:text-white dark:hover:text-black" onClick={() => {
-                                                    window.location.href = `/admin/computers/${c.id}/contract`;
-                                                }}>
+                                                <Button
+                                                    className="text-black hover:text-white dark:hover:text-black"
+                                                    onClick={() => {
+                                                        window.location.href = `/admin/computers/${c.id}/contract`;
+                                                    }}
+                                                >
                                                     Download
-                                                </Button></span>
+                                                </Button>
+                                            </span>
                                         ) : (
                                             <span className="text-sm text-gray-500">Not assigned</span>
                                         )}
-
                                     </TableCell>
-                                    <TableCell className="flex gap-2 items-center">
+                                    <TableCell className="flex items-center gap-2">
                                         <button
                                             onClick={() => openEditModal(c)}
-                                            className="p-2 bg-transparent hover:bg-transparent duration-200"
+                                            className="bg-transparent p-2 duration-200 hover:bg-transparent"
                                             title="Edit"
                                         >
                                             <Pencil size={18} className="text-alpha" />
                                         </button>
 
                                         <button
-                                            className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                            className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600"
                                             title="Delete"
-                                            variant="destructive" onClick={() => handleDelete(c)}
+                                            variant="destructive"
+                                            onClick={() => handleDelete(c)}
                                         >
                                             <Trash size={18} className="text-error" />
                                         </button>
@@ -254,37 +251,33 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         <AppLayout>
             <Head title="Computers" />
             <div className="p-6 md:p-10">
-
-                <Banner
-                    illustration={illustration}
-
-                />
+                <Banner illustration={illustration} />
 
                 {/* Inlined Header JSX */}
                 <div className="mb-6 md:mb-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Computers</h1>
-                            <p className="text-sm text-muted-foreground mt-2">{computers.length} total</p>
+                            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Computers</h1>
+                            <p className="mt-2 text-sm text-muted-foreground">{computers.length} total</p>
                         </div>
                         <Button className="bg-yellow-400 text-black hover:bg-yellow-500" onClick={openAddModal}>
                             Add Computer
                         </Button>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-4">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                                className="pl-9 bg-neutral-200 dark:bg-neutral-800 "
+                                className="bg-neutral-200 pl-9 dark:bg-neutral-800"
                                 placeholder="Search"
                                 ref={searchInputRef}
-                                onChange={e => setQuery(e.target.value)}
+                                onChange={(e) => setQuery(e.target.value)}
                             />
                         </div>
 
                         <Select value={damaged} onValueChange={setDamaged}>
-                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800">
                                 <SelectValue placeholder="Damaged" />
                             </SelectTrigger>
                             <SelectContent>
@@ -295,7 +288,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </Select>
 
                         <Select value={assigned} onValueChange={setAssigned}>
-                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 ">
+                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800">
                                 <SelectValue placeholder="Assigned" />
                             </SelectTrigger>
                             <SelectContent>
@@ -305,7 +298,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             </SelectContent>
                         </Select>
 
-                        <Button className="bg-neutral-200 dark:bg-neutral-800 " variant="outline" onClick={resetFilters}>Reset</Button>
+                        <Button className="bg-neutral-200 dark:bg-neutral-800" variant="outline" onClick={resetFilters}>
+                            Reset
+                        </Button>
                     </div>
                 </div>
                 {/* End Header */}
@@ -321,19 +316,24 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </DialogHeader>
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-sm mb-1">Reference :</label>
-                            <Input value={addForm.reference} onChange={e => setAddForm(f => ({ ...f, reference: e.target.value }))} placeholder="reference" />
+                            <label className="mb-1 block text-sm">Reference :</label>
+                            <Input
+                                value={addForm.reference}
+                                onChange={(e) => setAddForm((f) => ({ ...f, reference: e.target.value }))}
+                                placeholder="reference"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Serial Number :</label>
-                            <Input value={addForm.cpu} onChange={e => setAddForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
+                            <label className="mb-1 block text-sm">Serial Number :</label>
+                            <Input
+                                value={addForm.cpu}
+                                onChange={(e) => setAddForm((f) => ({ ...f, cpu: e.target.value }))}
+                                placeholder="Serial number"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">CPU-GPU :</label>
-                            <Select
-                                value={addForm.gpu}
-                                onValueChange={value => setAddForm(f => ({ ...f, gpu: value }))}
-                            >
+                            <label className="mb-1 block text-sm">CPU-GPU :</label>
+                            <Select value={addForm.gpu} onValueChange={(value) => setAddForm((f) => ({ ...f, gpu: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select CPU-GPU" />
                                 </SelectTrigger>
@@ -345,11 +345,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div>
 
                         <div>
-                            <label className="block text-sm mb-1">Computer State :</label>
-                            <Select
-                                value={addForm.state}
-                                onValueChange={value => setAddForm(f => ({ ...f, state: value }))}
-                            >
+                            <label className="mb-1 block text-sm">Computer State :</label>
+                            <Select value={addForm.state} onValueChange={(value) => setAddForm((f) => ({ ...f, state: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select state" />
                                 </SelectTrigger>
@@ -362,12 +359,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div>
 
                         <div>
-                            <label className="block text-sm mb-1">Mark :</label>
-                            <Input
-                                value={addForm.mark}
-                                onChange={e => setAddForm(f => ({ ...f, mark: e.target.value }))}
-                                placeholder="Mark"
-                            />
+                            <label className="mb-1 block text-sm">Mark :</label>
+                            <Input value={addForm.mark} onChange={(e) => setAddForm((f) => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
                         </div>
 
                         {/* <div>
@@ -381,7 +374,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div> */}
 
                         <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowAddModal(false)}>
+                                Cancel
+                            </Button>
                             <Button onClick={addComputer}>Add Computer</Button>
                         </div>
                     </div>
@@ -390,21 +385,27 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Edit Modal */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                <DialogContent className="border-b border-alpha/20 bg-light text-dark sm:max-w-[780px] dark:bg-dark dark:text-light">
                     <DialogHeader>
                         <DialogTitle>Update Computer</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                        <div> <label className="block text-sm mb-1">Reference :</label>
-                            <Input value={editForm.reference} onChange={e => setEditForm(f => ({ ...f, reference: e.target.value }))} />
+                        <div>
+                            {' '}
+                            <label className="mb-1 block text-sm">Reference :</label>
+                            <Input value={editForm.reference} onChange={(e) => setEditForm((f) => ({ ...f, reference: e.target.value }))} />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Serial Number :</label>
-                            <Input value={editForm.cpu} onChange={e => setEditForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
+                            <label className="mb-1 block text-sm">Serial Number :</label>
+                            <Input
+                                value={editForm.cpu}
+                                onChange={(e) => setEditForm((f) => ({ ...f, cpu: e.target.value }))}
+                                placeholder="Serial number"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">CPU-GPU :</label>
-                            <Select value={editForm.gpu} onValueChange={value => setEditForm(f => ({ ...f, gpu: value }))}>
+                            <label className="mb-1 block text-sm">CPU-GPU :</label>
+                            <Select value={editForm.gpu} onValueChange={(value) => setEditForm((f) => ({ ...f, gpu: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select CPU-GPU" />
                                 </SelectTrigger>
@@ -415,11 +416,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             </Select>
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Computer State :</label>
-                            <Select
-                                value={editForm.state}
-                                onValueChange={value => setEditForm(f => ({ ...f, state: value }))}
-                            >
+                            <label className="mb-1 block text-sm">Computer State :</label>
+                            <Select value={editForm.state} onValueChange={(value) => setEditForm((f) => ({ ...f, state: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select state" />
                                 </SelectTrigger>
@@ -431,17 +429,17 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             </Select>
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Mark :</label>
-                            <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
+                            <label className="mb-1 block text-sm">Mark :</label>
+                            <Input value={editForm.mark} onChange={(e) => setEditForm((f) => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
                         </div>
                         <div>
-                            <label className="block text-sm mb-1">Assign to User :</label>
+                            <label className="mb-1 block text-sm">Assign to User :</label>
                             <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                     <Input
                                         placeholder="Search user by name or email"
                                         value={userSearch}
-                                        onChange={e => setUserSearch(e.target.value)}
+                                        onChange={(e) => setUserSearch(e.target.value)}
                                     />
 
                                     {/* Dissociate button */}
@@ -460,12 +458,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     mark: editForm.mark,
                                                     user_id: null,
                                                 };
-                                                setEditForm(f => ({ ...f, user_id: null }));
-                                                setComputers(prev =>
-                                                    prev.map(c =>
-                                                        c.id === editTargetId ? { ...c, assignedUserId: null } : c
-                                                    )
-                                                );
+                                                setEditForm((f) => ({ ...f, user_id: null }));
+                                                setComputers((prev) => prev.map((c) => (c.id === editTargetId ? { ...c, assignedUserId: null } : c)));
                                                 router.put(`/admin/computers/${editTargetId}`, payload, {
                                                     onSuccess: () => {
                                                         if (showHistoryModal && selectedComputer && selectedComputer.id === editTargetId) {
@@ -473,13 +467,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                         }
                                                         setShowEditModal(false);
                                                     },
-                                                    onError: err => console.error('Failed to dissociate:', err)
+                                                    onError: (err) => console.error('Failed to dissociate:', err),
                                                 });
                                             }}
                                         >
                                             Dissociate
                                         </Button>
-
                                     )}
                                 </div>
 
@@ -492,17 +485,14 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                                 {/* Search results */}
                                 {userSearch.trim() && (
-                                    <div className="max-h-48 overflow-auto border rounded">
+                                    <div className="max-h-48 overflow-auto rounded border">
                                         {users
-                                            .filter(u => {
+                                            .filter((u) => {
                                                 const q = userSearch.trim().toLowerCase();
-                                                return (
-                                                    u.name.toLowerCase().includes(q) ||
-                                                    (u.email || '').toLowerCase().includes(q)
-                                                );
+                                                return u.name.toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
                                             })
                                             .slice(0, 12)
-                                            .map(u => (
+                                            .map((u) => (
                                                 <button
                                                     key={u.id}
                                                     type="button"
@@ -516,11 +506,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                             mark: editForm.mark,
                                                             user_id: u.id,
                                                         };
-                                                        setEditForm(f => ({ ...f, user_id: u.id }));
-                                                        setComputers(prev =>
-                                                            prev.map(c =>
-                                                                c.id === editTargetId ? { ...c, assignedUserId: u.id } : c
-                                                            )
+                                                        setEditForm((f) => ({ ...f, user_id: u.id }));
+                                                        setComputers((prev) =>
+                                                            prev.map((c) => (c.id === editTargetId ? { ...c, assignedUserId: u.id } : c)),
                                                         );
                                                         router.put(`/admin/computers/${editTargetId}`, payload, {
                                                             onSuccess: () => {
@@ -528,15 +516,16 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                                     openHistoryModal(selectedComputer);
                                                                 }
                                                             },
-                                                            onError: err => console.error('Failed to assign user:', err)
+                                                            onError: (err) => console.error('Failed to assign user:', err),
                                                         });
                                                         setUserSearch(u.name);
                                                     }}
-                                                    className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted ${editForm.user_id === u.id ? 'bg-muted' : ''
-                                                        }`}
+                                                    className={`w-full border-b px-3 py-2 text-left last:border-b-0 hover:bg-muted ${
+                                                        editForm.user_id === u.id ? 'bg-muted' : ''
+                                                    }`}
                                                 >
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-medium text-sm">{u.name}</span>
+                                                        <span className="text-sm font-medium">{u.name}</span>
                                                         <span className="text-xs text-gray-500">{u.email}</span>
                                                     </div>
                                                 </button>
@@ -557,34 +546,33 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </div> */}
 
                         <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                                Cancel
+                            </Button>
                             <Button onClick={updateComputer}>Update Computer</Button>
                         </div>
                     </div>
                 </DialogContent>
             </Dialog>
 
-
-
             {/* Delete confirmation modal */}
             <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                <DialogContent className="max-w-md border-b border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                            <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
-                        </div>
+                        <DialogTitle className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                                <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
                             <div>
                                 <h2 className="text-lg font-semibold">Delete Computer</h2>
-                                <p className="text-sm text-muted-foreground">
-                                    This action cannot be undone.
-                                </p>
-                            </div></DialogTitle>
+                                <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+                            </div>
+                        </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-6">
                         {deletingComputer && (
                             <div className="rounded-lg border bg-muted/50 p-4">
                                 <div className="flex items-center gap-3">
-
                                     <div>
                                         <p className="font-medium">{deletingComputer.reference}</p>
                                         <p className="text-sm text-muted-foreground">{deletingComputer.mark}</p>
@@ -605,10 +593,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             >
                                 Cancel
                             </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={deleteComputer}
-                            >
+                            <Button variant="destructive" onClick={deleteComputer}>
                                 Delete Computer
                             </Button>
                         </div>
@@ -618,19 +603,16 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* History Modal */}
             <Dialog className="" open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                <DialogContent className="border-b border-alpha/20 bg-light text-dark sm:max-w-[780px] dark:bg-dark dark:text-light">
                     <DialogHeader>
                         <DialogTitle>Assignment history{selectedComputer ? ` - ${selectedComputer.cpu}` : ''}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        {historyLoading && (
-                            <p className="text-sm text-muted-foreground">Loading history…</p>
-                        )}
-                        {historyError && (
-                            <p className="text-sm text-red-600">{historyError}</p>
-                        )}
-                        {!historyLoading && !historyError && (
-                            assignmentHistory.length ? (
+                        {historyLoading && <p className="text-sm text-muted-foreground">Loading history…</p>}
+                        {historyError && <p className="text-sm text-red-600">{historyError}</p>}
+                        {!historyLoading &&
+                            !historyError &&
+                            (assignmentHistory.length ? (
                                 <div className="overflow-x-auto">
                                     <Table>
                                         <TableHeader>
@@ -646,7 +628,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     <TableCell>
                                                         {h.user ? (
                                                             <div className="flex flex-col">
-                                                                <span className="font-medium text-sm">{h.user.name}</span>
+                                                                <span className="text-sm font-medium">{h.user.name}</span>
                                                                 <span className="text-xs text-muted-foreground">{h.user.email}</span>
                                                             </div>
                                                         ) : (
@@ -662,8 +644,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 </div>
                             ) : (
                                 <p className="text-sm text-muted-foreground">No assignment history yet.</p>
-                            )
-                        )}
+                            ))}
                     </div>
                 </DialogContent>
             </Dialog>

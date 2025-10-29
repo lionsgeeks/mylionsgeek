@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Project;
-use App\Models\User;
-use App\Models\Task;
 use App\Models\Attachment;
+use App\Models\Project;
 use App\Models\ProjectInvitation;
+use App\Models\Task;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -27,8 +27,8 @@ class ProjectController extends Controller
 
         // Search functionality
         if ($request->has('search') && $request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                ->orWhere('description', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%')
+                ->orWhere('description', 'like', '%'.$request->search.'%');
         }
 
         // Filter by status
@@ -62,8 +62,8 @@ class ProjectController extends Controller
             'users' => $users,
             'flash' => [
                 'success' => session('success'),
-                'error' => session('error')
-            ]
+                'error' => session('error'),
+            ],
         ]);
     }
 
@@ -79,7 +79,7 @@ class ProjectController extends Controller
                 'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
-                'status' => 'nullable|in:active,completed,on_hold,cancelled'
+                'status' => 'nullable|in:active,completed,on_hold,cancelled',
             ]);
 
             $data = $request->all();
@@ -92,7 +92,7 @@ class ProjectController extends Controller
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys = OFF');
-            
+
             $project = Project::create($data);
 
             // Add creator as owner - use raw SQL to avoid foreign key issues
@@ -102,18 +102,19 @@ class ProjectController extends Controller
                 'role' => 'owner',
                 'joined_at' => now(),
                 'created_at' => now(),
-                'updated_at' => now()
+                'updated_at' => now(),
             ]);
-            
+
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys = ON');
 
             return redirect()->route('admin.projects.index')
                 ->with('success', 'Project created successfully.');
         } catch (\Exception $e) {
-            Log::error('Project creation failed: ' . $e->getMessage());
+            Log::error('Project creation failed: '.$e->getMessage());
+
             return redirect()->route('admin.projects.index')
-                ->with('error', 'Failed to create project: ' . $e->getMessage());
+                ->with('error', 'Failed to create project: '.$e->getMessage());
         }
     }
 
@@ -128,7 +129,7 @@ class ProjectController extends Controller
             'tasks.assignees',
             'tasks.creator',
             'tasks.comments.user',
-            'attachments.uploader'
+            'attachments.uploader',
         ]);
 
         $teamMembers = $project->users()->get();
@@ -141,7 +142,7 @@ class ProjectController extends Controller
             'teamMembers' => $teamMembers,
             'tasks' => $tasks,
             'attachments' => $attachments,
-            'notes' => $notes
+            'notes' => $notes,
         ]);
     }
 
@@ -163,15 +164,15 @@ class ProjectController extends Controller
             $data = $request->only(['name', 'description', 'status', 'start_date', 'end_date']);
             $data['is_updated'] = true;
             $data['last_activity'] = now();
-            
+
             // Debug: Log what we're receiving
             Log::info('Update request data:', [
                 'all' => $request->all(),
                 'hasFile' => $request->hasFile('photo'),
                 'file' => $request->file('photo'),
-                'data' => $data
+                'data' => $data,
             ]);
-            
+
             // Only update photo if a new one is uploaded
             if ($request->hasFile('photo')) {
                 if ($project->photo) {
@@ -186,7 +187,7 @@ class ProjectController extends Controller
                 ->with('success', 'Project updated successfully.');
         } catch (\Exception $e) {
             return redirect()->route('admin.projects.index')
-                ->with('error', 'Failed to update project: ' . $e->getMessage());
+                ->with('error', 'Failed to update project: '.$e->getMessage());
         }
     }
 
@@ -208,10 +209,11 @@ class ProjectController extends Controller
                 ->route('admin.projects.index')
                 ->with('success', 'Project deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('Project deletion failed: ' . $e->getMessage());
+            Log::error('Project deletion failed: '.$e->getMessage());
+
             return redirect()
                 ->route('admin.projects.index')
-                ->with('error', 'Failed to delete project: ' . $e->getMessage());
+                ->with('error', 'Failed to delete project: '.$e->getMessage());
         }
     }
 
@@ -227,7 +229,7 @@ class ProjectController extends Controller
             'usernames.*' => 'required|string',
             'role' => 'required|in:admin,member',
             'message' => 'nullable|string|max:500',
-            'project_id' => 'required|exists:projects,id'
+            'project_id' => 'required|exists:projects,id',
         ]);
 
         $project = Project::findOrFail($request->project_id);
@@ -241,11 +243,11 @@ class ProjectController extends Controller
         // Process email invitations
         foreach ($emails as $email) {
             $user = User::where('email', $email)->first();
-            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
+            if ($user && ! $project->users()->where('user_id', $user->id)->exists()) {
                 $project->users()->attach($user->id, [
                     'role' => $role,
                     'invited_at' => now(),
-                    'joined_at' => now()
+                    'joined_at' => now(),
                 ]);
                 $invitedUsers[] = $user->name;
             } else {
@@ -257,11 +259,11 @@ class ProjectController extends Controller
         // Process username invitations
         foreach ($usernames as $username) {
             $user = User::where('name', $username)->first();
-            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
+            if ($user && ! $project->users()->where('user_id', $user->id)->exists()) {
                 $project->users()->attach($user->id, [
                     'role' => $role,
                     'invited_at' => now(),
-                    'joined_at' => now()
+                    'joined_at' => now(),
                 ]);
                 $invitedUsers[] = $user->name;
             } else {
@@ -280,7 +282,7 @@ class ProjectController extends Controller
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:admin,member'
+            'role' => 'required|in:admin,member',
         ]);
 
         $user = User::findOrFail($request->user_id);
@@ -292,7 +294,7 @@ class ProjectController extends Controller
 
         $project->users()->attach($user->id, [
             'role' => $request->role,
-            'invited_at' => now()
+            'invited_at' => now(),
         ]);
 
         return back()->with('success', 'User invited to project successfully.');
@@ -314,11 +316,11 @@ class ProjectController extends Controller
     public function updateRole(Request $request, Project $project, User $user)
     {
         $request->validate([
-            'role' => 'required|in:admin,member'
+            'role' => 'required|in:admin,member',
         ]);
 
         $project->users()->updateExistingPivot($user->id, [
-            'role' => $request->role
+            'role' => $request->role,
         ]);
 
         return back()->with('success', 'User role updated successfully.');
@@ -350,16 +352,16 @@ class ProjectController extends Controller
             ->where('project_id', $project->id)
             ->first();
 
-        if (!$invitation) {
+        if (! $invitation) {
             return redirect('/')->with('error', 'Invalid invitation link.');
         }
 
-        if (!$invitation->isValid()) {
+        if (! $invitation->isValid()) {
             return redirect('/')->with('error', 'This invitation has expired or has already been used.');
         }
 
         // Check if user is authenticated
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')->with('error', 'Please log in to join the project.');
         }
 
@@ -373,7 +375,7 @@ class ProjectController extends Controller
             $canJoin = true;
         }
 
-        if (!$canJoin) {
+        if (! $canJoin) {
             return redirect('/')->with('error', 'This invitation is not for your account.');
         }
 
@@ -387,7 +389,7 @@ class ProjectController extends Controller
         $project->users()->attach($user->id, [
             'role' => $invitation->role,
             'invited_at' => $invitation->created_at,
-            'joined_at' => now()
+            'joined_at' => now(),
         ]);
 
         // Mark invitation as used
@@ -404,13 +406,13 @@ class ProjectController extends Controller
     {
         $request->validate([
             'file' => 'required|file|max:10240', // 10MB max
-            'project_id' => 'required|exists:projects,id'
+            'project_id' => 'required|exists:projects,id',
         ]);
 
         $project = Project::findOrFail($request->project_id);
-        
+
         // Check if user has access to this project
-        if (!$project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
+        if (! $project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
             return redirect()->back()->with('error', 'You do not have permission to upload files to this project.');
         }
 
@@ -419,9 +421,9 @@ class ProjectController extends Controller
             $originalName = $file->getClientOriginalName();
             $mimeType = $file->getMimeType();
             $size = $file->getSize();
-            
+
             // Generate unique filename
-            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
             $path = $file->storeAs('attachments', $filename, 'public');
 
             // Create attachment record
@@ -431,13 +433,14 @@ class ProjectController extends Controller
                 'path' => $path,
                 'mime_type' => $mimeType,
                 'size' => $size,
-                'uploaded_by' => Auth::id()
+                'uploaded_by' => Auth::id(),
             ]);
 
             return redirect()->back()->with('success', 'File uploaded successfully.');
         } catch (\Exception $e) {
-            Log::error('File upload failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to upload file: ' . $e->getMessage());
+            Log::error('File upload failed: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to upload file: '.$e->getMessage());
         }
     }
 
@@ -449,7 +452,7 @@ class ProjectController extends Controller
         try {
             // Check if user has permission to delete this attachment
             $project = $attachment->project;
-            if (!$project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
+            if (! $project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
                 return redirect()->back()->with('error', 'You do not have permission to delete this file.');
             }
 
@@ -463,8 +466,9 @@ class ProjectController extends Controller
 
             return redirect()->back()->with('success', 'File deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('File deletion failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to delete file: ' . $e->getMessage());
+            Log::error('File deletion failed: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to delete file: '.$e->getMessage());
         }
     }
 }

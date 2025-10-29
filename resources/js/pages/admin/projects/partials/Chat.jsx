@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MessageSquare, Send } from 'lucide-react';
+import { useState } from 'react';
 
 const Chat = ({ messages = [], onSendMessage }) => {
     const [chatOpen, setChatOpen] = useState(false);
@@ -19,24 +19,22 @@ const Chat = ({ messages = [], onSendMessage }) => {
     };
 
     return (
-        <div className="fixed bottom-4 right-4">
+        <div className="fixed right-4 bottom-4">
             <Sheet open={chatOpen} onOpenChange={setChatOpen}>
                 <SheetTrigger asChild>
                     <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
                         <MessageSquare className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="lg:h-screen lg:w-1/4 p-4">
+                <SheetContent side="right" className="p-4 lg:h-screen lg:w-1/4">
                     <SheetHeader>
                         <SheetTitle>Team Chat</SheetTitle>
                         <SheetDescription>Chat with your team members</SheetDescription>
                     </SheetHeader>
-                    <ScrollArea className="flex-1 mt-4 mb-4 lg:h-[calc(60vh-180px)]">
+                    <ScrollArea className="mt-4 mb-4 flex-1 lg:h-[calc(60vh-180px)]">
                         <div className="space-y-4">
                             {messages.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    No messages yet. Start the conversation!
-                                </div>
+                                <div className="py-8 text-center text-muted-foreground">No messages yet. Start the conversation!</div>
                             ) : (
                                 messages.map((message) => (
                                     <div key={message.id} className="flex gap-3">
@@ -46,11 +44,11 @@ const Chat = ({ messages = [], onSendMessage }) => {
                                         </Avatar>
                                         <div className="flex-1 space-y-1">
                                             <div className="flex items-baseline gap-2">
-                                                <span className="font-medium text-sm">{message.user.name}</span>
+                                                <span className="text-sm font-medium">{message.user.name}</span>
                                                 <span className="text-xs text-muted-foreground">
                                                     {new Date(message.timestamp).toLocaleTimeString(undefined, {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
                                                     })}
                                                 </span>
                                             </div>
@@ -62,7 +60,7 @@ const Chat = ({ messages = [], onSendMessage }) => {
                         </div>
                     </ScrollArea>
                     <SheetFooter className="flex-row gap-2">
-                        <form onSubmit={handleSubmit} className="flex gap-2 w-full">
+                        <form onSubmit={handleSubmit} className="flex w-full gap-2">
                             <Input
                                 placeholder="Type something..."
                                 value={newMessage}

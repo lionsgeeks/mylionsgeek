@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,37 +14,37 @@ return new class extends Migration
 
         // Modify tasks table safely
         Schema::table('tasks', function (Blueprint $table) {
-            if (!Schema::hasColumn('tasks', 'subtasks')) {
+            if (! Schema::hasColumn('tasks', 'subtasks')) {
                 $table->json('subtasks')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'is_pinned')) {
+            if (! Schema::hasColumn('tasks', 'is_pinned')) {
                 $table->boolean('is_pinned')->default(false);
             }
-            if (!Schema::hasColumn('tasks', 'is_editable')) {
+            if (! Schema::hasColumn('tasks', 'is_editable')) {
                 $table->boolean('is_editable')->default(true);
             }
-            if (!Schema::hasColumn('tasks', 'notes')) {
+            if (! Schema::hasColumn('tasks', 'notes')) {
                 $table->text('notes')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'tags')) {
+            if (! Schema::hasColumn('tasks', 'tags')) {
                 $table->json('tags')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'progress')) {
+            if (! Schema::hasColumn('tasks', 'progress')) {
                 $table->integer('progress')->default(0);
             }
-            if (!Schema::hasColumn('tasks', 'started_at')) {
+            if (! Schema::hasColumn('tasks', 'started_at')) {
                 $table->timestamp('started_at')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'completed_at')) {
+            if (! Schema::hasColumn('tasks', 'completed_at')) {
                 $table->timestamp('completed_at')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'attachments')) {
+            if (! Schema::hasColumn('tasks', 'attachments')) {
                 $table->json('attachments')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'comments')) {
+            if (! Schema::hasColumn('tasks', 'comments')) {
                 $table->json('comments')->nullable();
             }
-            if (!Schema::hasColumn('tasks', 'assignees')) {
+            if (! Schema::hasColumn('tasks', 'assignees')) {
                 $table->json('assignees')->nullable();
             }
 
@@ -61,7 +61,7 @@ return new class extends Migration
         });
 
         // Create pivot and related tables if they don’t exist
-        if (!Schema::hasTable('task_assignees')) {
+        if (! Schema::hasTable('task_assignees')) {
             Schema::create('task_assignees', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('task_id')->constrained()->onDelete('cascade');
@@ -72,7 +72,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('task_comments')) {
+        if (! Schema::hasTable('task_comments')) {
             Schema::create('task_comments', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('task_id')->constrained()->onDelete('cascade');
@@ -84,7 +84,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('task_attachments')) {
+        if (! Schema::hasTable('task_attachments')) {
             Schema::create('task_attachments', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('task_id')->constrained()->onDelete('cascade');
@@ -120,7 +120,7 @@ return new class extends Migration
                 'completed_at',
                 'attachments',
                 'comments',
-                'assignees'
+                'assignees',
             ];
 
             foreach ($columnsToDrop as $column) {
@@ -130,7 +130,7 @@ return new class extends Migration
             }
 
             // Restore single assigned_to column if missing
-            if (!Schema::hasColumn('tasks', 'assigned_to')) {
+            if (! Schema::hasColumn('tasks', 'assigned_to')) {
                 $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null');
             }
         });

@@ -1,14 +1,14 @@
 <?php
 
+use App\Http\Controllers\ComputersController;
+use App\Models\Computer;
+use App\Models\ComputerHistory;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Models\Computer;
-use App\Models\User;
-use App\Http\Controllers\ComputersController;
-use Illuminate\Http\Request;
-use App\Models\ComputerHistory;
 
-Route::middleware(['auth','role:admin'])->group(function () {
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/computers', function () {
         $computers = Computer::with('user')->get()->map(function ($c) {
             return [
@@ -34,6 +34,7 @@ Route::middleware(['auth','role:admin'])->group(function () {
 
     Route::get('/admin/computers/{id}', function (string $id) {
         $computer = Computer::with('user')->findOrFail($id);
+
         return Inertia::render('admin/computers/[id]', [
             'computer' => $computer,
         ]);
@@ -46,9 +47,9 @@ Route::middleware(['auth','role:admin'])->group(function () {
     // Update existing computer
     Route::put('/admin/computers/{computer}', [ComputersController::class, 'update'])
         ->name('admin.computers.update');
-    
+
     Route::get('/admin/computers/{computer}/contract', [ComputersController::class, 'computerStartContract'])
-    ->name('computers.contract');
+        ->name('computers.contract');
     Route::delete('/admin/computers/{computer}', [ComputersController::class, 'destroy'])->name('admin.computers.destroy');
 
     // History endpoint for modal
@@ -74,5 +75,3 @@ Route::middleware(['auth','role:admin'])->group(function () {
     })->name('admin.computers.history');
 
 });
-
-

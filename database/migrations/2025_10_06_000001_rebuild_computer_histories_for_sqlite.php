@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -11,7 +11,7 @@ return new class extends Migration
     {
         $driver = Schema::getConnection()->getDriverName();
 
-        if (!Schema::hasTable('computer_histories')) {
+        if (! Schema::hasTable('computer_histories')) {
             Schema::create('computer_histories', function (Blueprint $table) {
                 $table->id();
                 $table->integer('computer_id');
@@ -21,14 +21,13 @@ return new class extends Migration
                 $table->timestamps();
             });
 
-            
             Schema::table('computer_histories', function (Blueprint $table) use ($driver) {
                 $table->foreign('computer_id')->references('id')->on('computers')->onDelete('cascade');
                 if ($driver !== 'sqlite') {
                     $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
                 }
             });
-            
+
         }
 
         Schema::disableForeignKeyConstraints();
@@ -70,16 +69,9 @@ return new class extends Migration
             }
         });
 
-        
-
         Schema::drop('computer_histories_old');
         Schema::enableForeignKeyConstraints();
     }
 
-    public function down(): void
-    {
-        
-    }
+    public function down(): void {}
 };
-
-

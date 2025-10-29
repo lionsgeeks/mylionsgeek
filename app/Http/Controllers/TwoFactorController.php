@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
@@ -50,7 +49,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
@@ -70,7 +69,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
@@ -86,7 +85,7 @@ class TwoFactorController extends Controller
 
         // Generate QR code as SVG string
         $qrCodeSvg = QrCode::size(200)->format('svg')->generate($qrCodeUrl);
-        
+
         // Convert to string - the generate method returns an object that can be cast to string
         $qrCodeSvg = (string) $qrCodeSvg;
 
@@ -103,7 +102,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
@@ -119,7 +118,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
@@ -146,14 +145,14 @@ class TwoFactorController extends Controller
 
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
         $secretKey = decrypt($user->two_factor_secret);
         $valid = $this->google2fa->verifyKey($secretKey, $request->code);
 
-        if (!$valid) {
+        if (! $valid) {
             return response()->json(['message' => 'Invalid authentication code.'], 400);
         }
 
@@ -175,14 +174,14 @@ class TwoFactorController extends Controller
 
         $user = $request->user();
 
-        if (!$user->hasTwoFactorAuthentication()) {
+        if (! $user->hasTwoFactorAuthentication()) {
             return response()->json(['message' => 'Two-factor authentication is not enabled.'], 400);
         }
 
         $secretKey = decrypt($user->two_factor_secret);
         $valid = $this->google2fa->verifyKey($secretKey, $request->code);
 
-        if (!$valid) {
+        if (! $valid) {
             return response()->json(['message' => 'Invalid authentication code.'], 400);
         }
 

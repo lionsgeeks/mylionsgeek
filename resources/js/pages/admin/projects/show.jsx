@@ -1,204 +1,204 @@
-import React, { useState, useMemo } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isToday, parseISO } from 'date-fns';
+import { useMemo, useState } from 'react';
 
 // Import partial components
-import ProjectHeader from './partials/ProjectHeader';
+import Activity from './partials/Activity';
 import Calendar from './partials/Calendar';
-import Overview from './partials/Overview';
-import Tasks from './partials/Tasks';
+import Chat from './partials/Chat';
 import Files from './partials/Files';
 import Notes from './partials/Notes';
-import Activity from './partials/Activity';
-import Team from './partials/Team';
+import Overview from './partials/Overview';
+import ProjectHeader from './partials/ProjectHeader';
 import Sidebar from './partials/Sidebar';
-import Chat from './partials/Chat';
-import ProjectAttachments from './partials/ProjectAttachments';
+import Tasks from './partials/Tasks';
+import Team from './partials/Team';
 
 // Sample data
 const events = [
     {
-        title: "Project Meeting",
-        start: "2024-02-15T10:00:00",
-        end: "2024-02-15T12:00:00",
+        title: 'Project Meeting',
+        start: '2024-02-15T10:00:00',
+        end: '2024-02-15T12:00:00',
         progress: 75,
-        backgroundColor: "#3b82f6",
+        backgroundColor: '#3b82f6',
     },
     {
-        title: "Code Review",
-        start: "2024-02-16T14:00:00",
-        end: "2024-02-16T16:00:00",
-        backgroundColor: "#10b981",
+        title: 'Code Review',
+        start: '2024-02-16T14:00:00',
+        end: '2024-02-16T16:00:00',
+        backgroundColor: '#10b981',
         progress: 50,
     },
     {
-        title: "Sprint Planning",
-        start: "2024-02-17T09:00:00",
-        end: "2024-02-17T11:00:00",
-        backgroundColor: "#f59e0b",
+        title: 'Sprint Planning',
+        start: '2024-02-17T09:00:00',
+        end: '2024-02-17T11:00:00',
+        backgroundColor: '#f59e0b',
     },
 ];
 
 const sampleTasks = [
     {
-        id: "1",
-        title: "Implement user authentication",
-        description: "Create a secure authentication system with JWT tokens",
-        status: "completed",
-        priority: "high",
+        id: '1',
+        title: 'Implement user authentication',
+        description: 'Create a secure authentication system with JWT tokens',
+        status: 'completed',
+        priority: 'high',
         assignee: {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '1',
+            name: 'John Doe',
+            email: 'john@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-15",
-        completedDate: "2024-02-14",
-        project: "Project Alpha",
-        tags: ["backend", "security"],
+        dueDate: '2024-02-15',
+        completedDate: '2024-02-14',
+        project: 'Project Alpha',
+        tags: ['backend', 'security'],
         progress: 100,
     },
     {
-        id: "2",
-        title: "Design landing page",
-        description: "Create a modern, responsive landing page",
-        status: "in-progress",
-        priority: "medium",
+        id: '2',
+        title: 'Design landing page',
+        description: 'Create a modern, responsive landing page',
+        status: 'in-progress',
+        priority: 'medium',
         assignee: {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '2',
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-20",
-        project: "Project Alpha",
-        tags: ["design", "frontend"],
+        dueDate: '2024-02-20',
+        project: 'Project Alpha',
+        tags: ['design', 'frontend'],
         progress: 65,
     },
     {
-        id: "3",
-        title: "Database optimization",
-        description: "Optimize database queries and add proper indexing",
-        status: "todo",
-        priority: "low",
+        id: '3',
+        title: 'Database optimization',
+        description: 'Optimize database queries and add proper indexing',
+        status: 'todo',
+        priority: 'low',
         assignee: {
-            id: "3",
-            name: "Mike Johnson",
-            email: "mike@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '3',
+            name: 'Mike Johnson',
+            email: 'mike@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-25",
-        project: "Project Alpha",
-        tags: ["database", "performance"],
+        dueDate: '2024-02-25',
+        project: 'Project Alpha',
+        tags: ['database', 'performance'],
         progress: 0,
     },
 ];
 
 const notes = [
     {
-        id: "1",
-        title: "Project Ideas",
-        content: "- Focus on user experience\n- Implement dark mode\n- Add real-time notifications\n- Optimize for mobile",
-        color: "bg-amber-50 dark:bg-amber-950/50",
-        createdAt: "2024-02-15T12:00:00",
-        updatedAt: "2024-02-15T14:30:00",
+        id: '1',
+        title: 'Project Ideas',
+        content: '- Focus on user experience\n- Implement dark mode\n- Add real-time notifications\n- Optimize for mobile',
+        color: 'bg-amber-50 dark:bg-amber-950/50',
+        createdAt: '2024-02-15T12:00:00',
+        updatedAt: '2024-02-15T14:30:00',
     },
     {
-        id: "2",
-        title: "Meeting Notes: Client Call",
-        content: "- Client wants to emphasize performance\n- Budget concerns for Q1\n- Need to prepare timeline by Friday\n- Follow up with design team",
-        color: "bg-emerald-50 dark:bg-emerald-950/50",
-        createdAt: "2024-02-12T09:00:00",
-        updatedAt: "2024-02-12T10:15:00",
+        id: '2',
+        title: 'Meeting Notes: Client Call',
+        content:
+            '- Client wants to emphasize performance\n- Budget concerns for Q1\n- Need to prepare timeline by Friday\n- Follow up with design team',
+        color: 'bg-emerald-50 dark:bg-emerald-950/50',
+        createdAt: '2024-02-12T09:00:00',
+        updatedAt: '2024-02-12T10:15:00',
     },
 ];
 
 const messages = [
     {
-        id: "1",
+        id: '1',
         user: {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '1',
+            name: 'John Doe',
+            email: 'john@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
         content: "Hey team, I've completed the authentication system",
-        timestamp: "2024-02-15T09:32:00",
+        timestamp: '2024-02-15T09:32:00',
     },
     {
-        id: "2",
+        id: '2',
         user: {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '2',
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
         content: "Great work! I'm working on the landing page design",
-        timestamp: "2024-02-15T10:15:00",
+        timestamp: '2024-02-15T10:15:00',
     },
     {
-        id: "3",
+        id: '3',
         user: {
-            id: "3",
-            name: "Mike Johnson",
-            email: "mike@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '3',
+            name: 'Mike Johnson',
+            email: 'mike@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        content: "Let me know if you need any help with the database optimization",
-        timestamp: "2024-02-15T10:45:00",
+        content: 'Let me know if you need any help with the database optimization',
+        timestamp: '2024-02-15T10:45:00',
     },
 ];
 
 const files = [
     {
-        id: "1",
-        name: "Project Design System.fig",
-        type: "fig",
-        size: "3.8 MB",
-        date: "15 FEB 2024",
+        id: '1',
+        name: 'Project Design System.fig',
+        type: 'fig',
+        size: '3.8 MB',
+        date: '15 FEB 2024',
         uploadedBy: {
-            id: "2",
-            name: "Jane Smith",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '2',
+            name: 'Jane Smith',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        modified: "2024-02-15",
+        modified: '2024-02-15',
     },
     {
-        id: "2",
-        name: "Project Requirements.pdf",
-        type: "pdf",
-        size: "1.9 KB",
-        date: "12 FEB 2024",
+        id: '2',
+        name: 'Project Requirements.pdf',
+        type: 'pdf',
+        size: '1.9 KB',
+        date: '12 FEB 2024',
         uploadedBy: {
-            id: "1",
-            name: "John Doe",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '1',
+            name: 'John Doe',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        modified: "2024-02-12",
+        modified: '2024-02-12',
     },
 ];
 
 const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState('overview');
     const [chatMessages, setChatMessages] = useState(messages);
 
     const todaysTasks = useMemo(() => {
         const today = new Date();
-        return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
+        return tasks.filter((task) => task.due_date && isToday(parseISO(task.due_date)));
     }, [tasks]);
 
     // Collect all task attachments
     const allTaskAttachments = useMemo(() => {
         const taskAttachments = [];
-        tasks.forEach(task => {
+        tasks.forEach((task) => {
             if (task.attachments && Array.isArray(task.attachments)) {
-                task.attachments.forEach(attachment => {
+                task.attachments.forEach((attachment) => {
                     taskAttachments.push({
                         ...attachment,
                         task_id: task.id,
-                        task_title: task.title
+                        task_title: task.title,
                     });
                 });
             }
@@ -221,7 +221,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
         });
 
         // Task-related activities
-        tasks.forEach(task => {
+        tasks.forEach((task) => {
             // Task creation
             activities.push({
                 id: `task-created-${task.id}`,
@@ -247,7 +247,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
             }
 
             // Task comments
-            (task.comments || []).forEach(comment => {
+            (task.comments || []).forEach((comment) => {
                 activities.push({
                     id: `task-comment-${comment.id}`,
                     type: 'task_comment',
@@ -261,7 +261,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
         });
 
         // Project notes
-        (project.notes || []).forEach(note => {
+        (project.notes || []).forEach((note) => {
             activities.push({
                 id: `note-created-${note.id}`,
                 type: 'note_creation',
@@ -281,10 +281,10 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
         const newMessage = {
             id: chatMessages.length + 1,
             user: {
-                id: "current-user",
-                name: "You",
-                email: "you@example.com",
-                avatar: "/placeholder.svg?height=40&width=40",
+                id: 'current-user',
+                name: 'You',
+                email: 'you@example.com',
+                avatar: '/placeholder.svg?height=40&width=40',
             },
             content: message,
             timestamp: new Date().toISOString(),
@@ -295,25 +295,21 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
     return (
         <AppLayout>
             <Head title={`${project.name} - Project Details`} />
-            <div className="flex flex-col min-h-screen">
+            <div className="flex min-h-screen flex-col">
                 {/* Project Header with Banner */}
-                <ProjectHeader
-                    project={project}
-                    teamMembers={teamMembers}
-                    tasks={tasks}
-                />
+                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} />
 
                 {/* Main Content with Sidebar */}
-                <div className="flex flex-col lg:flex-row flex-1">
+                <div className="flex flex-1 flex-col lg:flex-row">
                     {/* Main Content */}
-                    <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
+                    <div className="mx-auto w-full max-w-[1200px] flex-1 p-6">
                         {/* Calendar Section */}
-                        <Calendar events={events} /> 
+                        <Calendar events={events} />
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
                             <Tabs defaultValue="overview" onValueChange={setActiveTab} value={activeTab}>
-                                <TabsList className="grid grid-cols-6 w-full">
+                                <TabsList className="grid w-full grid-cols-6">
                                     <TabsTrigger value="overview">Overview</TabsTrigger>
                                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                                     <TabsTrigger value="files">Attachments</TabsTrigger>
@@ -322,36 +318,24 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                     <TabsTrigger value="team">Team</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
                                         Activity
-                                        {recentActivities.filter(a => !a.read).length > 0 && (
+                                        {recentActivities.filter((a) => !a.read).length > 0 && (
                                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] text-primary-foreground">
-                                                {recentActivities.filter(a => !a.read).length}
+                                                {recentActivities.filter((a) => !a.read).length}
                                             </span>
                                         )}
                                     </TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="overview" className="mt-6">
-                                    <Overview
-                                        project={project}
-                                        teamMembers={teamMembers}
-                                        tasks={tasks}
-                                    />
+                                    <Overview project={project} teamMembers={teamMembers} tasks={tasks} />
                                 </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
-                                    <Tasks
-                                        tasks={tasks}
-                                        teamMembers={teamMembers}
-                                        projectId={project.id}
-                                    />
+                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} />
                                 </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
-                                    <Files 
-                                        projectAttachments={attachments} 
-                                        taskAttachments={allTaskAttachments}
-                                        projectId={project.id}
-                                    />
+                                    <Files projectAttachments={attachments} taskAttachments={allTaskAttachments} projectId={project.id} />
                                 </TabsContent>
 
                                 {/* <TabsContent value="attachments" className="mt-6">
@@ -378,10 +362,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                 </div>
 
                 {/* Floating Chat */}
-                <Chat
-                    messages={chatMessages}
-                    onSendMessage={handleSendMessage}
-                />
+                <Chat messages={chatMessages} onSendMessage={handleSendMessage} />
             </div>
         </AppLayout>
     );

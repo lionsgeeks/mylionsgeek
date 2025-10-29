@@ -1,46 +1,25 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
-import { 
-    Search, 
-    Plus, 
-    MoreHorizontal, 
-    Edit, 
-    Trash, 
-    Mail, 
-    CheckCircle,
-    Clock,
-    AlertCircle,
-    Calendar,
-    User,
-    Pin,
-    PinOff,
-    Users,
-    Tag,
-    FileText,
-    MessageSquare,
-    Paperclip,
-    Eye
-} from 'lucide-react';
-import { useForm, router, usePage } from '@inertiajs/react';
-import TaskModal from '../components/TaskModal';
-import FlashMessage from '@/components/FlashMessage';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import FlashMessage from '@/components/FlashMessage';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { AlertCircle, CheckCircle, Clock, Edit, Eye, MessageSquare, MoreHorizontal, Pin, PinOff, Plus, Search, Tag, Trash } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import TaskModal from '../components/TaskModal';
 
 // Helper to calculate overall task progress
 const getTaskOverallProgress = (task) => {
     if (task.subtasks && task.subtasks.length > 0) {
-        const completedSubtasks = task.subtasks.filter(subtask => subtask.completed).length;
+        const completedSubtasks = task.subtasks.filter((subtask) => subtask.completed).length;
         return Math.round((completedSubtasks / task.subtasks.length) * 100);
     } else if (task.status === 'completed') {
         return 100;
@@ -55,9 +34,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const safeTeamMembers = teamMembers || [];
     const [searchTerm, setSearchTerm] = useState('');
     const [taskFilter, setTaskFilter] = useState({
-        status: "all",
-        priority: "all",
-        assignee: "all",
+        status: 'all',
+        priority: 'all',
+        assignee: 'all',
     });
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isTaskDetailModalOpen, setIsTaskDetailModalOpen] = useState(false);
@@ -68,10 +47,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [taskToDelete, setTaskToDelete] = useState(null);
     const [sortCriteria, setSortCriteria] = useState('due_date'); // 'due_date', 'priority', 'status'
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
-    
+
     // Get flash messages from Inertia
     const { flash } = usePage().props;
-    
+
     // Handle flash messages
     useEffect(() => {
         if (flash?.success) {
@@ -80,9 +59,14 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             setFlashMessage({ message: flash.error, type: 'error' });
         }
     }, [flash]);
-    
+
     // Form for creating tasks
-    const { data: taskData, setData: setTaskData, post: createTask, processing: isCreating } = useForm({
+    const {
+        data: taskData,
+        setData: setTaskData,
+        post: createTask,
+        processing: isCreating,
+    } = useForm({
         title: '',
         description: '',
         priority: 'medium',
@@ -91,19 +75,22 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
         due_date: '',
         tags: [],
         progress: 0,
-        project_id: projectId
+        project_id: projectId,
     });
 
     const filteredTasks = useMemo(() => {
         let filtered = safeTasks.filter((task) => {
-            if (searchTerm && !(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) && 
-                !(task.description || '').toLowerCase().includes(searchTerm.toLowerCase())) {
+            if (
+                searchTerm &&
+                !(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) &&
+                !(task.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+            ) {
                 return false;
             }
-            if (taskFilter.status !== "all" && task.status !== taskFilter.status) return false;
-            if (taskFilter.priority !== "all" && task.priority !== taskFilter.priority) return false;
-            if (taskFilter.assignee !== "all") {
-                const hasAssignee = task.assignees?.some(assignee => assignee.id === taskFilter.assignee);
+            if (taskFilter.status !== 'all' && task.status !== taskFilter.status) return false;
+            if (taskFilter.priority !== 'all' && task.priority !== taskFilter.priority) return false;
+            if (taskFilter.assignee !== 'all') {
+                const hasAssignee = task.assignees?.some((assignee) => assignee.id === taskFilter.assignee);
                 if (!hasAssignee) return false;
             }
             return true;
@@ -135,13 +122,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
 
     const handleCreateTask = (e) => {
         e.preventDefault();
-        
+
         // Ensure project_id is included in the data
         const taskDataWithProject = {
             ...taskData,
-            project_id: projectId
+            project_id: projectId,
         };
-        
+
         console.log(taskDataWithProject);
         createTask('/admin/tasks', taskDataWithProject, {
             data: taskDataWithProject,
@@ -154,17 +141,17 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     assignees: [],
                     due_date: '',
                     tags: [],
-                    progress: 0
+                    progress: 0,
                 });
                 setIsCreateModalOpen(false);
             },
             onError: (errors) => {
                 console.error('Task creation errors:', errors);
-                setFlashMessage({ 
-                    message: 'Failed to create task: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to create task: ' + Object.values(errors).flat().join(', '),
+                    type: 'error',
                 });
-            }
+            },
         });
     };
 
@@ -186,35 +173,39 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 setFlashMessage({ message: 'Task updated successfully!', type: 'success' });
             },
             onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to update task: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to update task: ' + Object.values(errors).flat().join(', '),
+                    type: 'error',
                 });
-            }
+            },
         });
     };
 
     const handleMention = (member) => {
         if (member?.name) {
-            setNewComment(prev => prev + `@${member.name} `);
+            setNewComment((prev) => prev + `@${member.name} `);
         }
     };
 
     const handleTogglePin = (task) => {
-        router.post(`/admin/tasks/${task.id}/pin`, {}, {
-            onSuccess: () => {
-                setFlashMessage({ 
-                    message: task.is_pinned ? 'Task unpinned successfully!' : 'Task pinned successfully!', 
-                    type: 'success' 
-                });
+        router.post(
+            `/admin/tasks/${task.id}/pin`,
+            {},
+            {
+                onSuccess: () => {
+                    setFlashMessage({
+                        message: task.is_pinned ? 'Task unpinned successfully!' : 'Task pinned successfully!',
+                        type: 'success',
+                    });
+                },
+                onError: (errors) => {
+                    setFlashMessage({
+                        message: 'Failed to toggle pin: ' + Object.values(errors).flat().join(', '),
+                        type: 'error',
+                    });
+                },
             },
-            onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to toggle pin: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
-                });
-            }
-        });
+        );
     };
 
     const handleDeleteTask = (task) => {
@@ -231,60 +222,64 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     setTaskToDelete(null);
                 },
                 onError: (errors) => {
-                    setFlashMessage({ 
-                        message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '), 
-                        type: 'error' 
+                    setFlashMessage({
+                        message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '),
+                        type: 'error',
                     });
                     setIsConfirmDeleteModalOpen(false);
                     setTaskToDelete(null);
-                }
+                },
             });
         }
     };
 
     const handleUpdateStatus = (task, newStatus) => {
-        router.patch(`/admin/tasks/${task.id}/status`, { status: newStatus }, {
-            onSuccess: () => {
-                setFlashMessage({ message: 'Task status updated successfully!', type: 'success' });
+        router.patch(
+            `/admin/tasks/${task.id}/status`,
+            { status: newStatus },
+            {
+                onSuccess: () => {
+                    setFlashMessage({ message: 'Task status updated successfully!', type: 'success' });
+                },
+                onError: (errors) => {
+                    setFlashMessage({
+                        message: 'Failed to update status: ' + Object.values(errors).flat().join(', '),
+                        type: 'error',
+                    });
+                },
             },
-            onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to update status: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
-                });
-            }
-        });
+        );
     };
 
     const getStatusBadge = (status) => {
         const statusConfig = {
-            completed: { color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300", icon: CheckCircle },
-            "in-progress": { color: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300", icon: Clock },
-            todo: { color: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", icon: AlertCircle }
+            completed: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', icon: CheckCircle },
+            'in-progress': { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            todo: { color: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: AlertCircle },
         };
-        
+
         const safeStatus = status || 'todo';
         const config = statusConfig[safeStatus] || statusConfig.todo;
         const Icon = config.icon;
-        
+
         return (
-            <Badge variant="outline" className={`${config.color} border-none flex items-center gap-1`}>
+            <Badge variant="outline" className={`${config.color} flex items-center gap-1 border-none`}>
                 <Icon className="h-3 w-3" />
-                {safeStatus === "in-progress" ? "In Progress" : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
+                {safeStatus === 'in-progress' ? 'In Progress' : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
             </Badge>
         );
     };
 
     const getPriorityBadge = (priority) => {
         const priorityConfig = {
-            high: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-            medium: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-            low: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
+            high: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+            medium: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+            low: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300',
         };
-        
+
         const safePriority = priority || 'medium';
         const colorClass = priorityConfig[safePriority] || priorityConfig.medium;
-        
+
         return (
             <Badge variant="outline" className={`${colorClass} border-none`}>
                 {safePriority.charAt(0).toUpperCase() + safePriority.slice(1)}
@@ -295,23 +290,17 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     return (
         <div className="space-y-6">
             {/* Flash Messages */}
-            {flashMessage && (
-                <FlashMessage
-                    message={flashMessage.message}
-                    type={flashMessage.type}
-                    onClose={() => setFlashMessage(null)}
-                />
-            )}
-            
+            {flashMessage && <FlashMessage message={flashMessage.message} type={flashMessage.type} onClose={() => setFlashMessage(null)} />}
+
             {/* Header and Filters */}
-            <div className="flex flex-col md:flex-row justify-between  items-center gap-2">
-                <div className="flex items-center rounded-lg bg-neutral-200 dark:bg-neutral-800 gap-2">
+            <div className="flex flex-col items-center justify-between gap-2 md:flex-row">
+                <div className="flex items-center gap-2 rounded-lg bg-neutral-200 dark:bg-neutral-800">
                     <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search tasks..." 
-                            className="pl-8 w-[200px] md:w-[300px]"
+                        <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search tasks..."
+                            className="w-[200px] pl-8 md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -319,10 +308,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                        value={taskFilter.status}
-                        onValueChange={(value) => setTaskFilter({ ...taskFilter, status: value })}
-                    >
+                    <Select value={taskFilter.status} onValueChange={(value) => setTaskFilter({ ...taskFilter, status: value })}>
                         <SelectTrigger className="w-[130px]">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
@@ -334,10 +320,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select>
 
-                    <Select
-                        value={taskFilter.priority}
-                        onValueChange={(value) => setTaskFilter({ ...taskFilter, priority: value })}
-                    >
+                    <Select value={taskFilter.priority} onValueChange={(value) => setTaskFilter({ ...taskFilter, priority: value })}>
                         <SelectTrigger className="w-[130px]">
                             <SelectValue placeholder="Priority" />
                         </SelectTrigger>
@@ -349,10 +332,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select>
 
-                    <Select
-                        value={taskFilter.assignee}
-                        onValueChange={(value) => setTaskFilter({ ...taskFilter, assignee: value })}
-                    >
+                    <Select value={taskFilter.assignee} onValueChange={(value) => setTaskFilter({ ...taskFilter, assignee: value })}>
                         <SelectTrigger className="w-[130px]">
                             <SelectValue placeholder="Assignee" />
                         </SelectTrigger>
@@ -366,10 +346,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select>
 
-                    <Select
-                        value={sortCriteria}
-                        onValueChange={setSortCriteria}
-                    >
+                    <Select value={sortCriteria} onValueChange={setSortCriteria}>
                         <SelectTrigger className="w-[130px]">
                             <SelectValue placeholder="Sort By" />
                         </SelectTrigger>
@@ -391,12 +368,11 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             <SelectItem value="desc">Descending</SelectItem>
                         </SelectContent>
                     </Select> */}
-
                 </div>
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Task
-                    </Button>
+                <Button onClick={() => setIsCreateModalOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Task
+                </Button>
             </div>
 
             {/* Tasks Table */}
@@ -416,29 +392,29 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     <TableBody>
                         {filteredTasks.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                                     No tasks match your filters
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredTasks.map((task) => (
-                                <TableRow 
-                                    key={task.id} 
+                                <TableRow
+                                    key={task.id}
                                     className={`cursor-pointer hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
                                     onClick={() => handleTaskClick(task)}
                                 >
                                     <TableCell className="w-[300px]">
-                                        <div className='py-2'>
+                                        <div className="py-2">
                                             <div className="flex items-center gap-2">
                                                 {task.is_pinned && <Pin className="h-4 w-4 text-yellow-600" />}
                                                 <div className="font-medium">{task.title || 'Untitled Task'}</div>
                                             </div>
-                                            <div className="text-sm text-muted-foreground  truncate w-50">{task.description || 'No description'}</div>
+                                            <div className="w-50 truncate text-sm text-muted-foreground">{task.description || 'No description'}</div>
                                             {task.tags && task.tags.length > 0 && (
-                                                <div className="flex gap-1 mt-1">
+                                                <div className="mt-1 flex gap-1">
                                                     {task.tags.map((tag, index) => (
                                                         <Badge key={index} variant="outline" className="text-xs">
-                                                            <Tag className="h-3 w-3 mr-1" />
+                                                            <Tag className="mr-1 h-3 w-3" />
                                                             {tag}
                                                         </Badge>
                                                     ))}
@@ -446,12 +422,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        {getStatusBadge(task.status)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {getPriorityBadge(task.priority)}
-                                    </TableCell>
+                                    <TableCell>{getStatusBadge(task.status)}</TableCell>
+                                    <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1">
                                             {task.assignees && task.assignees.length > 0 ? (
@@ -459,7 +431,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                     <div className="flex -space-x-1">
                                                         {task.assignees.slice(0, 3).map((assignee) => (
                                                             <Avatar key={assignee.id} className="h-6 w-6 border border-white dark:border-gray-800">
-                                                                <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
+                                                                <AvatarImage
+                                                                    src={assignee.image ? `/storage/${assignee.image}` : null}
+                                                                    alt={assignee.name}
+                                                                />
                                                                 <AvatarFallback className="text-xs">
                                                                     {assignee.name.charAt(0).toUpperCase()}
                                                                 </AvatarFallback>
@@ -467,9 +442,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         ))}
                                                     </div>
                                                     {task.assignees.length > 3 && (
-                                                        <span className="text-xs text-muted-foreground ml-1">
-                                                            +{task.assignees.length - 3}
-                                                        </span>
+                                                        <span className="ml-1 text-xs text-muted-foreground">+{task.assignees.length - 3}</span>
                                                     )}
                                                 </>
                                             ) : (
@@ -479,20 +452,18 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Progress value={getTaskOverallProgress(task)} className="w-16 h-2" />
+                                            <Progress value={getTaskOverallProgress(task)} className="h-2 w-16" />
                                             <span className="text-xs text-muted-foreground">{getTaskOverallProgress(task)}%</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'}
-                                    </TableCell>
+                                    <TableCell>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date'}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         className="h-8 w-8 p-0"
                                                         onClick={(e) => e.stopPropagation()} // Prevent row click
                                                     >
@@ -527,10 +498,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem 
-                                                        className="text-destructive"
-                                                        onClick={() => handleDeleteTask(task)}
-                                                    >
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
                                                         <Trash className="mr-2 h-4 w-4" />
                                                         <span>Delete</span>
                                                     </DropdownMenuItem>
@@ -550,15 +518,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Create New Task</DialogTitle>
-                        <DialogDescription>
-                            Add a new task to your project
-                        </DialogDescription>
+                        <DialogDescription>Add a new task to your project</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreateTask} className="space-y-4">
                         <div>
                             <Label htmlFor="title">Task Title *</Label>
-                            <Input 
-                                id="title" 
+                            <Input
+                                id="title"
                                 value={taskData.title}
                                 onChange={(e) => setTaskData('title', e.target.value)}
                                 placeholder="Enter task title..."
@@ -567,8 +533,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Textarea 
-                                id="description" 
+                            <Textarea
+                                id="description"
                                 value={taskData.description}
                                 onChange={(e) => setTaskData('description', e.target.value)}
                                 placeholder="Enter task description..."
@@ -578,10 +544,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="priority">Priority</Label>
-                                <Select 
-                                    value={taskData.priority} 
-                                    onValueChange={(value) => setTaskData('priority', value)}
-                                >
+                                <Select value={taskData.priority} onValueChange={(value) => setTaskData('priority', value)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -595,10 +558,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             </div>
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select 
-                                    value={taskData.status} 
-                                    onValueChange={(value) => setTaskData('status', value)}
-                                >
+                                <Select value={taskData.status} onValueChange={(value) => setTaskData('status', value)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -613,8 +573,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="assignees">Assignees</Label>
-                            <Select 
-                                value="" 
+                            <Select
+                                value=""
                                 onValueChange={(value) => {
                                     if (value && !taskData.assignees.includes(value)) {
                                         setTaskData('assignees', [...taskData.assignees, value]);
@@ -633,16 +593,21 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                 </SelectContent>
                             </Select>
                             {taskData.assignees.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-2">
+                                <div className="mt-2 flex flex-wrap gap-1">
                                     {taskData.assignees.map((assigneeId) => {
-                                        const member = safeTeamMembers.find(m => m.id === assigneeId);
+                                        const member = safeTeamMembers.find((m) => m.id === assigneeId);
                                         return (
                                             <Badge key={assigneeId} variant="outline" className="flex items-center gap-1">
                                                 {member?.name || 'Unknown'}
                                                 <button
                                                     type="button"
-                                                    onClick={() => setTaskData('assignees', taskData.assignees.filter(id => id !== assigneeId))}
-                                                    className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+                                                    onClick={() =>
+                                                        setTaskData(
+                                                            'assignees',
+                                                            taskData.assignees.filter((id) => id !== assigneeId),
+                                                        )
+                                                    }
+                                                    className="ml-1 rounded-full p-0.5 hover:bg-gray-200"
                                                 >
                                                     ×
                                                 </button>
@@ -654,17 +619,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="due_date">Due Date</Label>
-                            <Input 
-                                id="due_date" 
-                                type="date"
-                                value={taskData.due_date}
-                                onChange={(e) => setTaskData('due_date', e.target.value)}
-                            />
+                            <Input id="due_date" type="date" value={taskData.due_date} onChange={(e) => setTaskData('due_date', e.target.value)} />
                         </div>
                         <div>
                             <Label htmlFor="notes">Notes</Label>
-                            <Textarea 
-                                id="notes" 
+                            <Textarea
+                                id="notes"
                                 value={taskData.notes}
                                 onChange={(e) => setTaskData('notes', e.target.value)}
                                 placeholder="Add any additional notes..."

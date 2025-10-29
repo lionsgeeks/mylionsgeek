@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReservationsController;
+use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
     Route::post('/reservations/{reservation}/approve', [ReservationsController::class, 'approve'])
@@ -40,14 +40,12 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
         ->name('admin.reservations.cowork.cancel');
 
     Route::post('/reservations/storeReservationMeetingRoom', [ReservationsController::class, 'storeReservationMeetingRoom'])
-    ->name('admin.reservations.storeReservationMeetingRoom');
+        ->name('admin.reservations.storeReservationMeetingRoom');
 
     Route::post('/reservations/meeting-room/{id}/cancel', [ReservationsController::class, 'cancelMeetingRoom'])
-    ->name('admin.reservations.meetingRoom.cancel');
-
+        ->name('admin.reservations.meetingRoom.cancel');
 
 });
-
 
 // Public route for material verification (no auth required for email links)
 Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
@@ -58,7 +56,7 @@ Route::get('/reservations/{reservation}/download-report', [ReservationsControlle
     ->name('reservations.download-report');
 
 // Test PDF route
-Route::get('/test-pdf', function() {
+Route::get('/test-pdf', function () {
     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.verification_report_simple', [
         'reservation' => [
             'id' => 1,
@@ -66,7 +64,7 @@ Route::get('/test-pdf', function() {
             'day' => '2025-10-27',
             'start' => '10:00',
             'end' => '11:00',
-            'user_name' => 'Test User'
+            'user_name' => 'Test User',
         ],
         'verificationData' => [
             'equipments' => [
@@ -77,15 +75,12 @@ Route::get('/test-pdf', function() {
                     'type_name' => 'Test Type',
                     'goodCondition' => true,
                     'badCondition' => false,
-                    'notReturned' => false
-                ]
+                    'notReturned' => false,
+                ],
             ],
-            'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.'
-        ]
+            'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.',
+        ],
     ])->setPaper('a4', 'portrait');
 
     return $pdf->download('test_verification_report.pdf');
 });
-
-
-

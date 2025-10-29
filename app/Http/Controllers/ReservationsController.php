@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Auth;
+use App\Mail\ReservationApprovedMail;
+use App\Mail\ReservationCanceledMail;
+use App\Mail\ReservationCreatedAdminMail;
 use App\Models\Equipment;
 use App\Models\Reservation;
 use App\Models\ReservationCowork;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Mail;
-use Inertia\Inertia;
-use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Mail\ReservationApprovedMail;
-use App\Mail\ReservationCanceledMail;
-use App\Mail\ReservationCreatedAdminMail;
 
 class ReservationsController extends Controller
 {
@@ -63,8 +63,8 @@ class ReservationsController extends Controller
             foreach ($rows as $row) {
                 $img = isset($row->image) ? $row->image : null;
                 if ($img) {
-                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/'.ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
@@ -86,14 +86,14 @@ class ReservationsController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
                 ->select('rt.reservation_id', 'u.id as user_id', 'u.name');
             if ($userImageColumn) {
-                $memberQuery->addSelect('u.' . $userImageColumn . ' as image');
+                $memberQuery->addSelect('u.'.$userImageColumn.' as image');
             }
             $members = $memberQuery->get();
             foreach ($members as $m) {
                 $uimg = isset($m->image) ? $m->image : null;
                 if ($uimg) {
-                    if (!Str::startsWith($uimg, ['http://', 'https://', 'storage/'])) {
-                        $uimg = 'storage/img/profile/' . ltrim($uimg, '/');
+                    if (! Str::startsWith($uimg, ['http://', 'https://', 'storage/'])) {
+                        $uimg = 'storage/img/profile/'.ltrim($uimg, '/');
                     }
                     $uimg = asset($uimg);
                 }
@@ -122,6 +122,7 @@ class ReservationsController extends Controller
         $enriched = $reservations->map(function ($r) use ($placeByReservation, $equipmentsByReservation, $teamsByReservation) {
             $place = $placeByReservation[$r->id] ?? null;
             $team = $teamsByReservation[$r->id] ?? null;
+
             return [
                 'id' => $r->id,
                 'user_name' => $r->user_name,
@@ -145,11 +146,12 @@ class ReservationsController extends Controller
         });
 
         // Attach studio_name for studio reservations
-        if (!empty($studioByReservation)) {
+        if (! empty($studioByReservation)) {
             $enriched = $enriched->map(function ($row) use ($studioByReservation) {
                 if (($row['type'] ?? null) === 'studio') {
                     $row['studio_name'] = $studioByReservation[$row['id']] ?? null;
                 }
+
                 return $row;
             });
         }
@@ -204,19 +206,19 @@ class ReservationsController extends Controller
 
     public function approve(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
+        if (! Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
 
         // Get the reservation details before updating
         $reservationData = DB::table('reservations')->where('id', $reservation)->first();
-        if (!$reservationData) {
+        if (! $reservationData) {
             return back()->with('error', 'Reservation not found');
         }
 
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -230,10 +232,10 @@ class ReservationsController extends Controller
 
         // Send approval email
         try {
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
-            \Log::error('Failed to send approval email: ' . $e->getMessage());
+            \Log::error('Failed to send approval email: '.$e->getMessage());
         }
 
         // Log equipment usage to activity_log (one row per equipment) on approval
@@ -248,11 +250,10 @@ class ReservationsController extends Controller
                     foreach ($equipmentLinks as $link) {
                         $day = $link->day ?? ($reservationData->day ?? null);
                         $startTime = $link->start ?? ($reservationData->start ?? null);
-                        $endTime  = $link->end ?? ($reservationData->end ?? null);
+                        $endTime = $link->end ?? ($reservationData->end ?? null);
 
-                        
-                        $startDate = (string) ($day ?? ''). ' ' . ($startTime ?? '');
-                        $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
+                        $startDate = (string) ($day ?? '').' '.($startTime ?? '');
+                        $endDate = (string) ($day ?? '').' '.($endTime ?? '');
                         $properties = json_encode([
                             'start' => $startDate,
                             'end' => $endDate,
@@ -270,7 +271,7 @@ class ReservationsController extends Controller
                             ->where('properties', $properties)
                             ->exists();
 
-                        if (!$exists) {
+                        if (! $exists) {
                             $rowsToInsert[] = [
                                 'log_name' => 'equipment',
                                 'description' => 'equipment history',
@@ -286,13 +287,13 @@ class ReservationsController extends Controller
                         }
                     }
 
-                    if (!empty($rowsToInsert)) {
+                    if (! empty($rowsToInsert)) {
                         DB::table('activity_log')->insert($rowsToInsert);
                     }
                 }
             }
         } catch (\Throwable $e) {
-            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
+            \Log::error('Failed to write equipment approval activity logs: '.$e->getMessage());
         }
 
         return back()->with('success', 'Reservation approved');
@@ -300,19 +301,19 @@ class ReservationsController extends Controller
 
     public function cancel(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
+        if (! Schema::hasTable('reservations')) {
             return back()->with('error', 'Reservations table missing');
         }
 
         // Get the reservation details before updating
         $reservationData = DB::table('reservations')->where('id', $reservation)->first();
-        if (!$reservationData) {
+        if (! $reservationData) {
             return back()->with('error', 'Reservation not found');
         }
 
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -325,10 +326,10 @@ class ReservationsController extends Controller
 
         // Send cancellation email
         try {
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationData));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationCanceledMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
-            \Log::error('Failed to send cancellation email: ' . $e->getMessage());
+            \Log::error('Failed to send cancellation email: '.$e->getMessage());
         }
 
         return back()->with('success', 'Reservation canceled');
@@ -359,7 +360,7 @@ class ReservationsController extends Controller
                         ->where('tu.team_id', $team->team_id)
                         ->select('u.id as user_id', 'u.name');
                     if ($userImageColumn) {
-                        $q->addSelect('u.' . $userImageColumn . ' as image');
+                        $q->addSelect('u.'.$userImageColumn.' as image');
                     }
                     $members = $q->get()->map(function ($u) {
                         return [
@@ -379,16 +380,17 @@ class ReservationsController extends Controller
                 ->where('rt.reservation_id', $reservation)
                 ->select('u.id as user_id', 'u.name');
             if ($userImageColumn) {
-                $q->addSelect('u.' . $userImageColumn . ' as image');
+                $q->addSelect('u.'.$userImageColumn.' as image');
             }
             $members = $q->get()->map(function ($u) {
                 $img = isset($u->image) ? $u->image : null;
                 if ($img) {
-                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/profile/' . ltrim($img, '/');
+                    if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/profile/'.ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
+
                 return [
                     'id' => $u->user_id,
                     'name' => $u->name,
@@ -411,11 +413,12 @@ class ReservationsController extends Controller
             $result['equipments'] = $eq->get()->map(function ($e) {
                 $img = isset($e->image) ? $e->image : null;
                 if ($img) {
-                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/'.ltrim($img, '/');
                     }
                     $img = asset($img);
                 }
+
                 return [
                     'id' => $e->equipment_id,
                     'reference' => $e->reference,
@@ -437,12 +440,12 @@ class ReservationsController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
                 ->where('r.studio_id', $id)
                 ->select(
-                    'r.id', 
-                    'r.day as start', 
-                    'r.start as startTime', 
-                    'r.end as endTime', 
-                    'r.title', 
-                    'r.approved', 
+                    'r.id',
+                    'r.day as start',
+                    'r.start as startTime',
+                    'r.end as endTime',
+                    'r.title',
+                    'r.approved',
                     'r.canceled',
                     'u.name as user_name'
                 )
@@ -450,9 +453,9 @@ class ReservationsController extends Controller
                 ->map(function ($r) {
                     return [
                         'id' => $r->id,
-                        'title' => $r->title . ' — ' . $r->user_name,
-                        'start' => $r->start . 'T' . $r->startTime,
-                        'end' => $r->start . 'T' . $r->endTime,
+                        'title' => $r->title.' — '.$r->user_name,
+                        'start' => $r->start.'T'.$r->startTime,
+                        'end' => $r->start.'T'.$r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                     ];
                 });
@@ -464,11 +467,11 @@ class ReservationsController extends Controller
                 ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
                 ->where('rc.table', $id)
                 ->select(
-                    'rc.id', 
-                    'rc.day as start', 
-                    'rc.start as startTime', 
-                    'rc.end as endTime', 
-                    'rc.approved', 
+                    'rc.id',
+                    'rc.day as start',
+                    'rc.start as startTime',
+                    'rc.end as endTime',
+                    'rc.approved',
                     'rc.canceled',
                     'u.name as user_name',
                     'c.table as table_number'
@@ -477,9 +480,9 @@ class ReservationsController extends Controller
                 ->map(function ($r) {
                     return [
                         'id' => $r->id,
-                        'title' => 'Table ' . $r->table_number . ' — ' . $r->user_name,
-                        'start' => $r->start . 'T' . $r->startTime,
-                        'end' => $r->start . 'T' . $r->endTime,
+                        'title' => 'Table '.$r->table_number.' — '.$r->user_name,
+                        'start' => $r->start.'T'.$r->startTime,
+                        'end' => $r->start.'T'.$r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                     ];
                 });
@@ -490,11 +493,11 @@ class ReservationsController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
                 ->where('rmr.meeting_room_id', $id)
                 ->select(
-                    'rmr.id', 
-                    'rmr.day as start', 
-                    'rmr.start as startTime', 
-                    'rmr.end as endTime', 
-                    'rmr.approved', 
+                    'rmr.id',
+                    'rmr.day as start',
+                    'rmr.start as startTime',
+                    'rmr.end as endTime',
+                    'rmr.approved',
                     'rmr.canceled',
                     'u.name as user_name'
                 )
@@ -502,9 +505,9 @@ class ReservationsController extends Controller
                 ->map(function ($r) {
                     return [
                         'id' => $r->id,
-                        'title' => 'Meeting Room — ' . $r->user_name,
-                        'start' => $r->start . 'T' . $r->startTime,
-                        'end' => $r->start . 'T' . $r->endTime,
+                        'title' => 'Meeting Room — '.$r->user_name,
+                        'start' => $r->start.'T'.$r->startTime,
+                        'end' => $r->start.'T'.$r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                     ];
                 });
@@ -523,9 +526,10 @@ class ReservationsController extends Controller
             ->get()
             ->map(function ($user) {
                 $img = $user->image;
-                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                    $img = 'storage/img/profile/' . ltrim($img, '/');
+                if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                    $img = 'storage/img/profile/'.ltrim($img, '/');
                 }
+
                 return [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -547,9 +551,10 @@ class ReservationsController extends Controller
             ->get()
             ->map(function ($e) {
                 $img = $e->image;
-                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                    $img = 'storage/img/equipment/' . ltrim($img, '/');
+                if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                    $img = 'storage/img/equipment/'.ltrim($img, '/');
                 }
+
                 return [
                     'id' => $e->id,
                     'reference' => $e->reference,
@@ -569,7 +574,7 @@ class ReservationsController extends Controller
     {
         try {
             $reservationData = $this->getReservationDetails($reservation);
-            if (!$reservationData) {
+            if (! $reservationData) {
                 return response()->json(['error' => 'Reservation not found'], 404);
             }
 
@@ -594,7 +599,7 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name')
             ->first();
 
-        if (!$reservation) {
+        if (! $reservation) {
             return null;
         }
 
@@ -700,7 +705,7 @@ class ReservationsController extends Controller
                 ]);
 
                 // Insert team members
-                if (!empty($validated['team_members'])) {
+                if (! empty($validated['team_members'])) {
                     $teamData = array_map(function ($userId) use ($reservationId) {
                         return [
                             'reservation_id' => $reservationId,
@@ -714,7 +719,7 @@ class ReservationsController extends Controller
                 }
 
                 // Insert equipment
-                if (!empty($validated['equipment'])) {
+                if (! empty($validated['equipment'])) {
                     $equipmentData = array_map(function ($equipmentId) use ($validated, $reservationId) {
                         return [
                             'reservation_id' => $reservationId,
@@ -733,7 +738,7 @@ class ReservationsController extends Controller
 
             // Send admin notification email (outside transaction)
             try {
-                \Log::info('Starting admin notification email process for reservation ID: ' . $reservationId);
+                \Log::info('Starting admin notification email process for reservation ID: '.$reservationId);
 
                 // Get admin users
                 $adminUsers = DB::table('users')
@@ -741,7 +746,7 @@ class ReservationsController extends Controller
                     ->select('email', 'name')
                     ->get();
 
-                \Log::info('Admin users found: ' . $adminUsers->count());
+                \Log::info('Admin users found: '.$adminUsers->count());
 
                 // Get the created reservation data for the email
                 $createdReservation = DB::table('reservations')
@@ -750,32 +755,31 @@ class ReservationsController extends Controller
                     ->select('reservations.*', 'studios.name as studio_name')
                     ->first();
 
-                \Log::info('Reservation data: ' . json_encode($createdReservation));
+                \Log::info('Reservation data: '.json_encode($createdReservation));
 
                 // Get the user who made the reservation
                 $reservationUser = DB::table('users')->where('id', auth()->id())->first();
 
-                \Log::info('User data: ' . json_encode($reservationUser));
+                \Log::info('User data: '.json_encode($reservationUser));
 
                 // Send email to all admin users
                 foreach ($adminUsers as $admin) {
                     \Log::info('Sending email to: boujjarr@gmail.com');
                     // Mail::to($admin->email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    Mail::to("boujjarr@gmail.com")->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                    Mail::to('boujjarr@gmail.com')->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
                     \Log::info('Email sent successfully to: boujjarr@gmail.com');
                 }
             } catch (\Exception $e) {
                 // Log the error but don't fail the reservation creation
-                \Log::error('Failed to send admin notification email: ' . $e->getMessage());
-                \Log::error('Stack trace: ' . $e->getTraceAsString());
+                \Log::error('Failed to send admin notification email: '.$e->getMessage());
+                \Log::error('Stack trace: '.$e->getTraceAsString());
             }
 
             return back()->with('success', 'Reservation created successfully');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to create reservation: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create reservation: '.$e->getMessage());
         }
     }
-
 
     /**
      * Show studio calendar page
@@ -784,7 +788,7 @@ class ReservationsController extends Controller
     {
         $studioData = DB::table('studios')->where('id', $studio)->first();
 
-        if (!$studioData) {
+        if (! $studioData) {
             return redirect()->route('admin.places')->with('error', 'Studio not found');
         }
 
@@ -796,11 +800,12 @@ class ReservationsController extends Controller
             ],
         ]);
     }
+
     public function coworkCalendar(int $cowork)
     {
         $coworkData = DB::table('coworks')->where('id', $cowork)->first();
 
-        if (!$coworkData) {
+        if (! $coworkData) {
             return redirect()->route('admin.places')->with('error', 'Coworks not found');
         }
 
@@ -825,7 +830,7 @@ class ReservationsController extends Controller
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -851,34 +856,33 @@ class ReservationsController extends Controller
                 'start' => $request->start,
                 'end' => $request->end,
                 'description' => "Cowork space reservation ({$request->seats} seats)",
-                'type' => 'cowork'
+                'type' => 'cowork',
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the reservation creation
-            \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
+            \Log::error('Failed to send cowork approval email: '.$e->getMessage());
         }
 
         return back()->with('success', 'Cowork reservation created and approved automatically');
     }
 
-
     public function cancelCowork(int $reservation)
     {
-        if (!Schema::hasTable('reservation_coworks')) {
+        if (! Schema::hasTable('reservation_coworks')) {
             return back()->with('error', 'Reservation coworks table missing');
         }
 
         // Get the cowork reservation details before updating
         $reservationData = DB::table('reservation_coworks')->where('id', $reservation)->first();
-        if (!$reservationData) {
+        if (! $reservationData) {
             return back()->with('error', 'Cowork reservation not found');
         }
 
         // Get the user who made the reservation
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -899,13 +903,13 @@ class ReservationsController extends Controller
                 'start' => $reservationData->start,
                 'end' => $reservationData->end,
                 'description' => 'Cowork space reservation',
-                'type' => 'cowork'
+                'type' => 'cowork',
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
-            \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
+            \Log::error('Failed to send cowork cancellation email: '.$e->getMessage());
         }
 
         return back()->with('success', 'Cowork reservation canceled');
@@ -940,13 +944,13 @@ class ReservationsController extends Controller
                 });
         }
 
-        $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+        $filename = 'reservations_export_'.now()->format('Y-m-d_H-i-s').'.csv';
 
         $response = new StreamedResponse(function () use ($query, $requestedFields, $placeByReservation) {
             $handle = fopen('php://output', 'w');
 
             // Add BOM for Excel UTF-8 compatibility
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             // Use semicolon delimiter for Excel
             fputcsv($handle, $requestedFields, ';');
@@ -964,7 +968,7 @@ class ReservationsController extends Controller
                             $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
                         } elseif ($field === 'created_at' || $field === 'updated_at') {
                             $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
-                        } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                        } elseif ($field === 'date' && empty($reservation->date) && ! empty($reservation->day)) {
                             $value = $reservation->day;
                         } else {
                             $value = $reservation->$field ?? '';
@@ -986,7 +990,7 @@ class ReservationsController extends Controller
         });
 
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        $response->headers->set('Content-Disposition', 'attachment; filename="'.$filename.'"');
 
         return $response;
     }
@@ -1003,7 +1007,7 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name')
             ->first();
 
-        if (!$reservationData) {
+        if (! $reservationData) {
             return redirect()->route('home')->with('error', 'Reservation not found');
         }
 
@@ -1023,9 +1027,10 @@ class ReservationsController extends Controller
                 ->get()
                 ->map(function ($e) {
                     $img = $e->image;
-                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/'.ltrim($img, '/');
                     }
+
                     return [
                         'id' => $e->id,
                         'reference' => $e->reference,
@@ -1091,6 +1096,7 @@ class ReservationsController extends Controller
                         ->get()
                         ->map(function ($e) use ($equipmentStatus) {
                             $status = $equipmentStatus[$e->id] ?? [];
+
                             return [
                                 'id' => $e->id,
                                 'reference' => $e->reference,
@@ -1167,14 +1173,14 @@ class ReservationsController extends Controller
 
                 // Store verification notes if provided
                 if ($request->filled('notes')) {
-                    \Log::info("Reservation {$reservation} verification notes: " . $request->input('notes'));
+                    \Log::info("Reservation {$reservation} verification notes: ".$request->input('notes'));
                 }
             });
 
             // Generate and download PDF
             $pdf = Pdf::loadView('pdf.verification_report_simple', [
                 'reservation' => $verificationData['reservation'],
-                'verificationData' => $verificationData
+                'verificationData' => $verificationData,
             ])
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
@@ -1182,7 +1188,7 @@ class ReservationsController extends Controller
                     'isRemoteEnabled' => true,
                     'defaultFont' => 'Arial',
                     'isPhpEnabled' => true,
-                    'isFontSubsettingEnabled' => true
+                    'isFontSubsettingEnabled' => true,
                 ]);
 
             // Log equipment usage to activity_log on end verification (event = verified_end)
@@ -1200,9 +1206,8 @@ class ReservationsController extends Controller
                             $startTime = $link->start ?? ($reservationDataForLog->start ?? null);
                             $endTime = $link->end ?? ($reservationDataForLog->end ?? null);
 
-                            
-                            $startDate = (string) ($day ?? '') . ' ' . ($startTime ?? '');
-                            $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
+                            $startDate = (string) ($day ?? '').' '.($startTime ?? '');
+                            $endDate = (string) ($day ?? '').' '.($endTime ?? '');
 
                             $properties = json_encode([
                                 'start' => $startDate,
@@ -1220,7 +1225,7 @@ class ReservationsController extends Controller
                                 ->where('properties', $properties)
                                 ->exists();
 
-                            if (!$exists) {
+                            if (! $exists) {
                                 $rowsToInsert[] = [
                                     'log_name' => 'equipment',
                                     'description' => 'equipment history',
@@ -1236,13 +1241,13 @@ class ReservationsController extends Controller
                             }
                         }
 
-                        if (!empty($rowsToInsert)) {
+                        if (! empty($rowsToInsert)) {
                             DB::table('activity_log')->insert($rowsToInsert);
                         }
                     }
                 }
             } catch (\Throwable $e) {
-                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
+                \Log::error('Failed to write equipment verified_end activity logs: '.$e->getMessage());
             }
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
@@ -1252,31 +1257,33 @@ class ReservationsController extends Controller
             session(['verification_pdf_data' => [
                 'reservation' => $verificationData['reservation'],
                 'verificationData' => $verificationData,
-                'filename' => $filename
+                'filename' => $filename,
             ]]);
 
             // Store PDF data in session for download
             session(['verification_pdf_data' => [
                 'reservation' => $verificationData['reservation'],
                 'verificationData' => $verificationData,
-                'filename' => $filename
+                'filename' => $filename,
             ]]);
 
             // Check if this is an Inertia request
             if (request()->header('X-Inertia')) {
                 // Return JSON for Inertia requests
                 $downloadUrl = route('reservations.download-report', $reservation);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Verification completed successfully!',
-                    'downloadUrl' => $downloadUrl
+                    'downloadUrl' => $downloadUrl,
                 ]);
             } else {
                 // Redirect directly to download for regular form submissions
                 return redirect()->route('reservations.download-report', $reservation);
             }
         } catch (\Exception $e) {
-            \Log::error('PDF generation failed: ' . $e->getMessage());
+            \Log::error('PDF generation failed: '.$e->getMessage());
+
             return redirect()->route('reservations.verify-end', $reservation)
                 ->with('error', 'Verification completed successfully! PDF generation failed, but data was saved.');
         }
@@ -1287,7 +1294,7 @@ class ReservationsController extends Controller
      */
     public function details(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
+        if (! Schema::hasTable('reservations')) {
             return redirect()->route('admin.reservations')->with('error', 'Reservations table missing');
         }
 
@@ -1299,7 +1306,7 @@ class ReservationsController extends Controller
             ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
             ->first();
 
-        if (!$reservationData) {
+        if (! $reservationData) {
             return redirect()->route('admin.reservations')->with('error', 'Reservation not found');
         }
 
@@ -1321,11 +1328,12 @@ class ReservationsController extends Controller
                 ->map(function ($equipment) {
                     $img = isset($equipment->image) ? $equipment->image : null;
                     if ($img) {
-                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/'.ltrim($img, '/');
                         }
                         $img = asset($img);
                     }
+
                     return [
                         'id' => $equipment->id,
                         'reference' => $equipment->reference,
@@ -1348,18 +1356,19 @@ class ReservationsController extends Controller
                 ->select('u.id', 'u.name', 'u.email');
 
             if ($userImageColumn) {
-                $query->addSelect('u.' . $userImageColumn . ' as image');
+                $query->addSelect('u.'.$userImageColumn.' as image');
             }
 
             $teamMembers = $query->get()
                 ->map(function ($member) {
                     $img = isset($member->image) ? $member->image : null;
                     if ($img) {
-                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/'.ltrim($img, '/');
                         }
                         $img = asset($img);
                     }
+
                     return [
                         'id' => $member->id,
                         'name' => $member->name,
@@ -1411,7 +1420,7 @@ class ReservationsController extends Controller
     {
         $pdfData = session('verification_pdf_data');
 
-        if (!$pdfData) {
+        if (! $pdfData) {
             return redirect()->route('reservations.verify-end', $reservation)
                 ->with('error', 'No verification data found. Please submit the verification form first.');
         }
@@ -1419,7 +1428,7 @@ class ReservationsController extends Controller
         try {
             $pdf = Pdf::loadView('pdf.verification_report_simple', [
                 'reservation' => $pdfData['reservation'],
-                'verificationData' => $pdfData['verificationData']
+                'verificationData' => $pdfData['verificationData'],
             ])
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
@@ -1427,7 +1436,7 @@ class ReservationsController extends Controller
                     'isRemoteEnabled' => true,
                     'defaultFont' => 'Arial',
                     'isPhpEnabled' => true,
-                    'isFontSubsettingEnabled' => true
+                    'isFontSubsettingEnabled' => true,
                 ]);
 
             // Clear the session data after download
@@ -1435,7 +1444,8 @@ class ReservationsController extends Controller
 
             return $pdf->download($pdfData['filename']);
         } catch (\Exception $e) {
-            \Log::error('PDF download failed: ' . $e->getMessage());
+            \Log::error('PDF download failed: '.$e->getMessage());
+
             return redirect()->route('reservations.verify-end', $reservation)
                 ->with('error', 'Failed to generate PDF. Please try again.');
         }
@@ -1462,7 +1472,7 @@ class ReservationsController extends Controller
                 ->map(function ($item) {
                     return [
                         'name' => $item->studio_name ?? 'Unknown',
-                        'count' => $item->count
+                        'count' => $item->count,
                     ];
                 })
                 ->toArray();
@@ -1483,11 +1493,11 @@ class ReservationsController extends Controller
             $timeSlotStats = [
                 'most_reserved' => count($timeSlots) > 0 ? [
                     'time' => $timeSlots[0]->start,
-                    'count' => $timeSlots[0]->count
+                    'count' => $timeSlots[0]->count,
                 ] : null,
                 'least_reserved' => count($timeSlots) > 0 ? [
                     'time' => end($timeSlots)->start,
-                    'count' => end($timeSlots)->count
+                    'count' => end($timeSlots)->count,
                 ] : null,
             ];
         }
@@ -1501,7 +1511,7 @@ class ReservationsController extends Controller
                 ->select('u.name', 'u.email', DB::raw('COUNT(*) as count'));
 
             if ($userImageColumn) {
-                $query->addSelect('u.' . $userImageColumn . ' as image');
+                $query->addSelect('u.'.$userImageColumn.' as image');
             }
 
             $topUsers = $query
@@ -1513,16 +1523,17 @@ class ReservationsController extends Controller
                 ->map(function ($user) {
                     $img = isset($user->image) ? $user->image : null;
                     if ($img) {
-                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                            $img = 'storage/img/profile/' . ltrim($img, '/');
+                        if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/profile/'.ltrim($img, '/');
                         }
                         $img = asset($img);
                     }
+
                     return [
                         'name' => $user->name ?? 'Unknown',
                         'email' => $user->email ?? '',
                         'count' => $user->count,
-                        'image' => $img
+                        'image' => $img,
                     ];
                 })
                 ->toArray();
@@ -1544,7 +1555,7 @@ class ReservationsController extends Controller
             // Then get equipment details with images
             $equipmentIds = $topEquipmentData->pluck('equipment_id')->toArray();
 
-            if (!empty($equipmentIds)) {
+            if (! empty($equipmentIds)) {
                 $query = DB::table('equipment as e')
                     ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
                     ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name');
@@ -1557,12 +1568,14 @@ class ReservationsController extends Controller
 
                 $topEquipment = $topEquipmentData->map(function ($item) use ($equipmentDetails) {
                     $eq = $equipmentDetails->get($item->equipment_id);
-                    if (!$eq) return null;
+                    if (! $eq) {
+                        return null;
+                    }
 
                     $img = isset($eq->image) ? $eq->image : null;
                     if ($img) {
-                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/'.ltrim($img, '/');
                         }
                         $img = asset($img);
                     }
@@ -1572,7 +1585,7 @@ class ReservationsController extends Controller
                         'mark' => $eq->mark ?? '',
                         'type_name' => $eq->type_name ?? 'Unknown',
                         'count' => $item->count,
-                        'image' => $img
+                        'image' => $img,
                     ];
                 })
                     ->filter()
@@ -1605,17 +1618,18 @@ class ReservationsController extends Controller
                 ->map(function ($eq) {
                     $img = isset($eq->image) ? $eq->image : null;
                     if ($img) {
-                        if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                            $img = 'storage/img/equipment/' . ltrim($img, '/');
+                        if (! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                            $img = 'storage/img/equipment/'.ltrim($img, '/');
                         }
                         $img = asset($img);
                     }
+
                     return [
                         'id' => $eq->id,
                         'reference' => $eq->reference ?? 'Unknown',
                         'mark' => $eq->mark ?? '',
                         'type_name' => $eq->type_name ?? 'Unknown',
-                        'image' => $img
+                        'image' => $img,
                     ];
                 })
                 ->toArray();
@@ -1637,7 +1651,7 @@ class ReservationsController extends Controller
                 ->map(function ($item) {
                     return [
                         'month' => $item->month,
-                        'count' => $item->count
+                        'count' => $item->count,
                     ];
                 })
                 ->toArray();
@@ -1679,9 +1693,9 @@ class ReservationsController extends Controller
      */
     public function show(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
+        if (! Schema::hasTable('reservations')) {
             return Inertia::render('reservations/ReservationDetails', [
-                'reservation' => null
+                'reservation' => null,
             ]);
         }
 
@@ -1700,16 +1714,16 @@ class ReservationsController extends Controller
             )
             ->first();
 
-        if (!$reservationData) {
+        if (! $reservationData) {
             return Inertia::render('reservations/ReservationDetails', [
-                'reservation' => null
+                'reservation' => null,
             ]);
         }
 
         // Normalize user avatar path
         $userAvatar = $reservationData->user_avatar ?? null;
-        if ($userAvatar && !Str::startsWith($userAvatar, ['http://', 'https://', 'storage/'])) {
-            $userAvatar = 'img/profile/' . ltrim($userAvatar, '/');
+        if ($userAvatar && ! Str::startsWith($userAvatar, ['http://', 'https://', 'storage/'])) {
+            $userAvatar = 'img/profile/'.ltrim($userAvatar, '/');
         }
 
         // Get approver details
@@ -1749,14 +1763,15 @@ class ReservationsController extends Controller
                 ->get()
                 ->map(function ($equipment) {
                     $img = $equipment->image ?? null;
-                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'img/equipment/' . ltrim($img, '/');
+                    if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'img/equipment/'.ltrim($img, '/');
                     }
+
                     return [
                         'id' => $equipment->id,
                         'reference' => $equipment->reference,
                         'mark' => $equipment->mark,
-                        'name' => $equipment->reference . ' - ' . $equipment->mark,
+                        'name' => $equipment->reference.' - '.$equipment->mark,
                         'image' => $img,
                         'type_name' => $equipment->type_name,
                         'day' => $equipment->equipment_day,
@@ -1776,15 +1791,16 @@ class ReservationsController extends Controller
                 ->get()
                 ->map(function ($member) {
                     $img = $member->avatar ?? null;
-                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                        $img = 'img/profile/' . ltrim($img, '/');
+                    if ($img && ! Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'img/profile/'.ltrim($img, '/');
                     }
+
                     return [
                         'name' => $member->name,
                         'email' => $member->email,
                         'phone' => $member->phone,
                         'avatar' => $img,
-                        'role' => 'Team Member'
+                        'role' => 'Team Member',
                     ];
                 });
         }
@@ -1797,8 +1813,8 @@ class ReservationsController extends Controller
             'day' => $reservationData->day,
             'start' => $reservationData->start,
             'end' => $reservationData->end,
-            'start_time' => $reservationData->day . ' ' . $reservationData->start,
-            'end_time' => $reservationData->day . ' ' . $reservationData->end,
+            'start_time' => $reservationData->day.' '.$reservationData->start,
+            'end_time' => $reservationData->day.' '.$reservationData->end,
             'status' => $status,
             'approved' => (bool) $reservationData->approved,
             'canceled' => (bool) $reservationData->canceled,
@@ -1819,7 +1835,7 @@ class ReservationsController extends Controller
         ];
 
         return Inertia::render('admin/reservations/[id]', [
-            'reservation' => $reservation
+            'reservation' => $reservation,
         ]);
     }
 
@@ -1837,7 +1853,7 @@ class ReservationsController extends Controller
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -1868,12 +1884,12 @@ class ReservationsController extends Controller
                 'start' => $request->start,
                 'end' => $request->end,
                 'description' => 'Meeting room reservation',
-                'type' => 'meeting_room'
+                'type' => 'meeting_room',
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
-            \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
+            \Log::error('Failed to send meeting room approval email: '.$e->getMessage());
         }
 
         return back()->with('success', 'Meeting room reservation created and approved automatically');
@@ -1881,17 +1897,17 @@ class ReservationsController extends Controller
 
     public function cancelMeetingRoom(int $reservation)
     {
-        if (!Schema::hasTable('reservation_meeting_rooms')) {
+        if (! Schema::hasTable('reservation_meeting_rooms')) {
             return back()->with('error', 'Reservation meeting rooms table missing');
         }
 
         $reservationData = DB::table('reservation_meeting_rooms')->where('id', $reservation)->first();
-        if (!$reservationData) {
+        if (! $reservationData) {
             return back()->with('error', 'Meeting room reservation not found');
         }
 
         $user = DB::table('users')->where('id', $reservationData->user_id)->first();
-        if (!$user) {
+        if (! $user) {
             return back()->with('error', 'User not found');
         }
 
@@ -1911,12 +1927,12 @@ class ReservationsController extends Controller
                 'start' => $reservationData->start,
                 'end' => $reservationData->end,
                 'description' => 'Meeting room reservation',
-                'type' => 'meeting_room'
+                'type' => 'meeting_room',
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+            Mail::to('boujjarr@gmail.com')->send(new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
-            \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
+            \Log::error('Failed to send meeting room cancellation email: '.$e->getMessage());
         }
 
         return back()->with('success', 'Meeting room reservation canceled');

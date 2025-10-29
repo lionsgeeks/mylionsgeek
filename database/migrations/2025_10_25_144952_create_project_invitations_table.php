@@ -22,7 +22,7 @@ return new class extends Migration
             $table->boolean('is_used')->default(false);
             $table->timestamp('expires_at');
             $table->timestamps();
-            
+
             $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
             $table->index(['token', 'is_used']);
         });

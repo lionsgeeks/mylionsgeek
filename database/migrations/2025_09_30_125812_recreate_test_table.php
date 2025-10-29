@@ -8,10 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('test')) {
+        if (! Schema::hasTable('test')) {
             Schema::create('test', function (Blueprint $table) {
-			$table->string('test1')->nullable()->default('NULL');
-			$table->string('test2')->default('studying');
+                $table->string('test1')->nullable()->default('NULL');
+                $table->string('test2')->default('studying');
             });
         }
     }

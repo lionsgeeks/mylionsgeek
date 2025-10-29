@@ -15,7 +15,7 @@ return new class extends Migration
             //
             $table->string('phone')->nullable()->change();
             $table->string('cin')->nullable()->change();
-            $table->enum('status', ['Working', 'Studying', 'Internship', 'Unemployed', 'Freelancing' , 'Quit'])->nullable()->change();
+            $table->enum('status', ['Working', 'Studying', 'Internship', 'Unemployed', 'Freelancing', 'Quit'])->nullable()->change();
         });
     }
 

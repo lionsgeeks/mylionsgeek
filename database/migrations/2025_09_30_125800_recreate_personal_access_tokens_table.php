@@ -8,19 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('personal_access_tokens')) {
+        if (! Schema::hasTable('personal_access_tokens')) {
             Schema::create('personal_access_tokens', function (Blueprint $table) {
-			$table->id();
-			$table->string('tokenable_type');
-			$table->integer('tokenable_id');
-			$table->string('name');
-			$table->string('token');
-			$table->string('abilities')->nullable()->default('NULL');
-			$table->string('last_used_at')->nullable()->default('NULL');
-			$table->string('expires_at')->nullable()->default('NULL');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->string('tokenable_type');
+                $table->integer('tokenable_id');
+                $table->string('name');
+                $table->string('token');
+                $table->string('abilities')->nullable()->default('NULL');
+                $table->string('last_used_at')->nullable()->default('NULL');
+                $table->string('expires_at')->nullable()->default('NULL');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

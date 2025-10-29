@@ -34,7 +34,7 @@ class GeekoSession extends Model
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($model) {
             if (empty($model->session_code)) {
                 $model->session_code = strtoupper(Str::random(8));
@@ -80,6 +80,7 @@ class GeekoSession extends Model
     public function currentQuestion()
     {
         $questions = $this->geeko->questions()->get();
+
         return $questions->skip($this->current_question_index)->first();
     }
 
@@ -89,6 +90,7 @@ class GeekoSession extends Model
     public function nextQuestion()
     {
         $nextIndex = $this->current_question_index + 1;
+
         return $this->geeko->questions()->skip($nextIndex)->first();
     }
 
@@ -108,8 +110,10 @@ class GeekoSession extends Model
         if ($this->hasMoreQuestions()) {
             $this->increment('current_question_index');
             $this->update(['current_question_started_at' => now()]);
+
             return true;
         }
+
         return false;
     }
 

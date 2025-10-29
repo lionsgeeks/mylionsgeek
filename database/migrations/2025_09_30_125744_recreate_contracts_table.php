@@ -8,16 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('contracts')) {
+        if (! Schema::hasTable('contracts')) {
             Schema::create('contracts', function (Blueprint $table) {
-			$table->id();
-			$table->integer('user_id');
-			$table->integer('reservation_id')->nullable()->default('NULL');
-			$table->string('contract');
-			$table->string('type');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('user_id');
+                $table->integer('reservation_id')->nullable()->default('NULL');
+                $table->string('contract');
+                $table->string('type');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

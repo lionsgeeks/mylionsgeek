@@ -12,12 +12,12 @@ class ProjectUser extends Model
         'user_id',
         'role',
         'invited_at',
-        'joined_at'
+        'joined_at',
     ];
 
     protected $casts = [
         'invited_at' => 'datetime',
-        'joined_at' => 'datetime'
+        'joined_at' => 'datetime',
     ];
 
     public function project(): BelongsTo

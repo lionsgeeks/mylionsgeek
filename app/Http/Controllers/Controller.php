@@ -12,13 +12,7 @@ abstract class Controller
     /**
      * Compress (and optionally resize) an image and store it on the public disk.
      *
-     * @param UploadedFile|string $source
-     * @param string $destinationDirectory
-     * @param string|null $targetFilename
-     * @param int $quality
-     * @param int|null $maxWidth
-     * @param int|null $maxHeight
-     * @return string
+     * @param  UploadedFile|string  $source
      */
     protected function compressImage(
         $source,
@@ -55,15 +49,15 @@ abstract class Controller
             ? strtolower(pathinfo($targetFilename, PATHINFO_EXTENSION))
             : $originalExtension;
 
-        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
             $extension = 'jpg';
         }
 
         // Generate a new filename if not provided
         if ($targetFilename === null) {
-            $targetFilename = Str::uuid()->toString() . '.' . $extension;
+            $targetFilename = Str::uuid()->toString().'.'.$extension;
         } elseif (pathinfo($targetFilename, PATHINFO_EXTENSION) === '') {
-            $targetFilename .= '.' . $extension;
+            $targetFilename .= '.'.$extension;
         }
 
         // Select encoder based on extension (Intervention Image v3)
@@ -88,11 +82,11 @@ abstract class Controller
         // Save to the "public" disk
         $disk = Storage::disk('public');
         $destinationDirectory = trim($destinationDirectory, '/');
-        if (!$disk->exists($destinationDirectory)) {
+        if (! $disk->exists($destinationDirectory)) {
             $disk->makeDirectory($destinationDirectory);
         }
 
-        $relativePath = $destinationDirectory . '/' . $targetFilename;
+        $relativePath = $destinationDirectory.'/'.$targetFilename;
         $disk->put($relativePath, $encoded);
 
         return $relativePath;

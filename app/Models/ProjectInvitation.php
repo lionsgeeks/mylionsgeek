@@ -16,12 +16,12 @@ class ProjectInvitation extends Model
         'role',
         'message',
         'is_used',
-        'expires_at'
+        'expires_at',
     ];
 
     protected $casts = [
         'is_used' => 'boolean',
-        'expires_at' => 'datetime'
+        'expires_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
@@ -38,7 +38,7 @@ class ProjectInvitation extends Model
             'username' => $username,
             'role' => $role,
             'message' => $message,
-            'expires_at' => now()->addDays(7) // 7 days expiry
+            'expires_at' => now()->addDays(7), // 7 days expiry
         ]);
     }
 
@@ -49,6 +49,6 @@ class ProjectInvitation extends Model
 
     public function isValid()
     {
-        return !$this->is_used && !$this->isExpired();
+        return ! $this->is_used && ! $this->isExpired();
     }
 }

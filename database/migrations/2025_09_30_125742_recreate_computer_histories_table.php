@@ -8,16 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('computer_histories')) {
+        if (! Schema::hasTable('computer_histories')) {
             Schema::create('computer_histories', function (Blueprint $table) {
-			$table->id();
-			$table->integer('user_id');
-			$table->integer('computer_id');
-			$table->string('start');
-			$table->string('end');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('user_id');
+                $table->integer('computer_id');
+                $table->string('start');
+                $table->string('end');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

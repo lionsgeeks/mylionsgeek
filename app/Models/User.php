@@ -3,11 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -42,7 +40,7 @@ class User extends Authenticatable
         'activation_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
-        'two_factor_confirmed_at'
+        'two_factor_confirmed_at',
     ];
 
     /**
@@ -83,11 +81,11 @@ class User extends Authenticatable
         'has_confirmed_two_factor_authentication',
     ];
 
-
     public function access(): HasOne
     {
         return $this->hasOne(Access::class);
     }
+
     public function formation()
     {
         return $this->belongsTo(Formation::class, 'formation_id');
@@ -116,6 +114,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(GeekoParticipant::class, 'user_id');
     }
+
     public function scopeActive($query)
     {
         return $query->where('account_state', 0);
@@ -150,7 +149,7 @@ class User extends Authenticatable
      */
     public function hasTwoFactorAuthentication(): bool
     {
-        return !is_null($this->two_factor_secret);
+        return ! is_null($this->two_factor_secret);
     }
 
     /**
@@ -158,7 +157,7 @@ class User extends Authenticatable
      */
     public function hasConfirmedTwoFactorAuthentication(): bool
     {
-        return !is_null($this->two_factor_confirmed_at);
+        return ! is_null($this->two_factor_confirmed_at);
     }
 
     /**
@@ -197,5 +196,4 @@ class User extends Authenticatable
                 ->all(),
         ])->save();
     }
-
 }

@@ -25,8 +25,9 @@ class Reservation extends Model
     ];
 
     public $incrementing = true;
+
     protected $keyType = 'int';
-    
+
     protected $casts = [
         'approved' => 'boolean',
         'canceled' => 'boolean',

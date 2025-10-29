@@ -9,7 +9,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,12 +33,12 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || $user->account_state) {
+        if (! $user || $user->account_state) {
             // If account is deleted or suspended, return an error message
             return response()->json([
                 'errors' => [
-                    'email' => 'Your account has been deleted. Please contact administration.'
-                ]
+                    'email' => 'Your account has been deleted. Please contact administration.',
+                ],
             ], 403);
         }
 
@@ -48,13 +47,13 @@ class AuthenticatedSessionController extends Controller
             // Store user ID in session for 2FA verification
             $request->session()->put('login.id', $user->id);
             Auth::logout();
-            
+
             return Inertia::render('auth/two-factor-challenge');
         }
 
         $request->session()->regenerate();
         $user->forceFill([
-            'last_online' => now()
+            'last_online' => now(),
         ])->save();
 
         return redirect()->intended(route('dashboard', absolute: false));
@@ -70,12 +69,12 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         $userId = $request->session()->get('login.id');
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login');
         }
 
         $user = User::find($userId);
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -86,7 +85,7 @@ class AuthenticatedSessionController extends Controller
         $totpValid = $google2fa->verifyKey($secret, $request->code);
 
         $recoveryValid = false;
-        if (!$totpValid) {
+        if (! $totpValid) {
             $codes = json_decode(decrypt($user->two_factor_recovery_codes), true) ?? [];
             if (in_array($request->code, $codes, true)) {
                 $recoveryValid = true;
@@ -95,7 +94,7 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        if (!$totpValid && !$recoveryValid) {
+        if (! $totpValid && ! $recoveryValid) {
             return back()->withErrors([
                 'code' => 'The provided authentication code is invalid.',
             ]);
@@ -105,9 +104,9 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user);
         $request->session()->forget('login.id');
         $request->session()->regenerate();
-        
+
         $user->forceFill([
-            'last_online' => now()
+            'last_online' => now(),
         ])->save();
 
         return redirect()->intended(route('dashboard', absolute: false));

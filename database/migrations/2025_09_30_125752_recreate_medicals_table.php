@@ -8,16 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('medicals')) {
+        if (! Schema::hasTable('medicals')) {
             Schema::create('medicals', function (Blueprint $table) {
-			$table->id();
-			$table->integer('user_id');
-			$table->string('mc_document');
-			$table->string('description');
-			$table->string('author');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('user_id');
+                $table->string('mc_document');
+                $table->string('description');
+                $table->string('author');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

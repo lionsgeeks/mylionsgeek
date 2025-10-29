@@ -8,11 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('model_has_roles')) {
+        if (! Schema::hasTable('model_has_roles')) {
             Schema::create('model_has_roles', function (Blueprint $table) {
-			$table->integer('role_id');
-			$table->string('model_type');
-			$table->integer('model_id');
+                $table->integer('role_id');
+                $table->string('model_type');
+                $table->integer('model_id');
             });
         }
     }

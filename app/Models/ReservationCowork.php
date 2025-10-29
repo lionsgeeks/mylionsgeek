@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ReservationCowork extends Model
 {
     protected $table = 'reservation_coworks';
-    
+
     protected $fillable = [
         'table',
         'seats',
@@ -17,7 +17,7 @@ class ReservationCowork extends Model
         'user_id',
         'approved',
         'canceled',
-        'passed'
+        'passed',
     ];
 
     protected $casts = [

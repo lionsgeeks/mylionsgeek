@@ -4,15 +4,16 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 
 class WelcomeUserAfterProfileComplete extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $user;
+
     public $dashboardLink;
 
     /**
@@ -50,8 +51,6 @@ class WelcomeUserAfterProfileComplete extends Mailable
 
     /**
      * Get the attachments for the message.
-     *
-     * @return array
      */
     public function attachments(): array
     {

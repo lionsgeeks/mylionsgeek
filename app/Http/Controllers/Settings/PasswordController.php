@@ -26,7 +26,7 @@ class PasswordController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
-        
+
         // Check if user has 2FA enabled
         if ($user->hasConfirmedTwoFactorAuthentication()) {
             $request->validate([
@@ -38,8 +38,8 @@ class PasswordController extends Controller
             // Verify the 2FA code
             $google2fa = app('pragmarx.google2fa');
             $secret = decrypt($user->two_factor_secret);
-            
-            if (!$google2fa->verifyKey($secret, $request->two_factor_code)) {
+
+            if (! $google2fa->verifyKey($secret, $request->two_factor_code)) {
                 return back()->withErrors([
                     'two_factor_code' => 'The provided two factor authentication code was invalid.',
                 ]);

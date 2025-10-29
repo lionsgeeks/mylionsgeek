@@ -1,42 +1,41 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen } from 'lucide-react';
+import { AwardIcon, Building2, FolderOpen, GraduationCap, LayoutGrid, Monitor, Settings, Timer, Users, Wrench } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems = [
     {
         title: 'Dashboard',
-        href: "/admin/dashboard",
+        href: '/admin/dashboard',
         icon: LayoutGrid,
     },
 
     {
         title: 'Members',
         href: '/admin/users',
-        icon: Users
+        icon: Users,
     },
 
     {
         title: 'Projects',
         href: '/admin/projects',
-        icon: FolderOpen
+        icon: FolderOpen,
     },
 
     {
         title: 'LeaderBoard',
         href: '/students/leaderboard',
-        icon: AwardIcon
+        icon: AwardIcon,
     },
 
     {
         title: 'Spaces ',
         href: '/admin/places',
         icon: Building2,
-
     },
     { title: 'Reservations', href: '/admin/reservations', icon: Timer },
-    
+
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
     { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
     { title: 'Training', href: '/training', icon: GraduationCap },
@@ -52,7 +51,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={"/admin/dashboard"} prefetch>
+                            <Link href={'/admin/dashboard'} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -64,9 +63,7 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
-            <SidebarFooter>
-                {/* <NavUser /> */}
-            </SidebarFooter>
+            <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>
         </Sidebar>
     );
 }

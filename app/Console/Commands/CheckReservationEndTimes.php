@@ -2,13 +2,13 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Reservation;
 use App\Mail\ReservationEndedMail;
+use App\Models\Reservation;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CheckReservationEndTimes extends Command
 {
@@ -41,7 +41,7 @@ class CheckReservationEndTimes extends Command
             ->where('passed', false)
             ->get()
             ->filter(function ($reservation) use ($now) {
-                $reservationDateTime = Carbon::parse($reservation->day . ' ' . $reservation->end);
+                $reservationDateTime = Carbon::parse($reservation->day.' '.$reservation->end);
 
                 // Allow a 1-minute window
                 return $now->between(
@@ -50,8 +50,6 @@ class CheckReservationEndTimes extends Command
                 );
             });
 
-
-
         $processedCount = 0;
 
         foreach ($endedReservations as $reservation) {
@@ -59,14 +57,15 @@ class CheckReservationEndTimes extends Command
                 // Get the user who made the reservation
                 $user = DB::table('users')->where('id', $reservation->user_id)->first();
 
-                if (!$user) {
+                if (! $user) {
                     $this->warn("No user found for reservation ID: {$reservation->id}");
+
                     continue;
                 }
 
                 // Send the email
                 $verificationPath = "reservations/{$reservation->id}/verify-end";
-                Mail::to("boujjarr@gmail.com")->send(new ReservationEndedMail($user, $reservation, $verificationPath));
+                Mail::to('boujjarr@gmail.com')->send(new ReservationEndedMail($user, $reservation, $verificationPath));
 
                 // Mark the reservation as passed to avoid duplicate emails
                 DB::table('reservations')->where('id', $reservation->id)->update(['passed' => true]);
@@ -76,8 +75,8 @@ class CheckReservationEndTimes extends Command
                 $this->info("Reservation end time email sent for reservation ID: {$reservation->id}");
                 Log::info("Reservation end time email sent for reservation ID: {$reservation->id}");
             } catch (\Exception $e) {
-                $this->error("Failed to send reservation end time email for reservation ID: {$reservation->id}. Error: " . $e->getMessage());
-                Log::error("Failed to send reservation end time email for reservation ID: {$reservation->id}. Error: " . $e->getMessage());
+                $this->error("Failed to send reservation end time email for reservation ID: {$reservation->id}. Error: ".$e->getMessage());
+                Log::error("Failed to send reservation end time email for reservation ID: {$reservation->id}. Error: ".$e->getMessage());
             }
         }
 

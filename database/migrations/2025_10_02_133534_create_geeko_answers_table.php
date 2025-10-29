@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('time_taken')->nullable(); // Time in seconds to answer
             $table->timestamp('answered_at');
             $table->timestamps();
-            
+
             $table->unique(['session_id', 'question_id', 'user_id']); // One answer per user per question
         });
     }

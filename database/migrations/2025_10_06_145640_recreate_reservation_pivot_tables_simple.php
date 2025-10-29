@@ -11,7 +11,7 @@ return new class extends Migration
         // Drop old tables if they exist
         Schema::dropIfExists('reservation_teams');
         Schema::dropIfExists('reservation_equipment');
-        
+
         // Create reservation_teams (simple, no foreign keys)
         Schema::create('reservation_teams', function (Blueprint $table) {
             $table->id();
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('user_id');
             $table->timestamps();
         });
-        
+
         // Create reservation_equipment (simple, no foreign keys)
         Schema::create('reservation_equipment', function (Blueprint $table) {
             $table->id();

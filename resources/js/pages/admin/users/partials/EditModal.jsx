@@ -1,15 +1,15 @@
 // components/EditUserModal.jsx
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { ImagePlus, X, ChevronDown } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { ImagePlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 
 const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) => {
@@ -38,12 +38,19 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                 try {
                     const parsed = JSON.parse(editedUser.role);
                     if (Array.isArray(parsed)) rolesArray = parsed;
-                    else rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                    else
+                        rolesArray = editedUser.role
+                            .split(',')
+                            .map((r) => r.trim())
+                            .filter(Boolean);
                 } catch {
-                    rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                    rolesArray = editedUser.role
+                        .split(',')
+                        .map((r) => r.trim())
+                        .filter(Boolean);
                 }
             }
-            rolesArray = rolesArray.map(r => String(r).toLowerCase());
+            rolesArray = rolesArray.map((r) => String(r).toLowerCase());
             setFormData({
                 name: editedUser.name || '',
                 email: editedUser.email || '',
@@ -97,27 +104,25 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
     const resetPassword = (id) => {
         router.post(`/admin/users/${id}/reset-password`, {
             onSuccess: () => {
-                alert('fine')
+                alert('fine');
             },
             onError: () => {
-                alert('error')
-            }
-        })
-    }
-
-
+                alert('error');
+            },
+        });
+    };
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="sm:max-w-[720px] bg-light text-dark dark:bg-dark dark:text-light">
+            <DialogContent className="bg-light text-dark sm:max-w-[720px] dark:bg-dark dark:text-light">
                 <DialogHeader>
                     <DialogTitle>Modify user</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={submitEdit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <form onSubmit={submitEdit} className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* Avatar */}
-                    <div className="col-span-1 md:col-span-2 flex justify-center items-center gap-4 mb-4">
-                        <div className="relative w-24 h-24">
-                            <Avatar className="w-24 h-24 rounded-full overflow-hidden">
+                    <div className="col-span-1 mb-4 flex items-center justify-center gap-4 md:col-span-2">
+                        <div className="relative h-24 w-24">
+                            <Avatar className="h-24 w-24 overflow-hidden rounded-full">
                                 {formData.image && formData.image instanceof File ? (
                                     <AvatarImage src={URL.createObjectURL(formData.image)} alt="User Avatar" />
                                 ) : (
@@ -127,15 +132,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 )}
                             </Avatar>
 
-                            <label className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-alpha rounded-full cursor-pointer border-2 border-white hover:bg-alpha/80">
+                            <label className="absolute right-0 bottom-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-alpha hover:bg-alpha/80">
                                 <ImagePlus size={18} className="text-white" />
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, image: e.target.files?.[0] || null })
-                                    }
+                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    onChange={(e) => setFormData({ ...formData, image: e.target.files?.[0] || null })}
                                 />
                             </label>
                         </div>
@@ -143,47 +146,26 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
                     {/* Fields */}
                     <div className="col-span-1">
-
                         {/* {console.log(editedUser)} */}
                         <Label htmlFor="name">Name</Label>
-                        <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        />
+                        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                     </div>
                     <div className="col-span-1">
                         <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
+                        <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     <div className="col-span-1">
                         <Label htmlFor="phone">Phone</Label>
-                        <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
+                        <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
                     <div className="col-span-1">
                         <Label htmlFor="cin">CIN</Label>
-                        <Input
-                            id="cin"
-                            value={formData.cin}
-                            onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
-                        />
+                        <Input id="cin" value={formData.cin} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
                     </div>
                     {/* Roles - multi-select dropdown with chips (like Add User) */}
                     <div className="col-span-1">
                         <Label>Status</Label>
-                        <Select
-                            value={formData.status}
-                            onValueChange={(v) => setFormData({ ...formData, status: v })}
-                        >
+                        <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
@@ -220,34 +202,34 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                     </div>
 
                     {/* Footer */}
-                    <div className="col-span-1 md:col-span-2 mt-6">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t pt-4">
+                    <div className="col-span-1 mt-6 md:col-span-2">
+                        <div className="flex flex-col items-center justify-between gap-4 border-t pt-4 md:flex-row">
                             {/* Left side - Resend Link */}
-                            {editedUser?.activation_token != null ?
+                            {editedUser?.activation_token != null ? (
                                 <Button
                                     onClick={() => resendLink(editedUser.id)}
                                     type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                                 >
                                     Resend Link
                                 </Button>
-                                :
+                            ) : (
                                 <Button
                                     onClick={() => resetPassword(editedUser.id)}
                                     type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                                 >
                                     Reset Password
                                 </Button>
-                            }
+                            )}
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
-                                <Button type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-                                    onClick={onClose}>
+                                <Button
+                                    type="button"
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
+                                    onClick={onClose}
+                                >
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save changes</Button>
@@ -255,7 +237,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         </div>
                     </div>
                 </form>
-
             </DialogContent>
         </Dialog>
     );

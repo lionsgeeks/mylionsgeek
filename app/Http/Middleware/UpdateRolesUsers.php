@@ -2,16 +2,16 @@
 
 namespace App\Http\Middleware;
 
-use Closure;
-use Illuminate\Http\Request;
 use App\Models\Formation;
 use Carbon\Carbon;
+use Closure;
+use Illuminate\Http\Request;
 
 class UpdateRolesUsers
 {
     public function handle(Request $request, Closure $next)
     {
-        
+
         $formations = Formation::with('users')->whereNotNull('start_time')->get();
 
         foreach ($formations as $formation) {

@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('attendances')) {
+        if (! Schema::hasTable('attendances')) {
             Schema::create('attendances', function (Blueprint $table) {
-			$table->id();
-			$table->integer('formation_id');
-			$table->string('attendance_day');
-			$table->string('staff_name');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('formation_id');
+                $table->string('attendance_day');
+                $table->string('staff_name');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

@@ -1,4 +1,14 @@
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
+import {
+    SidebarGroup,
+    SidebarGroupLabel,
+    SidebarMenu,
+    SidebarMenuBadge,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
+} from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -23,7 +33,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 <SidebarMenuButton
                                     isActive={isActive}
                                     tooltip={{ children: item.title }}
-                                    className="[&>[data-chevron]]:ml-auto py-6"
+                                    className="py-6 [&>[data-chevron]]:ml-auto"
                                     aria-expanded={isOpen}
                                     onClick={() => toggleOpen(item.title)}
                                 >
@@ -39,14 +49,12 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     asChild
                                     isActive={isActive}
                                     tooltip={{ children: item.title }}
-                                    className="[&>[data-chevron]]:ml-auto py-5.5"
+                                    className="py-5.5 [&>[data-chevron]]:ml-auto"
                                 >
                                     <Link href={item.href} prefetch>
-                                        {item.icon && <item.icon  className="dark:text-[var(--color-alpha)] text-[#d8a200] " />}
+                                        {item.icon && <item.icon className="text-[#d8a200] dark:text-[var(--color-alpha)]" />}
                                         <span>{item.title}</span>
-                                        {item.chevron && (
-                                            <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />
-                                        )}
+                                        {item.chevron && <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />}
                                     </Link>
                                 </SidebarMenuButton>
                             )}
@@ -54,7 +62,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 <SidebarMenuBadge className="bg-destructive text-destructive-foreground">{item.badge}</SidebarMenuBadge>
                             )}
                             {hasChildren && (
-                                <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} ml-8 mt-1 border-l border-sidebar-border/50 pl-2`}>
+                                <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} mt-1 ml-8 border-l border-sidebar-border/50 pl-2`}>
                                     {item.children?.map((sub) => {
                                         const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
                                         const subActive = page.url.startsWith(subHref);

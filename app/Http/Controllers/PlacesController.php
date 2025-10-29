@@ -21,6 +21,7 @@ class PlacesController extends Controller
                 ->get()
                 ->map(function ($row) {
                     $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/cowork/'.ltrim($row->image, '/'))) : null;
+
                     return [
                         'id' => $row->id,
                         'name' => 'Table '.($row->table ?? ''),
@@ -40,6 +41,7 @@ class PlacesController extends Controller
                 ->get()
                 ->map(function ($row) {
                     $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/studio/'.ltrim($row->image, '/'))) : null;
+
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
@@ -59,6 +61,7 @@ class PlacesController extends Controller
                 ->get()
                 ->map(function ($row) {
                     $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/meeting_room/'.ltrim($row->image, '/'))) : null;
+
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
@@ -73,7 +76,9 @@ class PlacesController extends Controller
 
         // Globally sort newest first and compute available types
         $places = $places
-            ->sortByDesc(function ($p) { return $p['created_at'] ?? null; })
+            ->sortByDesc(function ($p) {
+                return $p['created_at'] ?? null;
+            })
             ->values();
 
         $types = $places->pluck('place_type')->unique()->values();
@@ -85,7 +90,11 @@ class PlacesController extends Controller
         $equipmentImages = $this->listPublicImages('img/equipment');
 
         return Inertia::render('admin/places/index', [
-            'places' => $places->map(function ($p) { unset($p['created_at']); return $p; }),
+            'places' => $places->map(function ($p) {
+                unset($p['created_at']);
+
+                return $p;
+            }),
             'types' => $types,
             'studioImages' => $studioImages,
             'meetingRoomImages' => $meetingRoomImages,
@@ -104,7 +113,7 @@ class PlacesController extends Controller
         ]);
 
         $table = $this->resolveTableFromType($data['place_type']);
-        if (!$table || !Schema::hasTable($table)) {
+        if (! $table || ! Schema::hasTable($table)) {
             return back()->with('error', 'Target table not available.');
         }
 
@@ -112,7 +121,7 @@ class PlacesController extends Controller
         if ($data['place_type'] === 'cowork') {
             // Always use default cowork image
             $imagePath = 'storage/img/cowork/cowork.jpg';
-        } else if ($request->hasFile('image')) {
+        } elseif ($request->hasFile('image')) {
             $imagePath = 'storage/'.$request->file('image')->store('places', 'public');
         }
 
@@ -124,22 +133,21 @@ class PlacesController extends Controller
             DB::table($table)->insert([
                 'id' => $nextId,
                 'table' => $data['name'],
-                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'state' => (int) ((string) $data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
                 'image' => $imagePath,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        }else {
+        } else {
             DB::table($table)->insert([
                 'id' => $nextId,
                 'name' => $data['name'],
-                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'state' => (int) ((string) $data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
                 'image' => $imagePath,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
         }
-
 
         return redirect()->route('admin.places')->with('success', 'Place added');
     }
@@ -154,25 +162,23 @@ class PlacesController extends Controller
         ]);
 
         $table = $this->resolveTableFromType($data['place_type']);
-        if (!$table || !Schema::hasTable($table)) {
+        if (! $table || ! Schema::hasTable($table)) {
             return back()->with('error', 'Target table not available.');
         }
 
         if ($table === 'coworks') {
             $update = [
                 'table' => $data['name'],
-                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'state' => (int) ((string) $data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
                 'updated_at' => now(),
             ];
-        }else {
+        } else {
             $update = [
                 'name' => $data['name'],
-                'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
+                'state' => (int) ((string) $data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
                 'updated_at' => now(),
             ];
         }
-
-
 
         if ($table !== 'coworks' && $request->hasFile('image')) {
             $update['image'] = 'storage/'.$request->file('image')->store('places', 'public');
@@ -188,7 +194,7 @@ class PlacesController extends Controller
         $type = $request->input('place_type');
         $table = $this->resolveTableFromType($type);
 
-        if (!$table || !Schema::hasTable($table)) {
+        if (! $table || ! Schema::hasTable($table)) {
             return back()->with('error', 'Target table not available.');
         }
 
@@ -213,20 +219,21 @@ class PlacesController extends Controller
     private function listPublicImages(string $folder): array
     {
         $diskPath = 'public/'.trim($folder, '/');
-        if (!Storage::exists($diskPath)) {
+        if (! Storage::exists($diskPath)) {
             return [];
         }
         $files = Storage::files($diskPath);
         $images = [];
         foreach ($files as $path) {
             $lower = strtolower($path);
-            if (!str_ends_with($lower, '.jpg') && !str_ends_with($lower, '.jpeg') && !str_ends_with($lower, '.png') && !str_ends_with($lower, '.gif') && !str_ends_with($lower, '.webp') && !str_ends_with($lower, '.svg')) {
+            if (! str_ends_with($lower, '.jpg') && ! str_ends_with($lower, '.jpeg') && ! str_ends_with($lower, '.png') && ! str_ends_with($lower, '.gif') && ! str_ends_with($lower, '.webp') && ! str_ends_with($lower, '.svg')) {
                 continue;
             }
             // Convert public/... to storage/...
             $publicUrl = asset(str_replace('public/', 'storage/', $path));
             $images[] = $publicUrl;
         }
+
         return $images;
     }
 }

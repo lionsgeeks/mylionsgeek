@@ -50,16 +50,16 @@ class GeekoQuestion extends Model
     public function isCorrectAnswer($answer): bool
     {
         $correctAnswers = $this->correct_answers;
-        
+
         // Ensure correct_answers is always an array
         if (is_string($correctAnswers)) {
             $correctAnswers = json_decode($correctAnswers, true) ?: [];
         }
-        
-        if (!is_array($correctAnswers)) {
+
+        if (! is_array($correctAnswers)) {
             $correctAnswers = [];
         }
-        
+
         if ($this->type === 'multiple_choice') {
             return in_array($answer, $correctAnswers);
         } elseif ($this->type === 'true_false') {
@@ -79,9 +79,10 @@ class GeekoQuestion extends Model
     {
         $timeLimit = $this->time_limit ?? $this->geeko->time_limit;
         $basePoints = $this->points;
-        
+
         // Give full points if answered quickly, reduce points as time increases
         $timeRatio = max(0, ($timeLimit - $timeTaken) / $timeLimit);
+
         return (int) ($basePoints * $timeRatio);
     }
 }

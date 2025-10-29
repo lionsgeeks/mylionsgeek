@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Shield, Smartphone, Key, AlertTriangle, CheckCircle, Copy, Download } from 'lucide-react';
-import { usePage, router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { AlertTriangle, CheckCircle, Copy, Download, Key, Shield, Smartphone } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function TwoFactorAuthSection() {
     const { auth } = usePage().props;
@@ -138,7 +138,7 @@ export default function TwoFactorAuthSection() {
     };
 
     return (
-        <Card className="w-full bg-transparent border-0 shadow-none">
+        <Card className="w-full border-0 bg-transparent shadow-none">
             <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                     <Shield className="h-5 w-5 text-[var(--color-alpha)]" />
@@ -184,10 +184,7 @@ export default function TwoFactorAuthSection() {
                         </Button>
                         {qrCode && (
                             <div className="grid gap-6 md:grid-cols-[280px_1fr]">
-                                <div 
-                                    className="rounded-lg border bg-white p-4 dark:bg-neutral-900"
-                                    dangerouslySetInnerHTML={{ __html: qrCode }}
-                                />
+                                <div className="rounded-lg border bg-white p-4 dark:bg-neutral-900" dangerouslySetInnerHTML={{ __html: qrCode }} />
                                 <div className="w-full max-w-sm space-y-2">
                                     <Label htmlFor="confirmation-code">Confirmation Code</Label>
                                     <Input
@@ -213,14 +210,24 @@ export default function TwoFactorAuthSection() {
                             <span>Two-factor authentication is {confirmed ? 'enabled and confirmed' : 'enabled but not confirmed'}</span>
                         </div>
 
-
                         {confirmed && (
                             <div className="space-y-4">
                                 <div className="flex flex-wrap gap-2">
-                                    <Button onClick={() => setShowRecoveryCodes(true)} variant="outline" size="sm" className="hover:bg-[var(--color-alpha)] hover:text-black">
+                                    <Button
+                                        onClick={() => setShowRecoveryCodes(true)}
+                                        variant="outline"
+                                        size="sm"
+                                        className="hover:bg-[var(--color-alpha)] hover:text-black"
+                                    >
                                         Show Recovery Codes
                                     </Button>
-                                    <Button onClick={regenerateRecoveryCodes} variant="outline" size="sm" disabled={loading} className="hover:bg-[var(--color-alpha)] hover:text-black">
+                                    <Button
+                                        onClick={regenerateRecoveryCodes}
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={loading}
+                                        className="hover:bg-[var(--color-alpha)] hover:text-black"
+                                    >
                                         {loading ? 'Regenerating...' : 'Regenerate Recovery Codes'}
                                     </Button>
                                     <Button onClick={disable2FA} variant="destructive" size="sm" disabled={loading}>
@@ -240,12 +247,10 @@ export default function TwoFactorAuthSection() {
                                 <Key className="h-5 w-5" />
                                 Recovery Codes
                             </DialogTitle>
-                            <DialogDescription>
-                                Store these recovery codes in a safe place. Each code can only be used once.
-                            </DialogDescription>
+                            <DialogDescription>Store these recovery codes in a safe place. Each code can only be used once.</DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
                                 {recoveryCodes.map((code, index) => (
                                     <div key={index} className="font-mono text-sm">
                                         {code}
@@ -254,19 +259,17 @@ export default function TwoFactorAuthSection() {
                             </div>
                             <div className="flex gap-2">
                                 <Button onClick={copyRecoveryCodes} variant="outline" size="sm" className="flex-1">
-                                    <Copy className="h-4 w-4 mr-2" />
+                                    <Copy className="mr-2 h-4 w-4" />
                                     Copy
                                 </Button>
                                 <Button onClick={downloadRecoveryCodes} variant="outline" size="sm" className="flex-1">
-                                    <Download className="h-4 w-4 mr-2" />
+                                    <Download className="mr-2 h-4 w-4" />
                                     Download
                                 </Button>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button onClick={() => setShowRecoveryCodes(false)}>
-                                I've Saved These Codes
-                            </Button>
+                            <Button onClick={() => setShowRecoveryCodes(false)}>I've Saved These Codes</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -274,4 +277,3 @@ export default function TwoFactorAuthSection() {
         </Card>
     );
 }
-

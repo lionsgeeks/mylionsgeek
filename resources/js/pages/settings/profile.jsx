@@ -42,16 +42,14 @@ export default function Profile({ mustVerifyEmail, status }) {
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 {/* Avatar + Basic info */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                                     <div className="md:col-span-1">
-                                        <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                            <div className="w-24 h-24 rounded-full overflow-hidden bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center">
+                                        <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+                                            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                                                 {auth.user.image ? (
-                                                    <img src={auth.user.image} alt={auth.user.name} className="w-full h-full object-cover" />
+                                                    <img src={auth.user.image} alt={auth.user.name} className="h-full w-full object-cover" />
                                                 ) : (
-                                                    <span className="text-xl font-semibold">
-                                                        {auth.user.name?.charAt(0)?.toUpperCase()}
-                                                    </span>
+                                                    <span className="text-xl font-semibold">{auth.user.name?.charAt(0)?.toUpperCase()}</span>
                                                 )}
                                             </div>
 
@@ -63,12 +61,12 @@ export default function Profile({ mustVerifyEmail, status }) {
                                         </div>
                                     </div>
 
-                                    <div className="md:col-span-2 grid gap-4">
+                                    <div className="grid gap-4 md:col-span-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="name">Name</Label>
                                             <Input
                                                 id="name"
-                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                                 defaultValue={auth.user.name}
                                                 name="name"
                                                 required
@@ -83,7 +81,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             <Input
                                                 id="email"
                                                 type="email"
-                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                                 defaultValue={auth.user.email}
                                                 name="email"
                                                 required
@@ -103,7 +101,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                     inputMode="numeric"
                                                     pattern="[0-9]*"
                                                     maxLength="6"
-                                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] text-center text-lg tracking-widest"
+                                                    className="mt-1 block w-full border-[#FFC801] text-center text-lg tracking-widest focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                                     placeholder="000000"
                                                     autoComplete="one-time-code"
                                                 />
@@ -111,10 +109,15 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                             <div className="grid gap-2">
                                                 <Label htmlFor="phone">Phone</Label>
-                                                <Input id="phone" name="phone" defaultValue={auth.user.phone || ''} placeholder="e.g. +212 600 000 000" />
+                                                <Input
+                                                    id="phone"
+                                                    name="phone"
+                                                    defaultValue={auth.user.phone || ''}
+                                                    placeholder="e.g. +212 600 000 000"
+                                                />
                                                 <InputError className="mt-2" message={errors.phone} />
                                             </div>
                                             <div className="grid gap-2">
@@ -148,17 +151,28 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 )}
 
                                 {/* Integrations / WakaTime */}
-                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                <div className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
                                     <div className="grid gap-2">
                                         <Label htmlFor="wakatime_api_key">WakaTime API Key</Label>
-                                        <Input id="wakatime_api_key" name="wakatime_api_key" defaultValue={auth.user.wakatime_api_key || ''} placeholder="Enter your WakaTime API key" />
+                                        <Input
+                                            id="wakatime_api_key"
+                                            name="wakatime_api_key"
+                                            defaultValue={auth.user.wakatime_api_key || ''}
+                                            placeholder="Enter your WakaTime API key"
+                                        />
                                         <InputError className="mt-2" message={errors.wakatime_api_key} />
                                         <p className="text-xs text-neutral-500">Used to compute your coding leaderboard stats.</p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-profile-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save</Button>
+                                    <Button
+                                        disabled={processing}
+                                        data-test="update-profile-button"
+                                        className="cursor-pointer rounded-full px-12 py-5 transition-all hover:bg-[#FFC801] dark:hover:text-[#FAFAFA]"
+                                    >
+                                        Save
+                                    </Button>
 
                                     <Transition
                                         show={recentlySuccessful}

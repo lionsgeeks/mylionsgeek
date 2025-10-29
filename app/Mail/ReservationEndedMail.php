@@ -2,9 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -15,7 +13,9 @@ class ReservationEndedMail extends Mailable
     use Queueable, SerializesModels;
 
     public $user;
+
     public $reservation;
+
     public $verificationLink;
 
     /**
@@ -58,4 +58,3 @@ class ReservationEndedMail extends Mailable
         return [];
     }
 }
-

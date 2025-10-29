@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -16,7 +16,7 @@ return new class extends Migration
         if (DB::getDriverName() === 'sqlite') {
             // Disable foreign key checks
             DB::statement('PRAGMA foreign_keys=OFF');
-            
+
             // Create a new tasks table with correct foreign key
             Schema::create('tasks_new', function (Blueprint $table) {
                 $table->id();
@@ -40,17 +40,17 @@ return new class extends Migration
                 // $table->integer('actual_hours')->nullable();
                 $table->timestamps();
             });
-            
+
             // Copy data from old table to new table with proper defaults
             DB::statement('INSERT INTO tasks_new (id, title, description, priority, status, project_id, created_by, due_date, sort_order, subtasks, assignees, is_pinned, is_editable, progress, tags, started_at, completed_at, created_at, updated_at) 
                 SELECT id, title, description, COALESCE(priority, "medium"), COALESCE(status, "todo"), project_id, created_by, due_date, COALESCE(sort_order, 0), subtasks, assignees, COALESCE(is_pinned, 0), COALESCE(is_editable, 1), COALESCE(progress, 0), tags, started_at, completed_at, created_at, updated_at FROM tasks');
-            
+
             // Drop old table
             Schema::dropIfExists('tasks');
-            
+
             // Rename new table to tasks
             DB::statement('ALTER TABLE tasks_new RENAME TO tasks');
-            
+
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
         }

@@ -8,17 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('receive_notifications')) {
+        if (! Schema::hasTable('receive_notifications')) {
             Schema::create('receive_notifications', function (Blueprint $table) {
-			$table->id();
-			$table->integer('student');
-			$table->integer('cowork');
-			$table->integer('moderator');
-			$table->integer('coach');
-			$table->integer('user_id');
-			$table->string('created_at')->nullable()->default('NULL');
-			$table->string('updated_at')->nullable()->default('NULL');
-			$table->timestamps();
+                $table->id();
+                $table->integer('student');
+                $table->integer('cowork');
+                $table->integer('moderator');
+                $table->integer('coach');
+                $table->integer('user_id');
+                $table->string('created_at')->nullable()->default('NULL');
+                $table->string('updated_at')->nullable()->default('NULL');
+                $table->timestamps();
             });
         }
     }

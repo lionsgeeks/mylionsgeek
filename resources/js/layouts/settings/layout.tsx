@@ -1,6 +1,5 @@
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { edit as editPassword } from '@/routes/password';
 import { edit } from '@/routes/profile';
@@ -33,7 +32,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         <div className="px-4 py-6 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-10">
             <Heading title="Settings" description="Manage your profile and account settings" />
 
-            <div className=" flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
+            <div className="flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
                 <aside className="w-full max-w-xl lg:w-48">
                     <nav className="flex gap-5">
                         {sidebarNavItems.map((item, index) => (
@@ -42,9 +41,13 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                 size="sm"
                                 variant="ghost"
                                 asChild
-                                className={cn('w-fit justify-center px-12 py-5 rounded-full dark:bg-[#FAFAFA] dark:text-[#171717] hover:text-[#FAFAFA] bg-[#171717] text-[#FAFAFA] hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA] transition-all', {
-                                    'dark:bg-[#FFC801] bg-[#FFC801] text-[#171717] dark:text-[#171717]': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
-                                })}
+                                className={cn(
+                                    'w-fit justify-center rounded-full bg-[#171717] px-12 py-5 text-[#FAFAFA] transition-all hover:bg-[#FFC801] hover:text-[#FAFAFA] dark:bg-[#FAFAFA] dark:text-[#171717] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA]',
+                                    {
+                                        'bg-[#FFC801] text-[#171717] dark:bg-[#FFC801] dark:text-[#171717]':
+                                            currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
+                                    },
+                                )}
                             >
                                 <Link href={item.href} prefetch>
                                     {item.title}

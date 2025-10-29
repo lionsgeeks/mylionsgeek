@@ -7,12 +7,11 @@ use App\Mail\UserWelcomeMail;
 use App\Mail\WelcomeUserAfterProfileComplete;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 
 class CompleteProfileController extends Controller
 {
@@ -27,7 +26,7 @@ class CompleteProfileController extends Controller
         // ✅ Then try to get the user using the token
         $user = User::where('activation_token', $token)->first();
 
-        if (!$user) {
+        if (! $user) {
             return Inertia::render('profile/ExpiredLink');
         }
 
@@ -40,6 +39,7 @@ class CompleteProfileController extends Controller
             'user' => $user,
         ]);
     }
+
     public function resendActivationLink($id)
     {
         // Regenerate a new activation token (optional but safer)
@@ -60,11 +60,12 @@ class CompleteProfileController extends Controller
 
         return redirect()->back()->with('success', 'Activation link resent successfully.');
     }
+
     public function submitCompleteProfile(Request $request, $token)
     {
         $user = User::where('activation_token', $token)->first();
 
-        if (!$user) {
+        if (! $user) {
             return Inertia::render('profile/ExpiredLink');
         }
 
@@ -73,7 +74,7 @@ class CompleteProfileController extends Controller
         $validated = $request->validate([
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'required|string|max:15',
-            'cin' => 'required|string|max:10|unique:users,cin,' . $user->id,
+            'cin' => 'required|string|max:10|unique:users,cin,'.$user->id,
             'entreprise' => 'required|string|max:255',
             'status' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048', // max 2MB
@@ -101,14 +102,14 @@ class CompleteProfileController extends Controller
         $user->entreprise = $validated['entreprise'];
         $user->activation_token = null; // Invalidate the token
         $user->account_state = 0; // Optional: mark user as active
-        $user->image = $validated['image'];; // Optional: mark user as active
+        $user->image = $validated['image']; // Optional: mark user as active
         $user->save();
 
         Mail::to($user->email)->send(new WelcomeUserAfterProfileComplete($user));
 
-
         return redirect('/login')->with('success', 'Profile completed successfully. You can now log in.');
     }
+
     public function resetPassword($id)
     {
         $user = User::find($id);

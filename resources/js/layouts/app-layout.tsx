@@ -1,9 +1,9 @@
-import { usePage } from "@inertiajs/react";
-import AppHeaderLayout from "@/layouts/app/app-header-layout";
-import AppSidebarLayout from "@/layouts/app/app-sidebar-layout";
-import { type BreadcrumbItem } from "@/types";
-import { type ReactNode } from "react";
-import ShowSkippableModal from "@/components/ShowSkippableModal";
+import ShowSkippableModal from '@/components/ShowSkippableModal';
+import AppHeaderLayout from '@/layouts/app/app-header-layout';
+import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { type BreadcrumbItem } from '@/types';
+import { usePage } from '@inertiajs/react';
+import { type ReactNode } from 'react';
 
 interface AppLayoutProps {
     children: ReactNode;
@@ -20,14 +20,13 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     const isAdmin = userRoles.includes('admin');
 
     // Show header only for students/coworkers without admin
-    const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));
+    const isStudentOrCoworker = !isAdmin && userRoles.some((role) => ['student', 'coworker'].includes(role));
 
     const Layout = isAdmin ? AppSidebarLayout : isStudentOrCoworker ? AppHeaderLayout : AppHeaderLayout;
 
-
     return (
         <Layout breadcrumbs={breadcrumbs} {...props}>
-            <div className="bg-light dark:bg-dark shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg">
+            <div className="mx-auto my-6 h-full w-[96%] rounded-lg bg-light shadow-lg dark:bg-dark">
                 <ShowSkippableModal />
                 {children}
             </div>

@@ -1,25 +1,15 @@
-import React, { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useForm, router } from '@inertiajs/react';
-import { 
-    MoreHorizontal, 
-    Edit, 
-    ArrowRight, 
-    Trash, 
-    Plus,
-    Search,
-    StickyNote,
-    Pin,
-    PinOff
-} from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { router, useForm } from '@inertiajs/react';
+import { ArrowRight, Edit, MoreHorizontal, Pin, PinOff, Plus, Search, Trash } from 'lucide-react';
+import { useState } from 'react';
 
 const Notes = ({ notes = [], projectId }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -27,16 +17,21 @@ const Notes = ({ notes = [], projectId }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedNote, setSelectedNote] = useState(null);
 
-    const { data: newNote, setData: setNewNote, post: createNote, put: updateNote, delete: deleteNote } = useForm({
+    const {
+        data: newNote,
+        setData: setNewNote,
+        post: createNote,
+        put: updateNote,
+        delete: deleteNote,
+    } = useForm({
         title: '',
         content: '',
         color: 'bg-amber-50 dark:bg-amber-950/50',
-        project_id: projectId
+        project_id: projectId,
     });
 
-    const filteredNotes = notes.filter(note => 
-        note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredNotes = notes.filter(
+        (note) => note.title.toLowerCase().includes(searchTerm.toLowerCase()) || note.content.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
     const colorOptions = [
@@ -45,7 +40,7 @@ const Notes = ({ notes = [], projectId }) => {
         { value: 'bg-sky-50 dark:bg-sky-950/50', label: 'Blue' },
         { value: 'bg-rose-50 dark:bg-rose-950/50', label: 'Pink' },
         { value: 'bg-purple-50 dark:bg-purple-950/50', label: 'Purple' },
-        { value: 'bg-orange-50 dark:bg-orange-950/50', label: 'Orange' }
+        { value: 'bg-orange-50 dark:bg-orange-950/50', label: 'Orange' },
     ];
 
     const handleCreateNote = () => {
@@ -55,14 +50,14 @@ const Notes = ({ notes = [], projectId }) => {
                     title: '',
                     content: '',
                     color: 'bg-amber-50 dark:bg-amber-950/50',
-                    project_id: projectId
+                    project_id: projectId,
                 });
                 setIsCreateModalOpen(false);
             },
             onError: (errors) => {
                 console.error('Failed to create note:', errors);
                 alert('Failed to create note: ' + (errors.message || 'Unknown error'));
-            }
+            },
         });
     };
 
@@ -73,7 +68,7 @@ const Notes = ({ notes = [], projectId }) => {
 
     const handleUpdateNote = () => {
         if (!selectedNote) return;
-        
+
         updateNote(`/admin/project-notes/${selectedNote.id}`, {
             onSuccess: () => {
                 setIsEditModalOpen(false);
@@ -82,7 +77,7 @@ const Notes = ({ notes = [], projectId }) => {
             onError: (errors) => {
                 console.error('Failed to update note:', errors);
                 alert('Failed to update note: ' + (errors.message || 'Unknown error'));
-            }
+            },
         });
     };
 
@@ -92,31 +87,35 @@ const Notes = ({ notes = [], projectId }) => {
                 onError: (errors) => {
                     console.error('Failed to delete note:', errors);
                     alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
-                }
+                },
             });
         }
     };
 
     const handleTogglePin = (noteId) => {
-        router.post(`/admin/project-notes/${noteId}/pin`, {}, {
-            onError: (errors) => {
-                console.error('Failed to toggle pin:', errors);
-                alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
-            }
-        });
+        router.post(
+            `/admin/project-notes/${noteId}/pin`,
+            {},
+            {
+                onError: (errors) => {
+                    console.error('Failed to toggle pin:', errors);
+                    alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
+                },
+            },
+        );
     };
 
     return (
         <div className="space-y-6">
             {/* Header and Search */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search notes..." 
-                            className="pl-8 w-[200px] md:w-[300px]"
+                        <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search notes..."
+                            className="w-[200px] pl-8 md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -124,7 +123,7 @@ const Notes = ({ notes = [], projectId }) => {
                 </div>
 
                 <Button onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="mr-2 h-4 w-4" />
                     Add Note
                 </Button>
             </div>
@@ -132,14 +131,14 @@ const Notes = ({ notes = [], projectId }) => {
             {/* Notes Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredNotes.length === 0 ? (
-                    <div className="col-span-full text-center py-8 text-muted-foreground">
+                    <div className="col-span-full py-8 text-center text-muted-foreground">
                         {searchTerm ? 'No notes match your search' : 'No notes created yet'}
                     </div>
                 ) : (
                     filteredNotes.map((note) => (
                         <Card
                             key={note.id}
-                            className={`${note.color || 'bg-amber-50 dark:bg-amber-950/50'} border shadow-sm hover:shadow-md transition-shadow duration-200`}
+                            className={`${note.color || 'bg-amber-50 dark:bg-amber-950/50'} border shadow-sm transition-shadow duration-200 hover:shadow-md`}
                         >
                             <CardHeader className="p-4 pb-2">
                                 <div className="flex items-start justify-between">
@@ -176,38 +175,26 @@ const Notes = ({ notes = [], projectId }) => {
                                                 <span>Share</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem 
-                                                className="text-destructive"
-                                                onClick={() => handleDeleteNote(note.id)}
-                                            >
+                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteNote(note.id)}>
                                                 <Trash className="mr-2 h-4 w-4" />
                                                 <span>Delete</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
-                                <div className="flex items-center justify-between mt-2">
+                                <div className="mt-2 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Avatar className="h-6 w-6">
-                                            <AvatarImage 
-                                                src={note.user?.image ? `/storage/${note.user.image}` : null} 
-                                                alt={note.user?.name} 
-                                            />
-                                            <AvatarFallback>
-                                                {note.user?.name?.substring(0, 2).toUpperCase() || '??'}
-                                            </AvatarFallback>
+                                            <AvatarImage src={note.user?.image ? `/storage/${note.user.image}` : null} alt={note.user?.name} />
+                                            <AvatarFallback>{note.user?.name?.substring(0, 2).toUpperCase() || '??'}</AvatarFallback>
                                         </Avatar>
-                                        <span className="text-xs text-muted-foreground">
-                                            {note.user?.name || 'Unknown User'}
-                                        </span>
+                                        <span className="text-xs text-muted-foreground">{note.user?.name || 'Unknown User'}</span>
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {new Date(note.updated_at).toLocaleDateString()}
-                                    </div>
+                                    <div className="text-xs text-muted-foreground">{new Date(note.updated_at).toLocaleDateString()}</div>
                                 </div>
                             </CardHeader>
                             <CardContent className="p-4 pt-0">
-                                <div className="whitespace-pre-line text-sm">{note.content}</div>
+                                <div className="text-sm whitespace-pre-line">{note.content}</div>
                             </CardContent>
                         </Card>
                     ))
@@ -219,15 +206,13 @@ const Notes = ({ notes = [], projectId }) => {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Create New Note</DialogTitle>
-                        <DialogDescription>
-                            Add a new note to your project
-                        </DialogDescription>
+                        <DialogDescription>Add a new note to your project</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="title">Note Title</Label>
-                            <Input 
-                                id="title" 
+                            <Input
+                                id="title"
                                 value={newNote.title}
                                 onChange={(e) => setNewNote('title', e.target.value)}
                                 placeholder="Enter note title..."
@@ -235,8 +220,8 @@ const Notes = ({ notes = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="content">Content</Label>
-                            <Textarea 
-                                id="content" 
+                            <Textarea
+                                id="content"
                                 value={newNote.content}
                                 onChange={(e) => setNewNote('content', e.target.value)}
                                 placeholder="Enter note content..."
@@ -245,10 +230,7 @@ const Notes = ({ notes = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="color">Color Theme</Label>
-                            <Select 
-                                value={newNote.color} 
-                                onValueChange={(value) => setNewNote('color', value)}
-                            >
+                            <Select value={newNote.color} onValueChange={(value) => setNewNote('color', value)}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -266,9 +248,7 @@ const Notes = ({ notes = [], projectId }) => {
                         <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleCreateNote}>
-                            Create Note
-                        </Button>
+                        <Button onClick={handleCreateNote}>Create Note</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -278,34 +258,32 @@ const Notes = ({ notes = [], projectId }) => {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit Note</DialogTitle>
-                        <DialogDescription>
-                            Update your note content and settings
-                        </DialogDescription>
+                        <DialogDescription>Update your note content and settings</DialogDescription>
                     </DialogHeader>
                     {selectedNote && (
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="edit-title">Note Title</Label>
-                                <Input 
-                                    id="edit-title" 
+                                <Input
+                                    id="edit-title"
                                     value={selectedNote.title}
-                                    onChange={(e) => setSelectedNote({...selectedNote, title: e.target.value})}
+                                    onChange={(e) => setSelectedNote({ ...selectedNote, title: e.target.value })}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-content">Content</Label>
-                                <Textarea 
-                                    id="edit-content" 
+                                <Textarea
+                                    id="edit-content"
                                     value={selectedNote.content}
-                                    onChange={(e) => setSelectedNote({...selectedNote, content: e.target.value})}
+                                    onChange={(e) => setSelectedNote({ ...selectedNote, content: e.target.value })}
                                     rows={6}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-color">Color Theme</Label>
-                                <Select 
+                                <Select
                                     value={selectedNote.color || 'bg-amber-50 dark:bg-amber-950/50'}
-                                    onValueChange={(value) => setSelectedNote({...selectedNote, color: value})}
+                                    onValueChange={(value) => setSelectedNote({ ...selectedNote, color: value })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />
@@ -325,9 +303,7 @@ const Notes = ({ notes = [], projectId }) => {
                         <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleUpdateNote}>
-                            Save Changes
-                        </Button>
+                        <Button onClick={handleUpdateNote}>Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

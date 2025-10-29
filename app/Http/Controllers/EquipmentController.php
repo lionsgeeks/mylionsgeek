@@ -5,10 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Equipment;
 use App\Models\EquipmentType;
 use App\Models\Reservation;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class EquipmentController extends Controller
@@ -30,7 +29,7 @@ class EquipmentController extends Controller
             if ($img) {
                 $isAbsolute = str_starts_with($img, 'http://') || str_starts_with($img, 'https://');
                 $alreadyPublic = str_starts_with($img, 'storage/img/');
-                if (!$isAbsolute && !$alreadyPublic) {
+                if (! $isAbsolute && ! $alreadyPublic) {
                     $stripped = ltrim($img, '/');
                     if (str_starts_with($stripped, 'storage/')) {
                         $stripped = substr($stripped, strlen('storage/'));
@@ -42,6 +41,7 @@ class EquipmentController extends Controller
             } else {
                 $img = null;
             }
+
             return [
                 'id' => $e->id,
                 'reference' => $e->reference,
@@ -86,7 +86,7 @@ class EquipmentController extends Controller
             }
 
             // Resolve or create equipment type
-            $typeName = $validated['equipment_type'] === 'other' && !empty($validated['other_type'])
+            $typeName = $validated['equipment_type'] === 'other' && ! empty($validated['other_type'])
                 ? strtolower(trim($validated['other_type']))
                 : strtolower(trim($validated['equipment_type']));
 
@@ -162,6 +162,7 @@ class EquipmentController extends Controller
     public function destroy(Equipment $equipment)
     {
         $equipment->delete();
+
         return back()->with('success', 'Equipment deleted');
     }
 
@@ -186,7 +187,7 @@ class EquipmentController extends Controller
                 'r.passed',
                 're.created_at as attached_at'
             )
-            ->orderByDesc(DB::raw("COALESCE(re.day, r.day)"))
+            ->orderByDesc(DB::raw('COALESCE(re.day, r.day)'))
             ->orderByDesc('re.start')
             ->limit(200)
             ->get();
@@ -222,7 +223,7 @@ class EquipmentController extends Controller
     public function usageActivities(Equipment $equipment)
     {
         // Default empty list if activity_log missing
-        if (!\Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
             return response()->json(['usage_activities' => []]);
         }
 
@@ -240,6 +241,7 @@ class EquipmentController extends Controller
             $props = json_decode($row->properties ?? '{}', true);
             $start = isset($props['start']) ? $props['start'] : null;
             $end = isset($props['end']) ? $props['end'] : null;
+
             return [
                 'id' => $row->id,
                 'action' => $row->event, // approved | verified_end
@@ -263,5 +265,3 @@ class EquipmentController extends Controller
         return response()->json(['notes' => []]);
     }
 }
-
-

@@ -1,12 +1,5 @@
-import React from 'react';
-
 const MainDashboard = () => {
-    return (
-        <>
-        
-            
-        </>
-    );
+    return <></>;
 };
 
 export default MainDashboard;

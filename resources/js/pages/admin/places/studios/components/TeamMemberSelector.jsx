@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useEffect, useState } from 'react';
 
 const TeamMemberSelector = ({ selected, onSelect }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,11 +20,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
 
     useEffect(() => {
         if (searchQuery) {
-            setFilteredUsers(
-                users.filter((u) =>
-                    u.name.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-            );
+            setFilteredUsers(users.filter((u) => u.name.toLowerCase().includes(searchQuery.toLowerCase())));
         } else {
             setFilteredUsers(users);
         }
@@ -70,7 +66,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-[#FFC801] hover:bg-neutral-900 hover:text-white text-black dark:bg-[#FFC801] dark:hover:bg-gray-200 dark:text-black cursor-pointer"
+                    className="cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:bg-[#FFC801] dark:text-black dark:hover:bg-gray-200"
                 >
                     Add Team Member
                 </Button>
@@ -80,10 +76,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                     {selected.map((member) => (
-                        <div
-                            key={member.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                        >
+                        <div key={member.id} className="flex items-center gap-2 rounded-lg border p-2">
                             <Avatar className="h-8 w-8">
                                 <AvatarImage src={member.image} alt={member.name} />
                                 <AvatarFallback>{member.name[0]}</AvatarFallback>
@@ -102,28 +95,22 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                     ))}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    No team members selected
-                </p>
+                <p className="py-8 text-center text-sm text-muted-foreground">No team members selected</p>
             )}
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogContent className="flex max-h-[80vh] max-w-md flex-col">
                     <DialogHeader>
                         <DialogTitle>Select Team Members</DialogTitle>
                     </DialogHeader>
 
                     {/* Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                        <Input
-                            placeholder="Search members..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                        <Input placeholder="Search members..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
 
                         {loading ? (
-                            <p className="text-sm text-center py-4">Loading...</p>
+                            <p className="py-4 text-center text-sm">Loading...</p>
                         ) : filteredUsers.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredUsers.map((user) => {
@@ -131,7 +118,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                                     return (
                                         <div
                                             key={user.id}
-                                            className="flex items-center gap-3 p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-accent"
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
@@ -145,23 +132,22 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-center py-4">No users found</p>
+                            <p className="py-4 text-center text-sm">No users found</p>
                         )}
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t">
+                    <div className="border-t pt-4">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="w-full bg-[#FFC801] hover:bg-neutral-900 text-black hover:text-white cursor-pointer dark:hover:bg-gray-200 dark:hover:text-black"
+                            className="w-full cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:hover:bg-gray-200 dark:hover:text-black"
                         >
                             Done
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };

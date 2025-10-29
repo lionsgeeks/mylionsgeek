@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Note extends Model
 {
-    protected $table = 'notes'; 
+    protected $table = 'notes';
 
     protected $fillable = [
         'user_id',
@@ -15,5 +15,5 @@ class Note extends Model
         'author',
     ];
 
-    public $timestamps = true; 
+    public $timestamps = true;
 }

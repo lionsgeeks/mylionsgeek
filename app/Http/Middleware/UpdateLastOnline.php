@@ -1,11 +1,12 @@
 <?php
 
 // app/Http/Middleware/UpdateLastOnline.php
+
 namespace App\Http\Middleware;
 
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class UpdateLastOnline
 {

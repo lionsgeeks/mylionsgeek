@@ -4,7 +4,7 @@
 // import { Users, Search, Filter, Briefcase, ClipboardCheck, FileText, CheckCircle, Award, Mail, ChevronsRight, ChevronsLeft } from 'lucide-react';
 
 // export default function RecruiterDashboard() {
-//   const { users } = usePage().props; 
+//   const { users } = usePage().props;
 //   const stages = [
 //     { name: 'Applied', icon: FileText },
 //     { name: 'Screening', icon: Search },
@@ -13,7 +13,7 @@
 //     { name: 'Offer', icon: Award },
 //     { name: 'Hired', icon: CheckCircle }
 //   ];
- 
+
 //   const [candidates, setCandidates] = useState(
 //     users.map((user) => ({
 //       id: user.id,
@@ -71,7 +71,7 @@
 //       <Head title="Recruiter" />
 //       <div className="min-h-screen p-6 bg-gray-50 dark:bg-[#0d0d0d] transition-colors duration-300">
 //         <div className="max-w-7xl mx-auto">
-          
+
 //           {/* Header */}
 //           <div className="bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-8 mb-8 border-t-4 border-yellow-400">
 //             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">

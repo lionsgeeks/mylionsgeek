@@ -9,11 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('formations', function (Blueprint $table) {
-                $table->string('category')->nullable();
-                $table->string('promo')->nullable(); // optional
-                $table->string('user_id')->nullable();
-}
-        ); }
+            $table->string('category')->nullable();
+            $table->string('promo')->nullable(); // optional
+            $table->string('user_id')->nullable();
+        }
+        );
+    }
 
     public function down(): void
     {

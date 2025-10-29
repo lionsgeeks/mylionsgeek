@@ -1,19 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp, Activity } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calendar, TrendingUp, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
+import { Head, Link, router } from '@inertiajs/react';
+import { Activity, Calendar, Check, ChevronDown, ChevronUp, Download, FileText, Search, TrendingUp, Users, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import ExportModal from './partials/ExportModal';
 const StatusBadge = ({ yes, trueText, falseText }) => (
-    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+    <span
+        className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}
+    >
         {yes ? trueText : falseText}
     </span>
 );
@@ -59,7 +60,9 @@ function buildTimeStats(list) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    let today = 0, week = 0, month = 0;
+    let today = 0,
+        week = 0,
+        month = 0;
     for (const r of list) {
         const d = getItemDate(r);
         if (!d) continue;
@@ -85,32 +88,32 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
 
     // Date range filter state
     const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
-    const [toDate, setToDate] = useState('');   // YYYY-MM-DD
+    const [toDate, setToDate] = useState(''); // YYYY-MM-DD
 
     // Combine all reservations (including cowork) for the "All" tab and sort by date+time
     const allReservations = useMemo(() => {
-        const normalizedCowork = coworkReservations.map(c => ({
+        const normalizedCowork = coworkReservations.map((c) => ({
             ...c,
             type: 'cowork',
             title: `Cowork - Table ${c.table}`,
             date: c.day,
             start: c.start,
             end: c.end,
-            place_type: 'cowork'
+            place_type: 'cowork',
         }));
-        
-        const normalizedMeetingRooms = meetingRoomReservations.map(m => ({
+
+        const normalizedMeetingRooms = meetingRoomReservations.map((m) => ({
             ...m,
             type: 'meeting_room',
             title: `Meeting Room - ${m.room_name || 'Room'}`,
             date: m.day,
             start: m.start,
             end: m.end,
-            place_type: 'meeting_room'
+            place_type: 'meeting_room',
         }));
-        
+
         const mixed = [...reservations, ...normalizedCowork, ...normalizedMeetingRooms];
-        
+
         const parseDateTime = (item) => {
             const dateStr = item?.date || item?.day || '';
             const timeStr = item?.start || '00:00:00';
@@ -118,7 +121,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             const ts = Date.parse(iso);
             return Number.isFinite(ts) ? ts : 0;
         };
-        
+
         return mixed.sort((a, b) => parseDateTime(b) - parseDateTime(a));
     }, [reservations, coworkReservations, meetingRoomReservations]);
 
@@ -138,12 +141,16 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             return acc;
         }, {});
 
-        const byStatus = (list) => list.reduce((acc, r) => {
-            if (r.canceled) acc.canceled++;
-            else if (r.approved) acc.approved++;
-            else acc.pending++;
-            return acc;
-        }, { approved: 0, canceled: 0, pending: 0 });
+        const byStatus = (list) =>
+            list.reduce(
+                (acc, r) => {
+                    if (r.canceled) acc.canceled++;
+                    else if (r.approved) acc.approved++;
+                    else acc.pending++;
+                    return acc;
+                },
+                { approved: 0, canceled: 0, pending: 0 },
+            );
 
         const statusAll = byStatus(allReservations);
         const statusCowork = byStatus(coworkReservations);
@@ -157,16 +164,28 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const rangeEnd = useMemo(() => (toDate ? parseYmd(toDate) : null), [toDate]);
     const rangeActive = !!(rangeStart || rangeEnd);
 
-    const inRange = React.useCallback((r) => {
-        const d = getItemDate(r);
-        return isWithin(d, rangeStart, rangeEnd);
-    }, [rangeStart, rangeEnd]);
+    const inRange = React.useCallback(
+        (r) => {
+            const d = getItemDate(r);
+            return isWithin(d, rangeStart, rangeEnd);
+        },
+        [rangeStart, rangeEnd],
+    );
 
     // Filter reservations for range and search
     const baseAll = useMemo(() => (rangeActive ? allReservations.filter(inRange) : allReservations), [allReservations, rangeActive, inRange]);
-    const baseCowork = useMemo(() => (rangeActive ? coworkReservations.filter(inRange) : coworkReservations), [coworkReservations, rangeActive, inRange]);
-    const baseStudio = useMemo(() => (rangeActive ? studioReservations.filter(inRange) : studioReservations), [studioReservations, rangeActive, inRange]);
-    const baseRooms = useMemo(() => (rangeActive ? meetingRoomReservations.filter(inRange) : meetingRoomReservations), [meetingRoomReservations, rangeActive, inRange]);
+    const baseCowork = useMemo(
+        () => (rangeActive ? coworkReservations.filter(inRange) : coworkReservations),
+        [coworkReservations, rangeActive, inRange],
+    );
+    const baseStudio = useMemo(
+        () => (rangeActive ? studioReservations.filter(inRange) : studioReservations),
+        [studioReservations, rangeActive, inRange],
+    );
+    const baseRooms = useMemo(
+        () => (rangeActive ? meetingRoomReservations.filter(inRange) : meetingRoomReservations),
+        [meetingRoomReservations, rangeActive, inRange],
+    );
 
     // Exterior detection and lists
     const isExterior = React.useCallback((r) => {
@@ -209,33 +228,36 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const filteredCoworkReservations = useMemo(() => {
         if (!searchTerm) return baseCowork;
         const term = searchTerm.toLowerCase();
-        return baseCowork.filter(r =>
-            r.user_name?.toLowerCase().includes(term) ||
-            r.day?.includes(term) ||
-            `table ${r.table}`?.toLowerCase().includes(term)
+        return baseCowork.filter(
+            (r) => r.user_name?.toLowerCase().includes(term) || r.day?.includes(term) || `table ${r.table}`?.toLowerCase().includes(term),
         );
     }, [baseCowork, searchTerm]);
 
     const filteredStudioReservations = useMemo(() => {
         if (!searchTerm) return baseStudio;
         const term = searchTerm.toLowerCase();
-        return baseStudio.filter(r =>
-            r.user_name?.toLowerCase().includes(term) ||
-            r.title?.toLowerCase().includes(term) ||
-            r.studio_name?.toLowerCase().includes(term) ||
-            r.team_members?.toLowerCase().includes(term) ||
-            (r.day || r.date)?.includes(term)
+        return baseStudio.filter(
+            (r) =>
+                r.user_name?.toLowerCase().includes(term) ||
+                r.title?.toLowerCase().includes(term) ||
+                r.studio_name?.toLowerCase().includes(term) ||
+                r.team_members?.toLowerCase().includes(term) ||
+                (r.day || r.date)?.includes(term),
         );
     }, [baseStudio, searchTerm]);
 
     // Dynamic, range-aware status and per-studio from filtered lists
     const filteredStatus = useMemo(() => {
-        const byStatus = (list) => list.reduce((acc, r) => {
-            if (r.canceled) acc.canceled++;
-            else if (r.approved) acc.approved++;
-            else acc.pending++;
-            return acc;
-        }, { approved: 0, canceled: 0, pending: 0 });
+        const byStatus = (list) =>
+            list.reduce(
+                (acc, r) => {
+                    if (r.canceled) acc.canceled++;
+                    else if (r.approved) acc.approved++;
+                    else acc.pending++;
+                    return acc;
+                },
+                { approved: 0, canceled: 0, pending: 0 },
+            );
         return {
             all: byStatus(baseAll),
             cowork: byStatus(baseCowork),
@@ -272,11 +294,14 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
 
     const exteriorCount = useMemo(() => baseExterior.length, [baseExterior]);
 
-    const total = useMemo(() => ({
-        reservations: filteredReservations.length,
-        coworks: filteredCoworkReservations.length,
-        studios: filteredStudioReservations.length,
-    }), [filteredReservations, filteredCoworkReservations, filteredStudioReservations]);
+    const total = useMemo(
+        () => ({
+            reservations: filteredReservations.length,
+            coworks: filteredCoworkReservations.length,
+            studios: filteredStudioReservations.length,
+        }),
+        [filteredReservations, filteredCoworkReservations, filteredStudioReservations],
+    );
 
     // Pagination (same UX as Members) per tab
     const [pageAll, setPageAll] = useState(1);
@@ -286,24 +311,34 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [showAllStudio, setShowAllStudio] = useState(false);
     const perPage = 10;
     const pagedAll = filteredReservations.slice((pageAll - 1) * perPage, (pageAll - 1) * perPage + perPage);
-    const pagedCowork = showAllCowork ? filteredCoworkReservations : filteredCoworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
-    const pagedStudio = showAllStudio ? filteredStudioReservations : filteredStudioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
+    const pagedCowork = showAllCowork
+        ? filteredCoworkReservations
+        : filteredCoworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
+    const pagedStudio = showAllStudio
+        ? filteredStudioReservations
+        : filteredStudioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
     const totalPagesAll = Math.ceil(filteredReservations.length / perPage) || 1;
-    const totalPagesCowork = showAllCowork ? 1 : (Math.ceil(filteredCoworkReservations.length / perPage) || 1);
-    const totalPagesStudio = showAllStudio ? 1 : (Math.ceil(filteredStudioReservations.length / perPage) || 1);
-    useEffect(() => { setPageAll(1); }, [filteredReservations]);
-    useEffect(() => { setPageCowork(1); }, [filteredCoworkReservations, showAllCowork]);
-    useEffect(() => { setPageStudio(1); }, [filteredStudioReservations, showAllStudio]);
+    const totalPagesCowork = showAllCowork ? 1 : Math.ceil(filteredCoworkReservations.length / perPage) || 1;
+    const totalPagesStudio = showAllStudio ? 1 : Math.ceil(filteredStudioReservations.length / perPage) || 1;
+    useEffect(() => {
+        setPageAll(1);
+    }, [filteredReservations]);
+    useEffect(() => {
+        setPageCowork(1);
+    }, [filteredCoworkReservations, showAllCowork]);
+    useEffect(() => {
+        setPageStudio(1);
+    }, [filteredStudioReservations, showAllStudio]);
 
     // Studio Podcast + Studio Image filtered list
     const baseStudioPI = useMemo(() => {
         const accepted = new Set(['studio podcast', 'studio image']);
-        return baseStudio.filter(r => accepted.has((r.studio_name || r.studio || '').toLowerCase()));
+        return baseStudio.filter((r) => accepted.has((r.studio_name || r.studio || '').toLowerCase()));
     }, [baseStudio]);
 
     const timeStudioPI = useMemo(() => {
         if (rangeActive) return { today: 0, week: 0, month: 0 };
-        const allStudio = studioReservations.filter(r => {
+        const allStudio = studioReservations.filter((r) => {
             const n = (r.studio_name || r.studio || '').toLowerCase();
             return n === 'studio podcast' || n === 'studio image';
         });
@@ -315,20 +350,20 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             name: 'Approved',
             all: filteredStatus.all.approved,
             cowork: filteredStatus.cowork.approved,
-            studio: filteredStatus.studio.approved
+            studio: filteredStatus.studio.approved,
         },
         {
             name: 'Canceled',
             all: filteredStatus.all.canceled,
             cowork: filteredStatus.cowork.canceled,
-            studio: filteredStatus.studio.canceled
+            studio: filteredStatus.studio.canceled,
         },
         {
             name: 'Pending',
             all: filteredStatus.all.pending,
             cowork: filteredStatus.cowork.pending,
-            studio: filteredStatus.studio.pending
-        }
+            studio: filteredStatus.studio.pending,
+        },
     ];
 
     const timelineData = [
@@ -336,26 +371,26 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             period: 'Today',
             all: stats.timeAll.today,
             cowork: stats.timeCowork.today,
-            studio: timeStudioPI.today
+            studio: timeStudioPI.today,
         },
         {
             period: 'This Week',
             all: stats.timeAll.week,
             cowork: stats.timeCowork.week,
-            studio: timeStudioPI.week
+            studio: timeStudioPI.week,
         },
         {
             period: 'This Month',
             all: stats.timeAll.month,
             cowork: stats.timeCowork.month,
-            studio: timeStudioPI.month
-        }
+            studio: timeStudioPI.month,
+        },
     ];
 
     const distributionData = [
         { name: 'Cowork', value: baseCowork.length, color: '#3b82f6' },
         { name: 'Studios', value: baseStudioPI.length, color: '#8b5cf6' },
-        { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
+        { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' },
     ];
 
     // export
@@ -363,25 +398,31 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     return (
         <AppLayout>
             <Head title="Reservations" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex flex-col gap-6 px-4 py-6 sm:p-8 lg:gap-10 lg:p-10">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-medium">Reservations</h1>
-                        <p className="text-sm text-muted-foreground">{(rangeActive ? baseAll.length : allReservations.length)} total — {(rangeActive ? baseCowork.length : coworkReservations.length)} coworks — {(rangeActive ? baseStudio.length : studioReservations.length)} studios</p>
+                        <p className="text-sm text-muted-foreground">
+                            {rangeActive ? baseAll.length : allReservations.length} total —{' '}
+                            {rangeActive ? baseCowork.length : coworkReservations.length} coworks —{' '}
+                            {rangeActive ? baseStudio.length : studioReservations.length} studios
+                        </p>
                     </div>
-                    <div className="flex items-center gap-2 ">
-                        <div className="relative ">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 " />
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
                             <Input
                                 type="text"
                                 placeholder="Search reservations..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 w-64 bg-neutral-200 dark:bg-neutral-800"
+                                className="w-64 bg-neutral-200 pl-10 dark:bg-neutral-800"
                             />
                         </div>
                         <Select value={filterType || 'all'} onValueChange={onTypeChange}>
-                            <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 w-44"><SelectValue placeholder="Type (all)" /></SelectTrigger>
+                            <SelectTrigger className="w-44 bg-neutral-200 dark:bg-neutral-800">
+                                <SelectValue placeholder="Type (all)" />
+                            </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All types</SelectItem>
                                 <SelectItem value="cowork">Cowork</SelectItem>
@@ -391,7 +432,9 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus || 'all'} onValueChange={onStatusChange}>
-                            <SelectTrigger className="w-44 bg-neutral-200 dark:bg-neutral-800"><SelectValue placeholder="Status (all)" /></SelectTrigger>
+                            <SelectTrigger className="w-44 bg-neutral-200 dark:bg-neutral-800">
+                                <SelectValue placeholder="Status (all)" />
+                            </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All status</SelectItem>
                                 <SelectItem value="approved">Approved</SelectItem>
@@ -399,9 +442,28 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                 <SelectItem value="canceled">Canceled</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-40 bg-neutral-200 dark:bg-neutral-800" />
-                        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-40 bg-neutral-200 dark:bg-neutral-800" />
-                        <Button variant="outline" className="bg-neutral-200 dark:bg-neutral-800 " onClick={() => { setFromDate(''); setToDate(''); }}>Clear</Button>
+                        <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            className="w-40 bg-neutral-200 dark:bg-neutral-800"
+                        />
+                        <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            className="w-40 bg-neutral-200 dark:bg-neutral-800"
+                        />
+                        <Button
+                            variant="outline"
+                            className="bg-neutral-200 dark:bg-neutral-800"
+                            onClick={() => {
+                                setFromDate('');
+                                setToDate('');
+                            }}
+                        >
+                            Clear
+                        </Button>
                     </div>
                 </div>
 
@@ -410,7 +472,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     <Button
                         onClick={() => setShowCharts(!showCharts)}
                         variant="outline"
-                        className="flex items-center gap-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        className="flex items-center gap-2 border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
                     >
                         {showCharts ? (
                             <>
@@ -432,7 +494,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         {/* Statistics Cards */}
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {/* Charts Section */}
-                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 lg:col-span-3">
+                            <div className="grid gap-6 md:grid-cols-2 lg:col-span-3 lg:grid-cols-2">
                                 {/* Status Distribution Chart */}
                                 <Card>
                                     <CardHeader>
@@ -485,7 +547,9 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                                                />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </CardContent>
@@ -507,11 +571,17 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                                         <XAxis dataKey="period" tick={{ fill: '#6b7280' }} />
                                         <YAxis tick={{ fill: '#6b7280' }} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                                        />
+                                        <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
                                         <Legend />
-                                        <Line type="monotone" dataKey="all" name="All Reservations" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} activeDot={{ r: 8 }} />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="all"
+                                            name="All Reservations"
+                                            stroke="#3b82f6"
+                                            strokeWidth={3}
+                                            dot={{ r: 6 }}
+                                            activeDot={{ r: 8 }}
+                                        />
                                         <Line type="monotone" dataKey="cowork" name="Cowork" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 6 }} />
                                         <Line type="monotone" dataKey="studio" name="Studios" stroke="#10b981" strokeWidth={3} dot={{ r: 6 }} />
                                     </LineChart>
@@ -521,32 +591,42 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     </>
                 )}
                 <div className="flex items-center justify-between">
-                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-                    <div className='flex gap-x-2'>
-
-                        <Button onClick={() => setShowExportModal(true)}
-                            className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                    <Button
+                        variant={tab === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setTab('all')}
+                        className={
+                            tab === 'all'
+                                ? 'border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]'
+                                : ''
+                        }
+                    >
+                        All reservations
+                    </Button>
+                    <div className="flex gap-x-2">
+                        <Button
+                            onClick={() => setShowExportModal(true)}
+                            className="flex cursor-pointer items-center gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                         >
                             <Download /> Export
                         </Button>
 
                         <Link
                             href="/admin/reservations/analytics"
-                            className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
+                            className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-2 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                         >
-                            <Activity className="w-6 h-4" />
+                            <Activity className="h-4 w-6" />
                             Analytics
                         </Link>
-
                     </div>
                 </div>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
-                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                         {Object.entries(perPlaceDynamic).map(([placeName, count]) => (
                             <Card key={placeName} className="min-h-[120px]">
                                 <CardHeader>
-                                    <CardTitle className="text-sm text-muted-foreground truncate">{placeName}</CardTitle>
+                                    <CardTitle className="truncate text-sm text-muted-foreground">{placeName}</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-xl font-semibold">{count}</div>
@@ -555,16 +635,14 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         ))}
                         <Card key="Exterior" className="min-h-[120px]">
                             <CardHeader>
-                                <CardTitle className="text-sm text-muted-foreground truncate">Exterior</CardTitle>
+                                <CardTitle className="truncate text-sm text-muted-foreground">Exterior</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-xl font-semibold">{exteriorCount}</div>
                             </CardContent>
                         </Card>
-
                     </div>
                 )}
-
 
                 <div className="mt-6">
                     <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
@@ -576,19 +654,19 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                    {pagedAll.some(r => r.type !== "cowork") && (
+                                    {pagedAll.some((r) => r.type !== 'cowork') && (
                                         <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
                                     )}
-
-
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-sidebar-border/70">
                                 {pagedAll.map((r) => (
-                                    <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
-                                        <td className="px-4 py-3 text-sm truncate">{r.user_name ?? '—'}</td>
+                                    <tr key={r.id} className="cursor-pointer hover:bg-accent/30" onClick={() => setSelected(r)}>
+                                        <td className="truncate px-4 py-3 text-sm">{r.user_name ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
-                                        <td className="px-4 py-3 text-sm whitespace-nowrap">{r.start} - {r.end}</td>
+                                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                            {r.start} - {r.end}
+                                        </td>
                                         <td className="px-4 py-3 text-sm capitalize">{(r.type || r.place_type)?.replace('_', ' ') ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm">
                                             {r.canceled ? (
@@ -606,7 +684,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 px-2 cursor-pointer hover:bg-alpha dark:hover:bg-alpha dark:text-white"
+                                                        className="h-8 cursor-pointer px-2 hover:bg-alpha dark:text-white dark:hover:bg-alpha"
                                                         onClick={() => {
                                                             window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
                                                         }}
@@ -620,13 +698,17 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 {!r.canceled && !r.approved && r.type !== 'cowork' && (
                                                     <Button
                                                         size="sm"
-                                                        className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+                                                        className="h-8 cursor-pointer bg-green-500 px-2 text-white hover:bg-green-600 disabled:opacity-50"
                                                         disabled={loadingAction.id === r.id}
                                                         onClick={() => {
                                                             setLoadingAction({ id: r.id, type: 'approve' });
-                                                            router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
+                                                            router.post(
+                                                                `/admin/reservations/${r.id}/approve`,
+                                                                {},
+                                                                {
+                                                                    onFinish: () => setLoadingAction({ id: null, type: null }),
+                                                                },
+                                                            );
                                                         }}
                                                         title="Approve reservation"
                                                     >
@@ -639,23 +721,28 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                     <Button
                                                         size="sm"
                                                         variant="destructive"
-                                                        className="h-8 px-2 cursor-pointer disabled:opacity-50"
+                                                        className="h-8 cursor-pointer px-2 disabled:opacity-50"
                                                         disabled={loadingAction.id === r.id}
                                                         onClick={() => {
-                                                            const confirmMsg = r.approved ?
-                                                                'Cancel this approved reservation?' :
-                                                                'Cancel this reservation?';
+                                                            const confirmMsg = r.approved
+                                                                ? 'Cancel this approved reservation?'
+                                                                : 'Cancel this reservation?';
                                                             if (!window.confirm(confirmMsg)) return;
                                                             setLoadingAction({ id: r.id, type: 'cancel' });
 
                                                             // Use different routes for cowork vs regular reservations
-                                                            const cancelRoute = r.type === 'cowork'
-                                                                ? `/admin/reservations/cowork/${r.id}/cancel`
-                                                                : `/admin/reservations/${r.id}/cancel`;
+                                                            const cancelRoute =
+                                                                r.type === 'cowork'
+                                                                    ? `/admin/reservations/cowork/${r.id}/cancel`
+                                                                    : `/admin/reservations/${r.id}/cancel`;
 
-                                                            router.post(cancelRoute, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
+                                                            router.post(
+                                                                cancelRoute,
+                                                                {},
+                                                                {
+                                                                    onFinish: () => setLoadingAction({ id: null, type: null }),
+                                                                },
+                                                            );
                                                         }}
                                                         title="Cancel reservation"
                                                     >
@@ -675,32 +762,46 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                 )}
                             </tbody>
                         </table>
-                        <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                            <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                            <span>Page {pageAll} of {totalPagesAll}</span>
-                            <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
+                        <div className="mt-6 flex w-full items-center justify-center gap-5">
+                            <button
+                                disabled={pageAll === 1}
+                                onClick={() => setPageAll((p) => Math.max(1, p - 1))}
+                                className="cursor-pointer rounded-lg bg-beta p-2 text-light disabled:opacity-50 dark:bg-light dark:text-dark"
+                                aria-label="Previous page"
+                            >
+                                {'<<'}
+                            </button>
+                            <span>
+                                Page {pageAll} of {totalPagesAll}
+                            </span>
+                            <button
+                                disabled={pageAll === totalPagesAll}
+                                onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))}
+                                className="cursor-pointer rounded-lg bg-beta p-2 text-light disabled:opacity-50 dark:bg-light dark:text-dark"
+                                aria-label="Next page"
+                            >
+                                {'»»'}
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Combined Details & Info Modal with Tabs */}
-                <Dialog open={!!selected || !!infoFor} onOpenChange={() => { setSelected(null); setInfoFor(null); }}>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <Dialog
+                    open={!!selected || !!infoFor}
+                    onOpenChange={() => {
+                        setSelected(null);
+                        setInfoFor(null);
+                    }}
+                >
+                    <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
                         {(selected || infoFor) && (
-                            <ReservationModal
-                                reservation={selected || infoFor}
-                                loadingAction={loadingAction}
-                                setLoadingAction={setLoadingAction}
-                            />
+                            <ReservationModal reservation={selected || infoFor} loadingAction={loadingAction} setLoadingAction={setLoadingAction} />
                         )}
                     </DialogContent>
                 </Dialog>
             </div>
-            <ExportModal
-                open={showExportModal}
-                onClose={() => setShowExportModal(false)}
-                reservations={filteredReservations}
-            />
+            <ExportModal open={showExportModal} onClose={() => setShowExportModal(false)} reservations={filteredReservations} />
         </AppLayout>
     );
 };
@@ -715,9 +816,7 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
             <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="details">Details</TabsTrigger>
-                    {((reservation.type || reservation.place_type) !== 'cowork') && (
-                        <TabsTrigger value="info">Equipment & Team</TabsTrigger>
-                    )}
+                    {(reservation.type || reservation.place_type) !== 'cowork' && <TabsTrigger value="info">Equipment & Team</TabsTrigger>}
                 </TabsList>
 
                 <TabsContent value="details" className="space-y-4">
@@ -730,7 +829,7 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                             <div className="text-muted-foreground">Type</div>
                             <div className="font-medium capitalize">{(reservation.type || reservation.place_type)?.replace('_', ' ') ?? '—'}</div>
                         </div>
-                        {((reservation.type || reservation.place_type) === 'studio') && (
+                        {(reservation.type || reservation.place_type) === 'studio' && (
                             <div>
                                 <div className="text-muted-foreground">Studio Name</div>
                                 <div className="font-medium">{reservation.studio_name || '—'}</div>
@@ -748,7 +847,9 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                         </div>
                         <div>
                             <div className="text-muted-foreground">Time</div>
-                            <div className="font-medium">{reservation.start} - {reservation.end}</div>
+                            <div className="font-medium">
+                                {reservation.start} - {reservation.end}
+                            </div>
                         </div>
                         {reservation.type !== 'cowork' && (
                             <>
@@ -758,17 +859,27 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                                 </div>
                                 <div className="col-span-2">
                                     <div className="text-muted-foreground">Description</div>
-                                    <div className="font-medium whitespace-pre-wrap break-words">{reservation.description || '—'}</div>
+                                    <div className="font-medium break-words whitespace-pre-wrap">{reservation.description || '—'}</div>
                                 </div>
                             </>
                         )}
                         <div>
                             <div className="text-muted-foreground">Approved</div>
-                            <div><StatusBadge yes={!!reservation.approved} trueText="Approved" falseText="Pending" /></div>
+                            <div>
+                                <StatusBadge yes={!!reservation.approved} trueText="Approved" falseText="Pending" />
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Status</div>
-                            <div>{reservation.canceled ? <Badge variant="destructive">Canceled</Badge> : reservation.passed ? <Badge>Passed</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</div>
+                            <div>
+                                {reservation.canceled ? (
+                                    <Badge variant="destructive">Canceled</Badge>
+                                ) : reservation.passed ? (
+                                    <Badge>Passed</Badge>
+                                ) : (
+                                    <Badge className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black">Active</Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -776,70 +887,77 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                         <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 cursor-pointer"
+                            className="h-8 cursor-pointer px-3"
                             onClick={() => {
                                 router.visit(`/admin/reservations/${reservation.id}/details`);
                             }}
                         >
-                            <FileText className="h-4 w-4 mr-1" /> View Full Details
+                            <FileText className="mr-1 h-4 w-4" /> View Full Details
                         </Button>
                         {reservation.approved && reservation.type !== 'cowork' && (
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 px-3 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
+                                className="h-8 cursor-pointer bg-blue-500 px-3 text-white hover:bg-blue-600"
                                 onClick={() => {
                                     window.open(`/admin/reservations/${reservation.id}/pdf`, '_blank');
                                 }}
                             >
-                                <Download className="h-4 w-4 mr-1" /> Download PDF
+                                <Download className="mr-1 h-4 w-4" /> Download PDF
                             </Button>
                         )}
                         {!reservation.approved && !reservation.canceled && (
                             <Button
                                 size="sm"
-                                className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
+                                className="h-8 cursor-pointer bg-green-500 px-3 text-white hover:bg-green-600"
                                 disabled={loadingAction.id === reservation.id}
                                 onClick={() => {
                                     setLoadingAction({ id: reservation.id, type: 'approve' });
-                                    router.post(`/admin/reservations/${reservation.id}/approve`, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
+                                    router.post(
+                                        `/admin/reservations/${reservation.id}/approve`,
+                                        {},
+                                        {
+                                            onFinish: () => setLoadingAction({ id: null, type: null }),
+                                        },
+                                    );
                                 }}
                             >
-                                <Check className="h-4 w-4 mr-1" /> Approve
+                                <Check className="mr-1 h-4 w-4" /> Approve
                             </Button>
                         )}
                         {!reservation.canceled && (
                             <Button
                                 size="sm"
                                 variant="destructive"
-                                className="h-8 px-3 cursor-pointer"
+                                className="h-8 cursor-pointer px-3"
                                 disabled={loadingAction.id === reservation.id}
                                 onClick={() => {
-                                    const confirmMsg = reservation.approved ?
-                                        'Cancel this approved reservation?' :
-                                        'Cancel this reservation?';
+                                    const confirmMsg = reservation.approved ? 'Cancel this approved reservation?' : 'Cancel this reservation?';
                                     if (!window.confirm(confirmMsg)) return;
                                     setLoadingAction({ id: reservation.id, type: 'cancel' });
 
                                     // Use different routes for cowork vs regular reservations
-                                    const cancelRoute = reservation.type === 'cowork'
-                                        ? `/admin/reservations/cowork/${reservation.id}/cancel`
-                                        : `/admin/reservations/${reservation.id}/cancel`;
+                                    const cancelRoute =
+                                        reservation.type === 'cowork'
+                                            ? `/admin/reservations/cowork/${reservation.id}/cancel`
+                                            : `/admin/reservations/${reservation.id}/cancel`;
 
-                                    router.post(cancelRoute, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
+                                    router.post(
+                                        cancelRoute,
+                                        {},
+                                        {
+                                            onFinish: () => setLoadingAction({ id: null, type: null }),
+                                        },
+                                    );
                                 }}
                             >
-                                <X className="h-4 w-4 mr-1" /> Cancel
+                                <X className="mr-1 h-4 w-4" /> Cancel
                             </Button>
                         )}
                     </div>
                 </TabsContent>
 
-                {((reservation.type || reservation.place_type) !== 'cowork') && (
+                {(reservation.type || reservation.place_type) !== 'cowork' && (
                     <TabsContent value="info" className="space-y-4">
                         <InfoModalContent reservationId={reservation.id} initial={reservation} />
                     </TabsContent>
@@ -850,23 +968,38 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
 }
 
 function InfoModalContent({ reservationId, initial }) {
-    const [data, setData] = React.useState({ loading: true, team_name: initial.team_name, team_members: initial.team_members, equipments: initial.equipments });
+    const [data, setData] = React.useState({
+        loading: true,
+        team_name: initial.team_name,
+        team_members: initial.team_members,
+        equipments: initial.equipments,
+    });
 
     React.useEffect(() => {
         let aborted = false;
         async function load() {
             try {
-                const res = await fetch(`/admin/reservations/${reservationId}/info`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+                const res = await fetch(`/admin/reservations/${reservationId}/info`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
                 const body = await res.json();
                 if (!aborted) {
-                    setData({ loading: false, team_name: body.team_name ?? null, team_members: Array.isArray(body.team_members) ? body.team_members : [], equipments: Array.isArray(body.equipments) ? body.equipments : [] });
+                    setData({
+                        loading: false,
+                        team_name: body.team_name ?? null,
+                        team_members: Array.isArray(body.team_members) ? body.team_members : [],
+                        equipments: Array.isArray(body.equipments) ? body.equipments : [],
+                    });
                 }
             } catch (e) {
                 if (!aborted) setData((d) => ({ ...d, loading: false }));
             }
         }
         load();
-        return () => { aborted = true; };
+        return () => {
+            aborted = true;
+        };
     }, [reservationId]);
 
     if (data.loading) {
@@ -874,9 +1007,9 @@ function InfoModalContent({ reservationId, initial }) {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-                <div className="text-muted-foreground mb-2">Equipments</div>
+                <div className="mb-2 text-muted-foreground">Equipments</div>
                 {data.equipments.length ? (
                     <div className="grid grid-cols-1 gap-3">
                         {data.equipments.map((e, idx) => (
@@ -884,10 +1017,11 @@ function InfoModalContent({ reservationId, initial }) {
                                 {e?.image ? (
                                     <img src={e.image} alt={e.reference || e.mark || 'equipment'} className="h-10 w-10 rounded object-cover" />
                                 ) : (
-                                    <div className="h-10 w-10 rounded bg-muted" />)}
+                                    <div className="h-10 w-10 rounded bg-muted" />
+                                )}
                                 <div className="text-sm">
                                     <div className="font-medium break-words">{e?.reference || '—'}</div>
-                                    <div className="text-muted-foreground break-words">{e?.mark || '—'}</div>
+                                    <div className="break-words text-muted-foreground">{e?.mark || '—'}</div>
                                 </div>
                             </div>
                         ))}
@@ -897,7 +1031,7 @@ function InfoModalContent({ reservationId, initial }) {
                 )}
             </div>
             <div>
-                <div className="text-muted-foreground mb-2">Team {data.team_name ? `— ${data.team_name}` : ''}</div>
+                <div className="mb-2 text-muted-foreground">Team {data.team_name ? `— ${data.team_name}` : ''}</div>
                 {data.team_members.length ? (
                     <div className="grid grid-cols-1 gap-3">
                         {data.team_members.map((m, idx) => (
@@ -905,7 +1039,8 @@ function InfoModalContent({ reservationId, initial }) {
                                 {m?.image ? (
                                     <img src={m.image} alt={m.name || 'member'} className="h-9 w-9 rounded-full object-cover" />
                                 ) : (
-                                    <div className="h-9 w-9 rounded-full bg-muted" />)}
+                                    <div className="h-9 w-9 rounded-full bg-muted" />
+                                )}
                                 <div className="text-sm font-medium break-words">{m?.name || '—'}</div>
                             </div>
                         ))}
@@ -914,10 +1049,8 @@ function InfoModalContent({ reservationId, initial }) {
                     <div className="text-sm text-muted-foreground">No team members.</div>
                 )}
             </div>
-
         </div>
     );
 }
 
 export default ReservationsIndex;
-

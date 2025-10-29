@@ -1,64 +1,56 @@
-import { useEffect, useMemo, useState } from "react";
+import Banner from '@/components/banner';
 import AppLayout from '@/layouts/app-layout';
-import FilterPart from "./partials/FilterPart";
-import UsersTable from "./partials/UsersTable";
-import Header from "./partials/Header";
-import Banner from '@/components/banner'
-import students from "../../../../../public/assets/images/banner/students.png"
+import { useEffect, useMemo, useState } from 'react';
+import students from '../../../../../public/assets/images/banner/students.png';
+import FilterPart from './partials/FilterPart';
+import Header from './partials/Header';
+import UsersTable from './partials/UsersTable';
 
 const Users = ({ users, trainings }) => {
-    const [allPromo, setAllPromo] = useState([])
+    const [allPromo, setAllPromo] = useState([]);
     const [filters, setFilters] = useState({
-        search: "",
+        search: '',
         training: null,
         promo: null,
-        role: "",
-        status: "",
-        date: ""
+        role: '',
+        status: '',
+        date: '',
     });
 
     // Flatten roles array for all users
-    const allRoles = [
-        ...new Set(
-            users.flatMap(user => Array.isArray(user.role) ? user.role : [user.role])
-        )
-    ];
+    const allRoles = [...new Set(users.flatMap((user) => (Array.isArray(user.role) ? user.role : [user.role])))];
 
     useEffect(() => {
-        const alltrainingPromotion = trainings.filter(t => t.name.toLowerCase().includes('promo'));
+        const alltrainingPromotion = trainings.filter((t) => t.name.toLowerCase().includes('promo'));
 
-        const promotionTitles = alltrainingPromotion.map(p => {
-            return p.name.slice(
-                p.name.toLowerCase().indexOf('promo'),
-                p.name.toLowerCase().indexOf('(')
-            ).trim();
+        const promotionTitles = alltrainingPromotion.map((p) => {
+            return p.name.slice(p.name.toLowerCase().indexOf('promo'), p.name.toLowerCase().indexOf('(')).trim();
         });
-        const allPromotion = [...new Set(promotionTitles)]
-        setAllPromo(allPromotion)
+        const allPromotion = [...new Set(promotionTitles)];
+        setAllPromo(allPromotion);
     }, []);
 
     const filteredUsers = useMemo(() => {
-        const promoTrainingIds = filters.promo === null
-            ? null
-            : trainings
-                .filter(t => filters.promo != null && t.name.toLowerCase().includes(filters.promo.toLowerCase()))
-                .map(t => t.id);
+        const promoTrainingIds =
+            filters.promo === null
+                ? null
+                : trainings.filter((t) => filters.promo != null && t.name.toLowerCase().includes(filters.promo.toLowerCase())).map((t) => t.id);
 
         const list = users
-            .filter(user => user.name?.toLowerCase().includes(filters.search.toLowerCase()))
-            .filter(user => filters.training === null ? true : user.formation_id === filters.training)
-            .filter(user => {
+            .filter((user) => user.name?.toLowerCase().includes(filters.search.toLowerCase()))
+            .filter((user) => (filters.training === null ? true : user.formation_id === filters.training))
+            .filter((user) => {
                 if (promoTrainingIds === null) return true;
                 return promoTrainingIds.includes(user.formation_id);
             })
-            .filter(user => {
+            .filter((user) => {
                 if (!filters.role) return true;
                 const roles = Array.isArray(user.role) ? user.role : [user.role];
-                return roles.some(r => r.toLowerCase().includes(filters.role.toLowerCase()));
+                return roles.some((r) => r.toLowerCase().includes(filters.role.toLowerCase()));
             })
-            .filter(user => filters.status != null && (user.status || "").toLowerCase().includes(filters.status.toLowerCase()))
+            .filter((user) => filters.status != null && (user.status || '').toLowerCase().includes(filters.status.toLowerCase()))
             .sort((a, b) => {
-                if (filters.date === "oldest") {
+                if (filters.date === 'oldest') {
                     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                 }
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -70,7 +62,7 @@ const Users = ({ users, trainings }) => {
 
     return (
         <AppLayout>
-            <div className="p-6 flex flex-col gap-10">
+            <div className="flex flex-col gap-10 p-6">
                 <Banner illustration={students} />
                 <Header trainings={trainings} filteredUsers={filteredUsers} roles={allRoles} status={allStatus} />
                 <FilterPart

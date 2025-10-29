@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogClose,
@@ -9,13 +9,13 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Clipboard, Copy, Plus, X, ChevronDown } from 'lucide-react';
+import { ChevronDown, Clipboard, Copy, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -60,7 +60,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const handleChange = (field) => (e) => {
         setData((prevData) => ({
             ...prevData,
-            [field]: e.target.value
+            [field]: e.target.value,
         }));
     };
 
@@ -76,11 +76,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     access_cowork: null,
                     formation_id: null,
                     roles: [],
-                })
+                });
             },
             onError: (errors) => {
                 console.log(errors);
-            }
+            },
         });
     };
 
@@ -95,25 +95,16 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const [copy, setCopy] = useState(true);
 
     const emailsToCopy = useMemo(() => {
-        return filteredUsers?.map(u => u?.email)
+        return filteredUsers
+            ?.map((u) => u?.email)
             .filter(Boolean)
-            .join(", ");
+            .join(', ');
     }, [filteredUsers]);
 
-    const availableRoles = [
-        'admin',
-        'studio manager',
-        'student',
-        'coworker',
-        'coach',
-        'pro',
-        'moderator',
-        'recruiter',
-    ];
-
+    const availableRoles = ['admin', 'studio manager', 'student', 'coworker', 'coach', 'pro', 'moderator', 'recruiter'];
 
     const currentRoles = data.roles;
-    const filteredRoles = availableRoles.filter(role => !currentRoles.includes(role));
+    const filteredRoles = availableRoles.filter((role) => !currentRoles.includes(role));
 
     const addRole = (role) => {
         if (!currentRoles.includes(role)) {
@@ -122,7 +113,10 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     };
 
     const removeRole = (role) => {
-        setData('roles', currentRoles.filter(r => r !== role));
+        setData(
+            'roles',
+            currentRoles.filter((r) => r !== role),
+        );
     };
 
     // Close dropdown when clicking outside
@@ -142,15 +136,15 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
     return (
         <>
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-5xl">All Members</h1>
-                    <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p>
+                    <p className="text-sm text-beta dark:text-light">{filteredUsers?.length} membres disponibles</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={handleCopyEmails}
-                        className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                        className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                         disabled={!emailsToCopy}
                     >
                         {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
@@ -159,16 +153,14 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
                     <Dialog open={exportOpen} onOpenChange={setExportOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-alpha text-black hover:bg-alpha hover:text-beta cursor-pointer rounded-lg px-7 py-4">
+                            <Button className="cursor-pointer rounded-lg bg-alpha px-7 py-4 text-black hover:bg-alpha hover:text-beta">
                                 Export Students
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="w-[700px] max-w-[90vw]">
                             <DialogHeader>
                                 <DialogTitle>Export Students</DialogTitle>
-                                <DialogDescription>
-                                    Choose which columns to include. Click Export All to download every student.
-                                </DialogDescription>
+                                <DialogDescription>Choose which columns to include. Click Export All to download every student.</DialogDescription>
                             </DialogHeader>
                             <div className="grid grid-cols-2 gap-4 py-2">
                                 {Object.keys(exportFields).map((key) => {
@@ -185,10 +177,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                     }))
                                                 }
                                             />
-                                            <label
-                                                htmlFor={key}
-                                                className="text-sm text-gray-800 dark:text-gray-200 capitalize cursor-pointer"
-                                            >
+                                            <label htmlFor={key} className="cursor-pointer text-sm text-gray-800 capitalize dark:text-gray-200">
                                                 {key.replace(/_/g, ' ')}
                                             </label>
                                         </div>
@@ -197,32 +186,44 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button className="bg-alpha dark:hover:bg-alpha dark:hover:text-black hover:text-white text-black dark:text-black">Cancel</Button>
+                                    <Button className="bg-alpha text-black hover:text-white dark:text-black dark:hover:bg-alpha dark:hover:text-black">
+                                        Cancel
+                                    </Button>
                                 </DialogClose>
-                                <Button onClick={triggerExport} className="bg-alpha dark:hover:bg-alpha dark:hover:text-black hover:text-white text-black dark:text-black">Export</Button>
-                                <Button onClick={() => { window.open('/admin/users/export', '_blank'); }} className="bg-alpha dark:hover:bg-alpha hover:text-white dark:hover:text-black text-black dark:text-black">Export All</Button>
+                                <Button
+                                    onClick={triggerExport}
+                                    className="bg-alpha text-black hover:text-white dark:text-black dark:hover:bg-alpha dark:hover:text-black"
+                                >
+                                    Export
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        window.open('/admin/users/export', '_blank');
+                                    }}
+                                    className="bg-alpha text-black hover:text-white dark:text-black dark:hover:bg-alpha dark:hover:text-black"
+                                >
+                                    Export All
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
                     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-alpha hover:bg-alpha hover:text-beta flex gap-2 items-center text-black cursor-pointer rounded-lg px-7 py-4">
+                            <Button className="flex cursor-pointer items-center gap-2 rounded-lg bg-alpha px-7 py-4 text-black hover:bg-alpha hover:text-beta">
                                 <Plus />
                                 Add User
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[80%] max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-h-[90vh] w-[80%] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Add User</DialogTitle>
-                                <DialogDescription>
-                                    Fill in the information to create a new user profile.
-                                </DialogDescription>
+                                <DialogDescription>Fill in the information to create a new user profile.</DialogDescription>
                             </DialogHeader>
                             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-                                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                                     {/* Name Field */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="name">Name</Label>
                                         <Input
                                             id="name"
@@ -231,11 +232,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             onChange={handleChange('name')}
                                             placeholder="Enter full name"
                                         />
-                                        {errors.name && <span className="text-red-500 text-xs">{errors.name}</span>}
+                                        {errors.name && <span className="text-xs text-red-500">{errors.name}</span>}
                                     </div>
 
                                     {/* Email Field */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="email">Email</Label>
                                         <Input
                                             id="email"
@@ -245,12 +246,12 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             onChange={handleChange('email')}
                                             placeholder="Enter email address"
                                         />
-                                        {errors.email && <span className="text-red-500 text-xs">{errors.email}</span>}
-                                        {message && <span className="text-yellow-500 text-xs">{message}</span>}
+                                        {errors.email && <span className="text-xs text-red-500">{errors.email}</span>}
+                                        {message && <span className="text-xs text-yellow-500">{message}</span>}
                                     </div>
 
                                     {/* Formation Field */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="formation">Formation</Label>
                                         <Select
                                             id="formation"
@@ -268,38 +269,38 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {errors.formation_id && <span className="text-red-500 text-xs">{errors.formation_id}</span>}
+                                        {errors.formation_id && <span className="text-xs text-red-500">{errors.formation_id}</span>}
                                     </div>
 
                                     {/* Roles Field - Multi-Select with Same Style as Other Selects */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="roles">Roles</Label>
                                         <div ref={rolesInputRef} className="relative">
                                             {/* Trigger button styled like SelectTrigger */}
                                             <button
                                                 type="button"
                                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                <span className={currentRoles.length === 0 ? "text-muted-foreground" : ""}>
+                                                <span className={currentRoles.length === 0 ? 'text-muted-foreground' : ''}>
                                                     {currentRoles.length === 0 ? 'Select Roles' : `${currentRoles.length} role(s) selected`}
                                                 </span>
-                                                <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                                                <ChevronDown
+                                                    className={`h-4 w-4 opacity-50 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                                                />
                                             </button>
 
                                             {/* Dropdown menu */}
                                             {dropdownOpen && (
                                                 <div className="absolute z-50 mt-2 w-full rounded-md border border-input bg-popover text-popover-foreground shadow-md">
-                                                    <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
+                                                    <div className="max-h-60 space-y-1 overflow-y-auto p-2">
                                                         {filteredRoles.length === 0 ? (
-                                                            <div className="px-2 py-2 text-sm text-muted-foreground">
-                                                                All roles selected
-                                                            </div>
+                                                            <div className="px-2 py-2 text-sm text-muted-foreground">All roles selected</div>
                                                         ) : (
                                                             filteredRoles.map((role) => (
                                                                 <div
                                                                     key={role}
-                                                                    className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                                                                    className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 hover:bg-accent hover:text-accent-foreground"
                                                                     onClick={() => addRole(role)}
                                                                 >
                                                                     {/* <Checkbox checked={false} className="pointer-events-none" /> */}
@@ -314,17 +315,17 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
                                         {/* Selected Roles Tags */}
                                         {currentRoles.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mt-2">
+                                            <div className="mt-2 flex flex-wrap gap-2">
                                                 {currentRoles.map((role) => (
                                                     <span
                                                         key={role}
-                                                        className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium"
+                                                        className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                                                     >
                                                         {role}
                                                         <button
                                                             type="button"
                                                             onClick={() => removeRole(role)}
-                                                            className="hover:bg-primary/20 rounded-full p-0.5"
+                                                            className="rounded-full p-0.5 hover:bg-primary/20"
                                                         >
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -332,11 +333,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 ))}
                                             </div>
                                         )}
-                                        {errors.roles && <span className="text-red-500 text-xs">{errors.roles}</span>}
+                                        {errors.roles && <span className="text-xs text-red-500">{errors.roles}</span>}
                                     </div>
 
                                     {/* Access Studio Field */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="access-studio">Access Studio</Label>
                                         <Select
                                             id="access-studio"
@@ -351,11 +352,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 <SelectItem value={'0'}>No</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        {errors.access_studio && <span className="text-red-500 text-xs">{errors.access_studio}</span>}
+                                        {errors.access_studio && <span className="text-xs text-red-500">{errors.access_studio}</span>}
                                     </div>
 
                                     {/* Access Cowork Field */}
-                                    <div className='flex flex-col gap-2'>
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="access-cowork">Access Cowork</Label>
                                         <Select
                                             id="access-cowork"
@@ -370,11 +371,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 <SelectItem value={'0'}>No</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        {errors.access_cowork && <span className="text-red-500 text-xs">{errors.access_cowork}</span>}
+                                        {errors.access_cowork && <span className="text-xs text-red-500">{errors.access_cowork}</span>}
                                     </div>
                                 </div>
 
-                                <DialogFooter className="flex justify-end gap-4 mt-4">
+                                <DialogFooter className="mt-4 flex justify-end gap-4">
                                     <DialogClose asChild>
                                         <Button variant="outline">Cancel</Button>
                                     </DialogClose>

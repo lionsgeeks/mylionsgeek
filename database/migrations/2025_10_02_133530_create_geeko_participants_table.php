@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamp('last_activity')->nullable();
             $table->json('question_scores')->nullable(); // Score per question as JSON
             $table->timestamps();
-            
+
             $table->unique(['session_id', 'user_id']); // Prevent duplicate participants
         });
     }

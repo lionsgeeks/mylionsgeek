@@ -1,18 +1,8 @@
-import React, { useMemo } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { 
-    CheckCircle, 
-    Clock, 
-    AlertCircle, 
-    Users, 
-    File, 
-    MessageSquare,
-    Calendar,
-    TrendingUp,
-    Activity
-} from 'lucide-react';
+import { Activity, AlertCircle, Calendar, CheckCircle, Clock, File, MessageSquare, TrendingUp, Users } from 'lucide-react';
+import React, { useMemo } from 'react';
 
 interface Project {
     id: number;
@@ -45,35 +35,23 @@ interface ProjectOverviewProps {
     comments: Array<{ id: number; created_at: string }>;
 }
 
-const ProjectOverview: React.FC<ProjectOverviewProps> = ({
-    project,
-    tasks,
-    teamMembers,
-    attachments,
-    comments
-}) => {
+const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project, tasks, teamMembers, attachments, comments }) => {
     const projectStats = useMemo(() => {
         const totalTasks = tasks.length;
-        const completedTasks = tasks.filter(t => t.status === 'completed').length;
-        const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
-        const todoTasks = tasks.filter(t => t.status === 'todo').length;
-        const overdueTasks = tasks.filter(t => 
-            t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed'
-        ).length;
-        
+        const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+        const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
+        const todoTasks = tasks.filter((t) => t.status === 'todo').length;
+        const overdueTasks = tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'completed').length;
+
         const totalFiles = attachments.length;
-        const imageFiles = attachments.filter(a => a.mime_type.startsWith('image/')).length;
-        const documentFiles = attachments.filter(a => 
-            a.mime_type.startsWith('application/') || a.mime_type === 'application/pdf'
-        ).length;
-        
+        const imageFiles = attachments.filter((a) => a.mime_type.startsWith('image/')).length;
+        const documentFiles = attachments.filter((a) => a.mime_type.startsWith('application/') || a.mime_type === 'application/pdf').length;
+
         const totalComments = comments.length;
-        const recentComments = comments.filter(c => 
-            new Date(c.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        ).length;
-        
+        const recentComments = comments.filter((c) => new Date(c.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
+
         const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-        
+
         return {
             totalTasks,
             completedTasks,
@@ -85,46 +63,59 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             documentFiles,
             totalComments,
             recentComments,
-            progressPercentage
+            progressPercentage,
         };
     }, [tasks, attachments, comments]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'active': return 'bg-green-100 text-green-800';
-            case 'completed': return 'bg-blue-100 text-blue-800';
-            case 'on_hold': return 'bg-yellow-100 text-yellow-800';
-            case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'active':
+                return 'bg-green-100 text-green-800';
+            case 'completed':
+                return 'bg-blue-100 text-blue-800';
+            case 'on_hold':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'cancelled':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'active': return <Activity className="h-4 w-4" />;
-            case 'completed': return <CheckCircle className="h-4 w-4" />;
-            case 'on_hold': return <Clock className="h-4 w-4" />;
-            case 'cancelled': return <AlertCircle className="h-4 w-4" />;
-            default: return <Activity className="h-4 w-4" />;
+            case 'active':
+                return <Activity className="h-4 w-4" />;
+            case 'completed':
+                return <CheckCircle className="h-4 w-4" />;
+            case 'on_hold':
+                return <Clock className="h-4 w-4" />;
+            case 'cancelled':
+                return <AlertCircle className="h-4 w-4" />;
+            default:
+                return <Activity className="h-4 w-4" />;
         }
     };
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case 'low': return 'bg-green-100 text-green-800';
-            case 'medium': return 'bg-yellow-100 text-yellow-800';
-            case 'high': return 'bg-orange-100 text-orange-800';
-            case 'urgent': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'low':
+                return 'bg-green-100 text-green-800';
+            case 'medium':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'high':
+                return 'bg-orange-100 text-orange-800';
+            case 'urgent':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
-    const recentTasks = tasks
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5);
+    const recentTasks = tasks.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
     const upcomingDeadlines = tasks
-        .filter(t => t.due_date && new Date(t.due_date) > new Date())
+        .filter((t) => t.due_date && new Date(t.due_date) > new Date())
         .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime())
         .slice(0, 5);
 
@@ -137,17 +128,13 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         <div>
                             <h1 className="text-2xl font-bold">{project.name}</h1>
                             <p className="text-muted-foreground">{project.description}</p>
-                            <div className="flex items-center space-x-4 mt-2">
+                            <div className="mt-2 flex items-center space-x-4">
                                 <Badge className={getStatusColor(project.status)}>
                                     {getStatusIcon(project.status)}
                                     <span className="ml-1 capitalize">{project.status.replace('_', ' ')}</span>
                                 </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                    Created by {project.creator.name}
-                                </span>
-                                <span className="text-sm text-muted-foreground">
-                                    {teamMembers.length} members
-                                </span>
+                                <span className="text-sm text-muted-foreground">Created by {project.creator.name}</span>
+                                <span className="text-sm text-muted-foreground">{teamMembers.length} members</span>
                             </div>
                         </div>
                         {project.is_updated && (
@@ -161,7 +148,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
             </Card>
 
             {/* Project Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -173,7 +160,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -185,7 +172,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -197,7 +184,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -223,8 +210,8 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                             <span>{projectStats.progressPercentage}%</span>
                         </div>
                         <Progress value={projectStats.progressPercentage} className="h-2" />
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                             <div className="text-center">
                                 <p className="text-2xl font-bold text-green-600">{projectStats.completedTasks}</p>
                                 <p className="text-sm text-muted-foreground">Completed</p>
@@ -246,7 +233,7 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* Recent Tasks */}
                 <Card>
                     <CardHeader>
@@ -255,16 +242,12 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     <CardContent>
                         <div className="space-y-3">
                             {recentTasks.map((task) => (
-                                <div key={task.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                <div key={task.id} className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
                                     <div className="flex-1">
                                         <p className="font-medium">{task.title}</p>
-                                        <div className="flex items-center space-x-2 mt-1">
-                                            <Badge className={getPriorityColor(task.priority)}>
-                                                {task.priority}
-                                            </Badge>
-                                            <Badge variant="outline">
-                                                {task.status.replace('_', ' ')}
-                                            </Badge>
+                                        <div className="mt-1 flex items-center space-x-2">
+                                            <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                                            <Badge variant="outline">{task.status.replace('_', ' ')}</Badge>
                                         </div>
                                     </div>
                                 </div>
@@ -281,17 +264,13 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     <CardContent>
                         <div className="space-y-3">
                             {upcomingDeadlines.map((task) => (
-                                <div key={task.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                                <div key={task.id} className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
                                     <Calendar className="h-4 w-4 text-blue-600" />
                                     <div className="flex-1">
                                         <p className="font-medium">{task.title}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Due {new Date(task.due_date!).toLocaleDateString()}
-                                        </p>
+                                        <p className="text-sm text-muted-foreground">Due {new Date(task.due_date!).toLocaleDateString()}</p>
                                     </div>
-                                    <Badge className={getPriorityColor(task.priority)}>
-                                        {task.priority}
-                                    </Badge>
+                                    <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                                 </div>
                             ))}
                         </div>
@@ -305,21 +284,21 @@ const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     <CardTitle>Activity Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="text-center p-4 bg-blue-50 rounded-lg">
-                            <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="rounded-lg bg-blue-50 p-4 text-center">
+                            <MessageSquare className="mx-auto mb-2 h-8 w-8 text-blue-600" />
                             <p className="text-2xl font-bold text-blue-600">{projectStats.totalComments}</p>
                             <p className="text-sm text-muted-foreground">Total Comments</p>
                         </div>
-                        
-                        <div className="text-center p-4 bg-green-50 rounded-lg">
-                            <File className="h-8 w-8 text-green-600 mx-auto mb-2" />
+
+                        <div className="rounded-lg bg-green-50 p-4 text-center">
+                            <File className="mx-auto mb-2 h-8 w-8 text-green-600" />
                             <p className="text-2xl font-bold text-green-600">{projectStats.imageFiles}</p>
                             <p className="text-sm text-muted-foreground">Images</p>
                         </div>
-                        
-                        <div className="text-center p-4 bg-purple-50 rounded-lg">
-                            <File className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+
+                        <div className="rounded-lg bg-purple-50 p-4 text-center">
+                            <File className="mx-auto mb-2 h-8 w-8 text-purple-600" />
                             <p className="text-2xl font-bold text-purple-600">{projectStats.documentFiles}</p>
                             <p className="text-sm text-muted-foreground">Documents</p>
                         </div>

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Formation;
 use App\Models\Geeko;
 use App\Models\GeekoQuestion;
-use App\Models\Formation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +19,7 @@ class GeekoController extends Controller
     public function index(Request $request, $formationId)
     {
         $formation = Formation::with('coach')->findOrFail($formationId);
-        
+
         $geekos = Geeko::where('formation_id', $formationId)
             ->with(['questions', 'creator', 'sessions'])
             ->orderBy('created_at', 'desc')
@@ -37,7 +37,7 @@ class GeekoController extends Controller
     public function create($formationId)
     {
         $formation = Formation::findOrFail($formationId);
-        
+
         return Inertia::render('admin/training/geeko/Create', [
             'formation' => $formation,
         ]);
@@ -59,11 +59,11 @@ class GeekoController extends Controller
         ]);
 
         $data = $request->all();
-        
+
         // Debug logging
         Log::info('Geeko Store Request Data:', $data);
         Log::info('Questions Data:', ['questions' => $data['data']['questions'] ?? 'No questions data']);
-        
+
         $data['formation_id'] = $formationId;
         $data['created_by'] = Auth::id();
         $data['status'] = 'draft';
@@ -78,17 +78,17 @@ class GeekoController extends Controller
         // Save questions if provided
         if (isset($data['data']['questions']) && is_array($data['data']['questions'])) {
             Log::info('Processing questions:', ['questions' => $data['data']['questions']]);
-            
+
             foreach ($data['data']['questions'] as $index => $questionData) {
                 Log::info("Processing question {$index}:", ['question_data' => $questionData]);
-                
-                if (!empty($questionData['question']) && $questionData['isComplete']) {
+
+                if (! empty($questionData['question']) && $questionData['isComplete']) {
                     Log::info("Creating question {$index} - Complete and valid");
                     $this->createQuestion($geeko, $questionData, $index);
                 } else {
                     Log::info("Skipping question {$index} - Incomplete or invalid", [
-                        'has_question' => !empty($questionData['question']),
-                        'is_complete' => $questionData['isComplete'] ?? false
+                        'has_question' => ! empty($questionData['question']),
+                        'is_complete' => $questionData['isComplete'] ?? false,
                     ]);
                 }
             }
@@ -105,9 +105,9 @@ class GeekoController extends Controller
      */
     private function createQuestion($geeko, $questionData, $orderIndex)
     {
-        
+
         Log::info("Creating question for Geeko {$geeko->id}:", ['question_data' => $questionData]);
-        
+
         $question = [
             'geeko_id' => $geeko->id,
             'question' => $questionData['question'],
@@ -122,16 +122,16 @@ class GeekoController extends Controller
         if ($questionData['type'] === 'multiple_choice') {
             $options = [];
             $correctAnswers = [];
-            
+
             foreach ($questionData['options'] as $option) {
-                if (!empty($option['text'])) {
+                if (! empty($option['text'])) {
                     $options[] = $option['text'];
                     if ($option['isCorrect']) {
                         $correctAnswers[] = $option['text'];
                     }
                 }
             }
-            
+
             $question['options'] = $options;
             $question['correct_answers'] = $correctAnswers;
         } elseif ($questionData['type'] === 'true_false') {
@@ -158,10 +158,10 @@ class GeekoController extends Controller
             $question['correct_answers'] = [$correctAnswer];
         }
 
-        Log::info("Final question data to save:", ['question' => $question]);
-        
+        Log::info('Final question data to save:', ['question' => $question]);
+
         $createdQuestion = GeekoQuestion::create($question);
-        
+
         Log::info("Question created successfully with ID: {$createdQuestion->id}");
     }
 
@@ -171,7 +171,7 @@ class GeekoController extends Controller
     public function show($formationId, $geekoId)
     {
         $formation = Formation::findOrFail($formationId);
-        $geeko = Geeko::with(['questions' => function($query) {
+        $geeko = Geeko::with(['questions' => function ($query) {
             $query->orderBy('order_index');
         }, 'creator', 'sessions'])->findOrFail($geekoId);
 
