@@ -73,7 +73,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
             });
         }
     };
-    
+
 
 
     // console.log('All users:', currentItems);
@@ -111,7 +111,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
 
                                 <div className="flex flex-col">
                                     <h1 className="capitalize">{user.name}</h1>
-                                    {auth.user.role == 'super_admin' &&
+                                    {auth.user.role.includes('admin') &&
                                         <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>
                                     }
                                 </div>
@@ -140,15 +140,16 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                             <TableCell className="font-medium">{user.email}</TableCell>
                             <TableCell className="font-medium">{user.status}</TableCell>
                             <TableCell>
-                            <div className="flex flex-wrap gap-2">
-                                {user.role ? (
-                                <RoleBadge role={user.role} />
-                                ) : (
-                                <span className="text-gray-400 text-xs">No role</span>
-                                )}
-                            </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {user.role && user.role.length > 0 ? (
+                                        user.role.map((r, index) => (
+                                            <RoleBadge key={index} role={r} />
+                                        ))
+                                    ) : (
+                                        <span className="text-gray-400 text-xs">No role</span>
+                                    )}
+                                </div>
                             </TableCell>
-
                             <TableCell className="font-medium flex gap-2 items-center">
                                 <Button
                                     className="p-2 bg-transparent hover:bg-transparent duration-200"

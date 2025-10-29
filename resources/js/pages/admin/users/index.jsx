@@ -16,8 +16,14 @@ const Users = ({ users, trainings }) => {
         status: "",
         date: ""
     });
-    const allRoles = [...new Set(users.map((user) => user.role))]
-    // console.log(users);
+
+    // Flatten roles array for all users
+    const allRoles = [
+        ...new Set(
+            users.flatMap(user => Array.isArray(user.role) ? user.role : [user.role])
+        )
+    ];
+
     useEffect(() => {
         const alltrainingPromotion = trainings.filter(t => t.name.toLowerCase().includes('promo'));
 
@@ -28,14 +34,10 @@ const Users = ({ users, trainings }) => {
             ).trim();
         });
         const allPromotion = [...new Set(promotionTitles)]
-
         setAllPromo(allPromotion)
     }, []);
-    console.log(trainings);
-
 
     const filteredUsers = useMemo(() => {
-        // Get training IDs matching promo filter if promo filter active
         const promoTrainingIds = filters.promo === null
             ? null
             : trainings
@@ -49,7 +51,11 @@ const Users = ({ users, trainings }) => {
                 if (promoTrainingIds === null) return true;
                 return promoTrainingIds.includes(user.formation_id);
             })
-            .filter(user => filters.role != null && (user.role || "").toLowerCase().includes(filters.role.toLowerCase()))
+            .filter(user => {
+                if (!filters.role) return true;
+                const roles = Array.isArray(user.role) ? user.role : [user.role];
+                return roles.some(r => r.toLowerCase().includes(filters.role.toLowerCase()));
+            })
             .filter(user => filters.status != null && (user.status || "").toLowerCase().includes(filters.status.toLowerCase()))
             .sort((a, b) => {
                 if (filters.date === "oldest") {
@@ -60,20 +66,12 @@ const Users = ({ users, trainings }) => {
         return list;
     }, [users, filters, trainings]);
 
-    const allStatus = [...new Set(users.map((user) => user.status))]
-    // console.log(status);
-    // console.log(filteredUsers.length);
-    // console.log(filteredUsers.length + 'yahya');
-
-
+    const allStatus = [...new Set(users.map((user) => user.status))];
 
     return (
         <AppLayout>
             <div className="p-6 flex flex-col gap-10">
-                <Banner
-                    illustration={students}
-
-                />
+                <Banner illustration={students} />
                 <Header trainings={trainings} filteredUsers={filteredUsers} roles={allRoles} status={allStatus} />
                 <FilterPart
                     filters={filters}
@@ -85,9 +83,9 @@ const Users = ({ users, trainings }) => {
                     filteredUsers={filteredUsers}
                 />
                 <UsersTable users={filteredUsers} filters={filters} roles={allRoles} trainings={trainings} status={allStatus} />
-
             </div>
         </AppLayout>
     );
 };
+
 export default Users;

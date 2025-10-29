@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react'; // Import Inertia's useForm hook
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clipboard, Copy } from 'lucide-react';
+import { Clipboard, Copy, Plus } from 'lucide-react';
 
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     // console.log(filteredUsers+'hello');
@@ -104,7 +104,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={handleCopyEmails}
-                        className="dark:bg-[#262626] cursor-pointer py-1 px-2 w-fit flex gap-2 items-center dark:text-white bg-dark text-light rounded-lg"
+                        className="bg-[#262626] cursor-pointer py-1 px-2 w-fit flex gap-2 items-center  text-light rounded-lg"
                         disabled={!emailsToCopy}
                     >
                         {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
@@ -112,7 +112,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     </Button>
                     <Dialog open={exportOpen} onOpenChange={setExportOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-black dark:bg-alpha text-white  dark:text-black cursor-pointer rounded-lg px-7 py-4">
+                            <Button className=" bg-alpha  text-black cursor-pointer rounded-lg px-7 py-4">
                                 Export Students
                             </Button>
                         </DialogTrigger>
@@ -146,7 +146,8 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
                     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-beta cursor-pointer dark:bg-alpha text-white dark:text-black rounded-lg px-7 py-4">
+                            <Button className="bg-alpha flex gap-2 items-center  text-black cursor-pointer rounded-lg px-7 py-4">
+                                <Plus />
                                 Add User
                             </Button>
                         </DialogTrigger>
