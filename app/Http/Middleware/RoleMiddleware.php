@@ -31,17 +31,17 @@ class RoleMiddleware
         // Check if user has at least one allowed role
         $hasAccess = !empty(array_intersect($allowedRoles, $userRoles));
 
-        // if (! $hasAccess) {
-        //     // Redirect user to their own dashboard based on role
-        //     if (in_array('student', $userRoles)) {
-        //         return redirect()->route('student.dashboard');
-        //     } elseif (in_array('admin', $userRoles)) {
-        //         return redirect()->route('dashboard');
-        //     }
+        if (! $hasAccess) {
+            // Redirect user to their own dashboard based on role
+            if (in_array('student', $userRoles)) {
+                return redirect()->route('student.dashboard');
+            } elseif (in_array('admin', $userRoles)) {
+                return redirect()->route('dashboard');
+            }
 
-        //     // Fallback if role is unknown
-        //     return redirect('/');
-        // }
+            // Fallback if role is unknown
+            return redirect('/');
+        }
 
         return $next($request);
     }
