@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clipboard, Copy, Plus, X } from 'lucide-react';
+import { Clipboard, Copy, Plus, X, ChevronDown } from 'lucide-react';
 
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -28,7 +28,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [rolesDropdownOpen, setRolesDropdownOpen] = useState(false);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
     const [exportFields, setExportFields] = useState({
         name: true,
@@ -41,6 +41,8 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         role: false,
         status: false,
     });
+
+    const rolesInputRef = useRef(null);
 
     const exportQuery = useMemo(() => {
         const selected = Object.entries(exportFields)
@@ -67,6 +69,14 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         post('/admin/users/store', {
             onSuccess: () => {
                 setIsModalOpen(false);
+                setData({
+                    name: '',
+                    email: '',
+                    access_studio: null,
+                    access_cowork: null,
+                    formation_id: null,
+                    roles: [],
+                })
             },
             onError: (errors) => {
                 console.log(errors);
@@ -91,27 +101,44 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     }, [filteredUsers]);
 
     const availableRoles = [
-        'Admin',
-        'Studio Manager',
-        'Student',
-        'Coworker',
-        'Coach',
-        'Pro',
-        'Moderator',
-        'Recruiter',
+        'admin',
+        'studio manager',
+        'student',
+        'coworker',
+        'coach',
+        'pro',
+        'moderator',
+        'recruiter',
     ];
 
-    const toggleRole = (role) => {
-        if (data.roles.includes(role)) {
-            setData('roles', data.roles.filter(r => r !== role));
-        } else {
-            setData('roles', [...data.roles, role]);
+
+    const currentRoles = data.roles;
+    const filteredRoles = availableRoles.filter(role => !currentRoles.includes(role));
+
+    const addRole = (role) => {
+        if (!currentRoles.includes(role)) {
+            setData('roles', [...currentRoles, role]);
         }
     };
 
     const removeRole = (role) => {
-        setData('roles', data.roles.filter(r => r !== role));
+        setData('roles', currentRoles.filter(r => r !== role));
     };
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (rolesInputRef.current && !rolesInputRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        };
+        if (dropdownOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [dropdownOpen]);
 
     return (
         <>
@@ -144,15 +171,29 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="grid grid-cols-2 gap-4 py-2">
-                                {Object.keys(exportFields).map((key) => (
-                                    <label key={key} className="flex items-center gap-3">
-                                        <Checkbox
-                                            checked={!!exportFields[key]}
-                                            onCheckedChange={(checked) => setExportFields((prev) => ({ ...prev, [key]: Boolean(checked) }))}
-                                        />
-                                        <span className="capitalize">{key.replace('_', ' ')}</span>
-                                    </label>
-                                ))}
+                                {Object.keys(exportFields).map((key) => {
+                                    const isChecked = Boolean(exportFields[key]);
+                                    return (
+                                        <div key={key} className="flex items-center space-x-3">
+                                            <Checkbox
+                                                id={key}
+                                                checked={isChecked}
+                                                onCheckedChange={(checked) =>
+                                                    setExportFields((prev) => ({
+                                                        ...prev,
+                                                        [key]: !!checked,
+                                                    }))
+                                                }
+                                            />
+                                            <label
+                                                htmlFor={key}
+                                                className="text-sm text-gray-800 dark:text-gray-200 capitalize cursor-pointer"
+                                            >
+                                                {key.replace(/_/g, ' ')}
+                                            </label>
+                                        </div>
+                                    );
+                                })}
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
@@ -230,52 +271,51 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                         {errors.formation_id && <span className="text-red-500 text-xs">{errors.formation_id}</span>}
                                     </div>
 
-                                    {/* Roles Field - Multi-select Dropdown */}
+                                    {/* Roles Field - Multi-Select with Same Style as Other Selects */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="roles">Roles</Label>
-                                        <div className="relative">
+                                        <div ref={rolesInputRef} className="relative">
+                                            {/* Trigger button styled like SelectTrigger */}
                                             <button
                                                 type="button"
-                                                onClick={() => setRolesDropdownOpen(!rolesDropdownOpen)}
-                                                className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                <span className="text-muted-foreground">
-                                                    {data.roles.length === 0 ? 'Select Roles' : `${data.roles.length} role(s) selected`}
+                                                <span className={currentRoles.length === 0 ? "text-muted-foreground" : ""}>
+                                                    {currentRoles.length === 0 ? 'Select Roles' : `${currentRoles.length} role(s) selected`}
                                                 </span>
-                                                <svg
-                                                    className={`h-4 w-4 transition-transform ${rolesDropdownOpen ? 'rotate-180' : ''}`}
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
+                                                <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                                             </button>
 
-                                            {rolesDropdownOpen && (
-                                                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
+                                            {/* Dropdown menu */}
+                                            {dropdownOpen && (
+                                                <div className="absolute z-50 mt-2 w-full rounded-md border border-input bg-popover text-popover-foreground shadow-md">
                                                     <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
-                                                        {availableRoles.map((role) => (
-                                                            <label
-                                                                key={role}
-                                                                className="flex items-center gap-2 px-2 py-2 hover:bg-accent rounded-sm cursor-pointer"
-                                                            >
-                                                                <Checkbox
-                                                                    checked={data.roles.includes(role)}
-                                                                    onCheckedChange={() => toggleRole(role)}
-                                                                />
-                                                                <span className="text-sm">{role}</span>
-                                                            </label>
-                                                        ))}
+                                                        {filteredRoles.length === 0 ? (
+                                                            <div className="px-2 py-2 text-sm text-muted-foreground">
+                                                                All roles selected
+                                                            </div>
+                                                        ) : (
+                                                            filteredRoles.map((role) => (
+                                                                <div
+                                                                    key={role}
+                                                                    className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                                                                    onClick={() => addRole(role)}
+                                                                >
+                                                                    {/* <Checkbox checked={false} className="pointer-events-none" /> */}
+                                                                    <span className="text-sm">{role}</span>
+                                                                </div>
+                                                            ))
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Selected Roles Tags */}
-                                        {data.roles.length > 0 && (
+                                        {currentRoles.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mt-2">
-                                                {data.roles.map((role) => (
+                                                {currentRoles.map((role) => (
                                                     <span
                                                         key={role}
                                                         className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium"
@@ -304,7 +344,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             onValueChange={(selectedId) => setData('access_studio', Number(selectedId))}
                                         >
                                             <SelectTrigger>
-                                                <SelectValue className="text-white dark:text-white" placeholder="Select Access Studio" />
+                                                <SelectValue placeholder="Select Access Studio" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value={'1'}>Yes</SelectItem>
