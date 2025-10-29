@@ -40,15 +40,5 @@ class GamesController extends Controller
     {
         return Inertia::render('Games/RockPaperScissors');
     }
-
-    public function uno()
-    {
-        return Inertia::render('Games/Uno');
-    }
-
-    public function monopoly()
-    {
-        return Inertia::render('Games/Monopoly');
-    }
 }
 

@@ -50,22 +50,6 @@ const games = [
         icon: '✊✋✌️',
         color: 'from-slate-500 to-gray-700',
         link: '/games/rock-paper-scissors'
-    },
-    {
-        id: 'uno',
-        name: 'UNO',
-        description: 'Simplified UNO for 2–4 players (local)',
-        icon: '🃏',
-        color: 'from-red-500 to-yellow-600',
-        link: '/games/uno'
-    },
-    {
-        id: 'monopoly',
-        name: 'Monopoly Lite',
-        description: 'Buy, rent, and roll in a fast lite mode',
-        icon: '💰',
-        color: 'from-teal-500 to-emerald-600',
-        link: '/games/monopoly'
     }
 ];
 
@@ -129,7 +113,7 @@ export default function GamesIndex() {
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="text-center">
-                                <div className="text-3xl font-bold text-blue-600 mb-2">8</div>
+                                <div className="text-3xl font-bold text-blue-600 mb-2">6</div>
                                 <div className="text-gray-600">Available Games</div>
                             </div>
                             <div className="text-center">

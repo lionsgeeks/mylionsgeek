@@ -8,7 +8,7 @@ export function canPlay(card, top) {
 }
 
 // Apply effects and return { nextIndexDelta, drawsForNext }
-export function applyCardEffects(card, direction, playersCount) {
+export function applyCardEffects(card, direction) {
     if (card.type === 'action') {
         if (card.value === 'Skip') return { nextIndexDelta: 2 * direction, drawsForNext: 0 };
         if (card.value === 'Reverse') return { nextIndexDelta: 1 * -direction, reverse: true, drawsForNext: 0 };
