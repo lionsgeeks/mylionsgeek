@@ -236,65 +236,6 @@ class ReservationsController extends Controller
             \Log::error('Failed to send approval email: ' . $e->getMessage());
         }
 
-        // Log equipment usage to activity_log (one row per equipment) on approval
-        try {
-            if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
-                $equipmentLinks = DB::table('reservation_equipment')
-                    ->where('reservation_id', $reservation)
-                    ->get();
-
-                if ($equipmentLinks->count() > 0) {
-                    $rowsToInsert = [];
-                    foreach ($equipmentLinks as $link) {
-                        $day = $link->day ?? ($reservationData->day ?? null);
-                        $start = $link->start ?? ($reservationData->start ?? null);
-                        $end = $link->end ?? ($reservationData->end ?? null);
-
-                        // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
-                        $startDate = (string) ($day ?? '');
-                        $endDate = (string) ($day ?? '');
-                        $properties = json_encode([
-                            'start' => $startDate,
-                            'end' => $endDate,
-                        ]);
-
-                        // Idempotency guard to avoid duplicate rows on repeated approvals
-                        $exists = DB::table('activity_log')
-                            ->where('log_name', 'equipment')
-                            ->where('description', 'equipment history')
-                            ->where('subject_type', 'App\\Models\\Equipment')
-                            ->where('subject_id', $link->equipment_id)
-                            ->where('causer_type', 'App\\Models\\User')
-                            ->where('causer_id', $reservationData->user_id)
-                            ->where('event', 'approved')
-                            ->where('properties', $properties)
-                            ->exists();
-
-                        if (!$exists) {
-                            $rowsToInsert[] = [
-                                'log_name' => 'equipment',
-                                'description' => 'equipment history',
-                                'subject_type' => 'App\\Models\\Equipment',
-                                'subject_id' => $link->equipment_id,
-                                'event' => 'approved',
-                                'causer_type' => 'App\\Models\\User',
-                                'causer_id' => $reservationData->user_id,
-                                'properties' => $properties,
-                                'created_at' => now()->toDateTimeString(),
-                                'updated_at' => now()->toDateTimeString(),
-                            ];
-                        }
-                    }
-
-                    if (!empty($rowsToInsert)) {
-                        DB::table('activity_log')->insert($rowsToInsert);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::error('Failed to write equipment approval activity logs: ' . $e->getMessage());
-        }
-
         return back()->with('success', 'Reservation approved');
     }
 
@@ -822,8 +763,15 @@ class ReservationsController extends Controller
             'start' => 'required',
             'end' => 'required',
         ]);
-        
-        ReservationCowork::create([
+
+        // Get user data for email
+        $user = DB::table('users')->where('id', Auth::id())->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        // Create cowork reservation using Eloquent Model (cleaner)
+        $reservation = ReservationCowork::create([
             'table' => $request->table,
             'seats' => $request->seats,
             'day' => $request->day,
@@ -831,11 +779,30 @@ class ReservationsController extends Controller
             'end' => $request->end,
             'user_id' => Auth::id(),
             'approved' => 1,
+            'canceled' => 0,
+            'passed' => 0,
         ]);
-        
-        return back()->with('success', 'Cowork reservation created successfully');
-    }
 
+        // Send approval email for auto-approved cowork reservation
+        try {
+            $reservationData = (object) [
+                'id' => $reservation->id,
+                'title' => "Cowork - Table {$request->table}",
+                'date' => $request->day,
+                'start' => $request->start,
+                'end' => $request->end,
+                'description' => "Cowork space reservation ({$request->seats} seats)",
+                'type' => 'cowork'
+            ];
+
+            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+        } catch (\Exception $e) {
+            // Log the error but don't fail the reservation creation
+            \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Cowork reservation created and approved automatically');
+    }
 
 
     public function cancelCowork(int $reservation)
@@ -977,28 +944,185 @@ class ReservationsController extends Controller
         return $response;
     }
 
-public function meetingRoomCalendar(int $meetingRoom)
-{
-    $meetingRoomData = DB::table('meeting_rooms')->where('id', $meetingRoom)->first();
-    
-    if (!$meetingRoomData) {
-        return redirect()->route('admin.places')->with('error', 'Meeting room not found');
+    /**
+     * Show material verification page for reservation end
+     */
+    public function verifyEnd(int $reservation)
+    {
+        // Get reservation details
+        $reservationData = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.id', $reservation)
+            ->select('r.*', 'u.name as user_name')
+            ->first();
+
+        if (!$reservationData) {
+            return redirect()->route('home')->with('error', 'Reservation not found');
+        }
+
+        // Check if reservation has already been verified
+        if ($reservationData->end_signed) {
+            return redirect()->route('home')->with('info', 'This reservation has already been verified.');
+        }
+
+        // Get equipment/materials for this reservation
+        $equipments = [];
+        if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+            $equipments = DB::table('reservation_equipment as re')
+                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->where('re.reservation_id', $reservation)
+                ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'e.state', 'et.name as type_name')
+                ->get()
+                ->map(function ($e) {
+                    $img = $e->image;
+                    if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    return [
+                        'id' => $e->id,
+                        'reference' => $e->reference,
+                        'mark' => $e->mark,
+                        'image' => $img ? asset($img) : null,
+                        'state' => (bool) $e->state,
+                        'type_name' => $e->type_name ?? 'Unknown',
+                    ];
+                })
+                ->toArray();
+        }
+
+        return Inertia::render('reservations/verify-end', [
+            'reservation' => [
+                'id' => $reservationData->id,
+                'title' => $reservationData->title,
+                'description' => $reservationData->description,
+                'day' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'user_name' => $reservationData->user_name,
+            ],
+            'equipments' => $equipments,
+        ]);
     }
 
-    // Get first image for meeting room
-    $image = DB::table('meeting_room_images')
-        ->where('meeting_room_id', $meetingRoom)
-        ->first();
+    /**
+     * Submit material verification
+     */
+    public function submitVerification(Request $request, int $reservation)
+    {
+        $request->validate([
+            'equipment_status' => 'required|array',
+            'equipment_status.*' => 'required|array',
+            'equipment_status.*.goodCondition' => 'nullable|boolean',
+            'equipment_status.*.badCondition' => 'nullable|boolean',
+            'equipment_status.*.notReturned' => 'nullable|boolean',
+            'notes' => 'nullable|string|max:1000',
+        ]);
 
-    return Inertia::render('admin/places/meeting_rooms/MeetingRoomCalendar', [
-        'meetingRoom' => [
-            'id' => $meetingRoomData->id,
-            'name' => $meetingRoomData->name,
-            'state' => $meetingRoomData->state,
-            'image' => $image->image ?? null,
-        ],
-    ]);
-}
+        try {
+            $verificationData = null;
+
+            DB::transaction(function () use ($request, $reservation, &$verificationData) {
+                // Update reservation as verified
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'end_signed' => true,
+                    'updated_at' => now(),
+                ]);
+
+                // Update equipment states and record status
+                $equipmentStatus = $request->input('equipment_status', []);
+                $notes = $request->input('notes', '');
+
+                // Get equipment details for PDF
+                $equipments = [];
+                if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
+                    $equipments = DB::table('reservation_equipment as re')
+                        ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+                        ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                        ->where('re.reservation_id', $reservation)
+                        ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name')
+                        ->get()
+                        ->map(function ($e) use ($equipmentStatus) {
+                            $status = $equipmentStatus[$e->id] ?? [];
+                            return [
+                                'id' => $e->id,
+                                'reference' => $e->reference,
+                                'mark' => $e->mark,
+                                'type_name' => $e->type_name ?? 'Unknown',
+                                'goodCondition' => isset($status['goodCondition']) ? (bool) $status['goodCondition'] : false,
+                                'badCondition' => isset($status['badCondition']) ? (bool) $status['badCondition'] : false,
+                                'notReturned' => isset($status['notReturned']) ? (bool) $status['notReturned'] : false,
+                            ];
+                        })
+                        ->toArray();
+                }
+
+                // Get reservation details for PDF
+                $reservationData = DB::table('reservations as r')
+                    ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                    ->where('r.id', $reservation)
+                    ->select('r.*', 'u.name as user_name')
+                    ->first();
+
+                $verificationData = [
+                    'reservation' => [
+                        'id' => $reservationData->id,
+                        'title' => $reservationData->title,
+                        'description' => $reservationData->description,
+                        'day' => $reservationData->day,
+                        'start' => $reservationData->start,
+                        'end' => $reservationData->end,
+                        'user_name' => $reservationData->user_name,
+                    ],
+                    'equipments' => $equipments,
+                    'notes' => $notes,
+                ];
+
+                // Log the verification data for debugging
+                \Log::info('Verification data for PDF:', $verificationData);
+
+                foreach ($equipmentStatus as $equipmentId => $status) {
+                    // Determine equipment state based on checkboxes
+                    $isGood = isset($status['goodCondition']) && $status['goodCondition'];
+                    $isBad = isset($status['badCondition']) && $status['badCondition'];
+                    $isNotReturned = isset($status['notReturned']) && $status['notReturned'];
+
+                    // Set equipment state (good = 1, bad/not returned = 0)
+                    $equipmentState = $isGood ? 1 : 0;
+
+                    DB::table('equipment')->where('id', $equipmentId)->update([
+                        'state' => $equipmentState,
+                        'updated_at' => now(),
+                    ]);
+
+                    // Optionally, persist status flags on pivot if columns exist
+                    if (Schema::hasTable('reservation_equipment')) {
+                        $updateData = ['updated_at' => now()];
+
+                        if (Schema::hasColumn('reservation_equipment', 'good_condition')) {
+                            $updateData['good_condition'] = $isGood ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'bad_condition')) {
+                            $updateData['bad_condition'] = $isBad ? 1 : 0;
+                        }
+                        if (Schema::hasColumn('reservation_equipment', 'not_returned')) {
+                            $updateData['not_returned'] = $isNotReturned ? 1 : 0;
+                        }
+
+                        if (count($updateData) > 1) { // More than just updated_at
+                            DB::table('reservation_equipment')
+                                ->where('reservation_id', $reservation)
+                                ->where('equipment_id', $equipmentId)
+                                ->update($updateData);
+                        }
+                    }
+                }
+
+                // Store verification notes if provided
+                if ($request->filled('notes')) {
+                    \Log::info("Reservation {$reservation} verification notes: " . $request->input('notes'));
+                }
+            });
 
             // Generate and download PDF
             $pdf = Pdf::loadView('pdf.verification_report_simple', [
@@ -1013,65 +1137,6 @@ public function meetingRoomCalendar(int $meetingRoom)
                 'isPhpEnabled' => true,
                 'isFontSubsettingEnabled' => true
             ]);
-
-            // Log equipment usage to activity_log on end verification (event = verified_end)
-            try {
-                if (Schema::hasTable('activity_log') && Schema::hasTable('reservation_equipment')) {
-                    $reservationDataForLog = DB::table('reservations')->where('id', $reservation)->first();
-                    $equipmentLinksForLog = DB::table('reservation_equipment')
-                        ->where('reservation_id', $reservation)
-                        ->get();
-
-                    if ($reservationDataForLog && $equipmentLinksForLog->count() > 0) {
-                        $rowsToInsert = [];
-                        foreach ($equipmentLinksForLog as $link) {
-                            $day = $link->day ?? ($reservationDataForLog->day ?? null);
-                            $start = $link->start ?? ($reservationDataForLog->start ?? null);
-                            $end = $link->end ?? ($reservationDataForLog->end ?? null);
-
-                            // properties must be JSON: {"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
-                            $startDate = (string) ($day ?? '');
-                            $endDate = (string) ($day ?? '');
-                            $properties = json_encode([
-                                'start' => $startDate,
-                                'end' => $endDate,
-                            ]);
-
-                            $exists = DB::table('activity_log')
-                                ->where('log_name', 'equipment')
-                                ->where('description', 'equipment history')
-                                ->where('subject_type', 'App\\Models\\Equipment')
-                                ->where('subject_id', $link->equipment_id)
-                                ->where('causer_type', 'App\\Models\\User')
-                                ->where('causer_id', $reservationDataForLog->user_id)
-                                ->where('event', 'verified_end')
-                                ->where('properties', $properties)
-                                ->exists();
-
-                            if (!$exists) {
-                                $rowsToInsert[] = [
-                                    'log_name' => 'equipment',
-                                    'description' => 'equipment history',
-                                    'subject_type' => 'App\\Models\\Equipment',
-                                    'subject_id' => $link->equipment_id,
-                                    'event' => 'verified_end',
-                                    'causer_type' => 'App\\Models\\User',
-                                    'causer_id' => $reservationDataForLog->user_id,
-                                    'properties' => $properties,
-                                    'created_at' => now()->toDateTimeString(),
-                                    'updated_at' => now()->toDateTimeString(),
-                                ];
-                            }
-                        }
-
-                        if (!empty($rowsToInsert)) {
-                            DB::table('activity_log')->insert($rowsToInsert);
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
-            }
 
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
@@ -1233,13 +1298,41 @@ public function meetingRoomCalendar(int $meetingRoom)
         ]);
     }
 
-    return back()->with('success', 'Meeting room reservation created and approved automatically');
-}
+    /**
+     * Download verification report PDF
+     */
+    public function downloadReport(int $reservation)
+    {
+        $pdfData = session('verification_pdf_data');
 
-public function cancelMeetingRoom(int $reservation)
-{
-    if (!Schema::hasTable('reservation_meeting_rooms')) {
-        return back()->with('error', 'Reservation meeting rooms table missing');
+        if (!$pdfData) {
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'No verification data found. Please submit the verification form first.');
+        }
+
+        try {
+            $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                'reservation' => $pdfData['reservation'],
+                'verificationData' => $pdfData['verificationData']
+            ])
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'Arial',
+                'isPhpEnabled' => true,
+                'isFontSubsettingEnabled' => true
+            ]);
+
+            // Clear the session data after download
+            session()->forget('verification_pdf_data');
+
+            return $pdf->download($pdfData['filename']);
+        } catch (\Exception $e) {
+            \Log::error('PDF download failed: ' . $e->getMessage());
+            return redirect()->route('reservations.verify-end', $reservation)
+                ->with('error', 'Failed to generate PDF. Please try again.');
+        }
     }
 
     /**
@@ -1455,8 +1548,27 @@ public function cancelMeetingRoom(int $reservation)
             }
         }
 
-    return back()->with('success', 'Meeting room reservation canceled');
-}
+        // Monthly reservations trend
+        $monthlyTrend = [];
+        if (Schema::hasTable('reservations')) {
+            // Use SQLite-compatible date formatting
+            $monthlyTrend = DB::table('reservations')
+                ->select(
+                    DB::raw("strftime('%Y-%m', created_at) as month"),
+                    DB::raw('COUNT(*) as count')
+                )
+                ->where('canceled', 0)
+                ->groupBy('month')
+                ->orderBy('month')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'month' => $item->month,
+                        'count' => $item->count
+                    ];
+                })
+                ->toArray();
+        }
 
         // Total Statistics
         $totalStats = [
@@ -1637,6 +1749,105 @@ public function cancelMeetingRoom(int $reservation)
         return Inertia::render('admin/reservations/[id]', [
             'reservation' => $reservation
         ]);
+    }
+
+    public function storeReservationMeetingRoom(Request $request)
+    {
+        $request->validate([
+            'meeting_room_id' => 'required|exists:meeting_rooms,id',
+            'day' => 'required|date',
+            'start' => 'required',
+            'end' => 'required',
+        ]);
+
+        $lastId = (int) (DB::table('reservation_meeting_rooms')->max('id') ?? 0);
+        $reservationId = $lastId + 1;
+
+        // Get user data for email
+        $user = DB::table('users')->where('id', Auth::id())->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        // Get meeting room name
+        $meetingRoom = DB::table('meeting_rooms')->where('id', $request->meeting_room_id)->first();
+
+        // Create meeting room reservation as auto-approved
+        DB::table('reservation_meeting_rooms')->insert([
+            'id' => $reservationId,
+            'meeting_room_id' => $request->meeting_room_id,
+            'user_id' => Auth::id(),
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'passed' => 0,
+            'approved' => 1,
+            'canceled' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Send approval email for auto-approved meeting room reservation
+        try {
+            $reservationData = (object) [
+                'id' => $reservationId,
+                'title' => "Meeting Room - {$meetingRoom->name}",
+                'date' => $request->day,
+                'start' => $request->start,
+                'end' => $request->end,
+                'description' => 'Meeting room reservation',
+                'type' => 'meeting_room'
+            ];
+
+            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Meeting room reservation created and approved automatically');
+    }
+
+    public function cancelMeetingRoom(int $reservation)
+    {
+        if (!Schema::hasTable('reservation_meeting_rooms')) {
+            return back()->with('error', 'Reservation meeting rooms table missing');
+        }
+
+        $reservationData = DB::table('reservation_meeting_rooms')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Meeting room reservation not found');
+        }
+
+        $user = DB::table('users')->where('id', $reservationData->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found');
+        }
+
+        $meetingRoom = DB::table('meeting_rooms')->where('id', $reservationData->meeting_room_id)->first();
+
+        DB::table('reservation_meeting_rooms')->where('id', $reservation)->update([
+            'canceled' => 1,
+            'approved' => 0,
+            'updated_at' => now(),
+        ]);
+
+        try {
+            $reservationForEmail = (object) [
+                'id' => $reservationData->id,
+                'title' => "Meeting Room - {$meetingRoom->name}",
+                'date' => $reservationData->day,
+                'start' => $reservationData->start,
+                'end' => $reservationData->end,
+                'description' => 'Meeting room reservation',
+                'type' => 'meeting_room'
+            ];
+
+            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Meeting room reservation canceled');
     }
 }
 

@@ -32,20 +32,26 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
+        
         const formData = {
-            ...data
+            meeting_room_id: data.meeting_room_id,
+            day: data.day,
+            start: data.start,
+            end: data.end,
         };
-
-        post('/admin/reservations/storeMeetingRoom', {
-            data: formData,
+        
+        post('/admin/reservations/storeReservationMeetingRoom', {
+            data: formData,  // ← ZID DATA HNA!
             onSuccess: () => {
                 handleClose();
                 onSuccess();
             },
+            onError: (errors) => {
+                console.error('Meeting room reservation error:', errors);
+            }
         });
-        console.log(data);
     };
+
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
