@@ -12,7 +12,7 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
         ->name('admin.reservations.cancel');
     Route::get('/reservations/{reservation}/info', [ReservationsController::class, 'info'])
         ->name('admin.reservations.info');
-    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'details'])
+    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])
         ->name('admin.reservations.details');
     Route::get('/reservations/{reservation}/pdf', [ReservationsController::class, 'generatePdf'])
         ->name('admin.reservations.pdf');
@@ -34,12 +34,13 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
     // Store reservation cowork
     Route::post('/reservations/storeReservationCowork', [ReservationsController::class, 'storeReservationCowork'])
         ->name('admin.reservations.storeReservationCowork');
-    
+
     // Cancel cowork reservation
     Route::post('/reservations/cowork/{reservation}/cancel', [ReservationsController::class, 'cancelCowork'])
         ->name('admin.reservations.cowork.cancel');
 
 });
+
 
 // Public route for material verification (no auth required for email links)
 Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
@@ -75,7 +76,7 @@ Route::get('/test-pdf', function() {
             'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.'
         ]
     ])->setPaper('a4', 'portrait');
-    
+
     return $pdf->download('test_verification_report.pdf');
 });
 

@@ -9,7 +9,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 const ITEMS_PER_PAGE = 5;
 
-export default function Analytics({
+export default function Analytics({ 
     totalStats = {},
     studioReservations = [],
     timeSlotStats = {},
@@ -44,18 +44,18 @@ export default function Analytics({
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
-
+            
             <div className="px-4 py-6 sm:p-8 lg:p-10 max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-6">
-                    <Link
-                        href="/admin/reservations"
+                    <Link 
+                        href="/admin/reservations" 
                         className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Reservations
                     </Link>
-
+                    
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">Reservation Analytics & Reporting</h1>
                     <p className="text-gray-600">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
@@ -477,7 +477,7 @@ export default function Analytics({
                                         <p className="text-sm text-green-700">{timeSlotStats.most_reserved.count} reservations</p>
                                     </div>
                                 )}
-
+                                
                                 {timeSlotStats.least_reserved && (
                                     <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                                         <div className="flex items-center justify-between mb-2">

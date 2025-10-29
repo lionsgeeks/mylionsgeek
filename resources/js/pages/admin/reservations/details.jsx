@@ -18,6 +18,13 @@ export default function ReservationDetails({ reservation, equipments, teamMember
     };
 
     const getStatusBadge = () => {
+        // Helper to parse start/end datetimes
+        const parseDt = (d, t) => {
+            if (!d || !t) return null;
+            const dt = new Date(`${d}T${t}`);
+            return isNaN(dt.getTime()) ? null : dt;
+        };
+
         if (reservation.canceled) {
             return (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
@@ -26,6 +33,29 @@ export default function ReservationDetails({ reservation, equipments, teamMember
                 </span>
             );
         }
+
+        const startDt = parseDt(reservation?.date, reservation?.start);
+        const endDt = parseDt(reservation?.date, reservation?.end);
+        const now = new Date();
+
+        if (reservation.approved && startDt && endDt && startDt <= now && now <= endDt) {
+            return (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Active
+                </span>
+            );
+        }
+
+        if (reservation.approved && endDt && endDt < now) {
+            return (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Ended
+                </span>
+            );
+        }
+
         if (reservation.approved) {
             return (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
@@ -34,6 +64,7 @@ export default function ReservationDetails({ reservation, equipments, teamMember
                 </span>
             );
         }
+
         return (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
                 <AlertCircle className="w-4 h-4 mr-1" />
@@ -69,7 +100,7 @@ export default function ReservationDetails({ reservation, equipments, teamMember
                             </div>
                             <div className="flex items-center space-x-4">
                                 {getStatusBadge()}
-                                {!reservation.canceled && !reservation.approved && (
+                                {(!reservation.canceled && !reservation.approved) ? (
                                     <div className="flex space-x-2">
                                         <button
                                             onClick={handleApprove}
@@ -88,7 +119,7 @@ export default function ReservationDetails({ reservation, equipments, teamMember
                                             Cancel
                                         </button>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         </div>
                     </div>
