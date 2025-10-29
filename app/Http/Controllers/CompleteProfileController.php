@@ -82,8 +82,16 @@ class CompleteProfileController extends Controller
 
         // ✅ Handle image upload (optional)
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('img/profile', 'public');
-            $user->image = $path;
+            $file = $request->file('image');
+
+            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
+            $filename = $file->hashName();
+
+            // Move the file to public/img/profile/
+            $file->move(public_path('/storage/img/profile'), $filename);
+
+            // Store only the filename in database
+            $validated['image'] = $filename;
         }
 
         // ✅ Update user fields
@@ -93,6 +101,7 @@ class CompleteProfileController extends Controller
         $user->entreprise = $validated['entreprise'];
         $user->activation_token = null; // Invalidate the token
         $user->account_state = 0; // Optional: mark user as active
+        $user->image = $validated['image'];; // Optional: mark user as active
         $user->save();
 
         Mail::to($user->email)->send(new WelcomeUserAfterProfileComplete($user));

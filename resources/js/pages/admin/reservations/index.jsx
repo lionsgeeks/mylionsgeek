@@ -102,7 +102,17 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             place_type: 'cowork'
         }));
 
-        const mixed = [...reservations, ...normalizedCowork];
+        const normalizedMeetingRooms = meetingRoomReservations.map(m => ({
+            ...m,
+            type: 'meeting_room',
+            title: `Meeting Room - ${m.room_name || 'Room'}`,
+            date: m.day,
+            start: m.start,
+            end: m.end,
+            place_type: 'meeting_room'
+        }));
+
+        const mixed = [...reservations, ...normalizedCowork, ...normalizedMeetingRooms];
 
         const parseDateTime = (item) => {
             const dateStr = item?.date || item?.day || '';
@@ -112,21 +122,8 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             return Number.isFinite(ts) ? ts : 0;
         };
 
-        const getCreatedAtTs = (item) => {
-            const ts = Date.parse(item?.created_at ?? '');
-            return Number.isFinite(ts) ? ts : 0;
-        };
-        const rank = (item) => (!item?.canceled && !item?.approved ? 0 : 1); // 0 = pending, 1 = others
-
-        return mixed.sort((a, b) => {
-            const rdiff = rank(a) - rank(b);
-            if (rdiff !== 0) return rdiff;
-            const ca = getCreatedAtTs(a);
-            const cb = getCreatedAtTs(b);
-            if (cb !== ca) return cb - ca; // newer created first
-            return parseDateTime(b) - parseDateTime(a); // fallback to date/time
-        });
-    }, [reservations, coworkReservations]);
+        return mixed.sort((a, b) => parseDateTime(b) - parseDateTime(a));
+    }, [reservations, coworkReservations, meetingRoomReservations]);
 
     // Derived stats (global, not range-filtered)
     const stats = useMemo(() => {

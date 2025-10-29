@@ -214,6 +214,54 @@ class EquipmentController extends Controller
             'history' => $history,
         ]);
     }
+
+    /**
+     * Return usage activities for an equipment from activity_log (JSON).
+     * Expected by frontend at GET /admin/equipements/{id}/usage-activities
+     */
+    public function usageActivities(Equipment $equipment)
+    {
+        // Default empty list if activity_log missing
+        if (!\Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+            return response()->json(['usage_activities' => []]);
+        }
+
+        $rows = \Illuminate\Support\Facades\DB::table('activity_log as al')
+            ->leftJoin('users as u', 'u.id', '=', 'al.causer_id')
+            ->where('al.log_name', 'equipment')
+            ->where('al.description', 'equipment history')
+            ->where('al.subject_type', 'App\\Models\\Equipment')
+            ->where('al.subject_id', $equipment->id)
+            ->orderByDesc('al.created_at')
+            ->limit(500)
+            ->get();
+
+        $activities = $rows->map(function ($row) {
+            $props = json_decode($row->properties ?? '{}', true);
+            $start = isset($props['start']) ? $props['start'] : null;
+            $end = isset($props['end']) ? $props['end'] : null;
+            return [
+                'id' => $row->id,
+                'action' => $row->event, // approved | verified_end
+                'description' => $row->description,
+                'user_name' => $row->name ?? null,
+                'started_at' => $start,
+                'ended_at' => $end,
+                'created_at' => $row->created_at,
+            ];
+        });
+
+        return response()->json(['usage_activities' => $activities]);
+    }
+
+    /**
+     * Placeholder endpoint for equipment notes list.
+     * Returns empty until notes feature is implemented for equipment.
+     */
+    public function notes(Equipment $equipment)
+    {
+        return response()->json(['notes' => []]);
+    }
 }
 
 

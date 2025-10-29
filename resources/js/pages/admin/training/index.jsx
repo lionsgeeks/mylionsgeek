@@ -79,7 +79,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     };
 
     const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
-     const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
+    const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
 
     return (
         <AppLayout>
@@ -149,15 +149,15 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
                             <div className="relative z-10 flex items-center justify-between">
                                 <div>
-  <div className={filteredCoach ? 
-      "text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1" : 
-      "text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2"}>
-    {filteredCoach ? filteredCoach.name : coaches.length}
-  </div>
-  <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">
-    {filteredCoach ? "Expert Mentor" : "Expert Mentors"}
-  </div>
-</div>
+                                    <div className={filteredCoach ?
+                                        "text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1" :
+                                        "text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2"}>
+                                        {filteredCoach ? filteredCoach.name : coaches.length}
+                                    </div>
+                                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">
+                                        {filteredCoach ? "Expert Mentor" : "Expert Mentors"}
+                                    </div>
+                                </div>
 
                                 <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                                     <Award className="w-8 h-8 text-white" />
@@ -563,28 +563,45 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         const trainingsActiv = trainings.filter(t => getTrainingStatus(t) === 'active' && t.coach?.id == selectedCoach).length
                                         const trainingsTotal = trainings.filter(t => t.coach && t.coach?.id == selectedCoach).length
                                         const pendingCount = trainings.filter(t => t.coach && t.coach?.id === selectedCoach).length - completedCount - trainingsActiv;
+                                        const coachTrainings = trainings.filter(t => t.coach && t.coach.id === selectedCoach);
+
+                                        const totalStudents = coachTrainings.reduce((sum, training) => {
+                                            if (Array.isArray(training.users)) return sum + training.users.length;
+                                            if (typeof training.users_count ?? 0 === 'number') return sum + training.users_count ?? 0;
+                                            return sum;
+                                        }, 0);
+
+                                        console.log(totalStudents);
+
+
 
                                         return (
                                             <>
                                                 <h2 className="text-lg font-bold text-dark dark:text-light mb-4">
                                                     Trainings Statistics
                                                 </h2>
-                                                <div className="grid grid-cols-4 gap-4">
+                                                <div className="grid grid-cols-5 gap-6">
                                                     {[
-                                                        { label: 'Total', value: trainingsTotal },
+                                                        { label: 'Students', value: totalStudents },
+                                                        { label: 'Trainings', value: trainingsTotal },
                                                         { label: 'Pending', value: pendingCount },
                                                         { label: 'Active', value: trainingsActiv },
                                                         { label: 'Done', value: completedCount },
                                                     ].map((stat, i) => (
-                                                        <div key={i} className="group relative p-4 bg-white dark:bg-[#1f1f1f] rounded-xl border-2 border-yellow-200 dark:border-yellow-600/30 hover:border-yellow-400 dark:hover:border-yellow-500 transition-all hover:shadow-lg hover:-translate-y-1">
-                                                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                        <div key={i} className="group relative p-5 bg-white dark:bg-[#1f1f1f] rounded-xl border border-yellow-300 dark:border-yellow-600 hover:border-yellow-400 dark:hover:border-yellow-500 transition-all hover:shadow-lg hover:-translate-y-1">
+                                                            <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                                             <div className="relative text-center">
-                                                                <p className="text-3xl font-bold bg-gradient-to-br from-yellow-500 to-yellow-600 bg-clip-text text-transparent">{stat.value}</p>
-                                                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">{stat.label}</p>
+                                                                <p className="text-4xl font-extrabold bg-gradient-to-br from-yellow-500 to-yellow-600 bg-clip-text text-transparent">
+                                                                    {stat.value}
+                                                                </p>
+                                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-1">
+                                                                    {stat.label}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     ))}
                                                 </div>
+
                                             </>
                                         )
                                     })()}

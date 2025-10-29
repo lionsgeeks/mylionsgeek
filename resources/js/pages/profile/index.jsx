@@ -4,14 +4,15 @@ import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import React from 'react';
 import Logo from '/public/assets/images/lionsgeek_logo_2.png'
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Camera, Eye, EyeOff } from 'lucide-react';
 
 const CompleteProfile = ({ user }) => {
     const { data, setData, post, processing, errors, setError } = useForm({
         password: '',
-        // password_confirmation: '',
+        password_confirmation: '',
         phone: '',
         cin: '',
         entreprise: '',
@@ -19,21 +20,69 @@ const CompleteProfile = ({ user }) => {
         image: null,
     });
 
+    const [imagePreview, setImagePreview] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData("image", file);
+            setValidationErrors({ ...validationErrors, image: '' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!data.phone || data.phone.trim() === '') {
+            newErrors.phone = 'Phone number is required';
+        }
+
+        if (!data.cin || data.cin.trim() === '') {
+            newErrors.cin = 'CIN is required';
+        }
+
+        if (!data.entreprise || data.entreprise.trim() === '') {
+            newErrors.entreprise = 'Entreprise is required';
+        }
+
+        if (!data.password || data.password.trim() === '') {
+            newErrors.password = 'Password is required';
+        } else {
+            const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+            if (!passwordRegex.test(data.password)) {
+                newErrors.password = 'Password must be at least 8 characters long and include at least one uppercase letter';
+            }
+        }
+
+        if (!data.password_confirmation || data.password_confirmation.trim() === '') {
+            newErrors.password_confirmation = 'Password confirmation is required';
+        } else if (data.password !== data.password_confirmation) {
+            newErrors.password_confirmation = 'Passwords do not match';
+        }
+
+        if (!data.image) {
+            newErrors.image = 'Profile image is required';
+        }
+
+        setValidationErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (userToken) => {
-        // Clear previous manual errors (optional, but useful)
+        // Clear previous manual errors
         setError("password", null);
         setError("password_confirmation", null);
 
-        // Frontend password validation
-        const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
-
-        if (!passwordRegex.test(data.password)) {
-            setError("password", "Password must be at least 8 characters long and include at least one uppercase letter.");
-            return;
-        }
-
-        if (data.password !== data.password_confirmation) {
-            setError("password_confirmation", "Passwords do not match.");
+        // Validate form
+        if (!validateForm()) {
             return;
         }
 
@@ -51,138 +100,174 @@ const CompleteProfile = ({ user }) => {
         });
     };
 
-
-
-
-
-
     return (
-        <div className="min-h-screen w-full bg-white flex flex-col items-center justify-center py-10">
-            {/* Logo/Header */}
-            <div className="mb-8">
-                <img src={Logo} alt="LionsGeek Logo" className="h-25" />
-            </div>
+        <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
+            <div className="w-full max-w-3xl">
+                {/* Main Card */}
+                <div className="bg-white rounded-3xl shadow-2xl p-8">
+                    <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
+                        Complete Your Profile
+                    </h2>
 
-            <div className="w-full bg-white ">
-
-                <form className="space-y-6 mx-auto w-1/2 shadow-lg rounded-lg p-8" onSubmit={(e) => e.preventDefault()}>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Complete Your Profile</h2>
-                    {/* Row 1: CIN + Entreprise */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="cin" className="mb-1 font-medium text-gray-700 block">
-                                CIN
-                            </Label>
-                            <Input
-                                id="cin"
-                                type="text"
-                                value={data.cin}
-                                onChange={(e) => setData("cin", e.target.value)}
-                                className="w-full text-beta focus:outline-0"
-                            />
-                            {errors.cin && <p className="text-error text-sm mt-1">{errors.cin}</p>}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="entreprise" className="mb-1 font-medium text-gray-700 block">
-                                Entreprise
-                            </Label>
-                            <Input
-                                id="entreprise"
-                                type="text"
-                                value={data.entreprise}
-                                onChange={(e) => setData("entreprise", e.target.value)}
-                                className="w-full text-beta focus:outline-0"
-                            />
-                            {errors.entreprise && <p className="text-error text-sm mt-1">{errors.entreprise}</p>}
-                        </div>
-                    </div>
-
-                    {/* Row 2: Image + Phone */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="image" className="mb-1 font-medium text-gray-700 block">
-                                Profile Image
-                            </Label>
-                            <input
-                                id="image"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setData("image", e.target.files[0])}
-                                className="w-full border border-gray-300 rounded-md px-4 py-2 text-beta"
-                            />
-                            {errors.image && <p className="text-error text-sm mt-1">{errors.image}</p>}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="phone" className="mb-1 font-medium text-gray-700 block">
-                                Phone
-                            </Label>
-                            <Input
-                                id="phone"
-                                type="text"
-                                value={data.phone}
-                                onChange={(e) => setData("phone", e.target.value)}
-                                className="w-full text-beta focus:outline-0"
-                            />
-                            {errors.phone && <p className="text-error text-sm mt-1">{errors.phone}</p>}
-                        </div>
-                    </div>
-
-                    {/* Row 3: Password + Confirm Password */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <Label htmlFor="password" className="mb-1 font-medium text-gray-700 block">
-                                Password
-                            </Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={data.password}
-                                onChange={(e) => {
-                                    setData("password", e.target.value);
-                                    setError("password", null); // ✅ Clear error as user types
-                                }}
-                                className="w-full text-beta focus:outline-0"
-                            />
-                            {errors.password && <p className="text-error text-sm mt-1">{errors.password}</p>}
-                        </div>
-
-                        <div>
-                            <Label htmlFor="password_confirmation" className="mb-1 font-medium text-gray-700 block">
-                                Confirm Password
-                            </Label>
-                            <Input
-                                id="password_confirmation"
-                                type="password"
-                                value={data.password_confirmation}
-                                onChange={(e) => {
-                                    setData("password_confirmation", e.target.value);
-                                    setError("password_confirmation", null); // ✅ Clear error
-                                }}
-                                className="w-full text-beta focus:outline-0"
-                            />
-                            {errors.password_confirmation && (
-                                <p className="text-error text-sm mt-1">{errors.password_confirmation}</p>
+                    <form onSubmit={(e) => e.preventDefault()}>
+                        {/* Profile Image Upload */}
+                        <div className="flex flex-col items-center mb-6">
+                            <div className="relative">
+                                <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
+                                    {imagePreview ? (
+                                        <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Camera className="w-10 h-10 text-gray-400" />
+                                    )}
+                                </div>
+                            </div>
+                            <label htmlFor="image-upload" className="mt-3 cursor-pointer">
+                                <div className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-5 rounded-lg transition-all duration-200 text-sm">
+                                    Upload Image
+                                </div>
+                                <Input
+                                    id="image-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
+                            </label>
+                            {(validationErrors.image || errors.image) && (
+                                <span className="text-red-500 text-sm mt-2">{validationErrors.image || errors.image}</span>
                             )}
                         </div>
-                    </div>
 
-                    {/* Submit Button */}
-                    <div className="mt-8 text-end">
-                        <Button
-                            type='button'
-                            disabled={processing}
-                            className="bg-alpha hover:bg-alpha text-beta font-bold py-2 px-6 rounded-md transition-all duration-200 disabled:opacity-50"
-                            onClick={() => handleSubmit(user.activation_token)}
-                        >
-                            {processing ? "Submitting..." : "Submit"}
-                        </Button>
-                    </div>
-                </form>
+                        {/* Form Fields */}
+                        <div className="space-y-4">
+                            {/* Row 1: Phone & CIN */}
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <Label htmlFor="phone" className="block text-gray-600 text-sm font-medium mb-2">
+                                        Phone Number
+                                    </Label>
+                                    <Input
+                                        id="phone"
+                                        type="text"
+                                        value={data.phone}
+                                        onChange={(e) => setData("phone", e.target.value)}
+                                        placeholder="+212 600 000 000"
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-black focus:border-green-500 focus:outline-none"
+                                    />
+                                    {(validationErrors.phone || errors.phone) && (
+                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.phone || errors.phone}</span>
+                                    )}
+                                </div>
 
+                                <div className="flex-1">
+                                    <Label htmlFor="cin" className="block text-gray-600 text-sm font-medium mb-2">
+                                        CIN
+                                    </Label>
+                                    <Input
+                                        id="cin"
+                                        type="text"
+                                        value={data.cin}
+                                        onChange={(e) => setData("cin", e.target.value)}
+                                        placeholder="Enter your CIN"
+                                        className="w-full px-4 text-black py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                    />
+                                    {(validationErrors.cin || errors.cin) && (
+                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.cin || errors.cin}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Row 2: Entreprise */}
+                            <div>
+                                <Label htmlFor="entreprise" className="block text-gray-600 text-sm font-medium mb-2">
+                                    Entreprise
+                                </Label>
+                                <Input
+                                    id="entreprise"
+                                    type="text"
+                                    value={data.entreprise}
+                                    onChange={(e) => setData("entreprise", e.target.value)}
+                                    placeholder="Enter your company name"
+                                    className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                />
+                                {(validationErrors.entreprise || errors.entreprise) && (
+                                    <span className="text-red-500 text-sm mt-1 block">{validationErrors.entreprise || errors.entreprise}</span>
+                                )}
+                            </div>
+
+                            {/* Row 3: Password & Confirm Password */}
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <Label htmlFor="password" className="block text-gray-600 text-sm font-medium mb-2">
+                                        Password
+                                    </Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={data.password}
+                                            onChange={(e) => setData("password", e.target.value)}
+                                            placeholder="Enter your password"
+                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                    {(validationErrors.password || errors.password) && (
+                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.password || errors.password}</span>
+                                    )}
+                                </div>
+
+                                <div className="flex-1">
+                                    <Label htmlFor="password_confirmation" className="block text-gray-600 text-sm font-medium mb-2">
+                                        Confirm Password
+                                    </Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="password_confirmation"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            value={data.password_confirmation}
+                                            onChange={(e) => setData("password_confirmation", e.target.value)}
+                                            placeholder="Confirm your password"
+                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                        >
+                                            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                    {(validationErrors.password_confirmation || errors.password_confirmation) && (
+                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.password_confirmation || errors.password_confirmation}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="mt-6">
+                            <Button
+                                type="button"
+                                onClick={() => handleSubmit(user.activation_token)}
+                                disabled={processing}
+                                className="w-full bg-alpha text-beta font-semibold hover:bg-alpha hover:text-beta py-2.5 px-6 rounded-lg"
+                            >
+                                {processing ? 'Submitting...' : 'Next'}
+                            </Button>
+                        </div>
+                    </form>
+
+                </div>
             </div>
         </div>
+
     );
 }
 export default CompleteProfile;
