@@ -416,7 +416,8 @@ class UsersController extends Controller
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'nullable|string|max:100',
+            'roles' => 'nullable|array',
+            'roles.*' => 'string',
             'status' => 'nullable|string|max:100',
             'formation_id' => 'nullable|integer|exists:formations,id',
             'phone' => 'nullable|string|max:15',
@@ -427,6 +428,17 @@ class UsersController extends Controller
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('users', 'public');
             $validated['image'] = '/storage/' . $path;
+        }
+
+        // Map roles (array) to 'role' JSON column, lowercased
+        if ($request->has('roles')) {
+            $roles = $request->input('roles');
+            if (is_array($roles)) {
+                $validated['role'] = array_values(array_map(function ($r) {
+                    return strtolower((string) $r);
+                }, $roles));
+            }
+            unset($validated['roles']);
         }
 
         $user->update($validated);
