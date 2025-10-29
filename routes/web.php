@@ -34,3 +34,4 @@ require __DIR__ . '/equipment.php';
 require __DIR__ . '/places.php';
 require __DIR__ . '/reservations.php';
 require __DIR__ . '/projects.php';
+require __DIR__ . '/recuiter.php';
