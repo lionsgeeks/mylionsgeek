@@ -18,7 +18,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Mail\ReservationApprovedMail;
 use App\Mail\ReservationCanceledMail;
 use App\Mail\ReservationCreatedAdminMail;
-use App\Mail\ReservationTimeProposalMail;
 use App\Mail\ReservationTimeAcceptedAdminMail;
 use App\Mail\ReservationTimeDeclinedAdminMail;
 use App\Mail\ReservationTimeSuggestedAdminMail;
@@ -140,6 +139,7 @@ class ReservationsController extends Controller
                 'end_signed' => (bool) ($r->end_signed ?? 0),
                 'canceled' => (bool) ($r->canceled ?? 0),
                 'passed' => (bool) ($r->passed ?? 0),
+                'created_at' => $r->created_at ?? null,
                 'place_name' => $place['place_name'] ?? null,
                 'place_type' => $place['place_type'] ?? null,
                 'equipments' => $equipmentsByReservation[$r->id] ?? [],

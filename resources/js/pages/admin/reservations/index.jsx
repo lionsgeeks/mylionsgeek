@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
 import ExportModal from './partials/ExportModal';
+import Rolegard from '@/components/rolegard';
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
         {yes ? trueText : falseText}
@@ -111,7 +112,20 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             return Number.isFinite(ts) ? ts : 0;
         };
 
-        return mixed.sort((a, b) => parseDateTime(b) - parseDateTime(a));
+        const getCreatedAtTs = (item) => {
+            const ts = Date.parse(item?.created_at ?? '');
+            return Number.isFinite(ts) ? ts : 0;
+        };
+        const rank = (item) => (!item?.canceled && !item?.approved ? 0 : 1); // 0 = pending, 1 = others
+
+        return mixed.sort((a, b) => {
+            const rdiff = rank(a) - rank(b);
+            if (rdiff !== 0) return rdiff;
+            const ca = getCreatedAtTs(a);
+            const cb = getCreatedAtTs(b);
+            if (cb !== ca) return cb - ca; // newer created first
+            return parseDateTime(b) - parseDateTime(a); // fallback to date/time
+        });
     }, [reservations, coworkReservations]);
 
     // Derived stats (global, not range-filtered)
@@ -353,6 +367,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     // export
     const [showExportModal, setShowExportModal] = useState(false);
     return (
+
         <AppLayout>
             <Head title="Reservations" />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
@@ -398,25 +413,27 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 </div>
 
                 {/* Charts Toggle Button */}
-                <div className="flex justify-center">
-                    <Button
-                        onClick={() => setShowCharts(!showCharts)}
-                        variant="outline"
-                        className="flex items-center gap-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                        {showCharts ? (
-                            <>
-                                <ChevronUp className="h-4 w-4" />
-                                Hide Charts & Analytics
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="h-4 w-4" />
-                                Show Charts & Analytics
-                            </>
-                        )}
-                    </Button>
-                </div>
+                {/* <Rolegard authorized={['admin', 'super_admin']}>
+                    <div className="flex justify-center">
+                        <Button
+                            onClick={() => setShowCharts(!showCharts)}
+                            variant="outline"
+                            className="flex items-center gap-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                            {showCharts ? (
+                                <>
+                                    <ChevronUp className="h-4 w-4" />
+                                    Hide Charts & Analytics
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="h-4 w-4" />
+                                    Show Charts & Analytics
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </Rolegard> */}
 
                 {/* Charts Section - Conditionally Rendered */}
                 {showCharts && (
@@ -512,26 +529,28 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </Card>
                     </>
                 )}
-                <div className="flex items-center justify-between">
-                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-                    <div className='flex gap-x-2'>
+                <Rolegard authorized={['admin', 'super_admin']}>
+                    <div className="flex items-center justify-between">
+                        <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
+                        <div className='flex gap-x-2'>
 
-                        <Button onClick={() => setShowExportModal(true)}
-                            className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
-                        >
-                            <Download /> Export
-                        </Button>
+                            <Button onClick={() => setShowExportModal(true)}
+                                className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                            >
+                                <Download /> Export
+                            </Button>
 
-                        <Link
-                            href="/admin/reservations/analytics"
-                            className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
-                        >
-                            <Activity className="w-6 h-4" />
-                            Analytics
-                        </Link>
+                            <Link
+                                href="/admin/reservations/analytics"
+                                className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
+                            >
+                                <Activity className="w-6 h-4" />
+                                Analytics
+                            </Link>
 
+                        </div>
                     </div>
-                </div>
+                </Rolegard>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
                     <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -568,9 +587,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                    {pagedAll.some(r => r.type !== "cowork") && (
-                                        <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
-                                    )}
+                                    <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
+                                        {pagedAll.some(r => r.type !== "cowork") && (
+                                            <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
+                                        )}
+                                    </Rolegard>
 
 
                                 </tr>
@@ -591,6 +612,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
                                             )}
                                         </td>
+                                        <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
                                         <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
                                             <div className="inline-flex items-center justify-center gap-2">
                                                 {/* PDF Download - Only for non-cowork approved reservations */}
@@ -656,22 +678,25 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 )}
 
                                                 {/* Propose new time - available for non-cowork */}
-                                                {r.type !== 'cowork' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer"
-                                                        onClick={() => {
-                                                            setProposeFor(r);
-                                                            setProposal({ day: r.date || '', start: r.start || '', end: r.end || '' });
-                                                        }}
-                                                        title="Propose a new date/time"
-                                                    >
-                                                        Propose time
-                                                    </Button>
-                                                )}
+                                                <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
+                                                    {r.type !== 'cowork' && !r.canceled && !r.approved && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 px-2 cursor-pointer"
+                                                            onClick={() => {
+                                                                setProposeFor(r);
+                                                                setProposal({ day: r.date || '', start: r.start || '', end: r.end || '' });
+                                                            }}
+                                                            title="Propose a new date/time"
+                                                        >
+                                                            Propose time
+                                                        </Button>
+                                                    )}
+                                                </Rolegard>
                                             </div>
                                         </td>
+                                        </Rolegard>
                                     </tr>
                                 ))}
                                 {filteredReservations.length === 0 && (
