@@ -5,7 +5,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import ReservationModalMeetingRoom from './components/ReservationModalMeetingRoom';
+import ReservationModalMeetingRoom from './ReservationModalMeetingRoom';
 
 export default function MeetingRoomCalendar({ meetingRoom }) {
     const [events, setEvents] = useState([]);
