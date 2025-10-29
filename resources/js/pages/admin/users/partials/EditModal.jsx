@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, X, ChevronDown } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import RolesMultiSelect from './RolesMultiSelect';
 
 const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) => {
     const getInitials = useInitials();
@@ -18,7 +19,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        role: '',
+        roles: [],
         status: '',
         formation_id: null,
         phone: '',
@@ -29,10 +30,24 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
     // ✅ Load user data into form when modal opens or user changes
     useEffect(() => {
         if (editedUser) {
+            // Normalize roles to an array of lowercase strings
+            let rolesArray = [];
+            if (Array.isArray(editedUser.role)) {
+                rolesArray = editedUser.role;
+            } else if (typeof editedUser.role === 'string' && editedUser.role.length > 0) {
+                try {
+                    const parsed = JSON.parse(editedUser.role);
+                    if (Array.isArray(parsed)) rolesArray = parsed;
+                    else rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                } catch {
+                    rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                }
+            }
+            rolesArray = rolesArray.map(r => String(r).toLowerCase());
             setFormData({
                 name: editedUser.name || '',
                 email: editedUser.email || '',
-                role: editedUser.role || '',
+                roles: rolesArray,
                 status: editedUser.status || '',
                 formation_id: editedUser.formation_id || null,
                 phone: editedUser.phone || '',
@@ -52,7 +67,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         form.append('_method', 'put');
         form.append('name', formData.name);
         form.append('email', formData.email);
-        form.append('role', formData.role);
+        // send roles as array
+        formData.roles.forEach((r) => form.append('roles[]', r));
         form.append('status', formData.status);
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
@@ -161,24 +177,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                             onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
                         />
                     </div>
-                    <div className="col-span-1">
-                        <Label>Role</Label>
-                        <Select
-                            value={formData.role}
-                            onValueChange={(v) => setFormData({ ...formData, role: v })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles.map((role, idx) => (
-                                    <SelectItem key={idx} value={role}>
-                                        {role}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {/* Roles - multi-select dropdown with chips (like Add User) */}
                     <div className="col-span-1">
                         <Label>Status</Label>
                         <Select
@@ -196,6 +195,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="col-span-1">
+                        <Label htmlFor="roles">Roles</Label>
+                        <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
                     </div>
                     <div className="col-span-1 md:col-span-2">
                         <Label>Training</Label>
@@ -224,7 +227,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 <Button
                                     onClick={() => resendLink(editedUser.id)}
                                     type="button"
-                                    variant="secondary"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+
                                 >
                                     Resend Link
                                 </Button>
@@ -232,7 +236,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 <Button
                                     onClick={() => resetPassword(editedUser.id)}
                                     type="button"
-                                    variant="secondary"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+
                                 >
                                     Reset Password
                                 </Button>
@@ -240,7 +245,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
-                                <Button type="button" variant="secondary" onClick={onClose}>
+                                <Button type="button"
+                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                                    onClick={onClose}>
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save changes</Button>
@@ -255,3 +262,5 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 };
 
 export default EditUserModal;
+
+// Reusable roles multiselect (mirrors Add User behavior)
