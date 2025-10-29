@@ -423,6 +423,8 @@ class UsersController extends Controller
             'phone' => 'nullable|string|max:15',
             'cin' => 'nullable|string|max:100',
             'image' => 'nullable|image|max:2048',
+            'access_cowork' => 'nullable|integer|in:0,1',
+            'access_studio' => 'nullable|integer|in:0,1',
         ]);
 
         if ($request->hasFile('image')) {
