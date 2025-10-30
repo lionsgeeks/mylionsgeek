@@ -112,7 +112,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="sm:max-w-[720px] bg-light text-dark dark:bg-dark dark:text-light">
+            <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto bg-light text-dark dark:bg-dark dark:text-light">
                 <DialogHeader>
                     <DialogTitle>Modify user</DialogTitle>
                 </DialogHeader>
@@ -241,6 +241,24 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                             <SelectContent>
                                 <SelectItem value={'Yes'}>Yes</SelectItem>
                                 <SelectItem value={'No'}>No</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="col-span-1 md:col-span-2">
+                        <Label>Training</Label>
+                        <Select
+                            value={formData.formation_id ? String(formData.formation_id) : ''}
+                            onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select training" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {trainings.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>
+                                        {t.name}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
