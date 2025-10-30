@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
+import { Input } from '@headlessui/react';
 
 const User = ({ user, trainings, close, open }) => {
     const getInitials = useInitials();
@@ -14,6 +15,7 @@ const User = ({ user, trainings, close, open }) => {
     const [notes, setNotes] = useState([]);
     const [docs, setDocs] = useState({ contracts: [], medicals: [] });
     const [chartData, setChartData] = useState();
+    const [selectedFileName, setSelectedFileName] = useState('');
 
 
     const fetchChart = async () => {
@@ -106,12 +108,12 @@ const User = ({ user, trainings, close, open }) => {
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Status</span>
                                     <span className={`flex items-center gap-2 text-sm font-semibold ${timeAgo(user.last_online) === 'Online now'
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-neutral-500 dark:text-neutral-400'
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : 'text-neutral-500 dark:text-neutral-400'
                                         }`}>
                                         <span className={`w-2 h-2 rounded-full ${timeAgo(user.last_online) === 'Online now'
-                                                ? 'bg-green-500 animate-pulse'
-                                                : 'bg-neutral-400'
+                                            ? 'bg-green-500 animate-pulse'
+                                            : 'bg-neutral-400'
                                             }`}></span>
                                         {timeAgo(user.last_online)}
                                     </span>
@@ -135,8 +137,8 @@ const User = ({ user, trainings, close, open }) => {
                                             )}
                                         </Avatar>
                                         <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-4 border-light dark:border-dark ${timeAgo(user.last_online) === 'Online now'
-                                            ? 'bg-green-400'
-                                            : 'bg-neutral-400'
+                                            ? ' bg-green-500'
+                                            : 'bg-neutral-500'
                                             }`}></div>
                                     </div>
 
@@ -265,9 +267,15 @@ const User = ({ user, trainings, close, open }) => {
                 )}
 
                 {activeTab === 'documents' && (
-                    <div className="mt-4 rounded-xl border border-alpha/20 p-4 bg-light dark:bg-dark">
-                        <Label className="font-semibold text-alpha">Upload Document</Label>
-                        <form className="mt-3 grid grid-cols-1 md:grid-cols-6 gap-2 items-end" onSubmit={async (e) => {
+                    <div className="mt-4 rounded-xl border border-alpha/20 p-5 bg-light dark:bg-dark">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <Label className="text-lg font-bold text-alpha">Documents</Label>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Upload and manage user documents</p>
+                            </div>
+                        </div>
+
+                        <form className="bg-gradient-to-br from-alpha/5 to-beta/5 rounded-xl p-4 border border-alpha/20" onSubmit={async (e) => {
                             e.preventDefault();
                             const form = e.currentTarget;
                             setUploadError('');
@@ -313,77 +321,178 @@ const User = ({ user, trainings, close, open }) => {
                             setDocs({ contracts: Array.isArray(d?.contracts) ? d.contracts : [], medicals: Array.isArray(d?.medicals) ? d.medicals : [] });
                             form.reset();
                             setUploadKind('contract');
+                            setSelectedFileName('');
                         }}>
-                            <div className="md:col-span-1">
-                                <Label className="text-xs">Type</Label>
-                                <select name="docKind" value={uploadKind} onChange={(e) => setUploadKind(e.target.value)} className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs">
-                                    <option value="contract">Contract</option>
-                                    <option value="medical">Medical certificate</option>
-                                </select>
-                            </div>
-                            <div className={uploadKind === 'contract' ? 'md:col-span-2' : 'md:col-span-3'}>
-                                <Label className="text-xs">{uploadKind === 'contract' ? 'Name' : 'Description'}</Label>
-                                <input name="docName" type="text" placeholder={uploadKind === 'contract' ? 'Name' : 'Description'} className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs" />
-                            </div>
-                            {uploadKind === 'contract' ? (
-                                <div className="md:col-span-2">
-                                    <Label className="text-xs">Type</Label>
-                                    <input name="docType" type="text" placeholder="Type" className="w-full rounded-md border border-alpha/20 px-3 py-2 bg-transparent text-xs" />
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                                {/* Document Type Select */}
+                                <div>
+                                    <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 block">Document Type</Label>
+                                    <select
+                                        name="docKind"
+                                        value={uploadKind}
+                                        onChange={(e) => setUploadKind(e.target.value)}
+                                        className="w-full rounded-lg border border-alpha/30 px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha/50 transition-all"
+                                    >
+                                        <option value="contract">Contract</option>
+                                        <option value="medical">Medical</option>
+                                    </select>
                                 </div>
-                            ) : (
-                                <input name="docType" type="hidden" value="" />
-                            )}
-                            <div className="md:col-span-2">
-                                <Label className="text-xs">File</Label>
-                                <input name="docFile" type="file" accept="application/pdf,image/*" required className="w-full text-xs" />
-                            </div>
-                            <div className="md:col-span-1">
-                                <Button type="submit" size="sm" className="w-full">Upload</Button>
+
+                                {/* Name/Description */}
+                                <div>
+                                    <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 block">
+                                        {uploadKind === 'contract' ? 'Document Name' : 'Description'}
+                                    </Label>
+                                    <input
+                                        name="docName"
+                                        type="text"
+                                        placeholder={uploadKind === 'contract' ? 'Enter name' : 'Enter description'}
+                                        className="w-full rounded-lg border border-alpha/30 px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha/50 transition-all"
+                                    />
+                                </div>
+
+                                {/* Contract Type (conditional) */}
+                                {uploadKind === 'contract' ? (
+                                    <div>
+                                        <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 block">Contract Type</Label>
+                                        <input
+                                            name="docType"
+                                            type="text"
+                                            placeholder="e.g., Full-time"
+                                            className="w-full rounded-lg border border-alpha/30 px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha/50 transition-all"
+                                        />
+                                    </div>
+                                ) : (
+                                    <input name="docType" type="hidden" value="" />
+                                )}
+
+                                {/* File Upload */}
+                                <div>
+                                    <Label className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1.5 block">Select File</Label>
+                                    <label
+                                        htmlFor="docFile"
+                                        className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-alpha/40 px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm text-neutral-600 dark:text-neutral-300 hover:border-alpha hover:bg-alpha/5 transition-all cursor-pointer"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                        </svg>
+                                        <span className="truncate">{selectedFileName || 'Choose file'}</span>
+                                    </label>
+                                    <input
+                                        id="docFile"
+                                        name="docFile"
+                                        type="file"
+                                        accept="application/pdf,image/*"
+                                        required
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            setSelectedFileName(file ? file.name : '');
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Upload Button */}
+                                <div>
+                                    <Button
+                                        type="submit"
+                                        className="w-full bg-alpha hover:bg-alpha/90 text-white font-medium py-2.5 rounded-lg transition-all"
+                                    >
+                                        Upload
+                                    </Button>
+                                </div>
                             </div>
                         </form>
-                        {uploadError ? (
-                            <div className="mt-2 text-xs text-red-600 dark:text-red-400 break-words">{uploadError}</div>
-                        ) : null}
+
+                        {uploadError && (
+                            <div className="mt-3 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-2 border border-red-200 dark:border-red-800">
+                                {uploadError}
+                            </div>
+                        )}
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="rounded-lg border border-alpha/20 p-4 bg-alpha/5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="text-sm font-semibold text-alpha">Contracts</div>
-                                    <div className="text-xs px-2 py-1 rounded-full bg-alpha text-white">{docs.contracts?.length || 0}</div>
+                            <div className="rounded-xl border border-alpha/20 p-4 bg-gradient-to-br from-alpha/5 to-alpha/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-alpha" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <div className="text-sm font-bold text-alpha">Contracts</div>
+                                    </div>
+                                    <div className="text-xs px-2.5 py-1 rounded-full bg-alpha text-white font-semibold">
+                                        {docs.contracts?.length || 0}
+                                    </div>
                                 </div>
                                 {Array.isArray(docs.contracts) && docs.contracts.length > 0 ? (
-                                    <ul className="space-y-2 text-sm">
+                                    <ul className="space-y-2">
                                         {docs.contracts.map((d, i) => (
-                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 bg-light dark:bg-dark hover:bg-alpha/5 transition-colors">
-                                                <span className="truncate max-w-[70%]">{d.name}</span>
+                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2.5 bg-white dark:bg-neutral-800 hover:bg-alpha/5 dark:hover:bg-alpha/10 transition-all group">
+                                                <span className="truncate max-w-[70%] text-sm text-neutral-700 dark:text-neutral-200">{d.name}</span>
                                                 {d.id ? (
-                                                    <a className="text-alpha text-xs font-medium hover:underline" href={`/admin/users/${user.id}/documents/contract/${d.id}`} target="_blank" rel="noreferrer">View</a>
-                                                ) : (d.url ? <a className="text-alpha text-xs font-medium hover:underline" href={d.url} target="_blank" rel="noreferrer">View</a> : null)}
+                                                    <a className="text-alpha text-xs font-semibold hover:underline flex items-center gap-1" href={`/admin/users/${user.id}/documents/contract/${d.id}`} target="_blank" rel="noreferrer">
+                                                        View
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                        </svg>
+                                                    </a>
+                                                ) : (d.url ? <a className="text-alpha text-xs font-semibold hover:underline flex items-center gap-1" href={d.url} target="_blank" rel="noreferrer">
+                                                    View
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a> : null)}
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <div className="text-xs text-neutral-500">No contracts.</div>
+                                    <div className="text-center py-8 text-neutral-500">
+                                        <svg className="w-12 h-12 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p className="text-xs">No contracts uploaded</p>
+                                    </div>
                                 )}
                             </div>
-                            <div className="rounded-lg border border-alpha/20 p-4 bg-beta/5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="text-sm font-semibold text-beta">Medical Certificates</div>
-                                    <div className="text-xs px-2 py-1 rounded-full bg-beta text-white">{docs.medicals?.length || 0}</div>
+                            <div className="rounded-xl border border-beta/20 p-4 bg-gradient-to-br from-beta/5 to-beta/10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-beta" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <div className="text-sm font-bold text-beta">Medical Certificates</div>
+                                    </div>
+                                    <div className="text-xs px-2.5 py-1 rounded-full bg-beta text-white font-semibold">
+                                        {docs.medicals?.length || 0}
+                                    </div>
                                 </div>
                                 {Array.isArray(docs.medicals) && docs.medicals.length > 0 ? (
-                                    <ul className="space-y-2 text-sm">
+                                    <ul className="space-y-2">
                                         {docs.medicals.map((d, i) => (
-                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2 bg-light dark:bg-dark hover:bg-beta/5 transition-colors">
-                                                <span className="truncate max-w-[70%]">{d.name}</span>
+                                            <li key={i} className="flex items-center justify-between rounded-lg border border-beta/20 px-3 py-2.5 bg-white dark:bg-neutral-800 hover:bg-beta/5 dark:hover:bg-beta/10 transition-all group">
+                                                <span className="truncate max-w-[70%] text-sm text-neutral-700 dark:text-neutral-200">{d.name}</span>
                                                 {d.id ? (
-                                                    <a className="text-beta text-xs font-medium hover:underline" href={`/admin/users/${user.id}/documents/medical/${d.id}`} target="_blank" rel="noreferrer">View</a>
-                                                ) : (d.url ? <a className="text-beta text-xs font-medium hover:underline" href={d.url} target="_blank" rel="noreferrer">View</a> : null)}
+                                                    <a className="text-beta text-xs font-semibold hover:underline flex items-center gap-1" href={`/admin/users/${user.id}/documents/medical/${d.id}`} target="_blank" rel="noreferrer">
+                                                        View
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                        </svg>
+                                                    </a>
+                                                ) : (d.url ? <a className="text-beta text-xs font-semibold hover:underline flex items-center gap-1" href={d.url} target="_blank" rel="noreferrer">
+                                                    View
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a> : null)}
                                             </li>
                                         ))}
                                     </ul>
                                 ) : (
-                                    <div className="text-xs text-neutral-500">No medical certificates.</div>
+                                    <div className="text-center py-8 text-neutral-500">
+                                        <svg className="w-12 h-12 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p className="text-xs">No medical certificates uploaded</p>
+                                    </div>
                                 )}
                             </div>
                         </div>
