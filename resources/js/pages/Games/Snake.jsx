@@ -74,6 +74,10 @@ export default function SnakeGame() {
 
     // Handle keyboard input
     const handleKeyPress = useCallback((e) => {
+        // Prevent arrow keys from scrolling the page during game
+        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+        }
         if (!gameStarted) {
             setGameStarted(true);
             return;
@@ -131,31 +135,61 @@ export default function SnakeGame() {
         setGameStarted(false);
     };
 
-    // Render game board
-    const renderBoard = () => {
-        const board = [];
-        for (let y = 0; y < BOARD_SIZE; y++) {
-            for (let x = 0; x < BOARD_SIZE; x++) {
-                const isSnake = snake.some(segment => segment.x === x && segment.y === y);
-                const isFood = food.x === x && food.y === y;
-                const isHead = snake[0] && snake[0].x === x && snake[0].y === y;
+    // Render game board (now as a relative container w/ absolutely positioned snake & food)
+    const CELL_SIZE = 20; // px per board cell, adjust as needed
 
-                board.push(
-                    <div
-                        key={`${x}-${y}`}
-                        className={`w-5 h-5 border border-gray-200 flex items-center justify-center ${
-                            isHead ? 'bg-green-600' :
-                            isSnake ? 'bg-green-500' :
-                            isFood ? 'bg-white' : 'bg-gray-100'
-                        }`}
-                    >
-                        {isFood ? <span className="text-[10px]">🍎</span> : null}
-                    </div>
-                );
-            }
-        }
-        return board;
+    const renderSnake = () => {
+        return snake.map((segment, idx) => {
+            const isHead = idx === 0;
+            return (
+                <div
+                    key={idx}
+                    style={{
+                        width: CELL_SIZE - 2,
+                        height: CELL_SIZE - 2,
+                        borderRadius: isHead ? '50%' : '40%',
+                        background: isHead ? 'linear-gradient(135deg,#39b54a,#226d3e 70%)' : 'linear-gradient(135deg,#5ae36d,#22962f 70%)',
+                        boxShadow: isHead ? '0 0 8px 2px #98ecac80' : 'none',
+                        position: 'absolute',
+                        left: segment.x * CELL_SIZE + 2,
+                        top: segment.y * CELL_SIZE + 2,
+                        transition: 'left 80ms linear, top 80ms linear',
+                        zIndex: isHead ? 2 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: isHead ? '2px solid #135f23' : '1px solid #219f4d',
+                    }}
+                >
+                    {/* Add eyes if head */}
+                    {isHead && (
+                        <div style={{display:'flex',gap:2}}>
+                            <div style={{width:3,height:3,borderRadius:'50%',background:'#222',marginRight:2,marginTop:3}}></div>
+                            <div style={{width:3,height:3,borderRadius:'50%',background:'#222',marginLeft:2,marginTop:3}}></div>
+                        </div>
+                    )}
+                </div>
+            );
+        });
     };
+
+    const renderFood = () => (
+        <div
+            style={{
+                width: CELL_SIZE - 4,
+                height: CELL_SIZE - 4,
+                position: 'absolute',
+                left: food.x * CELL_SIZE + 4,
+                top: food.y * CELL_SIZE + 4,
+                zIndex: 3,
+                display: 'flex',
+                alignItems:'center',
+                justifyContent:'center'
+            }}
+        >
+            <span role="img" aria-label="food" style={{fontSize:12}}>🍎</span>
+        </div>
+    );
 
     return (
         <AppLayout>
@@ -196,11 +230,20 @@ export default function SnakeGame() {
                     {/* Game Board */}
                     <div className="flex justify-center mb-6">
                         <div className="bg-white p-4 rounded-2xl shadow-lg border-4 border-gray-300">
-                            <div 
-                                className="grid gap-0"
-                                style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+                            <div
+                                style={{
+                                    position: 'relative',
+                                    width: CELL_SIZE * BOARD_SIZE,
+                                    height: CELL_SIZE * BOARD_SIZE,
+                                    background: 'repeating-linear-gradient(90deg,#f8fafc 0 1px,transparent 1px 20px), repeating-linear-gradient(180deg,#f8fafc 0 1px,transparent 1px 20px)',
+                                    overflow: 'hidden',
+                                    borderRadius: 16,
+                                    border: '2px solid #d1d5db',
+                                    boxShadow: '0 4px 20px #20964a12',
+                                }}
                             >
-                                {renderBoard()}
+                                {renderSnake()}
+                                {renderFood()}
                             </div>
                         </div>
                     </div>

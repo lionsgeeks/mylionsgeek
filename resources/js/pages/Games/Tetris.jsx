@@ -69,7 +69,7 @@ export default function TetrisGame() {
     const [level, setLevel] = useState(1);
     const [gameOver, setGameOver] = useState(false);
     const [gameStarted, setGameStarted] = useState(false);
-    const [dropTime, setDropTime] = useState(1000);
+    const [dropTime, setDropTime] = useState(600); // was 1000, now 600ms for faster speed
 
     // Create random piece
     const createPiece = () => {
@@ -185,6 +185,10 @@ export default function TetrisGame() {
 
     // Handle keyboard input
     const handleKeyPress = useCallback((e) => {
+        // Prevent arrow key scrolling
+        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+        }
         if (!gameStarted || gameOver) return;
         
         switch (e.key) {
@@ -244,7 +248,7 @@ export default function TetrisGame() {
         setLevel(1);
         setGameOver(false);
         setGameStarted(true);
-        setDropTime(1000);
+        setDropTime(600); // was 1000, now 600ms for faster initial speed
     };
 
     // Render board
