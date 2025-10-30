@@ -24,6 +24,7 @@ export default function DeleteModal({
   cancelLabel = 'Cancel',
   onConfirm,
   loading: loadingProp = false,
+  color = 'error'
 }) {
   const [internalLoading, setInternalLoading] = useState(false);
   const loading = loadingProp || internalLoading;
@@ -47,7 +48,7 @@ export default function DeleteModal({
       <DialogContent className="sm:max-w-[480px] bg-light text-dark dark:bg-dark dark:text-light">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-error/10 text-error">
+            <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full bg-error/10 text-${color}`}>
               <AlertTriangle size={18} />
             </span>
             {title}
@@ -66,7 +67,7 @@ export default function DeleteModal({
             {cancelLabel}
           </Button>
           <Button
-            className="bg-error text-light hover:bg-error/90 disabled:opacity-70"
+            className={`bg-${color} text-light hover:bg-${color} disabled:opacity-70`}
             onClick={handleConfirm}
             disabled={loading}
           >

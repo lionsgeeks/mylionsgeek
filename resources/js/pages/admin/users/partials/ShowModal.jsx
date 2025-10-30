@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,8 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
 import { Input } from '@headlessui/react';
+import DeleteModal from '../../../../components/DeleteModal';
 
 const User = ({ user, trainings, close, open }) => {
+    const { auth } = usePage().props
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
@@ -16,6 +18,7 @@ const User = ({ user, trainings, close, open }) => {
     const [docs, setDocs] = useState({ contracts: [], medicals: [] });
     const [chartData, setChartData] = useState();
     const [selectedFileName, setSelectedFileName] = useState('');
+    const [SusupendAccount, setSusupendAccount] = useState(false);
 
 
     const fetchChart = async () => {
@@ -57,7 +60,25 @@ const User = ({ user, trainings, close, open }) => {
     const [uploadKind, setUploadKind] = useState('contract');
     const trainingName = useMemo(() => trainings.find(t => t.id === user.formation_id)?.name || '-', [trainings, user]);
 
-
+    const handleSsuspned = () => {
+        if (SusupendAccount) {
+            // Assuming the delete endpoint is something like this
+            const newState = user.account_state === 1 ? 0 : 1;
+            router.post(`/admin/users/update/${user.id}/account-state`, {
+                _method: 'put',
+                account_state: newState,
+            }, {
+                onSuccess: () => {
+                    // Handle success
+                    setSusupendAccount(false)
+                },
+                onError: () => {
+                    // Handle error
+                    setSusupendAccount(false)
+                }
+            });
+        }
+    }
     function timeAgo(timestamp) {
         if (!timestamp) return 'Never';
 
@@ -100,154 +121,187 @@ const User = ({ user, trainings, close, open }) => {
 
                 {/* Content */}
                 {activeTab === 'overview' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
                         {/* Left Column - Profile Card */}
-                        <div className="lg:col-span-4 space-y-4">
-                            {/* Status Badge */}
-                            {/* <div className="bg-gradient-to-br from-alpha/5 to-alpha/10 rounded-xl p-4 border border-alpha/20">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Status</span>
-                                    <span className={`flex items-center gap-2 text-sm font-semibold ${timeAgo(user.last_online) === 'Online now'
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : 'text-neutral-500 dark:text-neutral-400'
-                                        }`}>
-                                        <span className={`w-2 h-2 rounded-full ${timeAgo(user.last_online) === 'Online now'
-                                            ? 'bg-green-500 animate-pulse'
-                                            : 'bg-neutral-400'
-                                            }`}></span>
-                                        {timeAgo(user.last_online)}
-                                    </span>
-                                </div>
-                            </div> */}
-
-                            {/* Profile Card */}
-                            <div className="bg-gradient-to-br from-alpha/10 to-beta/10 rounded-2xl p-6 border border-alpha/20 shadow-sm">
+                        <div className="lg:col-span-1">
+                            <div className="bg-gradient-to-br from-alpha/10 to-beta/10 rounded-2xl px-6 py-10 border border-alpha/20 shadow-lg sticky top-6">
                                 <div className="flex flex-col items-center">
+                                    {/* Avatar */}
                                     <div className="relative">
-                                        <Avatar className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-alpha/20">
+                                        <Avatar className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-alpha/20">
                                             {user?.image ? (
                                                 <AvatarImage
                                                     src={`/storage/img/profile/${user.image}`}
                                                     alt={user?.name}
                                                 />
                                             ) : (
-                                                <AvatarFallback className="rounded-full bg-alpha text-white text-2xl font-bold">
+                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                     {getInitials(user?.name)}
                                                 </AvatarFallback>
                                             )}
                                         </Avatar>
-                                        <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-4 border-light dark:border-dark ${timeAgo(user.last_online) === 'Online now'
-                                            ? ' bg-green-500'
-                                            : 'bg-neutral-500'
+                                        <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-4 border-light dark:border-dark ${timeAgo(user.last_online) === 'Online now' ? 'bg-green-500' : 'bg-neutral-500'
                                             }`}></div>
                                     </div>
 
-                                    <h3 className="mt-4 text-xl font-bold text-dark dark:text-light">{user.name || '-'}</h3>
-                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{user.email || '-'}</p>
+                                    {/* Name & Email */}
+                                    <h3 className="mt-4 text-xl font-bold text-dark dark:text-light text-center">{user.name || '-'}</h3>
+                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 text-center">{user.email || '-'}</p>
 
-                                    <div className="mt-4 w-full grid grid-cols-2 gap-2">
-                                        <div className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur rounded-lg p-3 text-center border border-alpha/10">
+                                    {/* Status Indicator */}
+                                    <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/60 dark:bg-neutral-900/60 backdrop-blur border border-alpha/10">
+                                        <span className={`w-2 h-2 rounded-full ${timeAgo(user.last_online) === 'Online now' ? 'bg-green-500 animate-pulse' : 'bg-neutral-400'
+                                            }`}></span>
+                                        <span className={`text-xs font-medium ${timeAgo(user.last_online) === 'Online now'
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-neutral-500 dark:text-neutral-400'
+                                            }`}>
+                                            {timeAgo(user.last_online)}
+                                        </span>
+                                    </div>
+
+                                    {/* Role & Status Grid */}
+                                    <div className="mt-6 w-full grid grid-cols-2 gap-3">
+                                        {/* Role Section */}
+                                        <div className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur rounded-xl p-3 text-center border border-alpha/10">
                                             <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Role</div>
-                                            <div className="text-sm font-bold text-dark dark:text-light mt-1">{user.role || '-'}</div>
+                                            <div className="text-sm font-bold text-dark dark:text-light mt-1 flex flex-col space-y-1">
+                                                {user.role?.length > 0 ? (
+                                                    user.role.map((r, index) => (
+                                                        <span key={index}>{r}</span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-neutral-500 dark:text-neutral-400">-</span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur rounded-lg p-3 text-center border border-alpha/10">
-                                            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Status</div>
-                                            <div className="text-sm font-bold text-green-600 dark:text-green-400 mt-1">{user.status || '-'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            {/* Access Card */}
-                            <div className="rounded-xl p-4 border border-alpha/20 shadow-sm bg-light dark:bg-dark">
-                                <h4 className="font-semibold text-dark dark:text-light mb-3">Access Rights</h4>
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-neutral-600 dark:text-neutral-400">Studio</span>
-                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${(user?.access?.access_studio ?? user?.access_studio)
-                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                            : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
-                                            }`}>
-                                            {(user?.access?.access_studio ?? user?.access_studio) ? 'Granted' : 'No Access'}
-                                        </span>
+                                        {/* Status Section */}
+                                        <div className="bg-white/60 dark:bg-neutral-900/60 backdrop-blur rounded-xl p-3 text-center border border-alpha/10">
+                                            <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Status</div>
+                                            <div className="text-sm font-bold text-green-600 dark:text-green-400 mt-1">
+                                                {user.status || '-'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-neutral-600 dark:text-neutral-400">Cowork</span>
-                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${(user?.access?.access_cowork ?? user?.access_cowork)
-                                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                            : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
-                                            }`}>
-                                            {(user?.access?.access_cowork ?? user?.access_cowork) ? 'Granted' : 'No Access'}
-                                        </span>
+
+
+                                    {/* Quick Actions */}
+                                    <div className="mt-6 w-full space-y-2">
+                                        {/* <Button
+                                            disabled={processing}
+                                            onClick={() => router.visit(`/admin/users/${user.id}`)}
+                                            className="w-full"
+                                            size="sm"
+                                        >
+                                            Open Full Profile
+                                        </Button> */}
+                                        <Button
+                                            disabled={processing}
+                                            onClick={() => setSusupendAccount(true)}
+                                            variant={user.account_state ? 'default' : 'danger'}
+                                            className="w-full"
+                                            size="sm"
+                                        >
+                                            {user.account_state ? 'Activate Account' : 'Suspend Account'}
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        {SusupendAccount && <DeleteModal
+                            open={SusupendAccount}
+                            color={user.account_state === 1 ? 'alpha' : 'error'}
+                            onOpenChange={setSusupendAccount}
+                            title={user.account_state === 1 ? `Activate ${user.name}` : `Suspend ${user.name}`}
+                            description={`This action cannot be undone. This will permanently ${user.account_state === 1 ? 'Activate' : 'Suspend'} ${user.name} .`}
+                            confirmLabel={user.account_state === 1 ? 'Activate' : 'Suspend'}
+                            cancelLabel="Cancel"
+                            onConfirm={handleSsuspned}
+                            loading={false}
+                        />}
 
                         {/* Right Column - Details */}
-                        <div className="lg:col-span-8 space-y-4">
-                            {/* Info Cards Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="rounded-xl p-4 border border-alpha/20 shadow-sm hover:shadow-md transition-shadow bg-light dark:bg-dark">
-                                    <Label className="text-xs font-semibold text-alpha">Promo</Label>
-                                    <p className="mt-2 text-dark dark:text-light">{user.promo || '-'}</p>
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Personal Information Section */}
+                            <div className="rounded-2xl border border-alpha/20 shadow-sm overflow-hidden bg-light dark:bg-dark">
+                                <div className="bg-gradient-to-r from-alpha/10 to-beta/10 px-5 py-3 border-b border-alpha/20">
+                                    <h4 className="font-bold text-dark dark:text-light">Personal Information</h4>
                                 </div>
-
-                                <div className="rounded-xl p-4 border border-alpha/20 shadow-sm hover:shadow-md transition-shadow bg-light dark:bg-dark">
-                                    <Label className="text-xs font-semibold text-alpha">Training</Label>
-                                    <p className="mt-2 text-dark dark:text-light">{trainingName}</p>
-                                </div>
-
-                                <div className="rounded-xl p-4 border border-alpha/20 shadow-sm hover:shadow-md transition-shadow bg-light dark:bg-dark">
-                                    <Label className="text-xs font-semibold text-alpha">Phone</Label>
-                                    <p className="mt-2 text-dark dark:text-light">{user.phone || '-'}</p>
-                                </div>
-
-                                <div className="rounded-xl p-4 border border-alpha/20 shadow-sm hover:shadow-md transition-shadow bg-light dark:bg-dark">
-                                    <Label className="text-xs font-semibold text-alpha">CIN</Label>
-                                    <p className="mt-2 text-dark dark:text-light">{user.cin || '-'}</p>
+                                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold text-alpha">Promo</Label>
+                                        <p className="text-dark dark:text-light">{user.promo || '-'}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold text-alpha">Training</Label>
+                                        <p className="text-dark dark:text-light">{trainingName}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold text-alpha">Phone</Label>
+                                        <p className="text-dark dark:text-light">{user.phone || '-'}</p>
+                                    </div>
+                                    {auth.user?.role?.includes('admin') && (
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold text-alpha">CIN</Label>
+                                            <p className="text-dark dark:text-light">{user.cin || '-'}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Discipline Card */}
-                            <div className="rounded-xl p-5 border border-alpha/20 shadow-sm bg-gradient-to-br from-alpha/5 to-beta/5">
-                                <Label className="text-xs font-semibold text-alpha">Discipline Score</Label>
-                                {summary.discipline == null ? (
-                                    <p className="mt-2 text-sm text-neutral-500">No data available</p>
-                                ) : (
-                                    <div className="mt-3 flex items-center gap-4">
-                                        <div className="text-4xl font-extrabold text-alpha">{summary.discipline}%</div>
-                                        <div className="flex-1 h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-alpha to-beta transition-all duration-500"
-                                                style={{ width: `${Math.max(0, Math.min(100, summary.discipline))}%` }}
-                                            />
+                            {/* Access Rights & Discipline Section */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Access Rights */}
+                                <div className="rounded-2xl border border-alpha/20 shadow-sm overflow-hidden bg-light dark:bg-dark">
+                                    <div className="bg-gradient-to-r from-alpha/10 to-beta/10 px-5 py-3 border-b border-alpha/20">
+                                        <h4 className="font-bold text-dark dark:text-light">Access Rights</h4>
+                                    </div>
+                                    <div className="p-5 space-y-3">
+                                        <div className="flex items-center justify-between p-3 rounded-lg bg-white/60 dark:bg-neutral-900/60 backdrop-blur border border-alpha/10">
+                                            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Studio</span>
+                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${(user?.access?.access_studio ?? user?.access_studio)
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                                : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                                                }`}>
+                                                {(user?.access?.access_studio ?? user?.access_studio) ? 'Granted' : 'No Access'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 rounded-lg bg-white/60 dark:bg-neutral-900/60 backdrop-blur border border-alpha/10">
+                                            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Cowork</span>
+                                            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${(user?.access?.access_cowork ?? user?.access_cowork)
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                                : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                                                }`}>
+                                                {(user?.access?.access_cowork ?? user?.access_cowork) ? 'Granted' : 'No Access'}
+                                            </span>
                                         </div>
                                     </div>
-                                )}
-                            </div>
+                                </div>
 
-                            {/* Quick Actions */}
-                            <div className="rounded-xl p-4 border border-alpha/20 shadow-sm bg-light dark:bg-dark">
-                                <Label className="text-xs font-semibold text-alpha">Quick Actions</Label>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <Button disabled={processing} onClick={() => router.visit(`/admin/users/${user.id}`)} variant="secondary" size="sm">
-                                        Open Full Profile
-                                    </Button>
-                                    <Button
-                                        disabled={processing}
-                                        onClick={() => {
-                                            setProcessing(true);
-                                            const newState = user.account_state === 1 ? 0 : 1;
-                                            router.post(`/admin/users/update/${user.id}/account-state`, { _method: 'put', account_state: newState }, {
-                                                onFinish: () => setProcessing(false)
-                                            });
-                                        }}
-                                        variant={user.account_state ? 'default' : 'danger'}
-                                        size="sm"
-                                    >
-                                        {user.account_state ? 'Activate Account' : 'Suspend Account'}
-                                    </Button>
+                                {/* Discipline Score */}
+                                <div className="rounded-2xl border border-alpha/20 shadow-sm overflow-hidden bg-gradient-to-br from-alpha/5 to-beta/5">
+                                    <div className="bg-gradient-to-r from-alpha/10 to-beta/10 px-5 py-3 border-b border-alpha/20">
+                                        <h4 className="font-bold text-dark dark:text-light">Discipline Score</h4>
+                                    </div>
+                                    <div className="p-5">
+                                        {summary.discipline == null ? (
+                                            <p className="text-sm text-neutral-500 text-center py-8">No data available</p>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-4">
+                                                <div className="text-5xl font-extrabold text-alpha">
+                                                    {summary.discipline}%
+                                                </div>
+                                                <div className="mt-4 w-full h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-gradient-to-r from-alpha to-beta transition-all duration-500 rounded-full"
+                                                        style={{ width: `${Math.max(0, Math.min(100, summary.discipline))}%` }}
+                                                    />
+                                                </div>
+                                                <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">Overall Performance</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -453,31 +507,32 @@ const User = ({ user, trainings, close, open }) => {
                                     </div>
                                 )}
                             </div>
-                            <div className="rounded-xl border border-beta/20 p-4 bg-gradient-to-br from-beta/5 to-beta/10">
+
+                            <div className="rounded-xl border border-alpha/20 p-4 bg-gradient-to-br from-alpha/5 to-alpha/10">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-beta" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5 text-alpha" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        <div className="text-sm font-bold text-beta">Medical Certificates</div>
+                                        <div className="text-sm font-bold text-alpha">Medical Certificates</div>
                                     </div>
-                                    <div className="text-xs px-2.5 py-1 rounded-full bg-beta text-white font-semibold">
+                                    <div className="text-xs px-2.5 py-1 rounded-full bg-alpha text-white font-semibold">
                                         {docs.medicals?.length || 0}
                                     </div>
                                 </div>
                                 {Array.isArray(docs.medicals) && docs.medicals.length > 0 ? (
                                     <ul className="space-y-2">
                                         {docs.medicals.map((d, i) => (
-                                            <li key={i} className="flex items-center justify-between rounded-lg border border-beta/20 px-3 py-2.5 bg-white dark:bg-neutral-800 hover:bg-beta/5 dark:hover:bg-beta/10 transition-all group">
+                                            <li key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2.5 bg-white dark:bg-neutral-800 hover:bg-alpha/5 dark:hover:bg-alpha/10 transition-all group">
                                                 <span className="truncate max-w-[70%] text-sm text-neutral-700 dark:text-neutral-200">{d.name}</span>
                                                 {d.id ? (
-                                                    <a className="text-beta text-xs font-semibold hover:underline flex items-center gap-1" href={`/admin/users/${user.id}/documents/medical/${d.id}`} target="_blank" rel="noreferrer">
+                                                    <a className="text-alpha text-xs font-semibold hover:underline flex items-center gap-1" href={`/admin/users/${user.id}/documents/medical/${d.id}`} target="_blank" rel="noreferrer">
                                                         View
                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                                         </svg>
                                                     </a>
-                                                ) : (d.url ? <a className="text-beta text-xs font-semibold hover:underline flex items-center gap-1" href={d.url} target="_blank" rel="noreferrer">
+                                                ) : (d.url ? <a className="text-alpha text-xs font-semibold hover:underline flex items-center gap-1" href={d.url} target="_blank" rel="noreferrer">
                                                     View
                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -495,6 +550,7 @@ const User = ({ user, trainings, close, open }) => {
                                     </div>
                                 )}
                             </div>
+
                         </div>
                     </div>
                 )}
