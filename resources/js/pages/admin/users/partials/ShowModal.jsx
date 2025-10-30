@@ -8,9 +8,28 @@ import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
 import { Input } from '@headlessui/react';
 import DeleteModal from '../../../../components/DeleteModal';
+import ProjectCard from "./components/ProjectCard";
+import AddProjectModal from "./components/AddProjectModal";
+import ViewProjectModal from "./components/ViewProjectModal";
 
 const User = ({ user, trainings, close, open }) => {
     const { auth } = usePage().props
+
+    const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
+    const [isViewProjectModalOpen, setIsViewProjectModalOpen] = useState(false);
+    const [selectedProject, setSelectedProject] = useState(null);
+        
+    const [projects, setProjects] = useState(user.user_projects || []);
+
+    useEffect(() => {
+    setProjects(user.user_projects || []);
+    }, [user.user_projects]);
+
+    const handleViewProject = (project) => {
+        setSelectedProject(project);
+        setIsViewProjectModalOpen(true);
+    };
+
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
     const [summary, setSummary] = useState({ discipline: null, recentAbsences: [] });
@@ -315,8 +334,55 @@ const User = ({ user, trainings, close, open }) => {
                 )}
 
                 {activeTab === 'projects' && (
-                    <div className="mt-4 rounded-xl border border-alpha/20 p-4 bg-light dark:bg-dark">
-                        <div className="text-sm text-neutral-600 dark:text-neutral-400">No projects to show here. View full profile for details.</div>
+                    <div className="mt-4 rounded-xl border border-alpha/20 p-6 bg-light dark:bg-dark flex flex-col max-h-96">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                Projects
+                            </h3>
+                            {auth.user?.id === user.id && (
+                                <Button
+                                    onClick={() => setIsAddProjectModalOpen(true)}
+                                    className="bg-[var(--color-alpha)] text-black hover:bg-gray-900 hover:text-white dark:bg-[var(--color-alpha)] dark:hover:bg-gray-200 dark:hover:text-black transition-colors duration-200 cursor-pointer"
+                                >
+                                    Add Project
+                                </Button>
+                            )}
+                        </div>
+
+                        {projects.length > 0 ? (
+                            <div className="flex-1 overflow-y-auto pr-2">
+                                <div className="grid grid-cols-3 gap-6">
+                                    {projects.map(project => (
+                                        <ProjectCard 
+                                            key={project.id} 
+                                            project={project}
+                                            onView={handleViewProject}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 bg-gray-50 dark:bg-neutral-700 rounded-lg border border-alpha/20">
+                                <p className="text-gray-500 dark:text-gray-400">
+                                    No projects yet
+                                </p>
+                            </div>
+                        )}
+                        <AddProjectModal
+                        isOpen={isAddProjectModalOpen}
+                        onClose={() => setIsAddProjectModalOpen(false)}
+                        userId={user.id}
+                        onProjectAdded={(project) => {
+                            setProjects(prev => [project, ...prev]);
+                            setIsAddProjectModalOpen(false);
+                        }}
+                        />
+
+                        <ViewProjectModal 
+                            isOpen={isViewProjectModalOpen}
+                            onClose={() => setIsViewProjectModalOpen(false)}
+                            project={selectedProject}
+                        />
                     </div>
                 )}
 
