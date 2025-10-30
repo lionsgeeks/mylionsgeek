@@ -13,7 +13,7 @@ Route::get('/', function () {
 })->name('home');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
@@ -37,6 +37,7 @@ require __DIR__.'/places.php';
 require __DIR__.'/reservations.php';
 require __DIR__.'/projects.php';
 require __DIR__.'/recuiter.php';
+require __DIR__.'/games.php';
 
 // Two-Factor Authentication Routes
 Route::middleware('auth')->prefix('api')->group(function () {

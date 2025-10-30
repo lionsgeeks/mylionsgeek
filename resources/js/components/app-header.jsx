@@ -9,8 +9,9 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Medal, Menu } from 'lucide-react';
+import { LayoutGrid, Medal, Menu, Search } from 'lucide-react';
 import AppLogo from './app-logo';
+import SearchDialog from './search-dialog';
 import ThemeToggle from './ThemeToggle';
 
 const activeItemStyles = 'text-neutral-900 dark:bg-neutral-800 dark:text-dark dark:bg-alpha';
@@ -36,7 +37,14 @@ export function AppHeader({ breadcrumbs = [] }) {
             <div className="border-b border-sidebar-border/80">
                 <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
-                    <div className="lg:hidden">
+                    <div className="flex items-center gap-2 lg:hidden">
+                        <SearchDialog
+                            trigger={
+                                <Button variant="ghost" size="icon" className="h-[34px] w-[34px]">
+                                    <Search className="h-5 w-5" />
+                                </Button>
+                            }
+                        />
                         <Sheet>
                             <SheetTrigger asChild>
                                 <Button variant="ghost" size="icon" className="mr-2 h-[34px] w-[34px]">
@@ -103,9 +111,10 @@ export function AppHeader({ breadcrumbs = [] }) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
+                        {/* Desktop search dialog (hidden on small screens) */}
+                        <SearchDialog className="hidden sm:flex" />
                         <div className="flex items-center gap-4">
                             <div className="">
-                                {/* component change mode */}
                                 <ThemeToggle />
                             </div>
                             <DropdownMenu>
@@ -126,14 +135,14 @@ export function AppHeader({ breadcrumbs = [] }) {
                         </div>
                     </div>
                 </div>
-            </div>
-            {breadcrumbs.length > 1 && (
-                <div className="flex w-full border-b border-sidebar-border/70">
-                    <div className="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
-                        <Breadcrumbs breadcrumbs={breadcrumbs} />
+                {breadcrumbs.length > 1 && (
+                    <div className="flex w-full border-b border-sidebar-border/70">
+                        <div className="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
+                            <Breadcrumbs breadcrumbs={breadcrumbs} />
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </>
     );
 }

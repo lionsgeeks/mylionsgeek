@@ -30,6 +30,7 @@ class User extends Authenticatable
         'image',
         'access_cowork',
         'access_studio',
+        'promo',
         'remember_token',
         'email_verified_at',
         // 'remember_token',

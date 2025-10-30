@@ -1,9 +1,9 @@
+import { NavUser } from '@/components/nav-user';
+import SearchDialog from '@/components/search-dialog';
 import ThemeToggle from '@/components/ThemeToggle';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-
-import { NavUser } from '@/components/nav-user';
 
 export function AppSidebarHeader({ breadcrumbs = [] }) {
     const { auth } = usePage().props;
@@ -29,8 +29,8 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                     <span className="text-sm text-muted-foreground">{dateStr}</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    <SearchDialog className="hidden sm:flex" />
                     <div className="pb-2">
-                        {/* component change mode */}
                         <ThemeToggle />
                     </div>
                     <NavUser />

@@ -1,3 +1,4 @@
+import Rolegard from '@/components/rolegard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,6 +83,8 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [filterType, setFilterType] = useState(''); // '', 'cowork', 'studio', 'meeting_room', 'exterior'
     const [filterStatus, setFilterStatus] = useState(''); // '', 'approved', 'canceled', 'pending'
     const [showCharts, setShowCharts] = useState(false); // New state for chart visibility
+    const [proposeFor, setProposeFor] = useState(null);
+    const [proposal, setProposal] = useState({ day: '', start: '', end: '' });
 
     const onTypeChange = (v) => setFilterType(v === 'all' ? '' : v);
     const onStatusChange = (v) => setFilterStatus(v === 'all' ? '' : v);
@@ -590,36 +593,38 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </Card>
                     </>
                 )}
-                <div className="flex items-center justify-between">
-                    <Button
-                        variant={tab === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTab('all')}
-                        className={
-                            tab === 'all'
-                                ? 'border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]'
-                                : ''
-                        }
-                    >
-                        All reservations
-                    </Button>
-                    <div className="flex gap-x-2">
+                <Rolegard authorized={['admin', 'super_admin']}>
+                    <div className="flex items-center justify-between">
                         <Button
-                            onClick={() => setShowExportModal(true)}
-                            className="flex cursor-pointer items-center gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            variant={tab === 'all' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setTab('all')}
+                            className={
+                                tab === 'all'
+                                    ? 'border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]'
+                                    : ''
+                            }
                         >
-                            <Download /> Export
+                            All reservations
                         </Button>
+                        <div className="flex gap-x-2">
+                            <Button
+                                onClick={() => setShowExportModal(true)}
+                                className="flex cursor-pointer items-center gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            >
+                                <Download /> Export
+                            </Button>
 
-                        <Link
-                            href="/admin/reservations/analytics"
-                            className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-2 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                        >
-                            <Activity className="h-4 w-6" />
-                            Analytics
-                        </Link>
+                            <Link
+                                href="/admin/reservations/analytics"
+                                className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-2 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            >
+                                <Activity className="h-4 w-6" />
+                                Analytics
+                            </Link>
+                        </div>
                     </div>
-                </div>
+                </Rolegard>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
                 {Object.keys(perPlaceDynamic).length > 0 && (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -654,9 +659,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                     <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
                                     <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                    {pagedAll.some((r) => r.type !== 'cowork') && (
-                                        <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
-                                    )}
+                                    <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
+                                        {pagedAll.some((r) => r.type !== 'cowork') && (
+                                            <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
+                                        )}
+                                    </Rolegard>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-sidebar-border/70">
@@ -677,80 +684,100 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                 <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
                                             )}
                                         </td>
-                                        <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
-                                            <div className="inline-flex items-center justify-center gap-2">
-                                                {/* PDF Download - Only for non-cowork approved reservations */}
-                                                {r.approved && r.type !== 'cowork' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 cursor-pointer px-2 hover:bg-alpha dark:text-white dark:hover:bg-alpha"
-                                                        onClick={() => {
-                                                            window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
-                                                        }}
-                                                        title="Download PDF"
-                                                    >
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                        <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
+                                            <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
+                                                <div className="inline-flex items-center justify-center gap-2">
+                                                    {/* PDF Download - Only for non-cowork approved reservations */}
+                                                    {r.approved && r.type !== 'cowork' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 cursor-pointer px-2 hover:bg-alpha dark:text-white dark:hover:bg-alpha"
+                                                            onClick={() => {
+                                                                window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
+                                                            }}
+                                                            title="Download PDF"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
 
-                                                {/* Approve Button - Only for non-cowork pending reservations */}
-                                                {!r.canceled && !r.approved && r.type !== 'cowork' && (
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-8 cursor-pointer bg-green-500 px-2 text-white hover:bg-green-600 disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            setLoadingAction({ id: r.id, type: 'approve' });
-                                                            router.post(
-                                                                `/admin/reservations/${r.id}/approve`,
-                                                                {},
-                                                                {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null }),
-                                                                },
-                                                            );
-                                                        }}
-                                                        title="Approve reservation"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                                    {/* Approve Button - Only for non-cowork pending reservations */}
+                                                    {!r.canceled && !r.approved && r.type !== 'cowork' && (
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-8 cursor-pointer bg-green-500 px-2 text-white hover:bg-green-600 disabled:opacity-50"
+                                                            disabled={loadingAction.id === r.id}
+                                                            onClick={() => {
+                                                                setLoadingAction({ id: r.id, type: 'approve' });
+                                                                router.post(
+                                                                    `/admin/reservations/${r.id}/approve`,
+                                                                    {},
+                                                                    {
+                                                                        onFinish: () => setLoadingAction({ id: null, type: null }),
+                                                                    },
+                                                                );
+                                                            }}
+                                                            title="Approve reservation"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
 
-                                                {/* Cancel Button - For all non-canceled reservations */}
-                                                {!r.canceled && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="destructive"
-                                                        className="h-8 cursor-pointer px-2 disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            const confirmMsg = r.approved
-                                                                ? 'Cancel this approved reservation?'
-                                                                : 'Cancel this reservation?';
-                                                            if (!window.confirm(confirmMsg)) return;
-                                                            setLoadingAction({ id: r.id, type: 'cancel' });
+                                                    {/* Cancel Button - For all non-canceled reservations */}
+                                                    {!r.canceled && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-8 cursor-pointer px-2 disabled:opacity-50"
+                                                            disabled={loadingAction.id === r.id}
+                                                            onClick={() => {
+                                                                const confirmMsg = r.approved
+                                                                    ? 'Cancel this approved reservation?'
+                                                                    : 'Cancel this reservation?';
+                                                                if (!window.confirm(confirmMsg)) return;
+                                                                setLoadingAction({ id: r.id, type: 'cancel' });
 
-                                                            // Use different routes for cowork vs regular reservations
-                                                            const cancelRoute =
-                                                                r.type === 'cowork'
-                                                                    ? `/admin/reservations/cowork/${r.id}/cancel`
-                                                                    : `/admin/reservations/${r.id}/cancel`;
+                                                                // Use different routes for cowork vs regular reservations
+                                                                const cancelRoute =
+                                                                    r.type === 'cowork'
+                                                                        ? `/admin/reservations/cowork/${r.id}/cancel`
+                                                                        : `/admin/reservations/${r.id}/cancel`;
 
-                                                            router.post(
-                                                                cancelRoute,
-                                                                {},
-                                                                {
-                                                                    onFinish: () => setLoadingAction({ id: null, type: null }),
-                                                                },
-                                                            );
-                                                        }}
-                                                        title="Cancel reservation"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
+                                                                router.post(
+                                                                    cancelRoute,
+                                                                    {},
+                                                                    {
+                                                                        onFinish: () => setLoadingAction({ id: null, type: null }),
+                                                                    },
+                                                                );
+                                                            }}
+                                                            title="Cancel reservation"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Propose new time - available for non-cowork */}
+                                                    <Rolegard authorized={['admin', 'moderateur', 'super_admin']}>
+                                                        {r.type !== 'cowork' && !r.canceled && !r.approved && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-8 cursor-pointer px-2"
+                                                                onClick={() => {
+                                                                    setProposeFor(r);
+                                                                    setProposal({ day: r.date || '', start: r.start || '', end: r.end || '' });
+                                                                }}
+                                                                title="Propose a new date/time"
+                                                            >
+                                                                Propose time
+                                                            </Button>
+                                                        )}
+                                                    </Rolegard>
+                                                </div>
+                                            </td>
+                                        </Rolegard>
                                     </tr>
                                 ))}
                                 {filteredReservations.length === 0 && (
@@ -802,6 +829,60 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 </Dialog>
             </div>
             <ExportModal open={showExportModal} onClose={() => setShowExportModal(false)} reservations={filteredReservations} />
+
+            {/* Propose new time modal */}
+            <Dialog open={!!proposeFor} onOpenChange={() => setProposeFor(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Propose new time</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-3">
+                        <div className="grid grid-cols-1 gap-2">
+                            <label className="text-sm text-muted-foreground">Date</label>
+                            <Input type="date" value={proposal.day} onChange={(e) => setProposal((p) => ({ ...p, day: e.target.value }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-sm text-muted-foreground">Start</label>
+                                <Input type="time" value={proposal.start} onChange={(e) => setProposal((p) => ({ ...p, start: e.target.value }))} />
+                            </div>
+                            <div>
+                                <label className="text-sm text-muted-foreground">End</label>
+                                <Input type="time" value={proposal.end} onChange={(e) => setProposal((p) => ({ ...p, end: e.target.value }))} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button variant="outline" className="cursor-pointer" onClick={() => setProposeFor(null)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                onClick={() => {
+                                    if (!proposal.day || !proposal.start || !proposal.end) {
+                                        alert('Please provide date, start and end.');
+                                        return;
+                                    }
+                                    router.post(
+                                        `/admin/reservations/${proposeFor.id}/propose`,
+                                        {
+                                            day: proposal.day,
+                                            start: proposal.start,
+                                            end: proposal.end,
+                                        },
+                                        {
+                                            onFinish: () => {
+                                                setProposeFor(null);
+                                            },
+                                        },
+                                    );
+                                }}
+                            >
+                                Send proposal
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 };

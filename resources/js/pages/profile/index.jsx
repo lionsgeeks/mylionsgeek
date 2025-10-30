@@ -1,11 +1,11 @@
 // resources/js/Pages/Profile/Complete.jsx
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/label';
 import { router, useForm } from '@inertiajs/react';
-import { Camera, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+// import { input } from "@/components/ui/input";
+import { Camera, Eye, EyeOff } from 'lucide-react';
 
 const CompleteProfile = ({ user }) => {
     const { data, setData, post, processing, errors, setError } = useForm({
@@ -121,7 +121,7 @@ const CompleteProfile = ({ user }) => {
                                 <div className="rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-gray-700">
                                     Upload Image
                                 </div>
-                                <Input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                                <input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                             </label>
                             {(validationErrors.image || errors.image) && (
                                 <span className="mt-2 text-sm text-red-500">{validationErrors.image || errors.image}</span>
@@ -136,7 +136,7 @@ const CompleteProfile = ({ user }) => {
                                     <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-600">
                                         Phone Number
                                     </Label>
-                                    <Input
+                                    <input
                                         id="phone"
                                         type="text"
                                         value={data.phone}
@@ -153,7 +153,7 @@ const CompleteProfile = ({ user }) => {
                                     <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
                                         CIN
                                     </Label>
-                                    <Input
+                                    <input
                                         id="cin"
                                         type="text"
                                         value={data.cin}
@@ -172,7 +172,7 @@ const CompleteProfile = ({ user }) => {
                                 <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
                                     Entreprise
                                 </Label>
-                                <Input
+                                <input
                                     id="entreprise"
                                     type="text"
                                     value={data.entreprise}
@@ -192,7 +192,7 @@ const CompleteProfile = ({ user }) => {
                                         Password
                                     </Label>
                                     <div className="relative">
-                                        <Input
+                                        <input
                                             id="password"
                                             type={showPassword ? 'text' : 'password'}
                                             value={data.password}
@@ -218,7 +218,7 @@ const CompleteProfile = ({ user }) => {
                                         Confirm Password
                                     </Label>
                                     <div className="relative">
-                                        <Input
+                                        <input
                                             id="password_confirmation"
                                             type={showConfirmPassword ? 'text' : 'password'}
                                             value={data.password_confirmation}

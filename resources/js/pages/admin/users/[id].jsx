@@ -1,3 +1,5 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useInitials } from '@/hooks/use-initials';
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
@@ -5,6 +7,7 @@ import LineStatistic from './partials/components/LineChart';
 
 export default function AdminUserProfile() {
     const { props } = usePage();
+    const getInitials = useInitials();
     const user = props.user;
     const projects = props.projects || [];
     const posts = props.posts || [];
@@ -14,6 +17,20 @@ export default function AdminUserProfile() {
     const discipline = props.discipline ?? null;
     const absences = props.absences || { data: [], meta: {} };
     const recentAbsences = props.recentAbsences || [];
+    function timeAgo(timestamp) {
+        if (!timestamp) return 'Never';
+
+        const now = new Date();
+        const last = new Date(timestamp + 'Z');
+
+        const diff = Math.floor((now - last) / 1000); // seconds
+
+        if (diff < 60) return 'Online now';
+        if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+        if (diff < 172800) return 'Yesterday';
+        return last.toLocaleDateString();
+    }
 
     const coverUrl = useMemo(() => user?.cover || '/assets/images/cover-placeholder.svg', [user]);
 
@@ -36,11 +53,22 @@ export default function AdminUserProfile() {
                 {/* Header */}
                 <div className="-mt-10 flex items-end justify-between gap-4 px-6">
                     <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-neutral-200 ring-4 ring-white dark:ring-neutral-900">
-                        {user?.image ? (
-                            <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-                        ) : (
-                            <span className="text-2xl font-semibold">{user?.name?.charAt(0)?.toUpperCase() || '?'}</span>
-                        )}
+                        <div className="relative">
+                            <Avatar className="h-24 w-24 overflow-hidden rounded-full ring-4 ring-alpha/20">
+                                {user?.image ? (
+                                    <AvatarImage src={`/storage/img/profile/${user.image}`} alt={user?.name} />
+                                ) : (
+                                    <AvatarFallback className="rounded-full bg-alpha text-2xl font-bold text-white">
+                                        {getInitials(user?.name)}
+                                    </AvatarFallback>
+                                )}
+                            </Avatar>
+                            <div
+                                className={`absolute -right-1 -bottom-1 h-7 w-7 rounded-full border-4 border-light dark:border-dark ${
+                                    timeAgo(user.last_online) === 'Online now' ? 'bg-green-500' : 'bg-neutral-500'
+                                }`}
+                            ></div>
+                        </div>
                     </div>
                     <div className="flex-1 pb-2">
                         <h1 className="text-2xl font-bold">{user?.name}</h1>
