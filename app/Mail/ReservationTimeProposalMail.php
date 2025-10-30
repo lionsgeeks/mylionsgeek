@@ -21,10 +21,9 @@ class ReservationTimeProposalMail extends Mailable
     {
         $d = $this->data;
         $subject = 'New proposed time for your reservation';
+
         return $this->subject($subject)
             ->view('emails.reservation_time_proposal')
             ->with($d);
     }
 }
-
-

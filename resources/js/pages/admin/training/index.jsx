@@ -548,12 +548,10 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         const coachTrainings = trainings.filter((t) => t.coach && t.coach.id === selectedCoach);
 
                                         const totalStudents = coachTrainings.reduce((sum, training) => {
-    if (Array.isArray(training.users)) return sum + training.users.length;
-    if (typeof training.users_count === 'number') return sum + training.users_count;
-    return sum;
-}, 0);
-
-
+                                            if (Array.isArray(training.users)) return sum + training.users.length;
+                                            if (typeof training.users_count === 'number') return sum + training.users_count;
+                                            return sum;
+                                        }, 0);
 
                                         return (
                                             <>

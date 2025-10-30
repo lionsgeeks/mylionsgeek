@@ -31,7 +31,7 @@ class SyncUserPromos extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
-        $this->info('Starting promo sync from formations to users' . ($dryRun ? ' (dry run)' : ''));
+        $this->info('Starting promo sync from formations to users'.($dryRun ? ' (dry run)' : ''));
 
         $countProcessed = 0;
         $countUpdated = 0;
@@ -41,8 +41,9 @@ class SyncUserPromos extends Command
                 $countProcessed++;
 
                 $formation = $this->resolveUserFormation($user);
-                if (!$formation) {
+                if (! $formation) {
                     $this->line("User {$user->id}: no formation found, skipping");
+
                     continue;
                 }
 
@@ -51,11 +52,13 @@ class SyncUserPromos extends Command
 
                 if ($promo === null) {
                     $this->line("User {$user->id}: formation {$formation->id} has no promo, skipping");
+
                     continue;
                 }
 
                 if ((int) ($user->promo ?? 0) === $promo) {
                     $this->line("User {$user->id}: promo already {$promo}, no change");
+
                     continue;
                 }
 
@@ -71,6 +74,7 @@ class SyncUserPromos extends Command
         });
 
         $this->info("Processed {$countProcessed} users. Updated {$countUpdated}.");
+
         return self::SUCCESS;
     }
 
@@ -99,5 +103,3 @@ class SyncUserPromos extends Command
         return null;
     }
 }
-
-

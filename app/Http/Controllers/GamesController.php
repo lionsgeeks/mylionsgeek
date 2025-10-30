@@ -41,4 +41,3 @@ class GamesController extends Controller
         return Inertia::render('Games/RockPaperScissors');
     }
 }
-

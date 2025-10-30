@@ -24,5 +24,3 @@ class ReservationTimeAcceptedAdminMail extends Mailable
             ->with($this->data);
     }
 }
-
-
