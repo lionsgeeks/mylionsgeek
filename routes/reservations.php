@@ -16,6 +16,8 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
         ->name('admin.reservations.details');
     Route::get('/reservations/{reservation}/pdf', [ReservationsController::class, 'generatePdf'])
         ->name('admin.reservations.pdf');
+    Route::post('/reservations/{reservation}/propose', [ReservationsController::class, 'proposeNewTime'])
+        ->name('admin.reservations.propose');
     Route::get('/places/{type}/{id}/reservations', [ReservationsController::class, 'byPlace'])
         ->name('admin.places.reservations');
 
@@ -52,6 +54,20 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
 // Public route for material verification (no auth required for email links)
 Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
     ->name('reservations.verify-end');
+Route::get('/reservations/proposal/{token}/accept', [ReservationsController::class, 'acceptProposal'])
+    ->name('reservations.proposal.accept');
+Route::get('/reservations/proposal/{token}/cancel', [ReservationsController::class, 'cancelProposal'])
+    ->name('reservations.proposal.cancel');
+Route::get('/reservations/proposal/{token}/suggest', [ReservationsController::class, 'showSuggestForm'])
+    ->name('reservations.proposal.suggest');
+Route::post('/reservations/proposal/{token}/suggest', [ReservationsController::class, 'submitSuggestForm'])
+    ->name('reservations.proposal.suggest.submit');
+Route::get('/reservations/suggest/{token}/approve', [ReservationsController::class, 'approveSuggested'])
+    ->name('reservations.suggest.approve');
+
+// Public calendar feed for suggestion page
+Route::get('/reservations/public-place/{type}/{id}', [ReservationsController::class, 'byPlacePublic'])
+    ->name('reservations.place.public');
 Route::post('/reservations/{reservation}/verify-end', [ReservationsController::class, 'submitVerification'])
     ->name('reservations.submit-verification');
 Route::get('/reservations/{reservation}/download-report', [ReservationsController::class, 'downloadReport'])
