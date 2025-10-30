@@ -1,21 +1,18 @@
-// components/EditUserModal.jsx
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, X, ChevronDown } from 'lucide-react';
+import { ImagePlus } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 
 const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) => {
     const getInitials = useInitials();
     const [errors, setErrors] = useState({});
-
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -25,12 +22,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         phone: '',
         cin: '',
         image: null,
+        access_studio: '', // Add default value for access_studio
+        access_cowork: '', // Add default value for access_cowork
     });
 
-    // ✅ Load user data into form when modal opens or user changes
+    // Load user data into form when modal opens or user changes
     useEffect(() => {
         if (editedUser) {
-            // Normalize roles to an array of lowercase strings
             let rolesArray = [];
             if (Array.isArray(editedUser.role)) {
                 rolesArray = editedUser.role;
@@ -52,7 +50,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                 formation_id: editedUser.formation_id || null,
                 phone: editedUser.phone || '',
                 cin: editedUser.cin || '',
-                image: editedUser.image || null,
+                image: editedUser.image || null, // User's image from DB (if exists)
+                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
+                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
             });
         }
     }, [editedUser]);
@@ -64,21 +64,25 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
         const form = new FormData();
 
-        form.append('_method', 'put');
+        form.append('_method', 'put'); // Ensure to override method if using put
         form.append('name', formData.name);
         form.append('email', formData.email);
-        // send roles as array
-        formData.roles.forEach((r) => form.append('roles[]', r));
+        formData.roles.forEach((r) => form.append('roles[]', r)); // Send roles as array
         form.append('status', formData.status);
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
         form.append('formation_id', formData.formation_id || '');
 
-        // ✅ Append image ONLY if it's a File
+        // Convert Yes/No back to 1/0 for submission
+        form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
+        form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
+
+        // Append image ONLY if it's a File
         if (formData.image instanceof File) {
             form.append('image', formData.image);
         }
 
+        // Sending data to backend
         router.post(`/admin/users/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
@@ -86,30 +90,29 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
             },
             onError: (err) => {
                 setErrors(err);
-                // console.log('Validation errors:', err);
+                console.error('Form submission error:', err);
             },
         });
     };
+
     function resendLink(userId) {
-        // alert(userId);
         router.post(`/admin/users/${userId}/resend-link`);
     }
+
     const resetPassword = (id) => {
         router.post(`/admin/users/${id}/reset-password`, {
             onSuccess: () => {
-                alert('fine')
+                alert('Password reset successfully');
             },
             onError: () => {
-                alert('error')
+                alert('Error resetting password');
             }
-        })
-    }
-
-
+        });
+    };
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="sm:max-w-[720px] bg-light text-dark dark:bg-dark dark:text-light">
+            <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto bg-light text-dark dark:bg-dark dark:text-light">
                 <DialogHeader>
                     <DialogTitle>Modify user</DialogTitle>
                 </DialogHeader>
@@ -118,9 +121,14 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                     <div className="col-span-1 md:col-span-2 flex justify-center items-center gap-4 mb-4">
                         <div className="relative w-24 h-24">
                             <Avatar className="w-24 h-24 rounded-full overflow-hidden">
-                                {formData.image && formData.image instanceof File ? (
-                                    <AvatarImage src={URL.createObjectURL(formData.image)} alt="User Avatar" />
+                                {/* If the user has an image, display it */}
+                                {formData.image ? (
+                                    <AvatarImage
+                                        src={formData.image instanceof File ? URL.createObjectURL(formData.image) : `/storage/img/profile/${formData.image}`}
+                                        alt="User Avatar"
+                                    />
                                 ) : (
+                                    // Fallback to initials if no image is provided
                                     <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                         {getInitials(formData.name)}
                                     </AvatarFallback>
@@ -133,18 +141,17 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                     type="file"
                                     accept="image/*"
                                     className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, image: e.target.files?.[0] || null })
-                                    }
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        setFormData({ ...formData, image: file });
+                                    }}
                                 />
                             </label>
                         </div>
                     </div>
 
-                    {/* Fields */}
+                    {/* Form Fields */}
                     <div className="col-span-1">
-
-                        {/* {console.log(editedUser)} */}
                         <Label htmlFor="name">Name</Label>
                         <Input
                             id="name"
@@ -177,7 +184,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                             onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
                         />
                     </div>
-                    {/* Roles - multi-select dropdown with chips (like Add User) */}
+
+                    {/* Roles - multi-select dropdown with chips */}
                     <div className="col-span-1">
                         <Label>Status</Label>
                         <Select
@@ -199,6 +207,42 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                     <div className="col-span-1">
                         <Label htmlFor="roles">Roles</Label>
                         <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                    </div>
+
+                    {/* Access Studio Field */}
+                    <div className='flex flex-col gap-2'>
+                        <Label htmlFor="access-studio">Access Studio</Label>
+                        <Select
+                            id="access-studio"
+                            value={formData.access_studio}
+                            onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Access Studio" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={'Yes'}>Yes</SelectItem>
+                                <SelectItem value={'No'}>No</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Access Cowork Field */}
+                    <div className='flex flex-col gap-2'>
+                        <Label htmlFor="access-cowork">Access Cowork</Label>
+                        <Select
+                            id="access-cowork"
+                            value={formData.access_cowork}
+                            onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Access Cowork" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={'Yes'}>Yes</SelectItem>
+                                <SelectItem value={'No'}>No</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="col-span-1 md:col-span-2">
                         <Label>Training</Label>
@@ -228,7 +272,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                     onClick={() => resendLink(editedUser.id)}
                                     type="button"
                                     className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-
                                 >
                                     Resend Link
                                 </Button>
@@ -237,7 +280,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                     onClick={() => resetPassword(editedUser.id)}
                                     type="button"
                                     className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-
                                 >
                                     Reset Password
                                 </Button>
@@ -245,9 +287,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
-                                <Button type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
-                                    onClick={onClose}>
+                                <Button type="button" className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]" onClick={onClose}>
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save changes</Button>
@@ -255,12 +295,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         </div>
                     </div>
                 </form>
-
             </DialogContent>
         </Dialog>
     );
 };
 
 export default EditUserModal;
-
-// Reusable roles multiselect (mirrors Add User behavior)

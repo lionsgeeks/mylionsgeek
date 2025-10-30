@@ -5,6 +5,7 @@ import profile from '@/routes/profile';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
+import SearchDialog from '@/components/search-dialog';
 
 import { NavUser } from '@/components/nav-user';
 
@@ -32,6 +33,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                     <span className="text-sm text-muted-foreground">{dateStr}</span>
                 </div>
                 <div className="flex items-center gap-4">
+                    <SearchDialog className="hidden sm:flex" />
                     <div className="pb-2">
                         {/* component change mode */}
                         <ThemeToggle />
