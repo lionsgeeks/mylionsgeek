@@ -128,4 +128,10 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Badge::class)->withTimestamps();
     }
+    // user project
+    public function userProjects()
+    {
+        return $this->hasMany(UserProject::class);
+    }
+
 }
