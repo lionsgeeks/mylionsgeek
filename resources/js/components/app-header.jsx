@@ -10,7 +10,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2 } from 'lucide-react';
+import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2, Building2, Timer } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
@@ -37,11 +37,18 @@ export function AppHeader({ breadcrumbs = [] }) {
             icon: Medal,
         },
         {
-            title: 'Games',
-            url: '/games',
-            icon: Gamepad2,
-        },
+            title: 'Spaces ',
+        url : '/spaces',
+        icon: Building2,
 
+    },
+    { title: 'Reservations', url: '/reservations', icon: Timer },
+    
+    // {
+    //     title: 'Games',
+    //     url: '/games',
+    //     icon: Gamepad2,
+    // },
     ];
     const getInitials = useInitials();
     return (

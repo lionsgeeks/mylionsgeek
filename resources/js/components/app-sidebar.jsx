@@ -40,7 +40,7 @@ const mainNavItems = [
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
     { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
     { title: 'Training', href: '/training', icon: GraduationCap },
-    { title: 'Games', href: '/games', icon: Gamepad2 },
+    // { title: 'Games', href: '/games', icon: Gamepad2 },
     { title: 'Settings', href: '/settings', icon: Settings },
 ];
 

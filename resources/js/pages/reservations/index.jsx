@@ -84,7 +84,7 @@ export default function ReservationsPage() {
             <ReservationTable
               columns={columns}
               data={filteredReservations}
-              onRowClick={row => router.visit(`/reservations/${row.id}`)}
+              onRowClick={row => router.visit(`/reservations/${row.id}/details`)}
             />
           </div>
         </div>

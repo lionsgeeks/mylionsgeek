@@ -254,8 +254,8 @@ class ReservationsController extends Controller
                         $startTime = $link->start ?? ($reservationData->start ?? null);
                         $endTime  = $link->end ?? ($reservationData->end ?? null);
 
-                        
-                        $startDate = (string) ($day ?? ''). ' ' . ($startTime ?? '');
+
+                        $startDate = (string) ($day ?? '') . ' ' . ($startTime ?? '');
                         $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
                         $properties = json_encode([
                             'start' => $startDate,
@@ -441,12 +441,12 @@ class ReservationsController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
                 ->where('r.studio_id', $id)
                 ->select(
-                    'r.id', 
-                    'r.day as start', 
-                    'r.start as startTime', 
-                    'r.end as endTime', 
-                    'r.title', 
-                    'r.approved', 
+                    'r.id',
+                    'r.day as start',
+                    'r.start as startTime',
+                    'r.end as endTime',
+                    'r.title',
+                    'r.approved',
                     'r.canceled',
                     'u.name as user_name'
                 )
@@ -468,11 +468,11 @@ class ReservationsController extends Controller
                 ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
                 ->where('rc.table', $id)
                 ->select(
-                    'rc.id', 
-                    'rc.day as start', 
-                    'rc.start as startTime', 
-                    'rc.end as endTime', 
-                    'rc.approved', 
+                    'rc.id',
+                    'rc.day as start',
+                    'rc.start as startTime',
+                    'rc.end as endTime',
+                    'rc.approved',
                     'rc.canceled',
                     'u.name as user_name',
                     'c.table as table_number'
@@ -494,11 +494,11 @@ class ReservationsController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
                 ->where('rmr.meeting_room_id', $id)
                 ->select(
-                    'rmr.id', 
-                    'rmr.day as start', 
-                    'rmr.start as startTime', 
-                    'rmr.end as endTime', 
-                    'rmr.approved', 
+                    'rmr.id',
+                    'rmr.day as start',
+                    'rmr.start as startTime',
+                    'rmr.end as endTime',
+                    'rmr.approved',
                     'rmr.canceled',
                     'u.name as user_name'
                 )
@@ -522,23 +522,31 @@ class ReservationsController extends Controller
      */
     public function getUsers()
     {
-        $users = User::select('id', 'name', 'image')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($user) {
-                $img = $user->image;
-                if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
-                    $img = 'storage/img/profile/' . ltrim($img, '/');
-                }
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'image' => $img ? asset($img) : null,
-                ];
-            });
+        $authUser = auth()->user();
+
+        $query = User::select('id', 'name', 'image')->orderBy('name');
+
+        if (!in_array('admin', (array) $authUser->role)) {
+            $query->whereJsonDoesntContain('role', 'admin');
+        }
+
+        $users = $query->get()->map(function ($user) {
+            $img = $user->image;
+
+            if ($img && !Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                $img = 'storage/img/profile/' . ltrim($img, '/');
+            }
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'image' => $img ? asset($img) : null,
+            ];
+        });
 
         return response()->json($users);
     }
+
 
     /**
      * Get all equipment for equipment selector modal
@@ -956,7 +964,7 @@ class ReservationsController extends Controller
                 'suggest_url' => $suggestUrl,
             ]));
         } catch (\Throwable $e) {
-            \Log::error('Failed sending proposal mail: '.$e->getMessage());
+            \Log::error('Failed sending proposal mail: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Proposal sent to user');
@@ -999,7 +1007,7 @@ class ReservationsController extends Controller
                 }
             }
         } catch (\Throwable $e) {
-            \Log::error('Failed to notify admins about accepted reservation time: '.$e->getMessage());
+            \Log::error('Failed to notify admins about accepted reservation time: ' . $e->getMessage());
         }
         return response()->view('proposal_accepted');
     }
@@ -1027,7 +1035,7 @@ class ReservationsController extends Controller
                 'end' => $data['end'],
             ]));
         } catch (\Throwable $e) {
-            \Log::error('Failed to notify admins about declined reservation time: '.$e->getMessage());
+            \Log::error('Failed to notify admins about declined reservation time: ' . $e->getMessage());
         }
         // No DB change on decline, just show a message
         return response()->view('proposal_declined');
@@ -1105,7 +1113,7 @@ class ReservationsController extends Controller
                 'details_url' => $detailsUrl,
             ]));
         } catch (\Throwable $e) {
-            \Log::error('Failed to notify admins about suggested reservation time: '.$e->getMessage());
+            \Log::error('Failed to notify admins about suggested reservation time: ' . $e->getMessage());
         }
         return response()->view('proposal_suggested');
     }
@@ -1136,7 +1144,7 @@ class ReservationsController extends Controller
         $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $b64 = rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
         $sig = hash_hmac('sha256', $b64, config('app.key'));
-        return $b64.'.'.$sig;
+        return $b64 . '.' . $sig;
     }
 
     private function parseProposalToken(string $token): array|false
@@ -1443,7 +1451,7 @@ class ReservationsController extends Controller
                             $startTime = $link->start ?? ($reservationDataForLog->start ?? null);
                             $endTime = $link->end ?? ($reservationDataForLog->end ?? null);
 
-                            
+
                             $startDate = (string) ($day ?? '') . ' ' . ($startTime ?? '');
                             $endDate = (string) ($day ?? '') . ' ' . ($endTime ?? '');
 
@@ -2171,7 +2179,7 @@ class ReservationsController extends Controller
     public function myReservations(Request $request)
     {
         $userId = auth()->id();
-        $reservations = DB::table('reservations as r')
+       $reservations = DB::table('reservations as r')
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
             ->select('r.*', 'u.name as user_name')
             ->where('r.user_id', $userId)
@@ -2192,16 +2200,45 @@ class ReservationsController extends Controller
                     'created_at' => $r->created_at ?? null,
                 ];
             });
+       // Include user's cowork reservations as well
+       if (\Schema::hasTable('reservation_coworks')) {
+           $coworkUserReservations = DB::table('reservation_coworks as rc')
+               ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+               ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
+               ->select('rc.*', 'u.name as user_name', 'c.table as table_number')
+               ->where('rc.user_id', $userId)
+               ->orderByDesc('rc.created_at')
+               ->get()
+               ->map(function ($r) {
+                   return [
+                       'id' => $r->id,
+                       'user_name' => $r->user_name,
+                       'date' => $r->day ?? null,
+                       'start' => $r->start ?? null,
+                       'end' => $r->end ?? null,
+                       'type' => 'cowork',
+                       'title' => $r->title ?? ('Cowork Table ' . ($r->table_number ?? $r->table ?? '')), 
+                       'description' => $r->description ?? null,
+                       'approved' => (bool) ($r->approved ?? 0),
+                       'canceled' => (bool) ($r->canceled ?? 0),
+                       'created_at' => $r->created_at ?? null,
+                   ];
+               });
+           // Merge and sort by created_at desc
+           $reservations = $reservations->merge($coworkUserReservations)->sortByDesc(function ($r) {
+               return $r['created_at'] ?? null;
+           })->values();
+       }
         // Add available studios
         $studios = DB::table('studios')
             ->select('id', 'name', 'state', 'image')
             ->orderBy('name')
             ->get()
-            ->map(function($studio) {
+            ->map(function ($studio) {
                 $img = $studio->image ? (
                     str_starts_with($studio->image, 'http') || str_starts_with($studio->image, 'storage/')
-                        ? $studio->image
-                        : ('storage/img/studio/' . ltrim($studio->image, '/'))
+                    ? $studio->image
+                    : ('storage/img/studio/' . ltrim($studio->image, '/'))
                 ) : null;
                 return [
                     'id' => $studio->id,
@@ -2216,15 +2253,15 @@ class ReservationsController extends Controller
             ->select('id', 'table', 'state', 'image')
             ->orderBy('table')
             ->get()
-            ->map(function($cowork) {
+            ->map(function ($cowork) {
                 $img = $cowork->image ? (
                     str_starts_with($cowork->image, 'http') || str_starts_with($cowork->image, 'storage/')
-                        ? $cowork->image
-                        : ('storage/img/cowork/' . ltrim($cowork->image, '/'))
+                    ? $cowork->image
+                    : ('storage/img/cowork/' . ltrim($cowork->image, '/'))
                 ) : null;
                 return [
                     'id' => $cowork->id,
-                    'name' => 'Table '.$cowork->table,
+                    'name' => 'Table ' . $cowork->table,
                     'state' => (bool) $cowork->state,
                     'image' => $img ? asset($img) : null,
                     'type' => 'cowork',
@@ -2335,6 +2372,6 @@ class ReservationsController extends Controller
             'equipments' => $equipments,
             'team_members' => $teamMembers,
         ];
-        return Inertia::render('reservations/details', [ 'reservation' => $details ]);
+        return Inertia::render('reservations/details', ['reservation' => $details]);
     }
 }

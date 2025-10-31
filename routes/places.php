@@ -12,8 +12,10 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
 });
 
 
-// Spaces route: show spaces (studios and cowork tables) for booking
-Route::middleware(['auth','verified'])->get('/spaces', function () {
+// =====================
+// USER-FACING SPACES (PUBLIC, NO MIDDLEWARE)
+// =====================
+Route::get('/spaces', function () {
     $studios = \DB::table('studios')->select('id','name','state','image')->orderBy('name')->get()
         ->map(function($studio) {
             $img = $studio->image ? (
@@ -44,8 +46,13 @@ Route::middleware(['auth','verified'])->get('/spaces', function () {
                 'type' => 'cowork',
             ];
         });
-    return Inertia::render('spaces', [
+    // Render user page implementation (re-exports the same component)
+    return Inertia::render('spaces/index', [
         'studios' => $studios,
         'coworks' => $coworks,
     ]);
 })->name('spaces');
+
+// =====================
+// ADMIN SPACES (PROTECTED)
+// =====================
