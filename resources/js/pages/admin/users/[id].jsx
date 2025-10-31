@@ -2,9 +2,12 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
 import React, { useMemo } from 'react';
 import LineStatistic from './partials/components/LineChart';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useInitials } from '@/hooks/use-initials';
 
 export default function AdminUserProfile() {
   const { props } = usePage();
+  const getInitials = useInitials();
   const user = props.user;
   const projects = props.projects || [];
   const posts = props.posts || [];
@@ -14,6 +17,20 @@ export default function AdminUserProfile() {
   const discipline = props.discipline ?? null;
   const absences = props.absences || { data: [], meta: {} };
   const recentAbsences = props.recentAbsences || [];
+  function timeAgo(timestamp) {
+    if (!timestamp) return 'Never';
+
+    const now = new Date();
+    const last = new Date(timestamp + 'Z');
+
+    const diff = Math.floor((now - last) / 1000); // seconds
+
+    if (diff < 60) return 'Online now';
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+    if (diff < 172800) return 'Yesterday';
+    return last.toLocaleDateString();
+  }
 
   const coverUrl = useMemo(() => user?.cover || '/assets/images/cover-placeholder.svg', [user]);
 
@@ -31,11 +48,24 @@ export default function AdminUserProfile() {
         {/* Header */}
         <div className="px-6 -mt-10 flex items-end gap-4 justify-between">
           <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white dark:ring-neutral-900 bg-neutral-200 flex items-center justify-center">
-            {user?.image ? (
-              <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-2xl font-semibold">{user?.name?.charAt(0)?.toUpperCase() || '?'}</span>
-            )}
+            <div className="relative">
+              <Avatar className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-alpha/20">
+                {user?.image ? (
+                  <AvatarImage
+                    src={`/storage/img/profile/${user.image}`}
+                    alt={user?.name}
+                  />
+                ) : (
+                  <AvatarFallback className="rounded-full bg-alpha text-white text-2xl font-bold">
+                    {getInitials(user?.name)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-4 border-light dark:border-dark ${timeAgo(user.last_online) === 'Online now'
+                ? ' bg-green-500'
+                : 'bg-neutral-500'
+                }`}></div>
+            </div>
           </div>
           <div className="pb-2 flex-1">
             <h1 className="text-2xl font-bold">{user?.name}</h1>
@@ -110,7 +140,7 @@ export default function AdminUserProfile() {
               {certificates && certificates.length > 0 ? (
                 <ul className="list-disc pl-5 text-sm">
                   {certificates.map((c, i) => (
-                    <li key={i}><a href={c.url} target="_blank" rel="noreferrer" className="text-alpha underline">{c.name || `Certificate ${i+1}`}</a></li>
+                    <li key={i}><a href={c.url} target="_blank" rel="noreferrer" className="text-alpha underline">{c.name || `Certificate ${i + 1}`}</a></li>
                   ))}
                 </ul>
               ) : (
@@ -168,9 +198,9 @@ export default function AdminUserProfile() {
                       <div key={i} className="flex items-center justify-between rounded-lg border border-alpha/20 px-3 py-2">
                         <div className="text-sm font-medium">{new Date(row.date).toLocaleDateString()}</div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
                         </div>
                       </div>
                     ))}
@@ -229,9 +259,9 @@ export default function AdminUserProfile() {
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold">{new Date(row.date).toLocaleDateString()}</div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className={`px-2 py-0.5 rounded-full ${row.morning==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.lunch==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
-                          <span className={`px-2 py-0.5 rounded-full ${row.evening==='absent'?'bg-error/10 text-error':'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.morning === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>AM: {row.morning}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.lunch === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>Noon: {row.lunch}</span>
+                          <span className={`px-2 py-0.5 rounded-full ${row.evening === 'absent' ? 'bg-error/10 text-error' : 'bg-neutral-100 dark:bg-neutral-800'}`}>PM: {row.evening}</span>
                         </div>
                       </div>
                       {Array.isArray(row.notes) && row.notes.length > 0 && (
@@ -248,12 +278,12 @@ export default function AdminUserProfile() {
                     <div className="flex items-center justify-end gap-2 pt-2">
                       <a
                         className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
-                        href={`?page=${Math.max(1, (absences.meta.current_page||1)-1)}`}
+                        href={`?page=${Math.max(1, (absences.meta.current_page || 1) - 1)}`}
                       >Prev</a>
                       <span className="text-xs text-neutral-500">Page {absences.meta.current_page} / {absences.meta.last_page}</span>
                       <a
                         className="text-sm px-3 py-1 rounded border border-alpha/20 hover:bg-alpha/10"
-                        href={`?page=${Math.min(absences.meta.last_page||1, (absences.meta.current_page||1)+1)}`}
+                        href={`?page=${Math.min(absences.meta.last_page || 1, (absences.meta.current_page || 1) + 1)}`}
                       >Next</a>
                     </div>
                   )}

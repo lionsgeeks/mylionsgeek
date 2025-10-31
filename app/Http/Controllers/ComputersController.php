@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\ComputerHistory;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ComputersController extends Controller
 {
@@ -63,44 +64,105 @@ class ComputersController extends Controller
     $newUserId = $request->input('user_id') ?: null;
     $validated['user_id'] = $newUserId;
 
-    // Update current assignment timestamps on Computer and write to history table
-    if ($oldUserId && !$newUserId) {
-        // Dissociate: close active history
-        $validated['end'] = now();
-        ComputerHistory::where('computer_id', $computer->id)
-            ->where('user_id', $oldUserId)
-            ->whereNull('end')
-            ->update(['end' => now()]);
-    }
+    // Update current assignment timestamps using activity_log (log_name=computer)
+    if (Schema::hasTable('activity_log')) {
+        // Dissociate: close active assignment for old user
+        if ($oldUserId && !$newUserId) {
+            $validated['end'] = now();
+            try {
+                $openRow = DB::table('activity_log')
+                    ->where('log_name', 'computer')
+                    ->where('subject_type', 'App\\Models\\Computer')
+                    ->where('subject_id', $computer->id)
+                    ->where('causer_type', 'App\\Models\\User')
+                    ->where('causer_id', $oldUserId)
+                    ->where('event', 'assigned')
+                    ->orderByDesc('id')
+                    ->first();
 
-    if ($oldUserId && $newUserId && $oldUserId !== $newUserId) {
-        // Reassign: close previous and start new
-        $validated['end'] = now();
-        ComputerHistory::where('computer_id', $computer->id)
-            ->where('user_id', $oldUserId)
-            ->whereNull('end')
-            ->update(['end' => now()]);
+                if ($openRow) {
+                    $props = json_decode($openRow->properties ?: '{}', true);
+                    $props = is_array($props) ? $props : [];
+                    $props['start'] = $props['start'] ?? now()->toDateString();
+                    $props['end'] = now()->toDateString();
+                    DB::table('activity_log')->where('id', $openRow->id)->update([
+                        'properties' => json_encode($props),
+                        'updated_at' => now()->toDateTimeString(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to close computer assignment activity: ' . $e->getMessage());
+            }
+        }
 
-        $startAt = now();
-        $validated['start'] = $startAt; 
-        ComputerHistory::create([
-            'computer_id' => $computer->id,
-            'user_id' => $newUserId,
-            'start' => $startAt,
-            'end' => null,
-        ]);
-    }
+        // Reassign: close previous for old user, open new for new user
+        if ($oldUserId && $newUserId && $oldUserId !== $newUserId) {
+            $validated['end'] = now();
+            try {
+                $openRow = DB::table('activity_log')
+                    ->where('log_name', 'computer')
+                    ->where('subject_type', 'App\\Models\\Computer')
+                    ->where('subject_id', $computer->id)
+                    ->where('causer_type', 'App\\Models\\User')
+                    ->where('causer_id', $oldUserId)
+                    ->where('event', 'assigned')
+                    ->orderByDesc('id')
+                    ->first();
+                if ($openRow) {
+                    $props = json_decode($openRow->properties ?: '{}', true);
+                    $props = is_array($props) ? $props : [];
+                    $props['start'] = $props['start'] ?? now()->toDateString();
+                    $props['end'] = now()->toDateString();
+                    DB::table('activity_log')->where('id', $openRow->id)->update([
+                        'properties' => json_encode($props),
+                        'updated_at' => now()->toDateTimeString(),
+                    ]);
+                }
 
-    if (!$oldUserId && $newUserId) {
-        // First assign: open a new history row
-        $startAt = now();
-        $validated['start'] = $startAt;
-        ComputerHistory::create([
-            'computer_id' => $computer->id,
-            'user_id' => $newUserId,
-            'start' => $startAt,
-            'end' => null,
-        ]);
+                DB::table('activity_log')->insert([
+                    'log_name' => 'computer',
+                    'description' => 'computer history',
+                    'subject_type' => 'App\\Models\\Computer',
+                    'subject_id' => $computer->id,
+                    'event' => 'assigned',
+                    'causer_type' => 'App\\Models\\User',
+                    'causer_id' => $newUserId,
+                    'properties' => json_encode([
+                        'start' => now()->toDateString(),
+                        'end' => '',
+                    ]),
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to reassign computer activity: ' . $e->getMessage());
+            }
+        }
+
+        // First assign: open new assignment row
+        if (!$oldUserId && $newUserId) {
+            $startAt = now();
+            $validated['start'] = $startAt;
+            try {
+                DB::table('activity_log')->insert([
+                    'log_name' => 'computer',
+                    'description' => 'computer history',
+                    'subject_type' => 'App\\Models\\Computer',
+                    'subject_id' => $computer->id,
+                    'event' => 'assigned',
+                    'causer_type' => 'App\\Models\\User',
+                    'causer_id' => $newUserId,
+                    'properties' => json_encode([
+                        'start' => $startAt->toDateString(),
+                        'end' => '',
+                    ]),
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Failed to assign computer activity: ' . $e->getMessage());
+            }
+        }
     }
 
     $computer->update($validated);

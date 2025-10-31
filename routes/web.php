@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Jobs\CreateInvitedUser;
 use App\Models\User;
+use App\Http\Controllers\UserProjectController;
 
 
 Route::get('/', function () {
@@ -16,11 +17,18 @@ Route::get('/', function () {
 })->name('home');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 });
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::delete('/admin/users/{id}/projects/{projectId}', [UserProjectController::class, 'destroy'])->name('user-projects.destroy');
+    Route::post('/admin/users/{id}/projects', [UserProjectController::class, 'store']);
+
+});
+
 
 // Route::middleware(['auth', 'verified', 'role:student'])->prefix('student')->group(function () {
 //     Route::get('dashboard', function () {
