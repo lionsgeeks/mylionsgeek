@@ -10,11 +10,49 @@ const INITIAL_FOOD = { x: 15, y: 15 };
 export default function SnakeGame() {
     const [snake, setSnake] = useState(INITIAL_SNAKE);
     const [direction, setDirection] = useState(INITIAL_DIRECTION);
+    const [directionQueue, setDirectionQueue] = useState([]); // buffer to allow quick successive turns
     const [food, setFood] = useState(INITIAL_FOOD);
     const [gameOver, setGameOver] = useState(false);
     const [score, setScore] = useState(0);
     const [gameStarted, setGameStarted] = useState(false);
     const [highScore, setHighScore] = useState(0);
+    const [tick, setTick] = useState(0); // animation tick for slither
+    const [audioReady, setAudioReady] = useState(false);
+    const audioRef = React.useRef(null);
+
+    // Simple WebAudio synth for effects
+    const initAudio = useCallback(() => {
+        if (audioRef.current) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        audioRef.current = ctx;
+        setAudioReady(true);
+    }, []);
+
+    const playBeep = useCallback((freq = 440, duration = 0.07, type = 'sine', gain = 0.04) => {
+        const ctx = audioRef.current;
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.value = gain;
+        osc.connect(g).connect(ctx.destination);
+        const now = ctx.currentTime;
+        osc.start(now);
+        g.gain.setValueAtTime(gain, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.stop(now + duration + 0.02);
+    }, []);
+
+    const sfxEat = useCallback(() => {
+        playBeep(660, 0.09, 'triangle', 0.06);
+        setTimeout(() => playBeep(990, 0.08, 'triangle', 0.05), 60);
+    }, [playBeep]);
+    const sfxGameOver = useCallback(() => {
+        playBeep(220, 0.14, 'sawtooth', 0.06);
+        setTimeout(() => playBeep(196, 0.16, 'sawtooth', 0.05), 120);
+    }, [playBeep]);
+    const sfxTurn = useCallback(() => playBeep(520, 0.04, 'square', 0.025), [playBeep]);
 
     // Generate random food position
     const generateFood = useCallback(() => {
@@ -42,9 +80,16 @@ export default function SnakeGame() {
         setSnake(prevSnake => {
             const newSnake = [...prevSnake];
             const head = { ...newSnake[0] };
+            // Use next direction from queue if any
+            let nextDir = direction;
+            if (directionQueue.length) {
+                nextDir = directionQueue[0];
+                setDirectionQueue(q => q.slice(1));
+                setDirection(nextDir);
+            }
             
-            head.x += direction.x;
-            head.y += direction.y;
+            head.x += nextDir.x;
+            head.y += nextDir.y;
 
             // Check wall collision
             if (head.x < 0 || head.x >= BOARD_SIZE || head.y < 0 || head.y >= BOARD_SIZE) {
@@ -64,42 +109,57 @@ export default function SnakeGame() {
             if (head.x === food.x && head.y === food.y) {
                 setScore(prev => prev + 10);
                 setFood(generateFood());
+                sfxEat();
             } else {
                 newSnake.pop();
             }
 
             return newSnake;
         });
-    }, [direction, food, gameStarted, gameOver, generateFood]);
+        setTick(t => t + 1);
+    }, [direction, directionQueue.length, food, gameStarted, gameOver, generateFood, sfxEat]);
 
     // Handle keyboard input
     const handleKeyPress = useCallback((e) => {
+        // Ignore auto-repeat to avoid spamming sounds and state updates
+        if (e.repeat) return;
+        // Prevent arrow keys from scrolling the page during game
+        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+        }
         if (!gameStarted) {
             setGameStarted(true);
             return;
         }
-
+        const lastDir = directionQueue.length ? directionQueue[directionQueue.length - 1] : direction;
+        let enqueued = false;
+        const pushDir = (d) => {
+            enqueued = true;
+            setDirectionQueue(q => [...q, d]);
+        };
         switch (e.key) {
             case 'ArrowUp':
-                if (direction.y === 0) setDirection({ x: 0, y: -1 });
+                if (lastDir.y === 0) pushDir({ x: 0, y: -1 });
                 break;
             case 'ArrowDown':
-                if (direction.y === 0) setDirection({ x: 0, y: 1 });
+                if (lastDir.y === 0) pushDir({ x: 0, y: 1 });
                 break;
             case 'ArrowLeft':
-                if (direction.x === 0) setDirection({ x: -1, y: 0 });
+                if (lastDir.x === 0) pushDir({ x: -1, y: 0 });
                 break;
             case 'ArrowRight':
-                if (direction.x === 0) setDirection({ x: 1, y: 0 });
+                if (lastDir.x === 0) pushDir({ x: 1, y: 0 });
                 break;
         }
-    }, [direction, gameStarted]);
+        // Only play turn sound if a valid turn was actually enqueued
+        if (enqueued && audioRef.current) sfxTurn();
+    }, [direction, directionQueue, gameStarted, sfxTurn]);
 
     // Dynamic speed based on score (faster as score increases)
     const getSpeedMs = () => {
-        const base = 120; // faster base speed
-        const bonus = Math.min(60, Math.floor(score / 30) * 10); // up to 60ms faster
-        return Math.max(60, base - bonus);
+        const base = 110; // smooth base
+        const bonus = Math.min(50, Math.floor(score / 30) * 10);
+        return Math.max(55, base - bonus);
     };
 
     // Game loop
@@ -110,9 +170,17 @@ export default function SnakeGame() {
 
     // Event listeners
     useEffect(() => {
-        window.addEventListener('keydown', handleKeyPress);
-        return () => window.removeEventListener('keydown', handleKeyPress);
-    }, [handleKeyPress]);
+        const onKeyDown = (e) => {
+            if (!audioReady && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+                initAudio();
+            }
+            handleKeyPress(e);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [handleKeyPress, audioReady, initAudio]);
 
     // Update high score
     useEffect(() => {
@@ -131,35 +199,98 @@ export default function SnakeGame() {
         setGameStarted(false);
     };
 
-    // Render game board
-    const renderBoard = () => {
-        const board = [];
-        for (let y = 0; y < BOARD_SIZE; y++) {
-            for (let x = 0; x < BOARD_SIZE; x++) {
-                const isSnake = snake.some(segment => segment.x === x && segment.y === y);
-                const isFood = food.x === x && food.y === y;
-                const isHead = snake[0] && snake[0].x === x && snake[0].y === y;
+    // Play game over sound
+    useEffect(() => {
+        if (gameOver && audioRef.current) sfxGameOver();
+    }, [gameOver, sfxGameOver]);
 
-                board.push(
-                    <div
-                        key={`${x}-${y}`}
-                        className={`w-5 h-5 border border-gray-200 flex items-center justify-center ${
-                            isHead ? 'bg-green-600' :
-                            isSnake ? 'bg-green-500' :
-                            isFood ? 'bg-white' : 'bg-gray-100'
-                        }`}
-                    >
-                        {isFood ? <span className="text-[10px]">🍎</span> : null}
-                    </div>
-                );
-            }
-        }
-        return board;
+    // Render game board (now as a relative container w/ absolutely positioned snake & food)
+    const CELL_SIZE = 20; // px per board cell, adjust as needed
+
+    const renderSnake = () => {
+        return snake.map((segment, idx) => {
+            const isHead = idx === 0;
+            // Slither wobble per segment
+            const amplitude = 2; // px wobble
+            const phase = (tick + idx * 4) / 4;
+            const wobble = Math.sin(phase) * amplitude;
+            // Apply wobble perpendicular to current direction
+            const translateX = direction.y !== 0 ? wobble : 0;
+            const translateY = direction.x !== 0 ? wobble : 0;
+            const rotate = direction.x === 1 ? 90 : direction.x === -1 ? -90 : direction.y === 1 ? 180 : 0;
+            // Taper body size and color along the length
+            const baseSize = CELL_SIZE - 2;
+            const shrink = Math.min(6, idx); // shrink up to 6px for tail
+            const segmentSize = isHead ? baseSize : Math.max(baseSize - shrink, CELL_SIZE - 10);
+            const hue = 130 - Math.min(20, idx * 2);
+            const bodyGradient = isHead
+                ? `linear-gradient(135deg,hsl(${hue},55%,42%),hsl(${hue-12},55%,30%) 70%)`
+                : `linear-gradient(135deg,hsl(${hue+8},60%,50%),hsl(${hue-4},60%,38%) 70%)`;
+            return (
+                <div
+                    key={idx}
+                    style={{
+                        width: segmentSize,
+                        height: segmentSize,
+                        borderRadius: isHead ? '50%' : '40%',
+                        background: bodyGradient,
+                        boxShadow: isHead ? '0 0 10px 2px #98ecac66, inset 0 0 6px #00000022' : 'inset 0 0 3px #00000022',
+                        position: 'absolute',
+                        left: segment.x * CELL_SIZE + 2 + translateX + (baseSize - segmentSize) / 2,
+                        top: segment.y * CELL_SIZE + 2 + translateY + (baseSize - segmentSize) / 2,
+                        transition: 'left 60ms linear, top 60ms linear, transform 60ms linear',
+                        zIndex: isHead ? 2 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: isHead ? '2px solid #135f23' : '1px solid hsl(130,35%,32%)',
+                        transform: isHead ? `rotate(${rotate}deg)` : undefined,
+                    }}
+                >
+                    {/* Add eyes if head */}
+                    {isHead && (
+                        <div style={{display:'flex',gap:2, alignItems:'center'}}>
+                            <div style={{width:3,height:3,borderRadius:'50%',background:'#111',marginRight:2,marginTop:3}}></div>
+                            <div style={{width:3,height:3,borderRadius:'50%',background:'#111',marginLeft:2,marginTop:3}}></div>
+                            {/* tongue flick */}
+                            <div style={{position:'absolute', bottom:-4, width:0, height:0, borderLeft:'3px solid transparent', borderRight:'3px solid transparent', borderTop:'6px solid #e11d48', opacity: (tick % 12 < 3) ? 0.9 : 0, transform:'translateY(2px)'}} />
+                        </div>
+                    )}
+                </div>
+            );
+        });
     };
+
+    const renderFood = () => (
+        <div
+            style={{
+                position: 'absolute',
+                left: food.x * CELL_SIZE + 4,
+                top: food.y * CELL_SIZE + 4,
+                width: CELL_SIZE - 6,
+                height: CELL_SIZE - 6,
+                zIndex: 3,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transformOrigin: 'center',
+                animation: 'foodPulse 1.2s ease-in-out infinite',
+            }}
+        >
+            {/* stylized apple */}
+            <div style={{position:'relative', width:'100%', height:'100%'}}>
+                <div style={{width:'100%', height:'100%', background:'radial-gradient(circle at 30% 30%, #ff7373, #e11d48)', borderRadius:8, boxShadow:'inset 0 0 6px #00000033, 0 2px 4px #e11d4844'}} />
+                <div style={{position:'absolute', top:-4, left:'45%', width:6, height:10, background:'#2f855a', borderRadius:'2px 2px 0 0', transform:'rotate(-15deg)'}} />
+                <div style={{position:'absolute', top:-2, left:'35%', width:10, height:6, background:'#2f855a', borderRadius:'50% 50% 0 50%', transform:'rotate(20deg)'}} />
+            </div>
+        </div>
+    );
 
     return (
         <AppLayout>
-            <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-8">
+            <div className="min-h-screen py-8" style={{
+                background: 'radial-gradient(1200px 600px at 50% -10%, #eafff3 10%, #d9f7e6 35%, #c4f1da 60%, #b3eacd 100%)'
+            }}>
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="text-center mb-8">
@@ -195,12 +326,24 @@ export default function SnakeGame() {
 
                     {/* Game Board */}
                     <div className="flex justify-center mb-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-lg border-4 border-gray-300">
-                            <div 
-                                className="grid gap-0"
-                                style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}
+                        <div className="bg-white p-4 rounded-2xl shadow-lg border-4 border-gray-200">
+                            <div
+                                style={{
+                                    position: 'relative',
+                                    width: CELL_SIZE * BOARD_SIZE,
+                                    height: CELL_SIZE * BOARD_SIZE,
+                                    background:
+                                        'repeating-linear-gradient(90deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),'+
+                                        'repeating-linear-gradient(180deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),'+
+                                        'linear-gradient(180deg, #ffffff, #f9fefb)',
+                                    overflow: 'hidden',
+                                    borderRadius: 16,
+                                    border: '2px solid #d1d5db',
+                                    boxShadow: '0 6px 24px #20964a18, inset 0 0 40px #0f51321a',
+                                }}
                             >
-                                {renderBoard()}
+                                {renderSnake()}
+                                {renderFood()}
                             </div>
                         </div>
                     </div>
@@ -268,6 +411,10 @@ export default function SnakeGame() {
                     </div>
                 </div>
             </div>
+            {/* animations */}
+            <style>{`
+              @keyframes foodPulse { 0%, 100% { transform: scale(0.95); } 50% { transform: scale(1.05); } }
+            `}</style>
         </AppLayout>
     );
 }

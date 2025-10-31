@@ -10,7 +10,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow } from 'lucide-react';
+import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2 } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
@@ -35,6 +35,11 @@ export function AppHeader({ breadcrumbs = [] }) {
             title: 'Leaderboard',
             url: '/students/leaderboard',
             icon: Medal,
+        },
+        {
+            title: 'Games',
+            url: '/games',
+            icon: Gamepad2,
         },
 
     ];

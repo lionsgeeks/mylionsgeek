@@ -1,7 +1,7 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen } from 'lucide-react';
+import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen, Gamepad2 } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems = [
@@ -40,6 +40,7 @@ const mainNavItems = [
     { title: 'Computers', href: '/admin/computers', icon: Monitor },
     { title: 'Equipment', href: '/admin/equipements', icon: Wrench },
     { title: 'Training', href: '/training', icon: GraduationCap },
+    { title: 'Games', href: '/games', icon: Gamepad2 },
     { title: 'Settings', href: '/settings', icon: Settings },
 ];
 

@@ -3,7 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReservationsController;
 
-Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
+Route::middleware(['auth'])->group(function () {
+    Route::get('/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('user.reservations');
+    Route::post('/reservations/{reservation}/cancel', [\App\Http\Controllers\ReservationsController::class, 'cancelOwn'])->name('user.reservations.cancel');
+});
+// Existing admin routes
+
+Route::middleware(['auth','verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
+
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
     Route::post('/reservations/{reservation}/approve', [ReservationsController::class, 'approve'])
@@ -42,12 +50,10 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
         ->name('admin.reservations.cowork.cancel');
 
     Route::post('/reservations/storeReservationMeetingRoom', [ReservationsController::class, 'storeReservationMeetingRoom'])
-    ->name('admin.reservations.storeReservationMeetingRoom');
+        ->name('admin.reservations.storeReservationMeetingRoom');
 
     Route::post('/reservations/meeting-room/{id}/cancel', [ReservationsController::class, 'cancelMeetingRoom'])
-    ->name('admin.reservations.meetingRoom.cancel');
-
-
+        ->name('admin.reservations.meetingRoom.cancel');
 });
 
 
@@ -73,35 +79,35 @@ Route::post('/reservations/{reservation}/verify-end', [ReservationsController::c
 Route::get('/reservations/{reservation}/download-report', [ReservationsController::class, 'downloadReport'])
     ->name('reservations.download-report');
 
-// Test PDF route
-Route::get('/test-pdf', function() {
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.verification_report_simple', [
-        'reservation' => [
-            'id' => 1,
-            'title' => 'Test Reservation',
-            'day' => '2025-10-27',
-            'start' => '10:00',
-            'end' => '11:00',
-            'user_name' => 'Test User'
-        ],
-        'verificationData' => [
-            'equipments' => [
-                [
-                    'id' => 1,
-                    'reference' => 'TEST-001',
-                    'mark' => 'Test Equipment',
-                    'type_name' => 'Test Type',
-                    'goodCondition' => true,
-                    'badCondition' => false,
-                    'notReturned' => false
-                ]
-            ],
-            'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.'
-        ]
-    ])->setPaper('a4', 'portrait');
-
-    return $pdf->download('test_verification_report.pdf');
-});
 
 
 
+
+// Route::get('/test-pdf', function () {
+//     $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.verification_report_simple', [
+//         'reservation' => [
+//             'id' => 1,
+//             'title' => 'Test Reservation',
+//             'day' => '2025-10-27',
+//             'start' => '10:00',
+//             'end' => '11:00',
+//             'user_name' => 'Test User'
+//         ],
+//         'verificationData' => [
+//             'equipments' => [
+//                 [
+//                     'id' => 1,
+//                     'reference' => 'TEST-001',
+//                     'mark' => 'Test Equipment',
+//                     'type_name' => 'Test Type',
+//                     'goodCondition' => true,
+//                     'badCondition' => false,
+//                     'notReturned' => false
+//                 ]
+//             ],
+//             'notes' => 'This is a test note to verify that notes are displayed properly in the PDF report. The notes should appear in the Additional Notes section.'
+//         ]
+//     ])->setPaper('a4', 'portrait');
+
+//     return $pdf->download('test_verification_report.pdf');
+// });

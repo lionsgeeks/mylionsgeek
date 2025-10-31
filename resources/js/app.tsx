@@ -16,6 +16,14 @@ if (csrfMeta?.content) {
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.withCredentials = true;
 
+// Provide a safe global queryParams helper for places that expect it
+declare global {
+    interface Window { queryParams?: () => URLSearchParams }
+}
+if (typeof window !== 'undefined' && !window.queryParams) {
+    window.queryParams = () => new URLSearchParams(window.location.search);
+}
+
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
     resolve: (name) => resolvePageComponent(`./pages/${name}.jsx`, import.meta.glob('./pages/**/*.jsx')),

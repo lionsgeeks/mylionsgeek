@@ -84,7 +84,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
                 <DialogHeader>
                     <DialogTitle>
                         Reservation — Step {currentStep}/3
