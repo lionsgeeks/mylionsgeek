@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { createRealtime, randomRoomId } from './realtime';
 
 const CHOICES = [
     { id: 'rock', label: '✊ Rock' },
@@ -21,11 +22,17 @@ export default function RockPaperScissors() {
     const [p2Choice, setP2Choice] = useState(null);
     const [scores, setScores] = useState({ p1: 0, p2: 0 });
     const [step, setStep] = useState('p1'); // p1 -> p2 -> reveal
+    // realtime
+    const [roomId, setRoomId] = useState('');
+    const [playerName, setPlayerName] = useState('');
+    const [isConnected, setIsConnected] = useState(false);
+    const realtimeRef = React.useRef(null);
 
     const resetMatch = () => {
         setRoundDefaults();
         setScores({ p1: 0, p2: 0 });
         setCurrentRound(1);
+        if (isConnected) realtimeRef.current?.send({ type: 'resetMatch' });
     };
 
     const setRoundDefaults = () => {
@@ -38,6 +45,7 @@ export default function RockPaperScissors() {
         if (currentRound < rounds) {
             setCurrentRound(prev => prev + 1);
             setRoundDefaults();
+            if (isConnected) realtimeRef.current?.send({ type: 'nextRound' });
         }
     };
 
@@ -51,12 +59,14 @@ export default function RockPaperScissors() {
         if (player === 'p1') {
             setP1Choice(choice);
             setStep('p2');
+            if (isConnected) realtimeRef.current?.send({ type: 'pick', player, choice });
         } else if (player === 'p2') {
             setP2Choice(choice);
             setStep('reveal');
             const winner = beats[choice] === p1Choice ? 'p1' : (beats[p1Choice] === choice ? 'p2' : 'tie');
             if (winner === 'p1') setScores(prev => ({ ...prev, p1: prev.p1 + 1 }));
             if (winner === 'p2') setScores(prev => ({ ...prev, p2: prev.p2 + 1 }));
+            if (isConnected) realtimeRef.current?.send({ type: 'pick', player, choice });
         }
     };
 
@@ -71,6 +81,59 @@ export default function RockPaperScissors() {
                         <Link href="/games" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4">← Back to Games</Link>
                         <h1 className="text-4xl font-bold text-gray-900 mb-2">✊✋✌️ Rock Paper Scissors</h1>
                         <p className="text-gray-600">Two players. Best of rounds with pass-and-play.</p>
+                    </div>
+
+                    {/* Realtime room controls */}
+                    <div className="flex justify-center mb-6">
+                        <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
+                            <div className="flex gap-2">
+                                <input type="text" placeholder="Your name" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="flex-1 border rounded px-3 py-2" />
+                                <input type="text" placeholder="Room ID (e.g. rps-abc123)" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="flex-1 border rounded px-3 py-2" />
+                                <button onClick={() => setRoomId(prev => prev || randomRoomId('rps'))} className="px-3 py-2 rounded bg-gray-100 border">Generate</button>
+                            </div>
+                            <div className="flex gap-2">
+                                {!isConnected ? (
+                                    <button onClick={() => {
+                                        if (!roomId || !playerName.trim()) return;
+                                        realtimeRef.current?.leave?.();
+                                        const rt = createRealtime(roomId, (msg) => {
+                                            if (!msg || typeof msg !== 'object') return;
+                                            switch (msg.type) {
+                                                case 'hello':
+                                                    rt.send({ type: 'snapshot', rounds, currentRound, p1Choice, p2Choice, scores, step });
+                                                    break;
+                                                case 'snapshot':
+                                                    setRounds(msg.rounds);
+                                                    setCurrentRound(msg.currentRound);
+                                                    setP1Choice(msg.p1Choice);
+                                                    setP2Choice(msg.p2Choice);
+                                                    setScores(msg.scores);
+                                                    setStep(msg.step);
+                                                    break;
+                                                case 'pick':
+                                                    onPick(msg.player, msg.choice);
+                                                    break;
+                                                case 'nextRound':
+                                                    nextRound();
+                                                    break;
+                                                case 'resetMatch':
+                                                    resetMatch();
+                                                    break;
+                                            }
+                                        });
+                                        realtimeRef.current = rt;
+                                        setIsConnected(true);
+                                        rt.send({ type: 'hello', name: playerName });
+                                    }} className="px-4 py-2 rounded bg-gray-800 text-white">Join Room</button>
+                                ) : (
+                                    <button onClick={() => { realtimeRef.current?.leave?.(); setIsConnected(false); }} className="px-4 py-2 rounded bg-gray-600 text-white">Leave Room</button>
+                                )}
+                                <button onClick={async () => { const url = new URL(window.location.href); if (roomId) url.searchParams.set('room', roomId); if (playerName) url.searchParams.set('name', playerName); const link = url.toString(); try { await navigator.clipboard.writeText(link); } catch {} alert('Invite link copied.'); }} className="px-4 py-2 rounded bg-gray-100 border">Copy Link</button>
+                                {isConnected && (
+                                    <div className="text-sm text-gray-600 self-center">Connected — Share Room ID with a friend</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Rounds selector */}

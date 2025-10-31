@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { createRealtime, randomRoomId } from './realtime';
 
 const WINNING_COMBINATIONS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -15,6 +16,16 @@ export default function TicTacToe() {
     const [gameOver, setGameOver] = useState(false);
     const [scores, setScores] = useState({ X: 0, O: 0, ties: 0 });
     const [gameMode, setGameMode] = useState('human'); // 'human' or 'computer'
+
+    // Realtime state
+    const [roomId, setRoomId] = useState('');
+    const [playerName, setPlayerName] = useState('');
+    const [assignedSymbol, setAssignedSymbol] = useState(null); // 'X' | 'O'
+    const [requestedSymbol, setRequestedSymbol] = useState(null); // optional preferred role from URL
+    const [isConnected, setIsConnected] = useState(false);
+    const realtimeRef = React.useRef(null);
+    const selfIdRef = React.useRef(() => Math.random().toString(36).slice(2));
+    const selfId = React.useMemo(() => selfIdRef.current(), []);
 
     // Check for winner
     const checkWinner = (currentBoard) => {
@@ -99,7 +110,7 @@ export default function TicTacToe() {
 
     // Computer move effect
     useEffect(() => {
-        if (gameMode === 'computer' && !isXNext && !gameOver && !winner) {
+        if (gameMode === 'computer' && !isXNext && !gameOver && !winner && !isConnected) {
             const timer = setTimeout(() => {
                 const computerMove = getComputerMove(board);
                 if (computerMove !== undefined) {
@@ -116,6 +127,10 @@ export default function TicTacToe() {
         setIsXNext(true);
         setWinner(null);
         setGameOver(false);
+        // broadcast reset
+        if (isConnected) {
+            realtimeRef.current?.send({ type: 'state', board: Array(9).fill(null), isXNext: true, winner: null, gameOver: false, scores });
+        }
     };
 
     // Reset scores
@@ -149,6 +164,112 @@ export default function TicTacToe() {
             </button>
         );
     };
+
+    // Realtime handlers
+    const connectRoom = () => {
+        if (!roomId) return;
+        if (!playerName.trim()) return;
+        // close old
+        realtimeRef.current?.leave?.();
+        const rt = createRealtime(roomId, (msg) => {
+            if (!msg || typeof msg !== 'object') return;
+            switch (msg.type) {
+                case 'hello':
+                    // Respect peer's explicit preference if provided; otherwise fall back to IDs
+                    if (msg.want === 'X') setAssignedSymbol('O');
+                    else if (msg.want === 'O') setAssignedSymbol('X');
+                    else if (msg.id) {
+                        const symbol = selfId < msg.id ? 'X' : 'O';
+                        setAssignedSymbol(symbol);
+                    }
+                    // reply with state to help sync newcomers
+                    rt.send({ type: 'state', board, isXNext, winner, gameOver, scores, senderId: selfId });
+                    break;
+                case 'state':
+                    // If we only received state (common for the joining client), compute roles using senderId
+                    if (msg.senderId) {
+                        const symbol = selfId < msg.senderId ? 'X' : 'O';
+                        setAssignedSymbol(symbol);
+                    }
+                    setBoard(msg.board);
+                    setIsXNext(msg.isXNext);
+                    setWinner(msg.winner);
+                    setGameOver(msg.gameOver);
+                    setScores(msg.scores);
+                    break;
+                case 'move':
+                    // apply remote move
+                    if (!board[msg.index] && !gameOver) {
+                        const newBoard = [...board];
+                        newBoard[msg.index] = msg.symbol;
+                        setBoard(newBoard);
+                        const currentWinner = checkWinner(newBoard);
+                        if (currentWinner) {
+                            setWinner(currentWinner);
+                            setGameOver(true);
+                            setScores(prev => ({ ...prev, [currentWinner]: prev[currentWinner] + 1 }));
+                        } else if (isBoardFull(newBoard)) {
+                            setGameOver(true);
+                            setScores(prev => ({ ...prev, ties: prev.ties + 1 }));
+                        } else {
+                            setIsXNext(prev => !prev);
+                        }
+                    }
+                    break;
+            }
+        });
+        realtimeRef.current = rt;
+        setIsConnected(true);
+        // Tentative role: requested if provided, else X. May be overridden by peer's hello.
+        setAssignedSymbol(requestedSymbol || 'X');
+        rt.send({ type: 'hello', id: selfId, name: playerName, want: requestedSymbol });
+    };
+
+    const disconnectRoom = () => {
+        realtimeRef.current?.leave?.();
+        setIsConnected(false);
+        setAssignedSymbol(null);
+    };
+
+    // Intercept local clicks to broadcast when connected
+    const originalHandleCellClick = (index) => handleCellClick(index);
+    const handleCellClickNetworked = (index) => {
+        if (!isConnected) return originalHandleCellClick(index);
+        if (board[index] || gameOver) return;
+        const symbol = isXNext ? 'X' : 'O';
+        // only allow local move if assigned symbol matches turn
+        if (assignedSymbol && symbol !== assignedSymbol) return;
+        originalHandleCellClick(index);
+        // Broadcast only the move; receivers will apply deterministically
+        realtimeRef.current?.send({ type: 'move', index, symbol });
+    };
+
+    // Build shareable link and auto-join via query params
+    const buildInviteUrl = () => {
+        const url = new URL(window.location.href);
+        if (roomId) url.searchParams.set('room', roomId);
+        if (playerName) url.searchParams.set('name', playerName);
+        // By default, invitee will join as O so you remain X
+        url.searchParams.set('as', 'O');
+        return url.toString();
+    };
+    useEffect(() => {
+        const sp = new URLSearchParams(window.location.search);
+        const r = sp.get('room');
+        const n = sp.get('name');
+        const as = sp.get('as');
+        if (r) setRoomId(r);
+        if (n) setPlayerName(n);
+        if (as === 'X' || as === 'O') {
+            setRequestedSymbol(as);
+            setAssignedSymbol(as);
+        }
+        if (r && n && !isConnected) {
+            // small delay to allow state to update inputs
+            setTimeout(() => connectRoom(), 0);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <AppLayout>
@@ -202,11 +323,78 @@ export default function TicTacToe() {
                         </div>
                     </div>
 
+                    {/* Realtime room controls */}
+                    <div className="flex justify-center mb-6">
+                        <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Your name"
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
+                                    className="flex-1 border rounded px-3 py-2"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Room ID (e.g. room-abc123)"
+                                    value={roomId}
+                                    onChange={(e) => setRoomId(e.target.value)}
+                                    className="flex-1 border rounded px-3 py-2"
+                                />
+                                <button
+                                    onClick={() => setRoomId(prev => prev || randomRoomId('ttt'))}
+                                    className="px-3 py-2 rounded bg-gray-100 border"
+                                >Generate</button>
+                            </div>
+                            <div className="flex gap-2">
+                                {!isConnected ? (
+                                    <button onClick={connectRoom} className="px-4 py-2 rounded bg-blue-600 text-white">Join Room</button>
+                                ) : (
+                                    <button onClick={disconnectRoom} className="px-4 py-2 rounded bg-gray-600 text-white">Leave Room</button>
+                                )}
+                                <button
+                                    onClick={async () => {
+                                        const link = buildInviteUrl();
+                                        try { await navigator.clipboard.writeText(link); } catch {}
+                                        alert('Invite link copied. Share it with your friend.');
+                                    }}
+                                    className="px-4 py-2 rounded bg-gray-100 border"
+                                >Copy Link</button>
+                                {isConnected && (
+                                    <div className="text-sm text-gray-600 self-center">Connected as {assignedSymbol ?? '?'} — Share Room ID with a friend</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Game Board */}
                     <div className="flex justify-center mb-6">
                         <div className="bg-white p-6 rounded-2xl shadow-lg border-4 border-gray-300">
                             <div className="grid grid-cols-3 gap-2">
-                                {Array(9).fill(null).map((_, index) => renderCell(index))}
+                                {Array(9).fill(null).map((_, index) => {
+                                    const value = board[index];
+                                    const isWinningCell = winner && WINNING_COMBINATIONS.some(combination => 
+                                        combination.includes(index) && 
+                                        combination.every(pos => board[pos] === winner)
+                                    );
+                                    return (
+                                        <button
+                                            key={index}
+                                            onClick={() => handleCellClickNetworked(index)}
+                                            disabled={gameOver || value}
+                                            className={`
+                                                w-20 h-20 text-3xl font-bold rounded-lg border-2 transition-all duration-200
+                                                ${value === 'X' ? 'text-blue-600 bg-blue-50 border-blue-300' : ''}
+                                                ${value === 'O' ? 'text-red-600 bg-red-50 border-red-300' : ''}
+                                                ${!value && !gameOver ? 'hover:bg-gray-50 border-gray-300 hover:border-gray-400' : ''}
+                                                ${isWinningCell ? 'bg-yellow-200 border-yellow-400 shadow-lg' : ''}
+                                                ${gameOver ? 'cursor-not-allowed' : 'cursor-pointer'}
+                                            `}
+                                        >
+                                            {value}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

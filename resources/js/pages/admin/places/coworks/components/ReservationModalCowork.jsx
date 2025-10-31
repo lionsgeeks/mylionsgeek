@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
-const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess }) => {
+const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess, coworks = [] }) => {
     const { data, setData, post, processing, errors, reset } = useForm({
         table: cowork?.id || '',
         seats: 1,
@@ -46,14 +47,35 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="bg-black border border-white/10 text-white max-w-md">
+            <DialogContent className="bg-black border border-white/10 text-white max-w-xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-white">
-                        Cowork Reservation - Table {cowork?.table || cowork?.id}
+                        {cowork ? `Cowork Reservation - Table ${cowork.table || cowork.id}` : 'Cowork Reservation'}
                     </DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Table selector */}
+                    <div>
+                        <Label htmlFor="table" className="text-white/80">Table</Label>
+                        <Select
+                            value={String(data.table || '')}
+                            onValueChange={(val) => setData('table', val)}
+                            disabled={!!cowork}
+                        >
+                            <SelectTrigger id="table" className="bg-black border-[var(--color-alpha)] text-white h-10">
+                                <SelectValue placeholder="Select a table" />
+                            </SelectTrigger>
+                            <SelectContent className="text-black">
+                                {(cowork ? [cowork] : coworks).map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>{t.table || t.name || `Table ${t.id}`}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.table && (
+                            <p className="text-red-500 text-sm mt-1">{errors.table}</p>
+                        )}
+                    </div>
                     {/* Number of Seats */}
                     <div>
                         <Label htmlFor="seats" className="text-white/80">
@@ -137,7 +159,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                         </Button>
                         <Button
                             type="submit"
-                            disabled={processing}
+                            disabled={processing || !data.table}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/80 text-black font-semibold"
                         >
                             {processing ? 'Saving...' : 'save'}

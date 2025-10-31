@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { createRealtime, randomRoomId } from './realtime';
 
 const CARD_SYMBOLS = ['🎯', '🎨', '🎪', '🎭', '🎸', '🎺', '🎻', '🎹', '🎲', '🎮', '🎯', '🎨', '🎪', '🎭', '🎸', '🎺', '🎻', '🎹', '🎲', '🎮'];
 
@@ -17,6 +18,48 @@ export default function MemoryGame() {
     const [playersCount, setPlayersCount] = useState(1);
     const [currentPlayer, setCurrentPlayer] = useState(1);
     const [playerScores, setPlayerScores] = useState({ 1: 0, 2: 0, 3: 0, 4: 0 });
+    const [tickParity, setTickParity] = useState(false); // alternate tick-tock
+    // Realtime
+    const [roomId, setRoomId] = useState('');
+    const [playerName, setPlayerName] = useState('');
+    const [isConnected, setIsConnected] = useState(false);
+    const realtimeRef = React.useRef(null);
+
+    // Simple WebAudio for timer tick-tock
+    const audioRef = React.useRef(null);
+    const [audioReady, setAudioReady] = useState(false);
+    const initAudio = () => {
+        if (audioRef.current) return;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        audioRef.current = ctx;
+        setAudioReady(true);
+    };
+    const playBeep = (freq = 700, duration = 0.03, type = 'square', gain = 0.02) => {
+        const ctx = audioRef.current;
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.value = gain;
+        osc.connect(g).connect(ctx.destination);
+        const now = ctx.currentTime;
+        osc.start(now);
+        g.gain.setValueAtTime(gain, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.stop(now + duration + 0.02);
+    };
+    const playTickTock = () => {
+        // alternate between two frequencies for tick-tock feel
+        playBeep(tickParity ? 520 : 380, 0.045, 'square', 0.025);
+        setTickParity(p => !p);
+    };
+
+    // Keep a ref of latest cards to avoid effect re-running on cards change
+    const cardsRef = React.useRef(cards);
+    useEffect(() => {
+        cardsRef.current = cards;
+    }, [cards]);
 
     // Initialize game
     const initializeGame = () => {
@@ -38,6 +81,11 @@ export default function MemoryGame() {
         setGameCompleted(false);
         setCurrentPlayer(1);
         setPlayerScores({ 1: 0, 2: 0, 3: 0, 4: 0 });
+        setTickParity(false);
+        if (isConnected) {
+            // notify peer that a reset happened
+            realtimeRef.current?.send({ type: 'reset' });
+        }
     };
 
     // Initialize on mount to avoid empty board bug
@@ -52,44 +100,115 @@ export default function MemoryGame() {
         if (gameStarted && !gameCompleted) {
             interval = setInterval(() => {
                 setTime(time => time + 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [gameStarted, gameCompleted]);
-
-    // Check for matches
-    useEffect(() => {
-        if (flippedCards.length === 2) {
-            const [first, second] = flippedCards;
-            const firstCard = cards.find(card => card.id === first);
-            const secondCard = cards.find(card => card.id === second);
-            
-            if (firstCard && secondCard && firstCard.symbol === secondCard.symbol) {
-                // Match found
-                setMatchedCards(prev => [...prev, first, second]);
-                setCards(prev => prev.map(card => 
-                    card.id === first || card.id === second
-                        ? { ...card, isMatched: true }
-                        : card
-                ));
-                // Score for current player and keep the turn
-                setPlayerScores(prev => ({ ...prev, [currentPlayer]: prev[currentPlayer] + 1 }));
-            }
-            
-            setTimeout(() => {
-                setFlippedCards([]);
-                setCards(prev => prev.map(card => 
-                    card.id === first || card.id === second
-                        ? { ...card, isFlipped: false }
-                        : card
-                ));
-                // If not a match, advance to next player
-                if (!(firstCard && secondCard && firstCard.symbol === secondCard.symbol) && playersCount > 1) {
-                    setCurrentPlayer(prev => (prev % playersCount) + 1);
+                if (audioReady) {
+                    playTickTock();
                 }
             }, 1000);
         }
-    }, [flippedCards, cards]);
+        return () => clearInterval(interval);
+    }, [gameStarted, gameCompleted, audioReady]);
+
+    // Check for matches
+    useEffect(() => {
+        if (flippedCards.length !== 2) return;
+        const [first, second] = flippedCards;
+        const snapshot = cardsRef.current;
+        const firstCard = snapshot.find(card => card.id === first);
+        const secondCard = snapshot.find(card => card.id === second);
+
+        const isMatch = Boolean(firstCard && secondCard && firstCard.symbol === secondCard.symbol);
+
+        if (isMatch) {
+            setMatchedCards(prev => [...prev, first, second]);
+            setCards(prev => prev.map(card =>
+                card.id === first || card.id === second
+                    ? { ...card, isMatched: true }
+                    : card
+            ));
+            setPlayerScores(prev => ({ ...prev, [currentPlayer]: prev[currentPlayer] + 1 }));
+        }
+
+        setTimeout(() => {
+            setFlippedCards([]);
+            // flip back without reshuffling during an active game
+            setCards(prev => prev.map(card =>
+                card.id === first || card.id === second
+                    ? { ...card, isFlipped: false }
+                    : card
+            ));
+            if (!isMatch && playersCount > 1) {
+                setCurrentPlayer(prev => (prev % playersCount) + 1);
+            }
+        }, 1000);
+    }, [flippedCards, playersCount, currentPlayer]);
+
+    // Initialize audio on first interaction
+    useEffect(() => {
+        if (!gameStarted) return;
+        if (!audioReady) initAudio();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameStarted]);
+
+    // Realtime connect helpers
+    const connectRoom = () => {
+        if (!roomId || !playerName.trim()) return;
+        realtimeRef.current?.leave?.();
+        const rt = createRealtime(roomId, (msg) => {
+            if (!msg || typeof msg !== 'object') return;
+            switch (msg.type) {
+                case 'hello':
+                    // send snapshot
+                    rt.send({ type: 'snapshot', cards, flipped: flippedCards, matched: matchedCards, moves, time, gameStarted, gameCompleted, playersCount, currentPlayer, playerScores });
+                    break;
+                case 'snapshot':
+                    setCards(msg.cards);
+                    setFlippedCards(msg.flipped);
+                    setMatchedCards(msg.matched);
+                    setMoves(msg.moves);
+                    setTime(msg.time);
+                    setGameStarted(msg.gameStarted);
+                    setGameCompleted(msg.gameCompleted);
+                    setPlayersCount(msg.playersCount);
+                    setCurrentPlayer(msg.currentPlayer);
+                    setPlayerScores(msg.playerScores);
+                    break;
+                case 'flip':
+                    if (flippedCards.length < 2 && !flippedCards.includes(msg.id) && !matchedCards.includes(msg.id)) {
+                        setFlippedCards(prev => [...prev, msg.id]);
+                        setCards(prev => prev.map(card => card.id === msg.id ? { ...card, isFlipped: true } : card));
+                        if (flippedCards.length === 1) setMoves(prev => prev + 1);
+                    }
+                    break;
+                case 'reset':
+                    initializeGame();
+                    break;
+            }
+        });
+        realtimeRef.current = rt;
+        setIsConnected(true);
+        rt.send({ type: 'hello', name: playerName });
+    };
+    const disconnectRoom = () => {
+        realtimeRef.current?.leave?.();
+        setIsConnected(false);
+    };
+
+    // Shareable link + auto-join via query
+    const buildInviteUrl = () => {
+        const url = new URL(window.location.href);
+        if (roomId) url.searchParams.set('room', roomId);
+        if (playerName) url.searchParams.set('name', playerName);
+        return url.toString();
+    };
+    useEffect(() => {
+        const sp = new URLSearchParams(window.location.search);
+        const r = sp.get('room');
+        const n = sp.get('name');
+        if (r) setRoomId(r);
+        if (n) setPlayerName(n);
+        if (r && n && !isConnected) setTimeout(() => connectRoom(), 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Check for game completion
     useEffect(() => {
@@ -124,6 +243,9 @@ export default function MemoryGame() {
         
         if (flippedCards.length === 1) {
             setMoves(prev => prev + 1);
+        }
+        if (isConnected) {
+            realtimeRef.current?.send({ type: 'flip', id: cardId });
         }
     };
 
@@ -223,6 +345,27 @@ export default function MemoryGame() {
 
                     {/* Game Controls */}
                     <div className="text-center mb-6">
+                        {/* Realtime room controls */}
+                        <div className="flex justify-center mb-6">
+                            <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
+                                <div className="flex gap-2">
+                                    <input type="text" placeholder="Your name" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="flex-1 border rounded px-3 py-2" />
+                                    <input type="text" placeholder="Room ID (e.g. mem-abc123)" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="flex-1 border rounded px-3 py-2" />
+                                    <button onClick={() => setRoomId(prev => prev || randomRoomId('mem'))} className="px-3 py-2 rounded bg-gray-100 border">Generate</button>
+                                </div>
+                                <div className="flex gap-2">
+                                    {!isConnected ? (
+                                        <button onClick={connectRoom} className="px-4 py-2 rounded bg-purple-600 text-white">Join Room</button>
+                                    ) : (
+                                        <button onClick={disconnectRoom} className="px-4 py-2 rounded bg-gray-600 text-white">Leave Room</button>
+                                    )}
+                                    <button onClick={async () => { const link = buildInviteUrl(); try { await navigator.clipboard.writeText(link); } catch {} alert('Invite link copied.'); }} className="px-4 py-2 rounded bg-gray-100 border">Copy Link</button>
+                                    {isConnected && (
+                                        <div className="text-sm text-gray-600 self-center">Connected — Share Room ID with a friend</div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                         {!gameStarted && !gameCompleted && (
                             <div className="space-y-4">
                                 <div className="text-xl font-semibold text-gray-700">
