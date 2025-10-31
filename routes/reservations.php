@@ -1,16 +1,32 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 use App\Http\Controllers\ReservationsController;
 
+// =====================
+// USER-FACING RESERVATIONS PAGES (PUBLIC, NO MIDDLEWARE)
+// These render the SPA pages. Data actions remain protected below.
+// =====================
+
+
+// =====================
+// USER ACTION ENDPOINTS (PROTECTED)
+// =====================
 Route::middleware(['auth'])->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('user.reservations');
     Route::post('/reservations/{reservation}/cancel', [\App\Http\Controllers\ReservationsController::class, 'cancelOwn'])->name('user.reservations.cancel');
+    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('reservations.details');
 });
-// Existing admin routes
+// =====================
+// USER READ-ONLY DETAILS (PROTECTED)
+// =====================
 
-Route::middleware(['auth','verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
+Route::middleware(['auth', 'verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
 
+// =====================
+// ADMIN RESERVATIONS (PROTECTED)
+// =====================
 Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
@@ -20,8 +36,7 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->pr
         ->name('admin.reservations.cancel');
     Route::get('/reservations/{reservation}/info', [ReservationsController::class, 'info'])
         ->name('admin.reservations.info');
-    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])
-        ->name('admin.reservations.details');
+
     Route::get('/reservations/{reservation}/pdf', [ReservationsController::class, 'generatePdf'])
         ->name('admin.reservations.pdf');
     Route::post('/reservations/{reservation}/propose', [ReservationsController::class, 'proposeNewTime'])
@@ -30,8 +45,11 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->pr
         ->name('admin.places.reservations');
 
     // Store reservation with teams & equipment
+});
+Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('/reservations/store', [ReservationsController::class, 'store'])
         ->name('admin.reservations.store');
+    Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('admin.reservations.details');
 
     // Get users for team member selector
     Route::get('/api/users', [ReservationsController::class, 'getUsers'])
@@ -57,7 +75,10 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->pr
 });
 
 
-// Public route for material verification (no auth required for email links)
+
+// =====================
+// PUBLIC VERIFICATION / PROPOSAL / CALENDAR FEEDS (NO AUTH)
+// =====================
 Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
     ->name('reservations.verify-end');
 Route::get('/reservations/proposal/{token}/accept', [ReservationsController::class, 'acceptProposal'])

@@ -156,8 +156,8 @@ export default function SpacesPage() {
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-5xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Spaces</h1>
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <h1 className="text-3xl font-bold mb-6 tracking-tight">Spaces</h1>
         {/* Tabs/Selector */}
         <div className="flex gap-4 mb-6">
           {TABS.map(tab => (
@@ -172,7 +172,7 @@ export default function SpacesPage() {
         </div>
         {/* All: show discovery cards. Studio/Cowork: show calendar inline */}
         {type === 'all' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
             {cards.length === 0 && (
               <div className="col-span-full text-center text-md text-gray-500 py-8">No locations to reserve found for this type.</div>
             )}
@@ -180,31 +180,33 @@ export default function SpacesPage() {
               <button
                 key={place.id}
                 onClick={()=>handleCardClick(place)}
-                className="rounded-xl border border-gray-200 shadow hover:shadow-lg transition group p-0 bg-white flex flex-col overflow-hidden h-70"
+                className="rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition group p-0 bg-white flex flex-col overflow-hidden"
               >
-                <div className="h-42 w-full flex items-center justify-center bg-gray-100">
+                <div className="relative w-full aspect-[4/3] bg-gray-100">
                   {place.image ? (
-                    <img src={place.image} alt={place.name} className="max-h-full max-w-full object-contain" />
+                    <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
-                    <span className="text-gray-400">No Image</span>
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">No Image</div>
                   )}
                 </div>
-                <div className="flex-1 flex flex-col justify-center items-center p-4">
-                  <div className="text-lg font-bold mb-1">{place.name}</div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold mb-1 capitalize ${place.type === 'studio' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                    {place.type}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold mt-1 ${place.state ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
-                    {place.state ? "Available" : "Busy"}
-                  </span>
+                <div className="flex-1 flex flex-col items-center p-4">
+                  <div className="text-base font-semibold mb-1 text-gray-900 text-center line-clamp-1">{place.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${place.type === 'studio' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                      {place.type}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${place.state ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
+                      {place.state ? 'Available' : 'Busy'}
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 shadow p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="text-base font-semibold">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
+              <div className="text-lg font-semibold">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
               {type === 'studio' ? (
                 <div className="min-w-[240px]">
                   <Select value={selectedStudioId ? String(selectedStudioId) : ''} onValueChange={(v)=> setSelectedStudioId(Number(v))}>
@@ -233,7 +235,7 @@ export default function SpacesPage() {
                 </div>
               )}
               <button
-                className={`ml-auto px-3 py-2 rounded-md text-sm font-semibold border ${selectedRange ? 'bg-[#FFC801] text-black border-[#FFC801]' : 'bg-white border-gray-300 text-gray-700'}`}
+                className={`ml-auto px-4 py-2 rounded-md text-sm font-semibold border ${selectedRange ? 'bg-[#FFC801] text-black border-[#FFC801]' : 'bg-white border-gray-300 text-gray-700'}`}
                 onClick={() => {
                   if (type === 'studio') {
                     const sId = selectedStudioId;
@@ -248,9 +250,9 @@ export default function SpacesPage() {
               </button>
             </div>
             {loadingEvents ? (
-              <div className="flex items-center justify-center h-96">Loading events...</div>
+              <div className="flex items-center justify-center h-[60vh]">Loading events...</div>
             ) : (
-              <div className="h-[80vh]">
+              <div className="h-[70vh]">
                 <FullCalendar
                   plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                   initialView="timeGridWeek"
@@ -289,6 +291,7 @@ export default function SpacesPage() {
                   height="100%"
                   eventColor="#FFC801"
                   eventTextColor="#000000"
+                  
                 />
               </div>
             )}
@@ -298,44 +301,93 @@ export default function SpacesPage() {
         {/* Calendar modal (shared) only for All view when clicking cards */}
         {type === 'all' && calendarFor && (
           <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
-            <DialogContent className="max-w-5xl">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-lg font-semibold">
-                  {calendarFor.place_type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}
-                </div>
-                {calendarFor.place_type === 'cowork' && (
-                  <div className="min-w-[220px]">
-                    <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v)=> setSelectedCoworkId(Number(v))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select table" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {coworks.map(t => (
-                          <SelectItem key={t.id} value={String(t.id)}>{t.table || `Table ${t.id}`}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
+              {calendarFor && (
+                <div className="flex flex-col w-full h-full">
+                  <div className="shrink-0 px-5 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
+                    <h2 className="text-base font-medium">Calendar - {calendarFor.name}</h2>
+                    <div className="flex items-center gap-2">
+                      {calendarFor.place_type === 'cowork' && (
+                        <div className="min-w-[220px]">
+                          <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v)=> setSelectedCoworkId(Number(v))}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select table" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {coworks.map(t => (
+                                <SelectItem key={t.id} value={String(t.id)}>{t.table || `Table ${t.id}`}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          const now = new Date();
+                          const day = now.toISOString().split('T')[0];
+                          const startTime = now.toTimeString().slice(0, 5);
+                          const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                          const endTime = endDate.toTimeString().slice(0, 5);
+                          setSelectedRange({ day, start: startTime, end: endTime });
+                          if (calendarFor.place_type === 'studio') setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                          if (calendarFor.place_type === 'cowork') setModalCowork(true);
+                        }}
+                        className="px-4 py-2 bg-[#FFC801] text-black rounded-md font-medium"
+                      >
+                        + Add Reservation
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-              {loadingEvents ? (
-                <div className="flex items-center justify-center h-96">Loading events...</div>
-              ) : (
-                <div className="h-[70vh]">
-                  <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                    initialView="timeGridWeek"
-                    headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
-                    events={events}
-                    selectable={true}
-                    selectMirror={true}
-                    select={onCalendarDateSelect}
-                    selectOverlap={false}
-                    editable={false}
-                    height="100%"
-                    eventColor="#FFC801"
-                    eventTextColor="#000000"
-                  />
+                  <div className="relative grow overflow-hidden">
+                    {loadingEvents && (
+                      <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading events…</div>
+                    )}
+                    <div className="absolute inset-0 px-4 pb-4">
+                      <FullCalendar
+                        plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
+                        initialView="timeGridWeek"
+                        headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                        events={events}
+                        selectable={true}
+                        selectMirror={true}
+                        select={onCalendarDateSelect}
+                        eventClick={(info) => {
+                          const e = info.event;
+                          setSelectedEvent({
+                            id: e.id,
+                            title: e.title,
+                            start: e.start?.toISOString?.() || e.start,
+                            end: e.end?.toISOString?.() || e.end,
+                            backgroundColor: e.backgroundColor,
+                          });
+                          setEventExtras({ team_members: [], equipments: [] });
+                          if (e.id) {
+                            const tryFetch = (url) => fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                              .then(async (r) => {
+                                const ct = r.headers.get('content-type') || '';
+                                if (!r.ok || !ct.includes('application/json')) return null;
+                                try { return await r.json(); } catch { return null; }
+                              });
+                            (async () => {
+                              let data = await tryFetch(`/admin/reservations/${e.id}/info`);
+                              if (!data) data = await tryFetch(`/reservations/${e.id}/info`);
+                              if (data) {
+                                setEventExtras({
+                                  team_members: Array.isArray(data.team_members) ? data.team_members : [],
+                                  equipments: Array.isArray(data.equipments) ? data.equipments : [],
+                                });
+                              }
+                            })();
+                          }
+                        }}
+                        selectOverlap={false}
+                        editable={false}
+                        height="100%"
+                        eventColor="#FFC801"
+                        eventTextColor="#000000"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </DialogContent>
@@ -344,6 +396,7 @@ export default function SpacesPage() {
         {/* Cowork Modal */}
         {modalCowork && (
           <ReservationModalCowork
+            key={selectedCoworkId || 'cowork-modal'}
             isOpen={modalCowork}
             onClose={() => setModalCowork(false)}
             cowork={calendarFor?.place_type === 'cowork' ? coworks.find(c => c.id === selectedCoworkId) : null}

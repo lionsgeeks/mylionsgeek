@@ -30,11 +30,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-// Route::middleware(['auth', 'verified', 'role:student'])->prefix('student')->group(function () {
-//     Route::get('dashboard', function () {
-//         return Inertia::render('Student/Dashboard');
-//     })->name('student.dashboard');
-// });
+Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('student/dashboard');
+    })->name('student.dashboard');
+});
 
 
 
