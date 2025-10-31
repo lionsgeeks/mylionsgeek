@@ -30,6 +30,8 @@ class User extends Authenticatable
         'formation_id',
         'account_state',
         'image',
+        'cover', // add cover here
+        'about', // short bio
         'access_cowork',
         'access_studio',
         'promo',
