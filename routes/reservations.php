@@ -8,6 +8,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reservations/{reservation}/cancel', [\App\Http\Controllers\ReservationsController::class, 'cancelOwn'])->name('user.reservations.cancel');
 });
 // Existing admin routes
+
+Route::middleware(['auth','verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
+
 Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
