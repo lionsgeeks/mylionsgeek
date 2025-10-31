@@ -34,8 +34,8 @@ export function createRealtime(roomId, onMessage) {
                 const parsed = safeParse(ev.data);
                 if (parsed) notify(parsed);
             };
-            ws.onerror = () => {};
-        } catch (_) {
+            ws.onerror = () => { /* noop to satisfy no-empty */ };
+        } catch {
             // ignore ws errors; BroadcastChannel still works locally
         }
     }
@@ -52,7 +52,7 @@ export function createRealtime(roomId, onMessage) {
             bc = null;
         }
         if (ws) {
-            try { ws.close(); } catch (_) {}
+            try { ws.close(); } catch { /* ignore */ }
             ws = null;
         }
         connected = false;

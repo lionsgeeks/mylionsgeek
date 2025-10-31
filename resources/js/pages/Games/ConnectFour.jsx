@@ -83,7 +83,7 @@ export default function ConnectFour() {
                     </div>
 
                     {/* Realtime room controls */}
-                    <div className="flex justify-center mb-6">
+                    {/* <div className="flex justify-center mb-6">
                         <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
                             <div className="flex gap-2">
                                 <input type="text" placeholder="Your name" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="flex-1 border rounded px-3 py-2" />
@@ -142,7 +142,7 @@ export default function ConnectFour() {
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="text-center mb-4">
                         {!winner && !isFull && (

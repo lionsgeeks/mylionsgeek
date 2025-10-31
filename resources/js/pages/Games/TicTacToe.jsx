@@ -141,8 +141,8 @@ export default function TicTacToe() {
     // Render cell
     const renderCell = (index) => {
         const value = board[index];
-        const isWinningCell = winner && WINNING_COMBINATIONS.some(combination => 
-            combination.includes(index) && 
+        const isWinningCell = winner && WINNING_COMBINATIONS.some(combination =>
+            combination.includes(index) &&
             combination.every(pos => board[pos] === winner)
         );
 
@@ -300,8 +300,8 @@ export default function TicTacToe() {
                                     resetGame();
                                 }}
                                 className={`px-4 py-2 rounded-md transition-colors ${
-                                    gameMode === 'human' 
-                                        ? 'bg-blue-600 text-white' 
+                                    gameMode === 'human'
+                                        ? 'bg-blue-600 text-white'
                                         : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
@@ -313,8 +313,8 @@ export default function TicTacToe() {
                                     resetGame();
                                 }}
                                 className={`px-4 py-2 rounded-md transition-colors ${
-                                    gameMode === 'computer' 
-                                        ? 'bg-blue-600 text-white' 
+                                    gameMode === 'computer'
+                                        ? 'bg-blue-600 text-white'
                                         : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
@@ -324,7 +324,7 @@ export default function TicTacToe() {
                     </div>
 
                     {/* Realtime room controls */}
-                    <div className="flex justify-center mb-6">
+                    {/* <div className="flex justify-center mb-6">
                         <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
                             <div className="flex gap-2">
                                 <input
@@ -365,7 +365,7 @@ export default function TicTacToe() {
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Game Board */}
                     <div className="flex justify-center mb-6">
@@ -373,8 +373,8 @@ export default function TicTacToe() {
                             <div className="grid grid-cols-3 gap-2">
                                 {Array(9).fill(null).map((_, index) => {
                                     const value = board[index];
-                                    const isWinningCell = winner && WINNING_COMBINATIONS.some(combination => 
-                                        combination.includes(index) && 
+                                    const isWinningCell = winner && WINNING_COMBINATIONS.some(combination =>
+                                        combination.includes(index) &&
                                         combination.every(pos => board[pos] === winner)
                                     );
                                     return (
@@ -410,7 +410,7 @@ export default function TicTacToe() {
                                 )}
                             </div>
                         )}
-                        
+
                         {winner && (
                             <div className="text-2xl font-bold text-green-600 mb-4">
                                 {gameMode === 'computer' ? (
@@ -420,7 +420,7 @@ export default function TicTacToe() {
                                 )}
                             </div>
                         )}
-                        
+
                         {gameOver && !winner && (
                             <div className="text-2xl font-bold text-gray-600 mb-4">
                                 It's a tie! 🤝

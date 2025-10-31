@@ -71,7 +71,7 @@ export default function MemoryGame() {
                 isMatched: false
             }))
             .sort(() => Math.random() - 0.5);
-        
+
         setCards(shuffledCards);
         setFlippedCards([]);
         setMatchedCards([]);
@@ -215,7 +215,7 @@ export default function MemoryGame() {
         if (matchedCards.length === CARD_SYMBOLS.length && gameStarted) {
             setGameCompleted(true);
             setGameStarted(false);
-            
+
             // Update best scores
             if (!bestTime || time < bestTime) {
                 setBestTime(time);
@@ -237,10 +237,10 @@ export default function MemoryGame() {
         }
 
         setFlippedCards(prev => [...prev, cardId]);
-        setCards(prev => prev.map(card => 
+        setCards(prev => prev.map(card =>
             card.id === cardId ? { ...card, isFlipped: true } : card
         ));
-        
+
         if (flippedCards.length === 1) {
             setMoves(prev => prev + 1);
         }
@@ -259,7 +259,7 @@ export default function MemoryGame() {
     // Render card
     const renderCard = (card) => {
         const isFlipped = flippedCards.includes(card.id) || card.isMatched;
-        
+
         return (
             <button
                 key={card.id}
@@ -267,8 +267,8 @@ export default function MemoryGame() {
                 disabled={isFlipped || gameCompleted}
                 className={`
                     w-16 h-16 text-2xl font-bold rounded-lg border-2 transition-all duration-300 transform
-                    ${isFlipped 
-                        ? 'bg-white border-blue-300 shadow-lg scale-105' 
+                    ${isFlipped
+                        ? 'bg-white border-blue-300 shadow-lg scale-105'
                         : 'bg-gradient-to-br from-purple-400 to-pink-500 border-purple-300 hover:scale-105 hover:shadow-lg'
                     }
                     ${card.isMatched ? 'bg-green-100 border-green-300' : ''}
@@ -346,7 +346,7 @@ export default function MemoryGame() {
                     {/* Game Controls */}
                     <div className="text-center mb-6">
                         {/* Realtime room controls */}
-                        <div className="flex justify-center mb-6">
+                        {/* <div className="flex justify-center mb-6">
                             <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
                                 <div className="flex gap-2">
                                     <input type="text" placeholder="Your name" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="flex-1 border rounded px-3 py-2" />
@@ -365,7 +365,7 @@ export default function MemoryGame() {
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
                         {!gameStarted && !gameCompleted && (
                             <div className="space-y-4">
                                 <div className="text-xl font-semibold text-gray-700">
