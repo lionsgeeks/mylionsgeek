@@ -35,6 +35,19 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [selectedComputer, setSelectedComputer] = useState(null);
     const [assignmentHistory, setAssignmentHistory] = useState([]);
 
+    const displayDate = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string' && /^\d{2}-\d{2}-\d{4}$/.test(value)) {
+            return value; // already DD-MM-YYYY
+        }
+        try {
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? value : d.toLocaleDateString();
+        } catch {
+            return value;
+        }
+    };
+
     const filteredComputers = useMemo(() => {
         let list = computers;
         if (query.trim()) {
@@ -653,8 +666,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                             <span className="text-sm text-muted-foreground">Unassigned</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-sm">{new Date(h.start).toLocaleString()}</TableCell>
-                                                    <TableCell className="text-sm">{h.end ? new Date(h.end).toLocaleString() : '—'}</TableCell>
+                                                    <TableCell className="text-sm">{displayDate(h.start) || '—'}</TableCell>
+                                                    <TableCell className="text-sm">{displayDate(h.end) || '—'}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
