@@ -1,88 +1,152 @@
 import React from 'react';
-import { Github, Linkedin, Twitter, Globe } from 'lucide-react';
+import { Github, Linkedin, Twitter, Globe, Edit3, Calendar } from 'lucide-react';
+import { useInitials } from '@/hooks/use-initials';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const ProfileHeader = ({ user }) => {
   const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
-  const lastOnline = user?.last_online ? new Date(user.last_online).toLocaleString() : '—';
+  const lastOnline = user?.last_online ? new Date(user.last_online).toLocaleString() : 'No last activity available';
+  const socials = user?.socials || {};
+  const getInitials = useInitials();
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700">
-      <div className="max-w-7xl mx-auto">
-        {/* Cover Photo Area */}
-        <div className="relative h-96 overflow-hidden">
+    <div className="bg-gradient-to-b from-neutral-50 to-white dark:from-neutral-950 dark:to-neutral-900">
+      <div className="max-w-6xl mx-auto">
+        {/* Cover Photo with Overlay Pattern */}
+        <div className="relative h-64 md:h-80 overflow-hidden">
           {user.cover ? (
             <img
               src={user.cover.startsWith('http') ? user.cover : `/storage/img/cover/${user.cover}`}
               alt="Cover"
               className="object-cover w-full h-full"
-              style={{ minHeight: 220 }}
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-neutral-700 to-neutral-900" />
+            <div className="h-full w-full bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600" />
           )}
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-0 left-0 w-96 h-96 rounded-full bg-blue-500 blur-3xl"></div>
-            <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-500 blur-3xl"></div>
+          {/* Mesh gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+          {/* Decorative dots pattern */}
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-white" />
+            <div className="absolute top-20 left-32 w-1.5 h-1.5 rounded-full bg-white" />
+            <div className="absolute top-32 right-40 w-2 h-2 rounded-full bg-white" />
+            <div className="absolute bottom-20 right-20 w-1.5 h-1.5 rounded-full bg-white" />
           </div>
         </div>
-        {/* Profile Information Section */}
-        <div className="px-6">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 -mt-8 pb-4">
-            {/* Profile Picture and User Details */}
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+
+        {/* Profile Content */}
+        <div className="px-6 md:px-8 pb-8">
+          <div className="relative -mt-20 md:-mt-10">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8">
               {/* Profile Picture */}
-              <div className="relative">
-                <div className="w-40 h-40 rounded-full bg-white dark:bg-neutral-900 p-2 shadow-xl border-4 border-white dark:border-neutral-900">
-                  {user.image ? (
-                    <img
-                      src={user.image.startsWith('http') ? user.image : `/storage/img/profile/${user.image}`}
-                      alt="Profile"
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-full flex items-center justify-center text-5xl font-bold text-white bg-neutral-800 dark:bg-neutral-700">
-                      {user.name?.split(' ').map(n => n[0]?.toUpperCase()).join('').substring(0, 2) || '?'}
+              <div className="relative flex-shrink-0">
+                <div className="w-36 h-36 md:w-44 md:h-44 rounded-full bg-white dark:bg-neutral-900 p-1.5 shadow-2xl relative overflow-hidden">
+                  <Avatar className="w-full h-full rounded-full overflow-hidden ring-4 ring-alpha/20">
+                    {user?.image ? (
+                      <AvatarImage
+                        src={`/storage/img/profile/${user.image}`}
+                        alt={user?.name}
+                      />
+                    ) : (
+                      <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                        {getInitials(user?.name)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                </div>
+                {/* Status indicator with pulse */}
+                <span className="absolute bottom-4 right-4 flex items-center justify-center">
+                  <span className={`absolute w-5 h-5 ${onlineColor} rounded-full animate-ping opacity-75`} />
+                  <span className={`relative w-5 h-5 ${onlineColor} rounded-full ring-4 ring-white dark:ring-neutral-900`} />
+                </span>
+              </div>
+
+              {/* User Info */}
+              <div className="flex-1 flex flex-col justify-end space-y-4">
+                {/* Name and Training */}
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-white mb-2 tracking-tight">
+                    {user.name || '—'}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-base md:text-lg font-medium text-neutral-700 dark:text-neutral-300">
+                      {user.formation_name || 'No training assigned'}
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-alpha text-black">
+                      {user.status || 'No status'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom row: Last seen & Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  {/* Last online */}
+                  <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                    <Calendar className="w-4 h-4" />
+                    <span>Last online: {lastOnline}</span>
+                  </div>
+
+                  {/* Social links & Edit button */}
+                  <div className="flex items-center gap-3">
+                    {/* Social icons */}
+                    <div className="flex items-center gap-2">
+                      {socials.github && (
+                        <a
+                          href={socials.github}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-700 dark:text-neutral-300 transition-all hover:scale-110"
+                        >
+                          <Github className="w-4 h-4" />
+                        </a>
+                      )}
+                      {socials.linkedin && (
+                        <a
+                          href={socials.linkedin}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-700 dark:text-neutral-300 transition-all hover:scale-110"
+                        >
+                          <Linkedin className="w-4 h-4" />
+                        </a>
+                      )}
+                      {socials.twitter && (
+                        <a
+                          href={socials.twitter}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-700 dark:text-neutral-300 transition-all hover:scale-110"
+                        >
+                          <Twitter className="w-4 h-4" />
+                        </a>
+                      )}
+                      {socials.website && (
+                        <a
+                          href={socials.website}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-700 dark:text-neutral-300 transition-all hover:scale-110"
+                        >
+                          <Globe className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-                  )}
-                </div>
-                {/* Online badge */}
-                <span className={`absolute bottom-3 right-3 w-4 h-4 rounded-full ring-2 ring-white dark:ring-neutral-900 ${onlineColor}`} />
-              </div>
-              {/* Name + meta */}
-              <div className="pb-2">
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-4xl font-bold text-neutral-800 dark:text-neutral-100">{user.name}</h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
-                  {user.formation_name && <span className="font-medium">{user.formation_name}</span>}
-                  {user.status && <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-xs">{user.status}</span>}
-                  <span className="text-xs">Last online: {lastOnline}</span>
-                </div>
-                {/* Socials (conditional) */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {user.github && (
-                    <a href={user.github} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-md text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/10 text-neutral-800 dark:text-neutral-100 inline-flex items-center gap-1"><Github className="w-4 h-4" /> GitHub</a>
-                  )}
-                  {user.linkedin && (
-                    <a href={user.linkedin} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-md text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/10 text-neutral-800 dark:text-neutral-100 inline-flex items-center gap-1"><Linkedin className="w-4 h-4" /> LinkedIn</a>
-                  )}
-                  {user.twitter && (
-                    <a href={user.twitter} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-md text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/10 text-neutral-800 dark:text-neutral-100 inline-flex items-center gap-1"><Twitter className="w-4 h-4" /> Twitter</a>
-                  )}
-                  {user.website && (
-                    <a href={user.website} target="_blank" rel="noreferrer" className="px-3 py-1 rounded-md text-xs font-semibold bg-yellow-50 dark:bg-yellow-900/10 text-neutral-800 dark:text-neutral-100 inline-flex items-center gap-1"><Globe className="w-4 h-4" /> Website</a>
-                  )}
+
+                    {/* Divider */}
+                    {(socials.github || socials.linkedin || socials.twitter || socials.website) && (
+                      <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
+                    )}
+
+                    {/* Edit button */}
+                    <button className="px-4 py-2 bg-alpha text-beta rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-lg hover:shadow-xl">
+                      <Edit3 className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-            {/* Right Side - Edit Profile Only */}
-            <div className="flex gap-2 pb-2">
-              <button className="px-5 py-2 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-100 rounded-lg text-sm font-semibold transition-all flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                Edit profile
-              </button>
             </div>
           </div>
         </div>

@@ -10,27 +10,38 @@ import PostsTab from './partials/components/PostsTab';
 import ReservationsTab from './partials/components/ReservationsTab';
 import TrainingTab from './partials/components/TrainingTab';
 
-export default function AdminUserProfile({ user, assignedComputer, ...props }) {
+export default function AdminUserProfile({ 
+  user, 
+  assignedComputer, 
+  userProjects,
+  collaborativeProjects,
+  posts,
+  reservations,
+  trainings,
+  absences,
+  discipline,
+  ...props 
+}) {
   return (
-      <AppLayout>
+    <AppLayout>
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <ProfileHeader user={user} />
         <div className="bg-neutral-50 dark:bg-neutral-950">
-            <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-7xl mx-auto px-6">
             <ProfileStatsGrid user={user} />
             <ProfileMainContent
               sidebar={<ProfileSidebar user={user} assignedComputer={assignedComputer} />}
               tabs={{
-                attendance: <AttendanceTab />, 
-                projects: <ProjectsTab />, 
-                posts: <PostsTab />, 
-                reservations: <ReservationsTab />, 
-                training: <TrainingTab />
+                attendance: <AttendanceTab absences={absences} discipline={discipline} />,
+                projects: <ProjectsTab userProjects={userProjects} collaborativeProjects={collaborativeProjects} />,
+                posts: <PostsTab posts={posts} />,
+                reservations: <ReservationsTab reservations={reservations} />,
+                training: <TrainingTab trainings={trainings} />
               }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-      </AppLayout>
+            />
+          </div>
+        </div>
+      </div>
+    </AppLayout>
   );
 }
