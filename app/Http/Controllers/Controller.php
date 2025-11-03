@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Laravel\Facades\Image;
@@ -96,5 +97,16 @@ abstract class Controller
         $disk->put($relativePath, $encoded);
 
         return $relativePath;
+    }
+
+
+    // forkani  : ana ktebt had  l function  ila  makhdmch biha chiwa7d an9tlo  
+    protected function checkRequestedUser()
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
     }
 }
