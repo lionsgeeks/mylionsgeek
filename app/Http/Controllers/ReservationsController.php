@@ -340,11 +340,19 @@ class ReservationsController extends Controller
 
     public function info(int $reservation)
     {
+        // Get reservation verification notes
+        $verificationNotes = null;
+        if (Schema::hasTable('reservations')) {
+            $res = DB::table('reservations')->where('id', $reservation)->first();
+            $verificationNotes = $res->verification_notes ?? null;
+        }
+        
         $result = [
             'reservation_id' => $reservation,
             'team_name' => null,
             'team_members' => [],
             'equipments' => [],
+            'verification_notes' => $verificationNotes,
         ];
 
         // Team name and members with images
@@ -412,7 +420,7 @@ class ReservationsController extends Controller
             if ($hasEquipmentImage) {
                 $eq->addSelect('e.image');
             }
-            $result['equipments'] = $eq->get()->map(function ($e) {
+            $result['equipments'] = $eq->get()->map(function ($e) use ($reservation) {
                 $img = isset($e->image) ? $e->image : null;
                 if ($img) {
                     if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
@@ -420,11 +428,27 @@ class ReservationsController extends Controller
                     }
                     $img = asset($img);
                 }
+                
+                // Get verification data for this equipment if available
+                $verification = null;
+                if (Schema::hasTable('equipment_verifications')) {
+                    $verification = DB::table('equipment_verifications')
+                        ->where('reservation_id', $reservation)
+                        ->where('equipment_id', $e->equipment_id)
+                        ->first();
+                }
+                
                 return [
                     'id' => $e->equipment_id,
                     'reference' => $e->reference,
                     'mark' => $e->mark,
                     'image' => $img,
+                    'verification' => $verification ? [
+                        'good_condition' => (bool) $verification->good_condition,
+                        'bad_condition' => (bool) $verification->bad_condition,
+                        'not_returned' => (bool) $verification->not_returned,
+                        'equipment_notes' => $verification->equipment_notes,
+                    ] : null,
                 ];
             })->values()->all();
         }
@@ -1321,11 +1345,15 @@ class ReservationsController extends Controller
             $verificationData = null;
 
             DB::transaction(function () use ($request, $reservation, &$verificationData) {
-                // Update reservation as verified
-                DB::table('reservations')->where('id', $reservation)->update([
+                // Update reservation as verified and store notes
+                $updateReservation = [
                     'end_signed' => true,
                     'updated_at' => now(),
-                ]);
+                ];
+                if ($notes) {
+                    $updateReservation['verification_notes'] = $notes;
+                }
+                DB::table('reservations')->where('id', $reservation)->update($updateReservation);
 
                 // Update equipment states and record status
                 $equipmentStatus = $request->input('equipment_status', []);
@@ -1393,6 +1421,33 @@ class ReservationsController extends Controller
                         'updated_at' => now(),
                     ]);
 
+                    // Save equipment verification record
+                    if (Schema::hasTable('equipment_verifications')) {
+                        // Check if verification record already exists
+                        $existing = DB::table('equipment_verifications')
+                            ->where('reservation_id', $reservation)
+                            ->where('equipment_id', $equipmentId)
+                            ->first();
+                        
+                        $verificationData = [
+                            'reservation_id' => $reservation,
+                            'equipment_id' => $equipmentId,
+                            'good_condition' => $isGood ? 1 : 0,
+                            'bad_condition' => $isBad ? 1 : 0,
+                            'not_returned' => $isNotReturned ? 1 : 0,
+                            'updated_at' => now(),
+                        ];
+                        
+                        if ($existing) {
+                            DB::table('equipment_verifications')
+                                ->where('id', $existing->id)
+                                ->update($verificationData);
+                        } else {
+                            $verificationData['created_at'] = now();
+                            DB::table('equipment_verifications')->insert($verificationData);
+                        }
+                    }
+
                     // Optionally, persist status flags on pivot if columns exist
                     if (Schema::hasTable('reservation_equipment')) {
                         $updateData = ['updated_at' => now()];
@@ -1414,11 +1469,6 @@ class ReservationsController extends Controller
                                 ->update($updateData);
                         }
                     }
-                }
-
-                // Store verification notes if provided
-                if ($request->filled('notes')) {
-                    \Log::info("Reservation {$reservation} verification notes: " . $request->input('notes'));
                 }
             });
 
@@ -1569,7 +1619,7 @@ class ReservationsController extends Controller
             }
 
             $equipments = $query->get()
-                ->map(function ($equipment) {
+                ->map(function ($equipment) use ($reservation) {
                     $img = isset($equipment->image) ? $equipment->image : null;
                     if ($img) {
                         if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
@@ -1577,12 +1627,28 @@ class ReservationsController extends Controller
                         }
                         $img = asset($img);
                     }
+                    
+                    // Get verification data for this equipment if available
+                    $verification = null;
+                    if (Schema::hasTable('equipment_verifications')) {
+                        $verification = DB::table('equipment_verifications')
+                            ->where('reservation_id', $reservation)
+                            ->where('equipment_id', $equipment->id)
+                            ->first();
+                    }
+                    
                     return [
                         'id' => $equipment->id,
                         'reference' => $equipment->reference,
                         'mark' => $equipment->mark,
                         'type_name' => $equipment->type_name,
                         'image' => $img,
+                        'verification' => $verification ? [
+                            'good_condition' => (bool) $verification->good_condition,
+                            'bad_condition' => (bool) $verification->bad_condition,
+                            'not_returned' => (bool) $verification->not_returned,
+                            'equipment_notes' => $verification->equipment_notes,
+                        ] : null,
                     ];
                 })
                 ->values()
@@ -1646,6 +1712,7 @@ class ReservationsController extends Controller
                 'passed' => (bool) ($reservationData->passed ?? 0),
                 'start_signed' => (bool) ($reservationData->start_signed ?? 0),
                 'end_signed' => (bool) ($reservationData->end_signed ?? 0),
+                'verification_notes' => $reservationData->verification_notes ?? null,
                 'approver_name' => $approverName,
                 'created_at' => $reservationData->created_at,
                 'updated_at' => $reservationData->updated_at,
@@ -2275,29 +2342,56 @@ class ReservationsController extends Controller
     }
 
     /**
-     * Allow authenticated user to cancel their own reservation
+     * Allow authenticated user to cancel their own reservation (handles both regular and cowork)
      */
     public function cancelOwn(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
-            return back()->with('error', 'Reservations table missing');
+        $userId = auth()->id();
+        
+        // Try regular reservations first
+        if (Schema::hasTable('reservations')) {
+            $row = DB::table('reservations')->where('id', $reservation)->first();
+            if ($row && (int) ($row->user_id ?? 0) === (int) $userId) {
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'canceled' => 1,
+                    'approved' => 0,
+                    'updated_at' => now(),
+                ]);
+                return back()->with('success', 'Reservation canceled');
+            }
         }
-
-        $row = DB::table('reservations')->where('id', $reservation)->first();
-        if (!$row) {
-            return back()->with('error', 'Reservation not found');
+        
+        // Try cowork reservations
+        if (Schema::hasTable('reservation_coworks')) {
+            $coworkRow = DB::table('reservation_coworks')->where('id', $reservation)->first();
+            if ($coworkRow && (int) ($coworkRow->user_id ?? 0) === (int) $userId) {
+                DB::table('reservation_coworks')->where('id', $reservation)->update([
+                    'canceled' => 1,
+                    'approved' => 0,
+                    'updated_at' => now(),
+                ]);
+                
+                // Send cancellation email if needed
+                try {
+                    Mail::to($coworkRow->user_email ?? auth()->user()->email)->send(
+                        new ReservationCanceledMail((object) [
+                            'user_name' => auth()->user()->name,
+                            'title' => $coworkRow->title ?? 'Cowork Reservation',
+                            'day' => $coworkRow->day,
+                            'start' => $coworkRow->start,
+                            'end' => $coworkRow->end,
+                            'type' => 'cowork'
+                        ])
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
+                }
+                
+                return back()->with('success', 'Reservation canceled');
+            }
         }
-        if ((int) ($row->user_id ?? 0) !== (int) auth()->id()) {
-            return back()->with('error', 'You cannot cancel this reservation');
-        }
-
-        DB::table('reservations')->where('id', $reservation)->update([
-            'canceled' => 1,
-            'approved' => 0,
-            'updated_at' => now(),
-        ]);
-
-        return back()->with('success', 'Reservation canceled');
+        
+        return back()->with('error', 'Reservation not found or you do not have permission to cancel it');
     }
 
     /**
