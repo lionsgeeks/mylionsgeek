@@ -18,11 +18,11 @@ const User = ({ user, trainings, close, open }) => {
     const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
     const [isViewProjectModalOpen, setIsViewProjectModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
-        
+
     const [projects, setProjects] = useState(user.user_projects || []);
 
     useEffect(() => {
-    setProjects(user.user_projects || []);
+        setProjects(user.user_projects || []);
     }, [user.user_projects]);
 
     const handleViewProject = (project) => {
@@ -116,9 +116,9 @@ const User = ({ user, trainings, close, open }) => {
     return (
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="sm:max-w-[900px]  max-h-[90vh] overflow-y-auto overflow-x-visible bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
-                <DialogHeader className="border-b border-alpha/10 pb-4">
-                    <DialogTitle className="text-dark dark:text-light text-2xl font-bold">User Profile</DialogTitle>
-                </DialogHeader>
+                {/* <DialogHeader className="border-b border-alpha/10">
+                    <DialogTitle className="text-dark dark:text-light text-xl pb-2 font-bold">{user?.name}</DialogTitle>
+                </DialogHeader> */}
 
                 {/* Tabs Navigation */}
                 <div className="px-1 mt-2">
@@ -206,7 +206,7 @@ const User = ({ user, trainings, close, open }) => {
 
 
                                     {/* Quick Actions */}
-                                    <div className="mt-6 w-full space-y-2">
+                                    <div className="mt-6 w-full flex flex-col gap-2 space-y-2">
                                         {/* <Button
                                             disabled={processing}
                                             onClick={() => router.visit(`/admin/users/${user.id}`)}
@@ -224,6 +224,7 @@ const User = ({ user, trainings, close, open }) => {
                                         >
                                             {user.account_state ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
+                                        <Button onClick={() => router.visit(`/admin/users/${user.id}`)}>View Full Profile</Button>
                                     </div>
                                 </div>
                             </div>
@@ -353,8 +354,8 @@ const User = ({ user, trainings, close, open }) => {
                             <div className="flex-1 overflow-y-auto pr-2">
                                 <div className="grid grid-cols-3 gap-6">
                                     {projects.map(project => (
-                                        <ProjectCard 
-                                            key={project.id} 
+                                        <ProjectCard
+                                            key={project.id}
                                             project={project}
                                             onView={handleViewProject}
                                         />
@@ -369,16 +370,16 @@ const User = ({ user, trainings, close, open }) => {
                             </div>
                         )}
                         <AddProjectModal
-                        isOpen={isAddProjectModalOpen}
-                        onClose={() => setIsAddProjectModalOpen(false)}
-                        userId={user.id}
-                        onProjectAdded={(project) => {
-                            setProjects(prev => [project, ...prev]);
-                            setIsAddProjectModalOpen(false);
-                        }}
+                            isOpen={isAddProjectModalOpen}
+                            onClose={() => setIsAddProjectModalOpen(false)}
+                            userId={user.id}
+                            onProjectAdded={(project) => {
+                                setProjects(prev => [project, ...prev]);
+                                setIsAddProjectModalOpen(false);
+                            }}
                         />
 
-                        <ViewProjectModal 
+                        <ViewProjectModal
                             isOpen={isViewProjectModalOpen}
                             onClose={() => setIsViewProjectModalOpen(false)}
                             project={selectedProject}
@@ -676,10 +677,9 @@ const User = ({ user, trainings, close, open }) => {
                     </div>
                 )}
 
-                <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-alpha/10">
+                {/* <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-alpha/10">
                     <Button onClick={close} variant="secondary">Close</Button>
-                    <Button onClick={() => router.visit(`/admin/users/${user.id}`)}>View Full Profile</Button>
-                </div>
+                </div> */}
             </DialogContent>
         </Dialog >
     );

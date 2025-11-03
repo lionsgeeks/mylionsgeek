@@ -30,6 +30,9 @@ class User extends Authenticatable
         'formation_id',
         'account_state',
         'image',
+        'cover', // add cover here
+        'about', // short bio
+        'socials', // social links JSON
         'access_cowork',
         'access_studio',
         'promo',
@@ -64,11 +67,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'array',
+            'socials' => 'array',
         ];
     }
 
     protected $casts = [
         'role' => 'array',
+        'socials' => 'array',
     ];
 
 
