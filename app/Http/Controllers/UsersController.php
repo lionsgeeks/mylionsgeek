@@ -837,4 +837,51 @@ class UsersController extends Controller
             'likes_count' => $count,
         ]);
     }
+
+    // --- Comments on Posts ---
+    public function getPostComments($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $comments = $post->comments()
+            ->with(['user:id,name,image'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'user_id' => $c->user_id,
+                    'user_name' => $c->user->name,
+                    'user_image' => $c->user->image ?? null,
+                    'comment' => $c->comment,
+                    'created_at' => $c->created_at->toDateTimeString(),
+                ];
+            });
+        return response()->json(['comments' => $comments]);
+    }
+
+    public function addPostComment(Request $request, $postId)
+    {
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+        $post = Post::findOrFail($postId);
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        $comment = $post->comments()->create([
+            'user_id' => $user->id,
+            'comment' => $request->comment,
+        ]);
+        // eager load user info for response
+        $comment->load('user:id,name,image');
+        return response()->json([
+            'id' => $comment->id,
+            'user_id' => $comment->user_id,
+            'user_name' => $comment->user->name,
+            'user_image' => $comment->user->image ?? null,
+            'comment' => $comment->comment,
+            'created_at' => $comment->created_at->toDateTimeString(),
+        ]);
+    }
 }

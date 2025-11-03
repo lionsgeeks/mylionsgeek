@@ -5,13 +5,14 @@ import { useInitials } from '@/hooks/use-initials';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from "../../../../../../../public/assets/icons/logo";
 import axios from 'axios';
+import CommentsModal from './CommentsModal';
 
 export default function PostsTab({ posts, user }) {
   console.log(posts.posts[0].likes_count);
   
   const [likedPostIds, setLikedPostIds] = useState([])
   const [likesCountMap, setLikesCountMap] = useState({})
-
+  const [commentsOpenFor, setCommentsOpenFor] = useState(null); // postId of open modal or null
   const getInitials = useInitials();
 
   useEffect(() => {
@@ -168,7 +169,10 @@ export default function PostsTab({ posts, user }) {
                   </span>
                 </button>
                 {/* Comment Button */}
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta">
+                <button
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta"
+                  onClick={() => setCommentsOpenFor(p.id)}
+                >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
@@ -179,6 +183,14 @@ export default function PostsTab({ posts, user }) {
           )
         })}
       </div>
+      {commentsOpenFor && (
+        <CommentsModal
+          postId={commentsOpenFor}
+          open={!!commentsOpenFor}
+          onClose={() => setCommentsOpenFor(null)}
+          currentUser={user}
+        />
+      )}
     </>
   );
 }
