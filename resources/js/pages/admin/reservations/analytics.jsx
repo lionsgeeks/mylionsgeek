@@ -50,14 +50,14 @@ export default function Analytics({
                 <div className="mb-6">
                     <Link 
                         href="/admin/reservations" 
-                        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+                        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Reservations
                     </Link>
                     
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Reservation Analytics & Reporting</h1>
-                    <p className="text-gray-600">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">Reservation Analytics & Reporting</h1>
+                    <p className="text-muted-foreground">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
 
                 {/* Total Statistics Cards */}
@@ -118,9 +118,9 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+                                <Building2 className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
                                 Studio Reservations
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{studioTotal}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">{studioTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -140,7 +140,7 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+                                <TrendingUp className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
                                 Monthly Reservation Trend
                             </CardTitle>
                         </CardHeader>
@@ -163,9 +163,9 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-purple-600" />
+                                <Package className="w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
                                 Most Reserved Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">{topEquipmentTotal}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">{topEquipmentTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -173,26 +173,26 @@ export default function Analytics({
                                 {(topEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topEquipment, equipmentPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/10 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-purple-200 shadow-sm"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-purple-200 dark:border-purple-800/60 shadow-sm"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                        <Package className="h-8 w-8 text-purple-600" />
+                                                    <div className="h-16 w-16 bg-purple-200 dark:bg-purple-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                        <Package className="h-8 w-8 text-purple-600 dark:text-purple-300" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-gray-900">{eq.mark}</p>
-                                                    <p className="text-sm text-gray-600">{eq.reference}</p>
-                                                    <p className="text-xs text-gray-500">{eq.type_name}</p>
+                                                    <p className="font-bold text-foreground">{eq.mark}</p>
+                                                    <p className="text-sm text-muted-foreground">{eq.reference}</p>
+                                                    <p className="text-xs text-muted-foreground">{eq.type_name}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-2xl font-bold text-purple-600">{eq.count}</div>
-                                                    <p className="text-xs text-gray-500">reservations</p>
+                                                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-300">{eq.count}</div>
+                                                    <p className="text-xs text-muted-foreground">reservations</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -201,17 +201,17 @@ export default function Analytics({
                                                 <button
                                                     onClick={() => setEquipmentPage(p => Math.max(1, p - 1))}
                                                     disabled={equipmentPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronLeft className="w-5 h-5" />
                                                 </button>
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-muted-foreground">
                                                     Page {equipmentPage} of {totalEquipmentPages}
                                                 </span>
                                                 <button
                                                     onClick={() => setEquipmentPage(p => Math.min(totalEquipmentPages, p + 1))}
                                                     disabled={equipmentPage === totalEquipmentPages}
-                                                    className="p-2 rounded-lg hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
@@ -219,7 +219,7 @@ export default function Analytics({
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No equipment data available</p>
+                                    <p className="text-muted-foreground text-center py-8">No equipment data available</p>
                                 )}
                             </div>
                         </CardContent>
@@ -229,9 +229,9 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-red-600" />
+                                <Package className="w-5 h-5 mr-2 text-red-600 dark:text-red-400" />
                                 Damaged Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{damagedTotal}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300">{damagedTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -239,22 +239,22 @@ export default function Analytics({
                                 {(damagedEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(damagedEquipment, damagedPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/10 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-red-200 flex-shrink-0"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-red-200 dark:border-red-800/60 flex-shrink-0"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-red-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                        <Package className="h-8 w-8 text-red-600" />
+                                                    <div className="h-16 w-16 bg-red-200 dark:bg-red-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                        <Package className="h-8 w-8 text-red-600 dark:text-red-300" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-gray-900">{eq.mark}</p>
-                                                    <p className="text-sm text-gray-600">{eq.reference}</p>
-                                                    <p className="text-xs text-gray-500">{eq.type_name}</p>
+                                                    <p className="font-bold text-foreground">{eq.mark}</p>
+                                                    <p className="text-sm text-muted-foreground">{eq.reference}</p>
+                                                    <p className="text-xs text-muted-foreground">{eq.type_name}</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -263,17 +263,17 @@ export default function Analytics({
                                                 <button
                                                     onClick={() => setDamagedPage(p => Math.max(1, p - 1))}
                                                     disabled={damagedPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronLeft className="w-5 h-5" />
                                                 </button>
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-muted-foreground">
                                                     Page {damagedPage} of {totalDamagedPages}
                                                 </span>
                                                 <button
                                                     onClick={() => setDamagedPage(p => Math.min(totalDamagedPages, p + 1))}
                                                     disabled={damagedPage === totalDamagedPages}
-                                                    className="p-2 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
@@ -281,7 +281,7 @@ export default function Analytics({
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No damaged equipment</p>
+                                    <p className="text-muted-foreground text-center py-8">No damaged equipment</p>
                                 )}
                             </div>
                         </CardContent>
@@ -293,9 +293,9 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-blue-600" />
+                                <Package className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
                                     Active Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{activeTotal}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">{activeTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -303,22 +303,22 @@ export default function Analytics({
                                 {(activeEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(activeEquipment, activePage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 flex-shrink-0 shadow-sm"
+                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800/60 flex-shrink-0 shadow-sm"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                                                        <Package className="h-8 w-8 text-blue-600" />
+                                                    <div className="h-16 w-16 bg-blue-200 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                        <Package className="h-8 w-8 text-blue-600 dark:text-blue-300" />
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-gray-900">{eq.mark}</p>
-                                                    <p className="text-sm text-gray-600">{eq.reference}</p>
-                                                    <p className="text-xs text-gray-500">{eq.type_name}</p>
+                                                    <p className="font-bold text-foreground">{eq.mark}</p>
+                                                    <p className="text-sm text-muted-foreground">{eq.reference}</p>
+                                                    <p className="text-xs text-muted-foreground">{eq.type_name}</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -327,17 +327,17 @@ export default function Analytics({
                                                 <button
                                                     onClick={() => setActivePage(p => Math.max(1, p - 1))}
                                                     disabled={activePage === 1}
-                                                    className="p-2 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronLeft className="w-5 h-5" />
                                                 </button>
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-muted-foreground">
                                                     Page {activePage} of {totalActivePages}
                                                 </span>
                                                 <button
                                                     onClick={() => setActivePage(p => Math.min(totalActivePages, p + 1))}
                                                     disabled={activePage === totalActivePages}
-                                                    className="p-2 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
@@ -345,7 +345,7 @@ export default function Analytics({
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No active equipment right now</p>
+                                    <p className="text-muted-foreground text-center py-8">No active equipment right now</p>
                                 )}
                             </div>
                         </CardContent>
@@ -355,7 +355,7 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <BarChart3 className="w-5 h-5 mr-2 text-indigo-600" />
+                                <BarChart3 className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
                                 Active Equipment by Type
                             </CardTitle>
                         </CardHeader>
@@ -368,7 +368,7 @@ export default function Analytics({
                                 }, {});
                                 const data = Object.entries(counts).map(([name, value]) => ({ name, value }));
                                 if (data.length === 0) {
-                                    return <p className="text-gray-500 text-center py-8">No active equipment data</p>;
+                                    return <p className="text-muted-foreground text-center py-8">No active equipment data</p>;
                                 }
                                 return (
                                     <div className="h-72">
@@ -395,9 +395,9 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Users className="w-5 h-5 mr-2 text-green-600" />
+                                <Users className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
                                 Most Active Users
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">{usersTotal}</span>
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300">{usersTotal}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -405,7 +405,7 @@ export default function Analytics({
                                 {(topUsers?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topUsers, userPage).map((user, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 rounded-xl hover:shadow-md transition-shadow">
                                                 {user.image ? (
                                                     <img
                                                         src={user.image}
@@ -413,19 +413,19 @@ export default function Analytics({
                                                         className="h-16 w-16 object-cover rounded-full border-2 border-green-200 flex-shrink-0"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <div className="h-16 w-16 bg-gradient-to-br from-green-400 to-green-600 dark:from-green-700 dark:to-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                                                         <span className="text-white font-bold text-lg">
                                                             {user.name?.charAt(0).toUpperCase() || '?'}
                                                         </span>
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-gray-900"># {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}</p>
-                                                    <p className="text-sm text-gray-600 truncate">{user.email}</p>
+                                                    <p className="font-bold text-foreground"># {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}</p>
+                                                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                                                 </div>
                                                 <div className="text-right flex-shrink-0">
-                                                    <div className="text-2xl font-bold text-green-600">{user.count}</div>
-                                                    <p className="text-xs text-gray-500">reservations</p>
+                                                    <div className="text-2xl font-bold text-green-600 dark:text-green-300">{user.count}</div>
+                                                    <p className="text-xs text-muted-foreground">reservations</p>
                                                 </div>
                                             </div>
                                         ))}
@@ -434,17 +434,17 @@ export default function Analytics({
                                                 <button
                                                     onClick={() => setUserPage(p => Math.max(1, p - 1))}
                                                     disabled={userPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronLeft className="w-5 h-5" />
                                                 </button>
-                                                <span className="text-sm text-gray-600">
+                                                <span className="text-sm text-muted-foreground">
                                                     Page {userPage} of {totalUserPages}
                                                 </span>
                                                 <button
                                                     onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
                                                     disabled={userPage === totalUserPages}
-                                                    className="p-2 rounded-lg hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <ChevronRight className="w-5 h-5" />
                                                 </button>
@@ -452,7 +452,7 @@ export default function Analytics({
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No user data available</p>
+                                    <p className="text-muted-foreground text-center py-8">No user data available</p>
                                 )}
                             </div>
                         </CardContent>
@@ -462,29 +462,29 @@ export default function Analytics({
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Clock className="w-5 h-5 mr-2 text-blue-600" />
+                                <Clock className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
                                 Time Slot Statistics
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
                                 {timeSlotStats.most_reserved && (
-                                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-green-900">Most Reserved Time:</span>
-                                            <span className="text-2xl font-bold text-green-700">{timeSlotStats.most_reserved.time}</span>
+                                            <span className="font-semibold text-green-900 dark:text-green-300">Most Reserved Time:</span>
+                                            <span className="text-2xl font-bold text-green-700 dark:text-green-300">{timeSlotStats.most_reserved.time}</span>
                                         </div>
-                                        <p className="text-sm text-green-700">{timeSlotStats.most_reserved.count} reservations</p>
+                                        <p className="text-sm text-green-700 dark:text-green-300/90">{timeSlotStats.most_reserved.count} reservations</p>
                                     </div>
                                 )}
                                 
                                 {timeSlotStats.least_reserved && (
-                                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800/50">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-orange-900">Least Reserved Time:</span>
-                                            <span className="text-2xl font-bold text-orange-700">{timeSlotStats.least_reserved.time}</span>
+                                            <span className="font-semibold text-orange-900 dark:text-orange-300">Least Reserved Time:</span>
+                                            <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{timeSlotStats.least_reserved.time}</span>
                                         </div>
-                                        <p className="text-sm text-orange-700">{timeSlotStats.least_reserved.count} reservations</p>
+                                        <p className="text-sm text-orange-700 dark:text-orange-300/90">{timeSlotStats.least_reserved.count} reservations</p>
                                     </div>
                                 )}
                             </div>

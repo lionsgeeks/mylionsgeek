@@ -51,14 +51,14 @@ const games = [
     //     color: 'from-slate-500 to-gray-700',
     //     link: '/games/rock-paper-scissors'
     // },
-    // {
-    //     id: 'pacman',
-    //     name: 'Pac-Man',
-    //     description: 'Chomp the dots, outsmart the ghost, classic arcade style!',
-    //     icon: '🟡',
-    //     color: 'from-yellow-300 to-yellow-500',
-    //     link: '/games/pacman'
-    // },
+    {
+        id: 'pacman',
+        name: 'Pac-Man',
+        description: 'Chomp the dots, outsmart the ghost, classic arcade style!',
+        icon: '🟡',
+        color: 'from-yellow-300 to-yellow-500',
+        link: '/games/pacman'
+    },
 ];
 
 export default function GamesIndex() {

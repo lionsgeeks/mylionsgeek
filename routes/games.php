@@ -10,4 +10,12 @@ Route::get('/games/memory', [GamesController::class, 'memory'])->name('games.mem
 Route::get('/games/tetris', [GamesController::class, 'tetris'])->name('games.tetris');
 Route::get('/games/connect-four', [GamesController::class, 'connectFour'])->name('games.connect-four');
 Route::get('/games/rock-paper-scissors', [GamesController::class, 'rockPaperScissors'])->name('games.rock-paper-scissors');
+Route::get('/games/pacman', [GamesController::class, 'pacman'])->name('games.pacman');
+
+// API routes for game state management
+Route::prefix('api/games')->group(function () {
+    Route::get('/state/{roomId}', [GamesController::class, 'getGameState'])->name('games.get-state');
+    Route::post('/state/{roomId}', [GamesController::class, 'updateGameState'])->name('games.update-state');
+    Route::post('/reset/{roomId}', [GamesController::class, 'resetGameSession'])->name('games.reset');
+});
 

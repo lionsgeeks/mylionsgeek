@@ -4,6 +4,7 @@ import { usePage, router } from '@inertiajs/react';
 import ReservationTable from '@/components/ReservationTable';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -59,14 +60,25 @@ export default function ReservationsPage() {
     ) },
     { key: "status", label: "Status", render: r => (
       r.canceled ? (
-        <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">Canceled</Badge>
+        <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/20">Canceled</Badge>
       ) : r.approved ? (
-        <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">Approved</Badge>
+        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">Approved</Badge>
       ) : (
-        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
+        <Badge variant="outline" className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/20">Pending</Badge>
       )
     ) },
   ];
+  const handleCancel = (reservationId, e) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to cancel this reservation?')) return;
+    router.post(`/reservations/${reservationId}/cancel`, {}, {
+      onSuccess: () => router.reload(),
+      onError: (errors) => {
+        alert(errors.message || 'Failed to cancel reservation. Please try again.');
+      },
+    });
+  };
+
   const breadcrumbs = [
     { title: 'My Reservations', href: '/reservations' }
   ];
@@ -78,13 +90,24 @@ export default function ReservationsPage() {
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
         </div>
         {/* Controls */}
-        <div className="bg-white shadow rounded-xl border border-gray-100">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 shadow-sm">
       
           <div className="p-4 sm:p-6">
             <ReservationTable
               columns={columns}
               data={filteredReservations}
               onRowClick={row => router.visit(`/reservations/${row.id}/details`)}
+              renderActions={(row) => (
+                !row.canceled && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={(e) => handleCancel(row.id, e)}
+                  >
+                    Cancel
+                  </Button>
+                )
+              )}
             />
           </div>
         </div>

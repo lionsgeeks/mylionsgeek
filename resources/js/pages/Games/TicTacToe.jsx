@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from '@inertiajs/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { createRealtime, randomRoomId } from './realtime';
+import axios from 'axios';
 
 const WINNING_COMBINATIONS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -10,6 +10,8 @@ const WINNING_COMBINATIONS = [
 ];
 
 export default function TicTacToe() {
+    const page = usePage();
+    const auth = page?.props?.auth;
     const [board, setBoard] = useState(Array(9).fill(null));
     const [isXNext, setIsXNext] = useState(true);
     const [winner, setWinner] = useState(null);
@@ -17,15 +19,14 @@ export default function TicTacToe() {
     const [scores, setScores] = useState({ X: 0, O: 0, ties: 0 });
     const [gameMode, setGameMode] = useState('human'); // 'human' or 'computer'
 
-    // Realtime state
+    // Online multiplayer state
     const [roomId, setRoomId] = useState('');
     const [playerName, setPlayerName] = useState('');
     const [assignedSymbol, setAssignedSymbol] = useState(null); // 'X' | 'O'
     const [requestedSymbol, setRequestedSymbol] = useState(null); // optional preferred role from URL
     const [isConnected, setIsConnected] = useState(false);
-    const realtimeRef = React.useRef(null);
-    const selfIdRef = React.useRef(() => Math.random().toString(36).slice(2));
-    const selfId = React.useMemo(() => selfIdRef.current(), []);
+    const pollingIntervalRef = useRef(null);
+    const lastStateHashRef = useRef(null);
 
     // Check for winner
     const checkWinner = (currentBoard) => {
@@ -123,13 +124,24 @@ export default function TicTacToe() {
 
     // Reset game
     const resetGame = () => {
-        setBoard(Array(9).fill(null));
+        const newBoard = Array(9).fill(null);
+        setBoard(newBoard);
         setIsXNext(true);
         setWinner(null);
         setGameOver(false);
-        // broadcast reset
-        if (isConnected) {
-            realtimeRef.current?.send({ type: 'state', board: Array(9).fill(null), isXNext: true, winner: null, gameOver: false, scores });
+        // POST reset to server
+        if (isConnected && roomId) {
+            const newState = {
+                board: newBoard,
+                isXNext: true,
+                winner: null,
+                gameOver: false,
+                scores,
+            };
+            axios.post(`/api/games/reset/${roomId}`, {
+                game_type: 'tictactoe',
+                initial_state: newState,
+            }).catch(err => console.error('Failed to reset game:', err));
         }
     };
 
@@ -165,83 +177,249 @@ export default function TicTacToe() {
         );
     };
 
-    // Realtime handlers
-    const connectRoom = () => {
-        if (!roomId) return;
-        if (!playerName.trim()) return;
-        // close old
-        realtimeRef.current?.leave?.();
-        const rt = createRealtime(roomId, (msg) => {
-            if (!msg || typeof msg !== 'object') return;
-            switch (msg.type) {
-                case 'hello':
-                    // Respect peer's explicit preference if provided; otherwise fall back to IDs
-                    if (msg.want === 'X') setAssignedSymbol('O');
-                    else if (msg.want === 'O') setAssignedSymbol('X');
-                    else if (msg.id) {
-                        const symbol = selfId < msg.id ? 'X' : 'O';
-                        setAssignedSymbol(symbol);
+    // Poll for game state updates - called by useEffect
+    const pollGameState = React.useCallback(async () => {
+        if (!isConnected || !roomId) return;
+        
+        try {
+            const response = await axios.get(`/api/games/state/${roomId}`);
+            if (response.data.exists && response.data.game_state) {
+                const state = response.data.game_state;
+                const stateHash = JSON.stringify(state);
+                
+                // Only update if state changed
+                if (stateHash !== lastStateHashRef.current) {
+                    lastStateHashRef.current = stateHash;
+                    
+                    // Update all state from server
+                    if (state.board && Array.isArray(state.board)) {
+                        setBoard(state.board);
                     }
-                    // reply with state to help sync newcomers
-                    rt.send({ type: 'state', board, isXNext, winner, gameOver, scores, senderId: selfId });
-                    break;
-                case 'state':
-                    // If we only received state (common for the joining client), compute roles using senderId
-                    if (msg.senderId) {
-                        const symbol = selfId < msg.senderId ? 'X' : 'O';
-                        setAssignedSymbol(symbol);
+                    
+                    if (state.isXNext !== undefined) {
+                        setIsXNext(state.isXNext);
                     }
-                    setBoard(msg.board);
-                    setIsXNext(msg.isXNext);
-                    setWinner(msg.winner);
-                    setGameOver(msg.gameOver);
-                    setScores(msg.scores);
-                    break;
-                case 'move':
-                    // apply remote move
-                    if (!board[msg.index] && !gameOver) {
-                        const newBoard = [...board];
-                        newBoard[msg.index] = msg.symbol;
-                        setBoard(newBoard);
-                        const currentWinner = checkWinner(newBoard);
-                        if (currentWinner) {
-                            setWinner(currentWinner);
-                            setGameOver(true);
-                            setScores(prev => ({ ...prev, [currentWinner]: prev[currentWinner] + 1 }));
-                        } else if (isBoardFull(newBoard)) {
-                            setGameOver(true);
-                            setScores(prev => ({ ...prev, ties: prev.ties + 1 }));
+                    
+                    if (state.winner !== undefined) {
+                        setWinner(state.winner);
+                    }
+                    
+                    if (state.gameOver !== undefined) {
+                        setGameOver(state.gameOver);
+                    }
+                    
+                    if (state.scores) {
+                        setScores(state.scores);
+                    }
+                    
+                    // Assign symbol based on stored symbol for this player, not array index
+                    if (state.players && state.players.length > 0) {
+                        const playerIndex = state.players.findIndex(p => p.name === playerName);
+                        if (playerIndex >= 0) {
+                            const sym = state.players[playerIndex]?.symbol;
+                            if (sym === 'X' || sym === 'O') {
+                                setAssignedSymbol(sym);
+                            }
                         } else {
-                            setIsXNext(prev => !prev);
+                            // If name not found:
+                            // - Keep current role if already assigned (never flip)
+                            // - If no role yet and there is exactly 1 player, infer the opposite
+                            // - If 0 or 2+ players, do not guess; wait for explicit assignment
+                            if (!assignedSymbol && state.players.length === 1) {
+                                const onlySym = state.players[0]?.symbol;
+                                if (onlySym === 'X' || onlySym === 'O') {
+                                    setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
+                                }
+                            }
                         }
                     }
-                    break;
+                }
             }
-        });
-        realtimeRef.current = rt;
+        } catch (error) {
+            console.error('Failed to poll game state:', error);
+        }
+    }, [isConnected, roomId, playerName]);
+
+    // Online multiplayer handlers
+    const connectRoom = async () => {
+        if (!roomId || !playerName.trim()) return;
+        
+        // Stop any existing polling
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        
         setIsConnected(true);
-        // Tentative role: requested if provided, else X. May be overridden by peer's hello.
-        setAssignedSymbol(requestedSymbol || 'X');
-        rt.send({ type: 'hello', id: selfId, name: playerName, want: requestedSymbol });
+        
+        try {
+            // Try to get existing state first
+            const existingState = await axios.get(`/api/games/state/${roomId}`);
+            
+            if (existingState.data.exists) {
+                // Game already exists, sync with it
+                const state = existingState.data.game_state;
+                
+                // Ensure a unique join name if needed (avoid taking host's symbol due to name collision)
+                let joinName = playerName;
+                if (state.players && Array.isArray(state.players) && requestedSymbol === 'O') {
+                    if (state.players.some(p => p?.name === joinName)) {
+                        // Create a unique variant of the name
+                        let suffix = 2;
+                        let candidate = `${joinName} (${requestedSymbol})`;
+                        while (state.players.some(p => p?.name === candidate)) {
+                            candidate = `${joinName} (${requestedSymbol} ${suffix++})`;
+                        }
+                        joinName = candidate;
+                        setPlayerName(joinName);
+                    }
+                }
+                if (state.board) setBoard(state.board);
+                if (state.isXNext !== undefined) setIsXNext(state.isXNext);
+                if (state.winner !== undefined) setWinner(state.winner);
+                if (state.gameOver !== undefined) setGameOver(state.gameOver);
+                if (state.scores) setScores(state.scores);
+                
+                // Assign symbol
+                let playerSymbol = null;
+                if (state.players && state.players.length === 1) {
+                    playerSymbol = state.players[0].symbol === 'X' ? 'O' : 'X';
+                    setAssignedSymbol(playerSymbol);
+                    state.players.push({ name: joinName, symbol: playerSymbol });
+                } else if (state.players && state.players.length > 0) {
+                    const playerIndex = state.players.findIndex(p => p.name === joinName);
+                    if (playerIndex >= 0) {
+                        // Player with same (possibly adjusted) name exists in state
+                        const storedSymbol = state.players[playerIndex].symbol;
+                        // If a requested symbol exists and differs, and it's free, switch to requested
+                        if ((requestedSymbol === 'X' || requestedSymbol === 'O') && storedSymbol !== requestedSymbol) {
+                            const symbolTaken = state.players.some(p => p.symbol === requestedSymbol);
+                            if (!symbolTaken) {
+                                state.players[playerIndex].symbol = requestedSymbol;
+                                playerSymbol = requestedSymbol;
+                                setAssignedSymbol(playerSymbol);
+                            } else {
+                                playerSymbol = storedSymbol;
+                                setAssignedSymbol(playerSymbol);
+                            }
+                        } else {
+                            playerSymbol = storedSymbol;
+                            setAssignedSymbol(playerSymbol);
+                        }
+                    } else {
+                        playerSymbol = state.players[0].symbol === 'X' ? 'O' : 'X';
+                        setAssignedSymbol(playerSymbol);
+                        state.players.push({ name: joinName, symbol: playerSymbol });
+                    }
+                }
+                
+                // Update server with new player
+                await axios.post(`/api/games/state/${roomId}`, {
+                    game_type: 'tictactoe',
+                    game_state: state,
+                });
+            } else {
+                // Initialize new game — honor requested symbol (so invitee can be 'O' even if first)
+                const creatorSymbol = (requestedSymbol === 'X' || requestedSymbol === 'O') ? requestedSymbol : 'X';
+                const initialState = {
+                    board: Array(9).fill(null),
+                    isXNext: true,
+                    winner: null,
+                    gameOver: false,
+                    scores: { X: 0, O: 0, ties: 0 },
+                    players: [{ name: playerName, symbol: creatorSymbol }],
+                };
+                
+                await axios.post(`/api/games/state/${roomId}`, {
+                    game_type: 'tictactoe',
+                    game_state: initialState,
+                });
+                
+                setAssignedSymbol(creatorSymbol);
+            }
+            
+            // Start fast polling - 100ms for very fast updates
+            pollGameState(); // Immediate poll
+            pollingIntervalRef.current = setInterval(pollGameState, 100); // Poll every 100ms
+            
+        } catch (error) {
+            console.error('Failed to connect to room:', error);
+            setIsConnected(false);
+        }
     };
 
     const disconnectRoom = () => {
-        realtimeRef.current?.leave?.();
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
         setIsConnected(false);
         setAssignedSymbol(null);
+        setRoomId('');
+        setPlayerName('');
+        lastStateHashRef.current = null;
+        setGameMode('human');
+        resetGame();
     };
 
-    // Intercept local clicks to broadcast when connected
-    const originalHandleCellClick = (index) => handleCellClick(index);
-    const handleCellClickNetworked = (index) => {
-        if (!isConnected) return originalHandleCellClick(index);
+    // Handle clicks with online support
+    const handleCellClickNetworked = async (index) => {
         if (board[index] || gameOver) return;
+        
         const symbol = isXNext ? 'X' : 'O';
-        // only allow local move if assigned symbol matches turn
-        if (assignedSymbol && symbol !== assignedSymbol) return;
-        originalHandleCellClick(index);
-        // Broadcast only the move; receivers will apply deterministically
-        realtimeRef.current?.send({ type: 'move', index, symbol });
+        
+        if (isConnected && assignedSymbol && symbol !== assignedSymbol) {
+            return; // Not your turn
+        }
+        
+        // Calculate new state
+        const newBoard = [...board];
+        newBoard[index] = symbol;
+        const currentWinner = checkWinner(newBoard);
+        const currentIsXNext = !isXNext;
+        const currentGameOver = currentWinner !== null || isBoardFull(newBoard);
+        
+        // Calculate new scores
+        let newScores = { ...scores };
+        if (currentWinner) {
+            newScores[currentWinner] = (newScores[currentWinner] || 0) + 1;
+        } else if (currentGameOver && !currentWinner) {
+            newScores.ties = (newScores.ties || 0) + 1;
+        }
+        
+        // Apply move locally
+        setBoard(newBoard);
+        setIsXNext(currentIsXNext);
+        if (currentWinner) {
+            setWinner(currentWinner);
+            setGameOver(true);
+            setScores(newScores);
+        } else if (currentGameOver) {
+            setGameOver(true);
+            setScores(newScores);
+        } else {
+            setIsXNext(currentIsXNext);
+        }
+        
+        // POST move to server immediately
+        if (isConnected && roomId) {
+            const newState = {
+                board: newBoard,
+                isXNext: currentIsXNext,
+                winner: currentWinner,
+                gameOver: currentGameOver,
+                scores: newScores,
+            };
+            
+            try {
+                await axios.post(`/api/games/state/${roomId}`, {
+                    game_type: 'tictactoe',
+                    game_state: newState,
+                });
+            } catch (error) {
+                console.error('Failed to save move:', error);
+            }
+        }
     };
 
     // Build shareable link and auto-join via query params
@@ -253,6 +431,16 @@ export default function TicTacToe() {
         url.searchParams.set('as', 'O');
         return url.toString();
     };
+    const inviteUrl = React.useMemo(() => (roomId && playerName ? buildInviteUrl() : ''), [roomId, playerName]);
+    
+    // Auto-fill player name from authenticated user if available
+    useEffect(() => {
+        if (!playerName) {
+            const n = auth?.user?.name || new URLSearchParams(window.location.search).get('name') || 'Player';
+            setPlayerName(n);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     useEffect(() => {
         const sp = new URLSearchParams(window.location.search);
         const r = sp.get('room');
@@ -262,14 +450,40 @@ export default function TicTacToe() {
         if (n) setPlayerName(n);
         if (as === 'X' || as === 'O') {
             setRequestedSymbol(as);
-            setAssignedSymbol(as);
+            // Do not set assigned here; let connection/server state decide
         }
         if (r && n && !isConnected) {
-            // small delay to allow state to update inputs
-            setTimeout(() => connectRoom(), 0);
+            setTimeout(() => connectRoom(), 100);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Polling useEffect - automatically polls when connected
+    useEffect(() => {
+        if (!isConnected || !roomId) {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+            return;
+        }
+
+        // Start polling immediately
+        pollGameState();
+        
+        // Set up fast polling interval - 100ms for very fast updates
+        pollingIntervalRef.current = setInterval(() => {
+            pollGameState();
+        }, 100); // Poll every 100ms for near real-time
+
+        // Cleanup
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+        };
+    }, [isConnected, roomId, playerName, pollGameState]);
 
     return (
         <AppLayout>
@@ -323,49 +537,78 @@ export default function TicTacToe() {
                         </div>
                     </div>
 
-                    {/* Realtime room controls */}
-                    {/* <div className="flex justify-center mb-6">
+                    {/* Online multiplayer room controls */}
+                    <div className="flex justify-center mb-6">
                         <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
                             <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Your name"
-                                    value={playerName}
-                                    onChange={(e) => setPlayerName(e.target.value)}
-                                    className="flex-1 border rounded px-3 py-2"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Room ID (e.g. room-abc123)"
+                                    placeholder="Room ID (e.g. ttt-abc123)"
                                     value={roomId}
                                     onChange={(e) => setRoomId(e.target.value)}
                                     className="flex-1 border rounded px-3 py-2"
+                                    disabled={isConnected}
                                 />
                                 <button
-                                    onClick={() => setRoomId(prev => prev || randomRoomId('ttt'))}
-                                    className="px-3 py-2 rounded bg-gray-100 border"
+                                    onClick={() => {
+                                        if (!roomId) {
+                                            const randomId = 'ttt-' + Math.random().toString(36).slice(2, 8);
+                                            setRoomId(randomId);
+                                        }
+                                    }}
+                                    className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200"
+                                    disabled={isConnected}
                                 >Generate</button>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 {!isConnected ? (
-                                    <button onClick={connectRoom} className="px-4 py-2 rounded bg-blue-600 text-white">Join Room</button>
+                                    <button 
+                                        onClick={connectRoom} 
+                                        className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                                        disabled={!roomId || !playerName.trim()}
+                                    >Join Room</button>
                                 ) : (
-                                    <button onClick={disconnectRoom} className="px-4 py-2 rounded bg-gray-600 text-white">Leave Room</button>
+                                    <button 
+                                        onClick={disconnectRoom} 
+                                        className="px-4 py-2 rounded bg-gray-600 text-white hover:bg-gray-700"
+                                    >Leave Room</button>
                                 )}
+                                <div className="flex-1 hidden md:flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={inviteUrl}
+                                        placeholder="Invite link will appear here"
+                                        className="flex-1 border rounded px-3 py-2 text-xs"
+                                    />
+                                    <button
+                                        onClick={async () => { if (inviteUrl) { try { await navigator.clipboard.writeText(inviteUrl); } catch {} } }}
+                                        className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200 text-sm"
+                                        disabled={!inviteUrl}
+                                    >Copy</button>
+                                    <button
+                                        onClick={() => { if (inviteUrl) window.open(inviteUrl, '_blank'); }}
+                                        className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200 text-sm"
+                                        disabled={!inviteUrl}
+                                    >Open</button>
+                                </div>
                                 <button
                                     onClick={async () => {
                                         const link = buildInviteUrl();
                                         try { await navigator.clipboard.writeText(link); } catch {}
                                         alert('Invite link copied. Share it with your friend.');
                                     }}
-                                    className="px-4 py-2 rounded bg-gray-100 border"
+                                    className="px-4 py-2 rounded bg-gray-100 border hover:bg-gray-200 md:hidden"
+                                    disabled={!roomId || !playerName.trim()}
                                 >Copy Link</button>
                                 {isConnected && (
-                                    <div className="text-sm text-gray-600 self-center">Connected as {assignedSymbol ?? '?'} — Share Room ID with a friend</div>
+                                    <div className="text-sm text-gray-600 self-center">
+                                        Connected as <strong>{assignedSymbol ?? '?'}</strong> — Polling every 100ms
+                                    </div>
                                 )}
                             </div>
                         </div>
-                    </div> */}
+                    </div>
 
                     {/* Game Board */}
                     <div className="flex justify-center mb-6">
@@ -403,7 +646,23 @@ export default function TicTacToe() {
                     <div className="text-center mb-6">
                         {!gameOver && (
                             <div className="text-xl font-semibold text-gray-700">
-                                {gameMode === 'computer' ? (
+                                {isConnected ? (
+                                    (() => {
+                                        const currentTurnSymbol = isXNext ? 'X' : 'O';
+                                        const isMyTurn = assignedSymbol && currentTurnSymbol === assignedSymbol;
+                                        return isMyTurn ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <span className="animate-pulse">●</span>
+                                                Your turn ({assignedSymbol})
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center justify-center gap-2 text-blue-600">
+                                                <span className="animate-bounce">⏳</span>
+                                                Waiting for opponent (Player {currentTurnSymbol})...
+                                            </span>
+                                        );
+                                    })()
+                                ) : gameMode === 'computer' ? (
                                     isXNext ? "Your turn (X)" : "Computer's turn (O)"
                                 ) : (
                                     `Player ${isXNext ? 'X' : 'O'}'s turn`
