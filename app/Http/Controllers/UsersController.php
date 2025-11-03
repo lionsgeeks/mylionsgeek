@@ -22,8 +22,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
+use App\Models\Like;
 use App\Models\Medical;
 use App\Models\Note;
+use App\Models\Post;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\UserProject;
@@ -238,22 +240,18 @@ class UsersController extends Controller
 
     private function getPosts(User $user, Request $request)
     {
-        $posts = Note::where('user_id', $user->id)
-            ->whereNotNull('note')
+        // Get posts for the user
+        $posts = Post::where('user_id', $user->id)
+            ->withCount(['likes' , 'comments'])
             ->latest()
-            ->paginate(10, ['*'], 'posts_page', $request->get('posts_page', 1))
-            ->onEachSide(1);
+            ->get();
+
 
         return [
-            'data' => $posts->map(fn($p) => [
-                'id' => $p->id,
-                'note' => $p->note,
-                'author' => $p->author ?? 'Unknown',
-                'created_at' => (string) $p->created_at,
-            ]),
-            'meta' => $this->getPaginationMeta($posts),
+            'posts' => $posts
         ];
     }
+
 
     private function getAbsences(User $user, Request $request)
     {

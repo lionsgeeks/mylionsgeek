@@ -3,10 +3,10 @@ import TablePagination from "@/components/TablePagination";
 import { CalendarX, AlertCircle } from "lucide-react";
 
 export default function AttendanceTab({ absences = { data: [], meta: {} }, discipline = 0 }) {
-  
+
   const absencesData = absences?.data || [];
   const meta = absences?.meta || { current_page: 1, last_page: 1, per_page: 10, total: 0 };
-  
+
   // Debug: Log absences data to console (remove in production)
   React.useEffect(() => {
     if (absencesData.length > 0) {
@@ -14,7 +14,7 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
       console.log('Absences Meta:', meta);
     }
   }, [absencesData, meta]);
-  
+
   // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -38,11 +38,11 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Total Absences */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700">
-              <CalendarX className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <CalendarX className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {meta.total || 0}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -57,7 +57,7 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
               <AlertCircle className="w-7 h-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {discipline}%
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -91,7 +91,7 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
                   const morningStatus = getPeriodStatus(absence.morning);
                   const lunchStatus = getPeriodStatus(absence.lunch);
                   const eveningStatus = getPeriodStatus(absence.evening);
-                  
+
                   return (
                     <tr key={absence.attendance_id || index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
                       <td className="p-3 font-medium">{formatDate(absence.date)}</td>
@@ -105,8 +105,8 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
                         {eveningStatus.text}
                       </td>
                       <td className="p-3 text-neutral-600 dark:text-neutral-400 text-xs">
-                        {absence.notes && absence.notes.length > 0 
-                          ? `${absence.notes.length} note(s)` 
+                        {absence.notes && absence.notes.length > 0
+                          ? `${absence.notes.length} note(s)`
                           : 'No notes'}
                       </td>
                     </tr>
@@ -114,7 +114,7 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
                 })}
               </tbody>
             </table>
-            
+
             {/* Pagination */}
             <TablePagination
               currentPage={meta.current_page || 1}

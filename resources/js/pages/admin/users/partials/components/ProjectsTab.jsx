@@ -93,7 +93,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
               <FolderKanban className="w-7 h-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.total}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -108,7 +108,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
               <Clock className="w-7 h-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.ongoing}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -123,7 +123,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
               <CheckCircle2 className="w-7 h-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-alpha">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.completed}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">

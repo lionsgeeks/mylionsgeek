@@ -1,104 +1,179 @@
-import React from "react";
-import { FileText, User, Calendar, ExternalLink, Heart, MessageCircle } from "lucide-react";
+import React, { useState } from "react";
+import { FileText, User, Calendar, ExternalLink, Heart, MessageCircle, X } from "lucide-react";
 import TablePagination from "@/components/TablePagination";
+import { useInitials } from '@/hooks/use-initials';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime'; // <-- import the plugin
+import { Logo } from "../../../../../../../public/assets/icons/logo";
 
-export default function PostsTab({ posts = { data: [], meta: {} } }) {
-  
-  const postsData = posts?.data || [];
-  const meta = posts?.meta || { current_page: 1, last_page: 1, per_page: 10, total: 0 };
 
-  // Format date helper
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
+export default function PostsTab({ posts, user }) {
+  console.log(posts.posts);
+  const [LikedPost, setLikedPost] = useState([])
+  const [likesCount, setLikesCount] = useState(0)
+  dayjs.extend(relativeTime);
 
-  // Truncate text helper
-  const truncateText = (text, maxLength = 50) => {
-    if (!text) return 'N/A';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+  const getInitials = useInitials();
+  const toggleLikedPost = (postId) => {
+    setLikedPost(prev =>
+      prev.includes(postId)
+        ? prev.filter(id => id !== postId) // remove LikedPost
+        : [...prev, postId] // add LikedPost
+    );
+    // setLikesCount(p.)
   };
 
   return (
-    <div className="space-y-6 fade-in">
-      {/* Stats Card - Matching Projects Tab Style */}
-      <div className="rounded-2xl shadow-lg p-6 mb-2 backdrop-blur-sm transition-colors duration-300 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700">
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-          {/* Total Posts */}
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
-              <FileText className="w-7 h-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
-                {meta.total || 0}
-              </div>
-              <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
-                Total Posts/Notes
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <>
+      <div className="max-w-2xl mx-auto p-4 bg-[#fafafa] dark:bg-[#171717] min-h-screen">
+        {posts.posts.map((p, index) => {
+          const isLiked = LikedPost.includes(p.id);
 
-      {/* Redesigned Social Feed - Full width */}
-      <div className="flex flex-col gap-8">
-        {postsData.length === 0 ? (
-          <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-            <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">
-              No posts/notes found
-            </div>
-          </div>
-        ) : (
-          postsData.map((post, idx) => (
-            <div key={post.id || idx} className="rounded-2xl bg-white dark:bg-neutral-900 shadow-lg border border-neutral-200 dark:border-neutral-700 w-full mx-auto max-w-2xl flex flex-col">
-              {/* Image section (if any) */}
-              {post.image && (
-                <img src={post.image} alt="Post attachment" className="w-full object-cover max-h-96 rounded-t-xl" />
-              )}
-              {/* Post Content */}
-              <div className="p-6 flex flex-col gap-2">
-                <div className="text-xl font-medium text-gray-900 dark:text-white mb-1 break-words">
-                  {post.note}
+
+          return (
+            <>
+              <div className="bg-white dark:bg-[#1f2326] rounded-lg shadow">
+                {/* Post Header */}
+                <div className="p-4 flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <Avatar
+                      className="w-12 h-12 overflow-hidden relative z-50">
+                      {user?.image ? (
+                        <AvatarImage
+                          src={`/storage/img/profile/${user.image}`}
+                          alt={user?.name}
+                        />
+                      ) : (
+                        <AvatarFallback className="w-12 h-12 overflow-hidden">
+                          {getInitials(user?.name)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                          {user.name}
+                        </h3>
+                        <span className="text-gray-500 dark:text-light text-xs">• Following</span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-light leading-relaxed">
+                        {user.status}
+                      </p>
+                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-light mt-1">
+                        <span>{dayjs(p.created_at).fromNow()}</span>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
+                          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM3.5 8a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button className="text-dark_gray dark:text-light p-2 rounded hover:bg-gray-100 dark:hover:bg-dark" onClick={() => alert('actions')}>
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                      </svg>
+                    </button>
+                    {/* <X size={25} className="text-dark_gray dark:text-light" /> */}
+                  </div>
                 </div>
-                {post.link && (
-                  <a href={post.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-700 font-semibold hover:underline mt-1">
-                    <ExternalLink className="w-4 h-4" />
-                    Post Link
-                  </a>
-                )}
-                <div className="flex gap-4 items-center text-sm text-neutral-500 dark:text-neutral-400 pt-1">
-                  <User className="w-4 h-4" />
-                  <span className="mr-3">{post.author || 'Unknown'}</span>
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(post.created_at)}</span>
+
+                {/* Post Content - Arabic Text */}
+                <div className="px-4 pb-3">
+                  <p className="text-sm text-dark_gray text-left dark:text-light" dir="rtl">
+                    {p.description}
+                  </p>
+                  {/* <button className="text-sm text-gray-600 hover:text-blue-600 mt-1">
+                Show translation
+              </button> */}
                 </div>
-              </div>
-              {/* Post Actions Bar */}
-              <div className="flex items-center justify-between px-6 pb-5 pt-1 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 rounded-b-xl">
-                <div className="flex items-center gap-6">
-                  <button className="flex items-center gap-1 text-pink-500 hover:text-pink-600 font-semibold text-sm group transition">
-                    <Heart className="w-5 h-5 group-hover:scale-110 duration-150" fill="none" strokeWidth={2}/>
-                    <span>{typeof post.likes_count === "number" ? post.likes_count : 0}</span>
+
+                {/* Video Container */}
+                <div className="relative bg-black aspect-video">
+                  <img
+                    src={`/storage${p.image}`}
+                    alt="Video thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Engagement Stats */}
+                <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-1">
+                      <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center border-2 border-white dark:border-gray-800">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">{p.likes_count}</span>
+                  </div>
+                  <div className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
+                    <span>{p.comments_count} comments</span>
+                    {/* <span className="mx-1">•</span>
+                <span>427 reposts</span> */}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="px-2 py-2 flex justify-around items-center rounded-lg shadow-sm bg-light dark:bg-dark_gray dark:border-dark">
+                  {/* LikedPost Button */}
+                  <button onClick={() => toggleLikedPost(p.id)} className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta">
+                    {
+                      isLiked ?
+                        <Logo size={20} color={"#fcc108"} />
+                        :
+
+                        <svg
+                          className={`w-5 h-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                          />
+                        </svg>
+                    }
+                    <span className={`${isLiked ? 'text-alpha' : 'text-beta dark:text-light'} font-semibold text-sm`}>
+                      {isLiked ? "Geeked" : "like"}
+                    </span>
                   </button>
-                  <button className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold text-sm group transition">
-                    <MessageCircle className="w-5 h-5 group-hover:scale-110 duration-150" strokeWidth={2}/>
-                    <span>{typeof post.comments_count === "number" ? post.comments_count : 0}</span>
+
+                  {/* Comment Button */}
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <span className="text-sm font-semibold">Comment</span>
                   </button>
+
+                  {/* Repost Button */}
+                  {/* <button className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span className="text-sm font-semibold">Repost</span>
+                  </button> */}
+
+                  {/* Send Button */}
+                  {/* <button className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span className="text-sm font-semibold">Send</span>
+                  </button> */}
                 </div>
-                <span className="text-xs text-neutral-400">ID: {post.id}</span>
+
               </div>
-            </div>
-          ))
-        )}
+            </>
+          )
+        })}
       </div>
-      <TablePagination
-        currentPage={meta.current_page || 1}
-        lastPage={meta.last_page || 1}
-        pageParam="posts_page"
-      />
-    </div>
+    </>
   );
 }

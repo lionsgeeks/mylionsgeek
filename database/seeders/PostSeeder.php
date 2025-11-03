@@ -15,32 +15,25 @@ class PostSeeder extends Seeder
      */
     public function run(): void
     {
-        // $faker = Faker::create();
+        $faker = Faker::create();
 
-        // // Ensure there are users to attach posts to
-        // $users = User::all();
+        $users = User::all();
 
-        // if ($users->isEmpty()) {
-        //     $this->command->warn('⚠️ No users found. Run UserSeeder first or create users manually.');
-        //     return;
-        // }
+        if ($users->isEmpty()) {
+            $this->command->warn('⚠️ No users found. Seed users first.');
+            return;
+        }
 
-        // // Generate 50 fake posts
-        // foreach (range(1, 50) as $i) {
-        //     Post::create([
-        //         'user_id'     => $users->random()->id,
-        //         'description' => $faker->paragraph(3),
-        //         'image'       => 'https://picsum.photos/seed/' . $i . '/600/400',
-        //         'hash_tags'   => '#' . implode(' #', $faker->words(3)),
-        //         'likes'       => $faker->numberBetween(0, 500),
-        //         'comments'    => json_encode([
-        //             ['user' => $faker->name, 'comment' => $faker->sentence()],
-        //             ['user' => $faker->name, 'comment' => $faker->sentence()],
-        //         ]),
-        //         'status'      => $faker->boolean(80), // 80% active
-        //     ]);
-        // }
+        foreach (range(1, 50) as $i) {
+            Post::create([
+                'user_id' => $users->random()->id,
+                'description' => $faker->paragraph(2),
+                'image' => '/posts/post.jpg',
+                'hashTags' => '#' . implode(' #', $faker->words(3)),
+                'status' => $faker->boolean(80),
+            ]);
+        }
 
-        // $this->command->info('✅ 50 fake posts successfully created!');
+        $this->command->info('✅ 50 posts created!');
     }
 }

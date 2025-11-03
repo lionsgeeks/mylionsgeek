@@ -50,11 +50,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Active Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700">
-              <CheckCircle className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <CheckCircle className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.active}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -65,11 +65,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
 
           {/* Returned Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700">
-              <Calendar className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <Calendar className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.returned}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -80,11 +80,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
 
           {/* Overdue/Pending Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700">
-              <AlertCircle className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <AlertCircle className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.overdue}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">

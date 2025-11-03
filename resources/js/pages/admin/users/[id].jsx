@@ -10,9 +10,9 @@ import PostsTab from './partials/components/PostsTab';
 import ReservationsTab from './partials/components/ReservationsTab';
 import TrainingTab from './partials/components/TrainingTab';
 
-export default function AdminUserProfile({ 
-  user, 
-  assignedComputer, 
+export default function AdminUserProfile({
+  user,
+  assignedComputer,
   userProjects,
   collaborativeProjects,
   posts,
@@ -20,7 +20,6 @@ export default function AdminUserProfile({
   trainings,
   absences,
   discipline,
-  ...props 
 }) {
   return (
     <AppLayout>
@@ -32,9 +31,9 @@ export default function AdminUserProfile({
             <ProfileMainContent
               sidebar={<ProfileSidebar user={user} assignedComputer={assignedComputer} />}
               tabs={{
+                posts: <PostsTab posts={posts} user={user} />,
                 attendance: <AttendanceTab absences={absences} discipline={discipline} />,
                 projects: <ProjectsTab userProjects={userProjects} collaborativeProjects={collaborativeProjects} />,
-                posts: <PostsTab posts={posts} />,
                 reservations: <ReservationsTab reservations={reservations} />,
                 training: <TrainingTab trainings={trainings} />
               }}
