@@ -242,10 +242,25 @@ class UsersController extends Controller
     {
         // Get posts for the user
         $posts = Post::where('user_id', $user->id)
-            ->withCount(['likes' , 'comments'])
+            ->withCount(['likes', 'comments'])
             ->latest()
             ->get();
 
+        $authUserId = Auth::id();
+        if ($authUserId) {
+            // Get all post IDs liked by current user among these posts
+            $likedPostIds = Like::where('user_id', $authUserId)
+                ->whereIn('post_id', $posts->pluck('id')->toArray())
+                ->pluck('post_id')->toArray();
+        } else {
+            $likedPostIds = [];
+        }
+
+        // Append liked_by_current_user to each post
+        $posts = $posts->map(function ($p) use ($likedPostIds) {
+            $p->liked_by_current_user = in_array($p->id, $likedPostIds);
+            return $p;
+        });
 
         return [
             'posts' => $posts
@@ -793,5 +808,33 @@ class UsersController extends Controller
             ->values(); // reset keys
 
         return response()->json($monthlyAbsences);
+    }
+
+    public function AddLike($id)
+    {
+        $user = Auth::user();
+        $post = Post::findOrFail($id);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // See if this user already liked this post
+        $like = $post->likes()->where('user_id', $user->id)->first();
+        if ($like) {
+            // Unlike (remove like)
+            $like->delete();
+            $liked = false;
+        } else {
+            // Add like
+            $post->likes()->create(['user_id' => $user->id]);
+            $liked = true;
+        }
+
+        $count = $post->likes()->count();
+
+        return response()->json([
+            'liked' => $liked,
+            'likes_count' => $count,
+        ]);
     }
 }

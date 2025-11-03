@@ -23,6 +23,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
+    Route::post('/users/post/{id}/addLike', [UsersController::class, 'AddLike']);
 });
 
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
