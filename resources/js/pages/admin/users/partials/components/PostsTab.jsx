@@ -3,8 +3,6 @@ import { FileText, User, Calendar, ExternalLink, Heart, MessageCircle, X } from 
 import TablePagination from "@/components/TablePagination";
 import { useInitials } from '@/hooks/use-initials';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime'; // <-- import the plugin
 import { Logo } from "../../../../../../../public/assets/icons/logo";
 
 
@@ -12,7 +10,6 @@ export default function PostsTab({ posts, user }) {
   console.log(posts.posts);
   const [LikedPost, setLikedPost] = useState([])
   const [likesCount, setLikesCount] = useState(0)
-  dayjs.extend(relativeTime);
 
   const getInitials = useInitials();
   const toggleLikedPost = (postId) => {
@@ -23,6 +20,30 @@ export default function PostsTab({ posts, user }) {
     );
     // setLikesCount(p.)
   };
+  function timeAgo(dateString) {
+    const now = new Date();
+    const postDate = new Date(dateString);
+    const seconds = Math.floor((now - postDate) / 1000);
+
+    const intervals = [
+      { label: 'year', seconds: 31536000 },
+      { label: 'month', seconds: 2592000 },
+      { label: 'day', seconds: 86400 },
+      { label: 'hour', seconds: 3600 },
+      { label: 'minute', seconds: 60 },
+      { label: 'second', seconds: 1 },
+    ];
+
+    for (let i = 0; i < intervals.length; i++) {
+      const interval = Math.floor(seconds / intervals[i].seconds);
+      if (interval >= 1) {
+        return interval + ' ' + intervals[i].label + (interval > 1 ? 's' : '') + ' ago';
+      }
+    }
+
+    return 'just now';
+  }
+
 
   return (
     <>
@@ -61,7 +82,7 @@ export default function PostsTab({ posts, user }) {
                         {user.status}
                       </p>
                       <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-light mt-1">
-                        <span>{dayjs(p.created_at).fromNow()}</span>
+                        <span>{timeAgo(p.created_at)}</span>
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 16 16">
                           <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM3.5 8a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0z" />
                         </svg>
