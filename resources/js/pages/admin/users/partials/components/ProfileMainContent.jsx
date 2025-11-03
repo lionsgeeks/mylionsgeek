@@ -9,7 +9,7 @@ const tabs = [
 ];
 
 const ProfileMainContent = ({ sidebar, tabs: tabComponents }) => {
-  const [selectedTab, setSelectedTab] = useState('attendance'); // Set attendance as default
+  const [selectedTab, setSelectedTab] = useState('posts'); // Set attendance as default
   return (
     <div className="bg-neutral-50 dark:bg-neutral-950">
       <div className="max-w-7xl mx-auto px-6">

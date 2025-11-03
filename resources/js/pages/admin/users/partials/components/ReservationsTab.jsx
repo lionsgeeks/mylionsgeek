@@ -3,7 +3,7 @@ import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react
 import TablePagination from "@/components/TablePagination";
 
 export default function ReservationsTab({ reservations = { data: [], meta: {} } }) {
-  
+
   const reservationsData = reservations?.data || [];
   const meta = reservations?.meta || { current_page: 1, last_page: 1, per_page: 10, total: 0 };
 
@@ -12,7 +12,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
     const active = reservationsData.filter(r => !r.canceled && !r.passed && r.approved).length;
     const returned = reservationsData.filter(r => r.passed).length;
     const overdue = reservationsData.filter(r => !r.canceled && !r.passed && !r.approved).length;
-    
+
     return { active, returned, overdue };
   }, [reservationsData]);
 
@@ -50,11 +50,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Active Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700">
-              <CheckCircle className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <CheckCircle className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.active}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -65,11 +65,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
 
           {/* Returned Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700">
-              <Calendar className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <Calendar className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.returned}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -80,11 +80,11 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
 
           {/* Overdue/Pending Reservations */}
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700">
-              <AlertCircle className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-gradient-to-br from-[var(--color-alpha)] to-yellow-400 dark:from-[var(--color-alpha)] dark:to-[var(--color-alpha)]">
+              <AlertCircle className="w-7 h-7 text-dark" />
             </div>
             <div>
-              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-[var(--color-alpha)]">
+              <div className="text-3xl font-bold text-[var(--color-dark)] dark:text-light">
                 {stats.overdue}
               </div>
               <div className="text-sm font-semibold text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">
@@ -107,7 +107,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-700">
                   <th className="p-3 text-left font-semibold">Title</th>
-                  <th className="p-3 text-left font-semibold">Date</th>
+                  <th className="p-3 text-left font-semibold">Day</th>
                   <th className="p-3 text-left font-semibold">Time</th>
                   <th className="p-3 text-left font-semibold">Type</th>
                   <th className="p-3 text-left font-semibold">Status</th>
@@ -117,13 +117,15 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
                 {reservationsData.map((reservation, index) => {
                   const statusBadge = getStatusBadge(reservation);
                   const StatusIcon = statusBadge.icon;
-                  
+
                   return (
                     <tr key={reservation.id || index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
                       <td className="p-3 font-medium">{reservation.title || 'Untitled Reservation'}</td>
-                      <td className="p-3 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-neutral-500" />
-                        <span>{formatDate(reservation.day)}</span>
+                      <td className="p-3 text-left">
+                        <div className="inline-flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-neutral-500" />
+                          <span>{formatDate(reservation.day)}</span>
+                        </div>
                       </td>
                       <td className="p-3 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-neutral-500" />
@@ -145,7 +147,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
                 })}
               </tbody>
             </table>
-            
+
             {/* Pagination */}
             <TablePagination
               currentPage={meta.current_page || 1}

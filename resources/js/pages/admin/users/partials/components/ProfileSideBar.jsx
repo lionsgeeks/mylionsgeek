@@ -31,12 +31,12 @@ const ProfileSidebar = ({ user, assignedComputer }) => {
       </div>
 
       {/* Assigned Computer */}
-      <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
-        <div className="p-6 border-b border-yellow-400 dark:border-yellow-500">
-          <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-100">Assigned Computer</h3>
-        </div>
-        <div className="p-6 space-y-4">
-          {assignedComputer ? (
+      {assignedComputer &&
+        <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden">
+          <div className="p-6 border-b border-yellow-400 dark:border-yellow-500">
+            <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-100">Assigned Computer</h3>
+          </div>
+          <div className="p-6 space-y-4">
             <div className="space-y-2">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-yellow-100 dark:bg-yellow-800/40">
@@ -52,11 +52,9 @@ const ProfileSidebar = ({ user, assignedComputer }) => {
                 {assignedComputer.end && (<p><span className="font-medium">Returned:</span> {assignedComputer.end}</p>)}
               </div>
             </div>
-          ) : (
-            <div className="text-sm text-neutral-600 dark:text-neutral-300">No computer assigned.</div>
-          )}
-        </div>
-      </div>
+
+          </div>
+        </div>}
     </div>
   );
 };
