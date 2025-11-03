@@ -177,30 +177,32 @@ export default function SpacesPage() {
               <div className="col-span-full text-center text-md text-gray-500 py-8">No locations to reserve found for this type.</div>
             )}
             {cards.map((place) => (
-              <button
+              <div
                 key={place.id}
-                onClick={()=>handleCardClick(place)}
-                className="rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition group p-0 bg-white flex flex-col overflow-hidden"
+                onClick={() => handleCardClick(place)}
+                className="relative  cursor-pointer rounded-2xl overflow-hidden border border-gray-200 text-center shadow-sm hover:shadow-md transition group w-full aspect-[4/3] bg-gray-100"
               >
-                <div className="relative w-full aspect-[4/3] bg-gray-100">
-                  {place.image ? (
-                    <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">No Image</div>
-                  )}
+                {place.image ? (
+                  <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 grid place-items-center text-gray-400">No Image</div>
+                )}
+                {/* Top badges */}
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize backdrop-blur bg-white/80 text-gray-900 ${place.type === 'studio' ? '' : ''}`}>
+                    {place.type}
+                  </span>
                 </div>
-                <div className="flex-1 flex flex-col items-center p-4">
-                  <div className="text-base font-semibold mb-1 text-gray-900 text-center line-clamp-1">{place.name}</div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${place.type === 'studio' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                      {place.type}
-                    </span>
-                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${place.state ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
-                      {place.state ? 'Available' : 'Busy'}
-                    </span>
-                  </div>
+                <div className="absolute top-3 right-3">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded text-[11px] font-semibold backdrop-blur ${place.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                    {place.state ? 'Available' : 'Busy'}
+                  </span>
                 </div>
-              </button>
+                {/* Bottom name overlay */}
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
+                  <div className="text-white font-semibold text-base drop-shadow-sm line-clamp-1">{place.name}</div>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -291,7 +293,7 @@ export default function SpacesPage() {
                   height="100%"
                   eventColor="#FFC801"
                   eventTextColor="#000000"
-                  
+
                 />
               </div>
             )}

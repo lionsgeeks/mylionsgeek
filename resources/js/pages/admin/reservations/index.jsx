@@ -396,7 +396,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 </div>
 
                 {/* Charts Toggle Button */}
-                <div className="flex justify-center">
+                {/* <div className="flex justify-center">
                     <Button
                         onClick={() => setShowCharts(!showCharts)}
                         variant="outline"
@@ -414,7 +414,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             </>
                         )}
                     </Button>
-                </div>
+                </div> */}
 
                 {/* Charts Section - Conditionally Rendered */}
                 {showCharts && (

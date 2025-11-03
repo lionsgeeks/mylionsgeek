@@ -4,6 +4,7 @@ import { usePage, router } from '@inertiajs/react';
 import ReservationTable from '@/components/ReservationTable';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -67,6 +68,17 @@ export default function ReservationsPage() {
       )
     ) },
   ];
+  const handleCancel = (reservationId, e) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to cancel this reservation?')) return;
+    router.post(`/reservations/${reservationId}/cancel`, {}, {
+      onSuccess: () => router.reload(),
+      onError: (errors) => {
+        alert(errors.message || 'Failed to cancel reservation. Please try again.');
+      },
+    });
+  };
+
   const breadcrumbs = [
     { title: 'My Reservations', href: '/reservations' }
   ];
@@ -85,6 +97,17 @@ export default function ReservationsPage() {
               columns={columns}
               data={filteredReservations}
               onRowClick={row => router.visit(`/reservations/${row.id}/details`)}
+              renderActions={(row) => (
+                !row.canceled && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={(e) => handleCancel(row.id, e)}
+                  >
+                    Cancel
+                  </Button>
+                )
+              )}
             />
           </div>
         </div>

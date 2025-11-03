@@ -18,20 +18,20 @@ import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
-  const [selectedRange, setSelectedRange] = useState(null);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [selectedPlace, setSelectedPlace] = useState(null);
+    const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
+    const [selectedRange, setSelectedRange] = useState(null);
 
     const handleViewCalendar = (place) => {
-    setSelectedPlace(place);
-    setIsCalendarOpen(true);
-    loadCalendarEvents(place);
-  };
+        setSelectedPlace(place);
+        setIsCalendarOpen(true);
+        loadCalendarEvents(place);
+    };
 
     const loadCalendarEvents = (place) => {
         setLoadingEvents(true);
-        
+
         // Determine place type
         let placeType = 'studio';
         if (place.place_type === 'cowork') {
@@ -39,15 +39,15 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         } else if (place.place_type === 'meeting_room') {
             placeType = 'meeting_room';
         }
-        
+
         fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin',
         })
-        .then((r) => r.json())
-        .then((data) => setEvents(Array.isArray(data) ? data : []))
-        .catch(() => setEvents([]))
-        .finally(() => setLoadingEvents(false));
+            .then((r) => r.json())
+            .then((data) => setEvents(Array.isArray(data) ? data : []))
+            .catch(() => setEvents([]))
+            .finally(() => setLoadingEvents(false));
     };
 
     const handleDateSelect = (selectInfo) => {
@@ -159,9 +159,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
         <AppLayout>
             <Head title="Places" />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
-            <Banner
-            illustration={illustration}
-             />
+                <Banner
+                    illustration={illustration}
+                />
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Places</h1>
@@ -213,7 +213,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             <SelectContent>
                                 <SelectItem value="all">All Types</SelectItem>
                                 {types.map((t) => (
-                                    <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                    <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -259,7 +259,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-sm">{e.name}</td>
-                                        <td className="px-4 py-3 text-sm">{e.place_type.replace('_',' ')}</td>
+                                        <td className="px-4 py-3 text-sm">{e.place_type.replace('_', ' ')}</td>
                                         <td className="px-4 py-3 text-sm">
                                             <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
                                                 {e.state ? 'Available' : 'Unavailable'}
@@ -272,7 +272,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                                     size="sm"
                                                     onClick={() => handleViewCalendar(e)}
                                                     className="h-8 px-3 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
-                                                    >
+                                                >
                                                     View Calendar
                                                 </Button>
                                             </div>
@@ -300,7 +300,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                 {filteredPlaces.length === 0 && (
                                     <tr>
                                         <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                            {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                            {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_', ' ')} found.`}
                                         </td>
                                     </tr>
                                 )}
@@ -310,67 +310,68 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {pagedPlaces.map((e) => (
-                            <div key={`${e.place_type}-${e.id}`} className="rounded-xl border border-sidebar-border/70 bg-card overflow-hidden hover:shadow-lg transition-shadow">
-                                {/* Large Profile Image */}
+                            <div key={`${e.place_type}-${e.id}`} onClick={() => handleViewCalendar(e)} className="rounded-xl border border-sidebar-border/70 bg-card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ">
+                                {/* Image fills the card header with overlays */}
                                 <div className="relative h-48 w-full">
                                     {e.image ? (
-                                        <button onClick={() => setPreviewSrc(e.image)} className="group w-full h-full cursor-pointer">
+                                        <div className="group w-full h-full">
                                             <img src={e.image} alt={e.name} className="w-full h-full object-cover transition group-hover:opacity-90" />
-                                        </button>
+                                        </div>
                                     ) : (
                                         <div className="w-full h-full bg-muted flex items-center justify-center">
                                             <span className="text-muted-foreground text-sm">No Image</span>
                                         </div>
                                     )}
-                                    {/* Status Badge */}
+                                    {/* Top-left: Type badge */}
                                     <div className="absolute top-3 left-3">
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${e.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
-                                            {e.state ? 'Available' : 'Unavailable'}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                {/* Content Section */}
-                                <div className="p-4">
-                                    <div className="mb-3">
-                                        <h3 className="font-semibold text-lg text-foreground mb-1">{e.name}</h3>
-                                        <p className="text-sm text-muted-foreground capitalize">{e.place_type.replace('_',' ')}</p>
-                                    </div>
-                                    
-                                    {/* Actions */}
-                                    <div className="space-y-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleViewCalendar(e)}
-                                            className="w-full h-9 cursor-pointer hover:bg-[#FFC801] dark:hover:text-black dark:hover:bg-[#FFC801]"
+                                        <span
+                                            className={`rounded-full px-3 py-1 text-xs font-semibold capitalize backdrop-blur text-gray-900
+                                            ${e.state ? 'bg-green-200' : 'bg-red-200'}`}
                                         >
-                                            View Calendar
-                                        </Button>
+                                            {e.place_type.replace('_', ' ')}
+                                        </span>
+
+                                    </div>
+                                    {/* Top-right: Availability badge + actions */}
+                                    <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                                        {/* <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold backdrop-blur ${e.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                                            {e.state ? 'Available' : 'Unavailable'}
+                                        </span> */}
                                         <div className="flex items-center gap-2">
                                             <button
-                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer border border-transparent rounded-md hover:border hover:border-[#FFC801]"
+                                                onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
+                                                className="h-8 w-8 grid place-items-center rounded-full bg-white/85 text-gray-900 hover:bg-white shadow-sm"
                                                 title="Edit"
-                                                onClick={() => handleEdit(e)}
                                             >
-                                                <Pencil size={16} className="h-4 w-4 text-alpha mx-auto" />
+                                                <Pencil size={14} />
                                             </button>
                                             <button
-                                                className="flex-1 p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer border border-transparent rounded-md hover:border hover:border-red-600"
+                                                onClick={(ev) => { ev.stopPropagation(); handleDelete(e); }}
+                                                className="h-8 w-8 grid place-items-center rounded-full bg-white/85 text-red-600 hover:bg-white shadow-sm"
                                                 title="Delete"
-                                                onClick={() => handleDelete(e)}
                                             >
-                                                <Trash size={16} className="h-4 w-4 text-red-600 mx-auto" />
+                                                <Trash size={14} />
                                             </button>
                                         </div>
                                     </div>
+                                    {/* Bottom name overlay */}
+                                    <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="text-white font-semibold text-base drop-shadow-sm line-clamp-1">{e.name}</div>
+                                            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[11px] font-medium rounded px-2 py-1 bg-white/85 text-gray-900">
+                                                View calendar
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* No footer; card opens calendar on click */}
                             </div>
                         ))}
                         {filteredPlaces.length === 0 && (
                             <div className="col-span-full flex items-center justify-center py-12">
                                 <p className="text-sm text-muted-foreground">
-                                    {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_',' ')} found.`}
+                                    {filterType === 'all' ? 'No places yet.' : `No ${filterType.replace('_', ' ')} found.`}
                                 </p>
                             </div>
                         )}
@@ -488,9 +489,9 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                                 setSelectedEvent({
                                                     title: ev.title,
                                                     type: props.type || calendarFor?.place_type,
-                                                    date: ev.start ? ev.start.toISOString().slice(0,10) : undefined,
-                                                    start: ev.start ? ev.start.toTimeString().slice(0,5) : undefined,
-                                                    end: ev.end ? ev.end.toTimeString().slice(0,5) : undefined,
+                                                    date: ev.start ? ev.start.toISOString().slice(0, 10) : undefined,
+                                                    start: ev.start ? ev.start.toTimeString().slice(0, 5) : undefined,
+                                                    end: ev.end ? ev.end.toTimeString().slice(0, 5) : undefined,
                                                     approved: !!props.approved,
                                                     canceled: !!props.canceled,
                                                     passed: !!props.passed,
@@ -525,7 +526,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     </div>
                                     <div>
                                         <div className="text-muted-foreground">Type</div>
-                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_',' ') || '—'}</div>
+                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_', ' ') || '—'}</div>
                                     </div>
                                     {selectedEvent.type === 'studio' && (
                                         <div>
@@ -580,7 +581,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectTrigger>
                                         <SelectContent>
                                             {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                                <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -650,7 +651,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         </SelectTrigger>
                                         <SelectContent>
                                             {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
+                                                <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -732,7 +733,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         )}
                                         <div>
                                             <p className="font-medium">{deletingPlace.name}</p>
-                                            <p className="text-sm text-muted-foreground">{deletingPlace.place_type.replace('_',' ')}</p>
+                                            <p className="text-sm text-muted-foreground">{deletingPlace.place_type.replace('_', ' ')}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -763,89 +764,89 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <DialogContent className="p-6 overflow-hidden"
                         style={{
-                        maxWidth: '95vw',
-                        width: '95vw',
-                        height: '85vh',
-                        maxHeight: '85vh'
+                            maxWidth: '95vw',
+                            width: '95vw',
+                            height: '85vh',
+                            maxHeight: '85vh'
                         }}>
-                    <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">
-                        Calendar - {selectedPlace?.name}
-                    </DialogTitle>
-                        <div className="flex justify-end max-md:justify-center">
-                            <button
-                                onClick={() => {
-                                    const now = new Date();
-                                    const day = now.toISOString().split('T')[0];
-                                    const startTime = now.toTimeString().slice(0, 5);
-                                    const endDate = new Date(now.getTime() + 60 * 60 * 1000);
-                                    const endTime = endDate.toTimeString().slice(0, 5);
-                                    
-                                    setSelectedRange({ day, start: startTime, end: endTime });
-                                    setIsReservationModalOpen(true);
-                                }}
-                                className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
-                            >
-                                + Add Reservation
-                            </button>
-                        </div>
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold">
+                                Calendar - {selectedPlace?.name}
+                            </DialogTitle>
+                            <div className="flex justify-end max-md:justify-center">
+                                <button
+                                    onClick={() => {
+                                        const now = new Date();
+                                        const day = now.toISOString().split('T')[0];
+                                        const startTime = now.toTimeString().slice(0, 5);
+                                        const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                                        const endTime = endDate.toTimeString().slice(0, 5);
 
-                    </DialogHeader>
-                    
-                    {loadingEvents ? (
-                    <div className="flex justify-center items-center h-96">
-                        <p>Loading events...</p>
-                    </div>
-                    ) : (
-                    <div className="h-[calc(95vh-100px)]">
-                        <FullCalendar
-                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                        initialView="timeGridWeek"
-                        headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                        }}
-                        events={events}
-                        selectable={true}
-                        selectMirror={true}
-                        select={handleDateSelect}
-                        selectOverlap={false}
-                        editable={false}
-                        height="88%"
-                        eventColor="#FFC801"
-                        eventTextColor="#000000"
-                        />
-                    </div>
-                    )}
-                </DialogContent>
+                                        setSelectedRange({ day, start: startTime, end: endTime });
+                                        setIsReservationModalOpen(true);
+                                    }}
+                                    className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
+                                >
+                                    + Add Reservation
+                                </button>
+                            </div>
+
+                        </DialogHeader>
+
+                        {loadingEvents ? (
+                            <div className="flex justify-center items-center h-96">
+                                <p>Loading events...</p>
+                            </div>
+                        ) : (
+                            <div className="h-[calc(95vh-100px)]">
+                                <FullCalendar
+                                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                                    initialView="timeGridWeek"
+                                    headerToolbar={{
+                                        left: 'prev,next today',
+                                        center: 'title',
+                                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                                    }}
+                                    events={events}
+                                    selectable={true}
+                                    selectMirror={true}
+                                    select={handleDateSelect}
+                                    selectOverlap={false}
+                                    editable={false}
+                                    height="88%"
+                                    eventColor="#FFC801"
+                                    eventTextColor="#000000"
+                                />
+                            </div>
+                        )}
+                    </DialogContent>
                 </Dialog>
 
                 {/* Reservation Modals */}
                 {selectedPlace?.place_type === 'studio' && (
-                <ReservationModal
-                    isOpen={isReservationModalOpen}
-                    onClose={() => setIsReservationModalOpen(false)}
-                    studio={selectedPlace}
-                    selectedRange={selectedRange}
-                    onSuccess={() => {
-                    setIsReservationModalOpen(false);
-                    loadCalendarEvents(selectedPlace);
-                    }}
-                />
+                    <ReservationModal
+                        isOpen={isReservationModalOpen}
+                        onClose={() => setIsReservationModalOpen(false)}
+                        studio={selectedPlace}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsReservationModalOpen(false);
+                            loadCalendarEvents(selectedPlace);
+                        }}
+                    />
                 )}
 
                 {selectedPlace?.place_type === 'cowork' && (
-                <ReservationModalCowork
-                    isOpen={isReservationModalOpen}
-                    onClose={() => setIsReservationModalOpen(false)}
-                    cowork={selectedPlace}
-                    selectedRange={selectedRange}
-                    onSuccess={() => {
-                    setIsReservationModalOpen(false);
-                    loadCalendarEvents(selectedPlace);
-                    }}
-                />
+                    <ReservationModalCowork
+                        isOpen={isReservationModalOpen}
+                        onClose={() => setIsReservationModalOpen(false)}
+                        cowork={selectedPlace}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsReservationModalOpen(false);
+                            loadCalendarEvents(selectedPlace);
+                        }}
+                    />
                 )}
 
                 {selectedPlace?.place_type === 'meeting_room' && (
