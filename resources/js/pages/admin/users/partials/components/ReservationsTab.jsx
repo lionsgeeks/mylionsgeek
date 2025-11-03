@@ -3,7 +3,7 @@ import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react
 import TablePagination from "@/components/TablePagination";
 
 export default function ReservationsTab({ reservations = { data: [], meta: {} } }) {
-  
+
   const reservationsData = reservations?.data || [];
   const meta = reservations?.meta || { current_page: 1, last_page: 1, per_page: 10, total: 0 };
 
@@ -12,7 +12,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
     const active = reservationsData.filter(r => !r.canceled && !r.passed && r.approved).length;
     const returned = reservationsData.filter(r => r.passed).length;
     const overdue = reservationsData.filter(r => !r.canceled && !r.passed && !r.approved).length;
-    
+
     return { active, returned, overdue };
   }, [reservationsData]);
 
@@ -107,7 +107,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
               <thead>
                 <tr className="border-b border-neutral-200 dark:border-neutral-700">
                   <th className="p-3 text-left font-semibold">Title</th>
-                  <th className="p-3 text-left font-semibold">Date</th>
+                  <th className="p-3 text-left font-semibold">Day</th>
                   <th className="p-3 text-left font-semibold">Time</th>
                   <th className="p-3 text-left font-semibold">Type</th>
                   <th className="p-3 text-left font-semibold">Status</th>
@@ -117,13 +117,15 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
                 {reservationsData.map((reservation, index) => {
                   const statusBadge = getStatusBadge(reservation);
                   const StatusIcon = statusBadge.icon;
-                  
+
                   return (
                     <tr key={reservation.id || index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
                       <td className="p-3 font-medium">{reservation.title || 'Untitled Reservation'}</td>
-                      <td className="p-3 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-neutral-500" />
-                        <span>{formatDate(reservation.day)}</span>
+                      <td className="p-3 text-left">
+                        <div className="inline-flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-neutral-500" />
+                          <span>{formatDate(reservation.day)}</span>
+                        </div>
                       </td>
                       <td className="p-3 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-neutral-500" />
@@ -145,7 +147,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
                 })}
               </tbody>
             </table>
-            
+
             {/* Pagination */}
             <TablePagination
               currentPage={meta.current_page || 1}

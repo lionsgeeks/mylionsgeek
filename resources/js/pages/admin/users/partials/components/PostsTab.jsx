@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, User, Calendar } from "lucide-react";
+import { FileText, User, Calendar, ExternalLink, Heart, MessageCircle } from "lucide-react";
 import TablePagination from "@/components/TablePagination";
 
 export default function PostsTab({ posts = { data: [], meta: {} } }) {
@@ -43,58 +43,62 @@ export default function PostsTab({ posts = { data: [], meta: {} } }) {
         </div>
       </div>
 
-      {/* All Posts Table */}
-      <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+      {/* Redesigned Social Feed - Full width */}
+      <div className="flex flex-col gap-8">
         {postsData.length === 0 ? (
-          <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">
-            No posts/notes found
+          <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+            <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">
+              No posts/notes found
+            </div>
           </div>
         ) : (
-          <>
-            <table className="min-w-full text-xs md:text-sm">
-              <thead>
-                <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                  <th className="p-3 text-left font-semibold">Content</th>
-                  <th className="p-3 text-left font-semibold">Author</th>
-                  <th className="p-3 text-left font-semibold">Date</th>
-                  <th className="p-3 text-left font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {postsData.map((post, index) => (
-                  <tr key={post.id || index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
-                    <td className="p-3 font-medium max-w-md">
-                      <div className="truncate" title={post.note}>
-                        {truncateText(post.note, 80)}
-                      </div>
-                    </td>
-                    <td className="p-3 flex items-center gap-2">
-                      <User className="w-4 h-4 text-neutral-500" />
-                      <span>{post.author || 'Unknown'}</span>
-                    </td>
-                    <td className="p-3 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-neutral-500" />
-                      <span>{formatDate(post.created_at)}</span>
-                    </td>
-                    <td className="p-3 flex gap-2">
-                      <button className="px-3 py-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-semibold hover:bg-blue-200 dark:hover:bg-blue-700 transition">
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {/* Pagination */}
-            <TablePagination
-              currentPage={meta.current_page || 1}
-              lastPage={meta.last_page || 1}
-              pageParam="posts_page"
-            />
-          </>
+          postsData.map((post, idx) => (
+            <div key={post.id || idx} className="rounded-2xl bg-white dark:bg-neutral-900 shadow-lg border border-neutral-200 dark:border-neutral-700 w-full mx-auto max-w-2xl flex flex-col">
+              {/* Image section (if any) */}
+              {post.image && (
+                <img src={post.image} alt="Post attachment" className="w-full object-cover max-h-96 rounded-t-xl" />
+              )}
+              {/* Post Content */}
+              <div className="p-6 flex flex-col gap-2">
+                <div className="text-xl font-medium text-gray-900 dark:text-white mb-1 break-words">
+                  {post.note}
+                </div>
+                {post.link && (
+                  <a href={post.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-700 font-semibold hover:underline mt-1">
+                    <ExternalLink className="w-4 h-4" />
+                    Post Link
+                  </a>
+                )}
+                <div className="flex gap-4 items-center text-sm text-neutral-500 dark:text-neutral-400 pt-1">
+                  <User className="w-4 h-4" />
+                  <span className="mr-3">{post.author || 'Unknown'}</span>
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(post.created_at)}</span>
+                </div>
+              </div>
+              {/* Post Actions Bar */}
+              <div className="flex items-center justify-between px-6 pb-5 pt-1 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 rounded-b-xl">
+                <div className="flex items-center gap-6">
+                  <button className="flex items-center gap-1 text-pink-500 hover:text-pink-600 font-semibold text-sm group transition">
+                    <Heart className="w-5 h-5 group-hover:scale-110 duration-150" fill="none" strokeWidth={2}/>
+                    <span>{typeof post.likes_count === "number" ? post.likes_count : 0}</span>
+                  </button>
+                  <button className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold text-sm group transition">
+                    <MessageCircle className="w-5 h-5 group-hover:scale-110 duration-150" strokeWidth={2}/>
+                    <span>{typeof post.comments_count === "number" ? post.comments_count : 0}</span>
+                  </button>
+                </div>
+                <span className="text-xs text-neutral-400">ID: {post.id}</span>
+              </div>
+            </div>
+          ))
         )}
       </div>
+      <TablePagination
+        currentPage={meta.current_page || 1}
+        lastPage={meta.last_page || 1}
+        pageParam="posts_page"
+      />
     </div>
   );
 }

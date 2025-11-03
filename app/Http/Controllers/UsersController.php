@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
 use App\Models\AttendanceListe;
+use App\Models\Computer;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Models\Medical;
+use App\Models\Note;
+use App\Models\Project;
+use App\Models\Reservation;
+use App\Models\UserProject;
 use Symfony\Component\HttpFoundation\Response;
 
 class UsersController extends Controller
@@ -120,142 +125,208 @@ class UsersController extends Controller
     //! edit sunction
     public function show(Request $request, User $user)
     {
+        // Load relationships
+        $user->load(['formation']);
+
         if (Schema::hasTable('accesses')) {
             $user->load(['access']);
         }
-        // Load optional relations
-        $user->load(['formation']);
 
-        $allFormation = Formation::orderBy('created_at', 'desc')->get();
+        // Online status check (last 5 minutes)
+        $isOnline = $user->last_online
+            ? Carbon::parse($user->last_online)->gt(now()->subMinutes(5))
+            : false;
 
-        // Online status: consider online if last_online within last 5 minutes
-        $now = now();
-        $lastOnline = $user->last_online ? Carbon::parse($user->last_online) : null;
-        $isOnline = $lastOnline ? $lastOnline->gt($now->clone()->subMinutes(5)) : false;
+        // Get assigned computer
+        $assignedComputer = Schema::hasTable('computers')
+            ? Computer::where('user_id', $user->id)->latest('start')->first()
+            : null;
 
-        // Assigned computer (latest with user_id = user)
-        $assignedComputer = null;
-        if (Schema::hasTable('computers')) {
-            $assignedComputer = \App\Models\Computer::where('user_id', $user->id)
-                ->orderByDesc('start')
-                ->first();
-        }
+        // Paginated data
+        $userProjects = $this->getUserProjects($user, $request);
+        $collaborativeProjects = $this->getCollaborativeProjects($user, $request);
+        $reservations = $this->getReservations($user, $request);
+        $posts = $this->getPosts($user, $request);
+        $absences = $this->getAbsences($user, $request);
 
-        // Load user projects (portfolio projects) with pagination
-        $userProjectsQuery = \App\Models\UserProject::where('user_id', $user->id)
-            ->orderByDesc('created_at');
-        $userProjectsPage = $request->get('userProjects_page', 1);
-        $userProjects = $userProjectsQuery->paginate(10, ['*'], 'userProjects_page', $userProjectsPage)->onEachSide(1);
+        // Calculate discipline score
+        $discipline = $this->calculateDisciplineScore($user);
 
-        // Load collaborative projects (via project_users pivot) with pagination
-        $collaborativeProjectsQuery = \App\Models\Project::whereHas('users', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->orWhere('created_by', $user->id)
-            ->orderByDesc('created_at');
-        $collaborativeProjectsPage = $request->get('collaborativeProjects_page', 1);
-        $collaborativeProjects = $collaborativeProjectsQuery->paginate(10, ['*'], 'collaborativeProjects_page', $collaborativeProjectsPage)->onEachSide(1);
+        // Get all formations
+        $allFormations = Formation::latest()->get();
 
-        // Load reservations with pagination
-        $reservationsQuery = \App\Models\Reservation::where('user_id', $user->id)
-            ->orderByDesc('created_at');
-        $reservationsPage = $request->get('reservations_page', 1);
-        $reservations = $reservationsQuery->paginate(10, ['*'], 'reservations_page', $reservationsPage)->onEachSide(1);
+        return Inertia::render('admin/users/[id]', [
+            'user' => $this->formatUserPayload($user, $isOnline),
+            'trainings' => $allFormations,
+            'assignedComputer' => $this->formatComputer($assignedComputer),
+            'userProjects' => $userProjects,
+            'collaborativeProjects' => $collaborativeProjects,
+            'posts' => $posts,
+            'reservations' => $reservations,
+            'discipline' => $discipline,
+            'absences' => $absences['paginated'],
+            'recentAbsences' => $absences['recent'],
+        ]);
+    }
 
-        // Load formations/trainings (if user has completed any)
-        // For now, we'll use Formation model - may need to adjust based on actual training completion tracking
-        $trainingsQuery = \App\Models\Formation::query();
-        // If there's a relationship table for user formations, add it here
-        $trainingsPage = $request->get('trainings_page', 1);
-        $trainings = $trainingsQuery->paginate(10, ['*'], 'trainings_page', $trainingsPage)->onEachSide(1);
+    private function getUserProjects(User $user, Request $request)
+    {
+        $projects = UserProject::where('user_id', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'userProjects_page', $request->get('userProjects_page', 1))
+            ->onEachSide(1);
 
-        // Notes can serve as "posts" - user-authored content with pagination
-        $postsQuery = \App\Models\Note::where('user_id', $user->id)
+        return [
+            'data' => $projects->map(fn($p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'description' => $p->description,
+                'image' => $p->image,
+                'url' => $p->url,
+                'created_at' => (string) $p->created_at,
+            ]),
+            'meta' => $this->getPaginationMeta($projects),
+        ];
+    }
+
+    private function getCollaborativeProjects(User $user, Request $request)
+    {
+        $projects = Project::whereHas('users', fn($q) => $q->where('user_id', $user->id))
+            ->orWhere('created_by', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'collaborativeProjects_page', $request->get('collaborativeProjects_page', 1))
+            ->onEachSide(1);
+
+        return [
+            'data' => $projects->map(fn($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'description' => $p->description,
+                'photo' => $p->photo,
+                'link' => $p->link,
+                'status' => $p->status,
+                'created_at' => (string) $p->created_at,
+            ]),
+            'meta' => $this->getPaginationMeta($projects),
+        ];
+    }
+
+    private function getReservations(User $user, Request $request)
+    {
+        $reservations = Reservation::where('user_id', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'reservations_page', $request->get('reservations_page', 1))
+            ->onEachSide(1);
+
+        return [
+            'data' => $reservations->map(fn($r) => [
+                'id' => $r->id,
+                'title' => $r->title,
+                'description' => $r->description,
+                'day' => $r->day,
+                'start' => $r->start,
+                'end' => $r->end,
+                'type' => $r->type,
+                'approved' => $r->approved,
+                'canceled' => $r->canceled,
+                'passed' => $r->passed,
+                'created_at' => (string) $r->created_at,
+            ]),
+            'meta' => $this->getPaginationMeta($reservations),
+        ];
+    }
+
+    private function getPosts(User $user, Request $request)
+    {
+        $posts = Note::where('user_id', $user->id)
             ->whereNotNull('note')
-            ->orderByDesc('created_at');
-        $postsPage = $request->get('posts_page', 1);
-        $posts = $postsQuery->paginate(10, ['*'], 'posts_page', $postsPage)->onEachSide(1);
-        
-        $certificates = [];
-        $cv = null;
-        // Notes authored for this user (attendance-related or general)
-        $notes = \App\Models\Note::where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->get(['note as text', 'author', 'created_at'])
-            ->map(function ($row) {
-                return [
-                    'text' => (string) $row->text,
-                    'author' => (string) ($row->author ?? 'Unknown'),
-                    'created_at' => (string) $row->created_at,
-                ];
-            });
+            ->latest()
+            ->paginate(10, ['*'], 'posts_page', $request->get('posts_page', 1))
+            ->onEachSide(1);
 
-        // Attendance & Absences data (only absent days)
-        // Use case-insensitive comparison to handle 'Absent', 'absent', 'ABSENT', etc.
-        $absencesQuery = \App\Models\AttendanceListe::query()
-            ->select(['attendance_lists.*'])
-            ->where('user_id', $user->id)
-            // Filter for any period marked as absent (case-insensitive)
+        return [
+            'data' => $posts->map(fn($p) => [
+                'id' => $p->id,
+                'note' => $p->note,
+                'author' => $p->author ?? 'Unknown',
+                'created_at' => (string) $p->created_at,
+            ]),
+            'meta' => $this->getPaginationMeta($posts),
+        ];
+    }
+
+    private function getAbsences(User $user, Request $request)
+    {
+        $absencesQuery = AttendanceListe::where('user_id', $user->id)
             ->where(function ($q) {
                 $q->whereRaw('LOWER(TRIM(morning)) = ?', ['absent'])
                     ->orWhereRaw('LOWER(TRIM(lunch)) = ?', ['absent'])
                     ->orWhereRaw('LOWER(TRIM(evening)) = ?', ['absent']);
             })
-            ->orderByDesc('attendance_day')
-            ->orderByDesc('updated_at');
+            ->latest('attendance_day')
+            ->latest('updated_at');
 
-        $absencesPage = $request->get('absences_page', 1);
-        $absences = $absencesQuery->paginate(10, ['*'], 'absences_page', $absencesPage)->onEachSide(1);
-        $recentAbsences = (clone $absencesQuery)->limit(5)->get();
-        
-        // Debug: Log total absences found (remove in production if needed)
-        \Log::info("User {$user->id} absences query", [
-            'total' => $absences->total(),
-            'count' => $absences->count(),
-            'sample_data' => $absences->getCollection()->take(2)->map(function ($r) {
-                return [
-                    'attendance_day' => $r->attendance_day,
-                    'morning' => $r->morning,
-                    'lunch' => $r->lunch,
-                    'evening' => $r->evening,
-                ];
-            })->toArray()
-        ]);
+        $paginated = $absencesQuery->paginate(10, ['*'], 'absences_page', $request->get('absences_page', 1))
+            ->onEachSide(1);
 
-        // Fetch notes mapped by attendance_id for quick attach
-        $attendanceIds = $recentAbsences->pluck('attendance_id')
-            ->merge($absences->getCollection()->pluck('attendance_id'))
-            ->unique()
-            ->values();
-        $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
+        $recent = (clone $absencesQuery)->limit(5)->get();
+
+        // Get notes for absences
+        $attendanceIds = $recent->pluck('attendance_id')
+            ->merge($paginated->pluck('attendance_id'))
+            ->unique();
+
+        $notesByAttendance = Note::whereIn('attendance_id', $attendanceIds)
             ->get()
             ->groupBy('attendance_id');
 
-        // Calculate discipline score based on actual attendance
-        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
-        $totalSlots = max(1, $allForDiscipline->count() * 3);
-        $score = 0;
-        $weight = function ($status) {
-            $statusLower = strtolower((string) $status);
-            switch ($statusLower) {
-                case 'present':
-                    return 1.0;
-                case 'excused':
-                    return 0.9;
-                case 'late':
-                    return 0.7;
-                case 'absent':
-                    return 0.0;
-                default:
-                    return 0.7;
-            }
-        };
-        foreach ($allForDiscipline as $row) {
-            $score += $weight($row->morning) + $weight($row->lunch) + $weight($row->evening);
-        }
-        $discipline = round(($score / $totalSlots) * 100);
+        $formatter = fn($row) => [
+            'attendance_id' => $row->attendance_id,
+            'date' => $row->attendance_day,
+            'morning' => strtolower((string) $row->morning),
+            'lunch' => strtolower((string) $row->lunch),
+            'evening' => strtolower((string) $row->evening),
+            'notes' => $notesByAttendance->get($row->attendance_id, collect())->pluck('note')->values(),
+        ];
 
-        // Slim user payload + computed props
-        $userPayload = [
+        return [
+            'paginated' => [
+                'data' => $paginated->map($formatter),
+                'meta' => $this->getPaginationMeta($paginated),
+            ],
+            'recent' => $recent->map($formatter),
+        ];
+    }
+
+    private function calculateDisciplineScore(User $user)
+    {
+        $attendance = AttendanceListe::where('user_id', $user->id)
+            ->get(['morning', 'lunch', 'evening']);
+
+        if ($attendance->isEmpty()) {
+            return 100;
+        }
+
+        $weightMap = [
+            'present' => 1.0,
+            'excused' => 0.9,
+            'late' => 0.7,
+            'absent' => 0.0,
+        ];
+
+        $score = $attendance->sum(function ($row) use ($weightMap) {
+            return ($weightMap[strtolower($row->morning)] ?? 0.7)
+                + ($weightMap[strtolower($row->lunch)] ?? 0.7)
+                + ($weightMap[strtolower($row->evening)] ?? 0.7);
+        });
+
+        $totalSlots = $attendance->count() * 3;
+        return round(($score / $totalSlots) * 100);
+    }
+
+    private function formatUserPayload(User $user, bool $isOnline)
+    {
+        return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -268,156 +339,40 @@ class UsersController extends Controller
             'socials' => $user->socials,
             'last_online' => $user->last_online,
             'is_online' => $isOnline,
-            'formation_name' => optional($user->formation)->name,
+            'formation_name' => $user->formation?->name,
         ];
+    }
 
-        return Inertia::render('admin/users/[id]', [
-            'user' => $userPayload,
-            'trainings' => $allFormation,
-            'assignedComputer' => $assignedComputer ? [
-                'reference' => $assignedComputer->reference,
-                'mark' => $assignedComputer->mark,
-                'cpu' => $assignedComputer->cpu,
-                'gpu' => $assignedComputer->gpu,
-                'start' => (string) $assignedComputer->start,
-                'end' => (string) $assignedComputer->end,
-            ] : null,
-            'notes' => $notes,
-            // Projects tab data (portfolio projects)
-            'userProjects' => [
-                'data' => $userProjects->getCollection()->map(function ($project) {
-                    return [
-                        'id' => $project->id,
-                        'title' => $project->title,
-                        'description' => $project->description,
-                        'image' => $project->image,
-                        'url' => $project->url,
-                        'created_at' => (string) $project->created_at,
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $userProjects->currentPage(),
-                    'last_page' => $userProjects->lastPage(),
-                    'per_page' => $userProjects->perPage(),
-                    'total' => $userProjects->total(),
-                ],
-            ],
-            // Collaborative projects data
-            'collaborativeProjects' => [
-                'data' => $collaborativeProjects->getCollection()->map(function ($project) {
-                    return [
-                        'id' => $project->id,
-                        'name' => $project->name,
-                        'description' => $project->description,
-                        'photo' => $project->photo,
-                        'status' => $project->status,
-                        'start_date' => $project->start_date ? (string) $project->start_date : null,
-                        'end_date' => $project->end_date ? (string) $project->end_date : null,
-                        'created_at' => (string) $project->created_at,
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $collaborativeProjects->currentPage(),
-                    'last_page' => $collaborativeProjects->lastPage(),
-                    'per_page' => $collaborativeProjects->perPage(),
-                    'total' => $collaborativeProjects->total(),
-                ],
-            ],
-            // Posts tab data (using notes)
-            'posts' => [
-                'data' => $posts->getCollection()->map(function ($post) {
-                    return [
-                        'id' => $post->id,
-                        'note' => $post->note,
-                        'author' => $post->author ?? 'Unknown',
-                        'created_at' => (string) $post->created_at,
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $posts->currentPage(),
-                    'last_page' => $posts->lastPage(),
-                    'per_page' => $posts->perPage(),
-                    'total' => $posts->total(),
-                ],
-            ],
-            // Reservations tab data
-            'reservations' => [
-                'data' => $reservations->getCollection()->map(function ($reservation) {
-                    return [
-                        'id' => $reservation->id,
-                        'title' => $reservation->title,
-                        'description' => $reservation->description,
-                        'day' => $reservation->day,
-                        'start' => $reservation->start,
-                        'end' => $reservation->end,
-                        'type' => $reservation->type,
-                        'approved' => $reservation->approved,
-                        'canceled' => $reservation->canceled,
-                        'passed' => $reservation->passed,
-                        'created_at' => (string) $reservation->created_at,
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $reservations->currentPage(),
-                    'last_page' => $reservations->lastPage(),
-                    'per_page' => $reservations->perPage(),
-                    'total' => $reservations->total(),
-                ],
-            ],
-            // Training tab data
-            'trainings' => [
-                'data' => $trainings->getCollection()->map(function ($training) {
-                    return [
-                        'id' => $training->id,
-                        'name' => $training->name,
-                        'description' => $training->description ?? null,
-                        'created_at' => (string) $training->created_at,
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $trainings->currentPage(),
-                    'last_page' => $trainings->lastPage(),
-                    'per_page' => $trainings->perPage(),
-                    'total' => $trainings->total(),
-                ],
-            ],
-            // Attendance payloads (absences only - already filtered in query)
-            'discipline' => $discipline,
-            'absences' => [
-                'data' => $absences->getCollection()->map(function ($row) use ($notesByAttendance) {
-                    return [
-                        'attendance_id' => $row->attendance_id,
-                        'date' => $row->attendance_day,
-                        'morning' => strtolower((string) $row->morning),
-                        'lunch' => strtolower((string) $row->lunch),
-                        'evening' => strtolower((string) $row->evening),
-                        'notes' => ($notesByAttendance[$row->attendance_id] ?? collect())->pluck('note')->values(),
-                    ];
-                }),
-                'meta' => [
-                    'current_page' => $absences->currentPage(),
-                    'last_page' => $absences->lastPage(),
-                    'per_page' => $absences->perPage(),
-                    'total' => $absences->total(),
-                ],
-            ],
-            'recentAbsences' => $recentAbsences->map(function ($row) use ($notesByAttendance) {
-                return [
-                    'attendance_id' => $row->attendance_id,
-                    'date' => $row->attendance_day,
-                    'morning' => strtolower((string) $row->morning),
-                    'lunch' => strtolower((string) $row->lunch),
-                    'evening' => strtolower((string) $row->evening),
-                    'notes' => ($notesByAttendance[$row->attendance_id] ?? collect())->pluck('note')->values(),
-                ];
-            }),
-        ]);
+    private function formatComputer($computer)
+    {
+        if (!$computer) {
+            return null;
+        }
+
+        return [
+            'reference' => $computer->reference,
+            'mark' => $computer->mark,
+            'cpu' => $computer->cpu,
+            'gpu' => $computer->gpu,
+            'start' => (string) $computer->start,
+            'end' => (string) $computer->end,
+        ];
+    }
+
+    private function getPaginationMeta($paginator)
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
     }
 
     // Return user notes as JSON for modal consumption
     public function notes(User $user)
     {
-        $notes = \App\Models\Note::where('user_id', $user->id)
+        $notes = Note::where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(50)
             ->get(['note', 'author', 'created_at'])
@@ -440,7 +395,7 @@ class UsersController extends Controller
             'note' => 'required|string|max:1000',
         ]);
 
-        \App\Models\Note::create([
+        Note::create([
             'user_id' => (int) $user->id,
             'attendance_id' => null,
             'note' => $validated['note'],
@@ -750,7 +705,7 @@ class UsersController extends Controller
 
         $all = $absencesQuery->get(['attendance_id', 'attendance_day', 'morning', 'lunch', 'evening']);
         $attendanceIds = $all->pluck('attendance_id')->unique()->values();
-        $notesByAttendance = \App\Models\Note::whereIn('attendance_id', $attendanceIds)
+        $notesByAttendance = Note::whereIn('attendance_id', $attendanceIds)
             ->get(['attendance_id', 'note'])
             ->groupBy('attendance_id');
 
@@ -786,7 +741,7 @@ class UsersController extends Controller
             ->sortBy('month')
             ->values();
 
-        $allForDiscipline = \App\Models\AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
+        $allForDiscipline = AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
         $totalSlots = max(1, $allForDiscipline->count() * 3);
         $score = 0;
         $weight = function ($status) {

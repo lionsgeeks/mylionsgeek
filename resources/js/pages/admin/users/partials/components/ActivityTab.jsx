@@ -69,7 +69,7 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
       </div>
 
       {/* Absence Days Table */}
-      <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+      <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-5">
         {absencesData.length === 0 ? (
           <div className="p-8 text-center text-neutral-500 dark:text-neutral-400">
             No absences recorded
