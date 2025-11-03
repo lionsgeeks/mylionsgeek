@@ -60,11 +60,11 @@ export default function ReservationsPage() {
     ) },
     { key: "status", label: "Status", render: r => (
       r.canceled ? (
-        <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200">Canceled</Badge>
+        <Badge variant="outline" className="bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/20">Canceled</Badge>
       ) : r.approved ? (
-        <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">Approved</Badge>
+        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">Approved</Badge>
       ) : (
-        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
+        <Badge variant="outline" className="bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/20">Pending</Badge>
       )
     ) },
   ];
@@ -90,7 +90,7 @@ export default function ReservationsPage() {
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
         </div>
         {/* Controls */}
-        <div className="bg-white shadow rounded-xl border border-gray-100">
+        <div className="bg-card rounded-xl border border-sidebar-border/70 shadow-sm">
       
           <div className="p-4 sm:p-6">
             <ReservationTable

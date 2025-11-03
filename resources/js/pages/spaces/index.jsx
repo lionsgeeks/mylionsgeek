@@ -122,15 +122,16 @@ export default function SpacesPage() {
     const startTime = start.toTimeString().slice(0, 5);
     const endTime = end.toTimeString().slice(0, 5);
     setSelectedRange({ day, start: startTime, end: endTime });
-    // In inline views, don't auto-open; only auto-open when using the modal calendar (type === 'all')
-    if (type === 'all') {
-      if (calendarFor?.place_type === 'studio') {
-        const sId = selectedStudioId ?? calendarFor.id;
-        const studio = studios.find(s => s.id === sId);
-        setModalStudio({ id: sId, name: studio?.name || calendarFor.name, cardType: 'studio' });
-      } else if (calendarFor?.place_type === 'cowork') {
-        setModalCowork(true);
-      }
+    // Open reservation modal after selecting a time in all modes
+    if (type === 'studio' || calendarFor?.place_type === 'studio') {
+      const sId = selectedStudioId ?? calendarFor?.id;
+      const studio = studios.find(s => s.id === sId);
+      if (sId) setModalStudio({ id: sId, name: studio?.name || calendarFor?.name || 'Studio', cardType: 'studio' });
+      return;
+    }
+    if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
+      setModalCowork(true);
+      return;
     }
   };
 
@@ -163,7 +164,9 @@ export default function SpacesPage() {
           {TABS.map(tab => (
             <button
               key={tab.key}
-              className={`px-5 py-2 rounded-lg font-semibold border transition-all ${type===tab.key ? 'bg-primary text-white border-primary' : 'bg-white border-gray-300 hover:bg-gray-100 text-gray-700'}`}
+              className={`px-5 py-2 rounded-lg font-semibold border transition-all ${type===tab.key 
+                ? 'bg-white text-black border-white dark:bg-white dark:text-black dark:border-white' 
+                : 'bg-white dark:bg-transparent border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-200'}`}
               onClick={() => setType(tab.key)}
             >
               {tab.label}
@@ -206,7 +209,7 @@ export default function SpacesPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div className="bg-white dark:bg-card rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
             <div className="flex items-center justify-between mb-3 gap-3">
               <div className="text-lg font-semibold">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
               {type === 'studio' ? (

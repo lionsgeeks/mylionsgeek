@@ -359,7 +359,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="text-white font-semibold text-base drop-shadow-sm line-clamp-1">{e.name}</div>
                                             <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-[11px] font-medium rounded px-2 py-1 bg-white/85 text-gray-900">
-                                                View calendar
+                                                Open calendar
                                             </span>
                                         </div>
                                     </div>
