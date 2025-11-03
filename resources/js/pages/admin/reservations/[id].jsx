@@ -27,6 +27,7 @@ import {
     UserCheck,
     Settings
 } from 'lucide-react';
+import Rolegard from '../../../components/rolegard';
 
 export default function AdminReservationDetails({ reservation }) {
     if (!reservation) {
@@ -130,15 +131,21 @@ export default function AdminReservationDetails({ reservation }) {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
-                        <Link href="/admin/reservations">
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to reservations
-                            </Button>
-                        </Link>
+
+                        <Rolegard authorized={["admin", "super_admin"]}>
+                            <Link href="/admin/reservations">
+                                <Button variant="outline" size="sm">
+                                    <ArrowLeft className="w-4 h-4 mr-2" />
+                                    Back to reservations
+                                </Button>
+                            </Link>
+                        </Rolegard>
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Reservation Details</h1>
-                            <p className="text-gray-600">Reservation #{reservation.id}</p>
+                            <Rolegard authorized={["admin", "super_admin"]}>
+
+                                <p className="text-gray-600">Reservation #{reservation.id}</p>
+                            </Rolegard>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -146,26 +153,28 @@ export default function AdminReservationDetails({ reservation }) {
                         <span className="text-sm text-gray-500">
                             Created {new Date(reservation.created_at).toLocaleDateString()}
                         </span>
-                        {isPending && (
-                            <div className="ml-auto flex items-center gap-2">
-                                <Button
-                                    onClick={handleApprove}
-                                    className="bg-green-600 text-white hover:bg-green-700"
-                                    size="sm"
-                                >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Approve
-                                </Button>
-                                <Button
-                                    onClick={handleCancel}
-                                    variant="destructive"
-                                    size="sm"
-                                >
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                    Cancel
-                                </Button>
-                            </div>
-                        )}
+                        <Rolegard authorized={["admin", "super_admin"]}>
+                            {isPending && (
+                                <div className="ml-auto flex items-center gap-2">
+                                    <Button
+                                        onClick={handleApprove}
+                                        className="bg-green-600 text-white hover:bg-green-700"
+                                        size="sm"
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        Approve
+                                    </Button>
+                                    <Button
+                                        onClick={handleCancel}
+                                        variant="destructive"
+                                        size="sm"
+                                    >
+                                        <XCircle className="w-4 h-4 mr-1" />
+                                        Cancel
+                                    </Button>
+                                </div>
+                            )}
+                        </Rolegard>
                     </div>
                 </div>
 
@@ -249,13 +258,13 @@ export default function AdminReservationDetails({ reservation }) {
                                             <div key={equipment.id || index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                                                 <div className="flex items-start gap-3">
                                                     <div className="flex-shrink-0">
-                                                    {equipment.image ? (
-                                                        <img
-                                                            src={normalizeImageUrl(equipment.image)}
-                                                            alt={equipment.name}
-                                                            className="w-16 h-16 object-cover rounded-lg border"
-                                                        />
-                                                    ) : (
+                                                        {equipment.image ? (
+                                                            <img
+                                                                src={normalizeImageUrl(equipment.image)}
+                                                                alt={equipment.name}
+                                                                className="w-16 h-16 object-cover rounded-lg border"
+                                                            />
+                                                        ) : (
                                                             <div className="w-16 h-16 bg-gray-100 rounded-lg border flex items-center justify-center">
                                                                 <Package className="w-6 h-6 text-gray-400" />
                                                             </div>
@@ -370,7 +379,7 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        {reservation.notes && (
+                        {/* {reservation.notes && (
                             <Card className="shadow-sm">
                                 <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50">
                                     <CardTitle className="flex items-center gap-2">
@@ -384,7 +393,7 @@ export default function AdminReservationDetails({ reservation }) {
                                     </div>
                                 </CardContent>
                             </Card>
-                        )}
+                        )} */}
                     </div>
 
                     <div className="space-y-6">
@@ -469,7 +478,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardContent>
                             </Card>
                         )}
-
+                         <Rolegard authorized = {["admin", "super_admin"]}>
                         <Card className="shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-lg">Quick Actions</CardTitle>
@@ -497,6 +506,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </div>
                             </CardContent>
                         </Card>
+                        </Rolegard>
                     </div>
                 </div>
             </div>

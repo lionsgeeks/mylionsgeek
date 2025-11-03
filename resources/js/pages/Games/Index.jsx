@@ -35,22 +35,30 @@ const games = [
         color: 'from-orange-500 to-red-600',
         link: '/games/tetris'
     },
-    {
-        id: 'connect-four',
-        name: 'Connect Four',
-        description: 'Drop discs and connect four in a row',
-        icon: '🟡',
-        color: 'from-yellow-400 to-amber-600',
-        link: '/games/connect-four'
-    },
-    {
-        id: 'rock-paper-scissors',
-        name: 'Rock Paper Scissors',
-        description: 'Classic quick duel: best of rounds',
-        icon: '✊✋✌️',
-        color: 'from-slate-500 to-gray-700',
-        link: '/games/rock-paper-scissors'
-    }
+    // {
+    //     id: 'connect-four',
+    //     name: 'Connect Four',
+    //     description: 'Drop discs and connect four in a row',
+    //     icon: '🟡',
+    //     color: 'from-yellow-400 to-amber-600',
+    //     link: '/games/connect-four'
+    // },
+    // {
+    //     id: 'rock-paper-scissors',
+    //     name: 'Rock Paper Scissors',
+    //     description: 'Classic quick duel: best of rounds',
+    //     icon: '✊✋✌️',
+    //     color: 'from-slate-500 to-gray-700',
+    //     link: '/games/rock-paper-scissors'
+    // },
+    // {
+    //     id: 'pacman',
+    //     name: 'Pac-Man',
+    //     description: 'Chomp the dots, outsmart the ghost, classic arcade style!',
+    //     icon: '🟡',
+    //     color: 'from-yellow-300 to-yellow-500',
+    //     link: '/games/pacman'
+    // },
 ];
 
 export default function GamesIndex() {
@@ -77,14 +85,12 @@ export default function GamesIndex() {
                                 className="group block transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
                             >
                                 <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 group-hover:border-gray-300">
-                                    {/* Game Icon */}
                                     <div className={`h-32 bg-gradient-to-br ${game.color} flex items-center justify-center`}>
                                         <span className="text-6xl group-hover:scale-110 transition-transform duration-300">
                                             {game.icon}
                                         </span>
                                     </div>
                                     
-                                    {/* Game Info */}
                                     <div className="p-6">
                                         <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gray-700">
                                             {game.name}
@@ -92,8 +98,6 @@ export default function GamesIndex() {
                                         <p className="text-gray-600 text-sm leading-relaxed">
                                             {game.description}
                                         </p>
-                                        
-                                        {/* Play Button */}
                                         <div className="mt-4">
                                             <div className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${game.color} text-white font-semibold rounded-lg group-hover:shadow-lg transition-all duration-300`}>
                                                 <span className="mr-2">▶️</span>
@@ -107,7 +111,7 @@ export default function GamesIndex() {
                     </div>
 
                     {/* Stats Section */}
-                    <div className="mt-16 bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+                    {/* <div className="mt-16 bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                             🏆 Game Statistics
                         </h2>
@@ -125,7 +129,7 @@ export default function GamesIndex() {
                                 <div className="text-gray-600">Fun Guaranteed</div>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Footer */}
                     <div className="mt-12 text-center">
