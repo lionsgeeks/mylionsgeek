@@ -8,7 +8,7 @@ import axios from 'axios';
 import CommentsModal from './CommentsModal';
 
 export default function PostsTab({ posts, user }) {
-  console.log(posts.posts[0].likes_count);
+  // console.log(posts.posts[0].likes_count);
   
   const [likedPostIds, setLikedPostIds] = useState([])
   const [likesCountMap, setLikesCountMap] = useState({})
@@ -21,7 +21,7 @@ export default function PostsTab({ posts, user }) {
     const likesCounts = {};
     posts.posts.forEach(p => {
       if (p.liked_by_current_user) likedIds.push(p.id);
-      likesCounts[p.id] = p.likes_count;
+      likesCounts[p.id] = p?.likes_count;
     });
     setLikedPostIds(likedIds);
     setLikesCountMap(likesCounts);
@@ -80,7 +80,7 @@ export default function PostsTab({ posts, user }) {
       <div className="max-w-2xl mx-auto p-4 bg-[#fafafa] dark:bg-[#171717] min-h-screen">
         {posts.posts.map((p, index) => {
           const isLiked = likedPostIds.includes(p.id);
-          const likeCount = likesCountMap[p.id] !== undefined ? likesCountMap[p.id] : p.likes_count;
+          const likeCount = likesCountMap[p.id] !== undefined ? likesCountMap[p.id] : p?.likes_count;
           return (
             <div key={index} className="bg-white dark:bg-[#1f2326] rounded-lg shadow">
               {/* Post Header */}
