@@ -858,6 +858,26 @@ class UsersController extends Controller
             });
         return response()->json(['comments' => $comments]);
     }
+    public function getPostLikes($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $Likes = $post->likes()
+            ->with(['user:id,name,image'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($l) {
+                return [
+                    'id' => $l->id,
+                    'user_id' => $l->user_id,
+                    'user_name' => $l->user->name,
+                    'user_image' => $l->user->image ?? null,
+                    'user_status' => $l->user->status,
+                    'created_at' => $l->created_at->toDateTimeString(),
+                ];
+            });
+        // dd($Likes);
+        return response()->json(['likes' => $Likes]);
+    }
 
     public function addPostComment(Request $request, $postId)
     {

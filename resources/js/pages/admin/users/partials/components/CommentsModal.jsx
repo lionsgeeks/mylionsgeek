@@ -29,7 +29,7 @@ function CommentsModal({ postId, open, onClose }) {
     if (open && postId) {
       setLoading(true);
       axios
-        .get(`/admin/users/post/${postId}/comments`)
+        .get(`/admin/users/get/${postId}/comments`)
         .then((res) => {
           setComments(res.data.comments || []);
           setTimeout(
@@ -133,10 +133,6 @@ function CommentsModal({ postId, open, onClose }) {
               <div
                 key={c.id}
                 className="flex gap-3 animate-in fade-in slide-in-from-left-2"
-                style={{
-                  animationDelay: `${index * 60}ms`,
-                  animationFillMode: "forwards",
-                }}
               >
                 <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30">
                   {c.user_image ? (

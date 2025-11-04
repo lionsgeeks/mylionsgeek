@@ -6,13 +6,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from "../../../../../../../public/assets/icons/logo";
 import axios from 'axios';
 import CommentsModal from './CommentsModal';
+import LikesModal from "./LikesModal";
 
 export default function PostsTab({ posts, user }) {
   // console.log(posts.posts[0].likes_count);
-  
+
   const [likedPostIds, setLikedPostIds] = useState([])
   const [likesCountMap, setLikesCountMap] = useState({})
   const [commentsOpenFor, setCommentsOpenFor] = useState(null); // postId of open modal or null
+  const [likesOpenFor, setLikesOpenFor] = useState(null); // postId of open modal or null
   const getInitials = useInitials();
 
   useEffect(() => {
@@ -136,9 +138,9 @@ export default function PostsTab({ posts, user }) {
                       </svg>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">{likeCount}</span>
+                  <span onClick={() => setLikesOpenFor(p.id)} className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">{likeCount}</span>
                 </div>
-                <div className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
+                <div onClick={() => setCommentsOpenFor(p.id)} className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
                   <span>{p.comments_count} comments</span>
                 </div>
               </div>
@@ -191,6 +193,10 @@ export default function PostsTab({ posts, user }) {
           currentUser={user}
         />
       )}
+      <LikesModal
+        postId={likesOpenFor}
+        open={!!likesOpenFor}
+        onClose={() => setLikesOpenFor(null)} />
     </>
   );
 }
