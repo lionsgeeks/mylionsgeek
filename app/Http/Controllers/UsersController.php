@@ -242,10 +242,25 @@ class UsersController extends Controller
     {
         // Get posts for the user
         $posts = Post::where('user_id', $user->id)
-            ->withCount(['likes' , 'comments'])
+            ->withCount(['likes', 'comments'])
             ->latest()
             ->get();
 
+        $authUserId = Auth::id();
+        if ($authUserId) {
+            // Get all post IDs liked by current user among these posts
+            $likedPostIds = Like::where('user_id', $authUserId)
+                ->whereIn('post_id', $posts->pluck('id')->toArray())
+                ->pluck('post_id')->toArray();
+        } else {
+            $likedPostIds = [];
+        }
+
+        // Append liked_by_current_user to each post
+        $posts = $posts->map(function ($p) use ($likedPostIds) {
+            $p->liked_by_current_user = in_array($p->id, $likedPostIds);
+            return $p;
+        });
 
         return [
             'posts' => $posts
@@ -793,5 +808,100 @@ class UsersController extends Controller
             ->values(); // reset keys
 
         return response()->json($monthlyAbsences);
+    }
+
+    public function AddLike($id)
+    {
+        $user = Auth::user();
+        $post = Post::findOrFail($id);
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // See if this user already liked this post
+        $like = $post->likes()->where('user_id', $user->id)->first();
+        if ($like) {
+            // Unlike (remove like)
+            $like->delete();
+            $liked = false;
+        } else {
+            // Add like
+            $post->likes()->create(['user_id' => $user->id]);
+            $liked = true;
+        }
+
+        $count = $post->likes()->count();
+
+        return response()->json([
+            'liked' => $liked,
+            'likes_count' => $count,
+        ]);
+    }
+
+    // --- Comments on Posts ---
+    public function getPostComments($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $comments = $post->comments()
+            ->with(['user:id,name,image'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'user_id' => $c->user_id,
+                    'user_name' => $c->user->name,
+                    'user_image' => $c->user->image ?? null,
+                    'comment' => $c->comment,
+                    'created_at' => $c->created_at->toDateTimeString(),
+                ];
+            });
+        return response()->json(['comments' => $comments]);
+    }
+    public function getPostLikes($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $Likes = $post->likes()
+            ->with(['user:id,name,image'])
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($l) {
+                return [
+                    'id' => $l->id,
+                    'user_id' => $l->user_id,
+                    'user_name' => $l->user->name,
+                    'user_image' => $l->user->image ?? null,
+                    'user_status' => $l->user->status,
+                    'created_at' => $l->created_at->toDateTimeString(),
+                ];
+            });
+        // dd($Likes);
+        return response()->json(['likes' => $Likes]);
+    }
+
+    public function addPostComment(Request $request, $postId)
+    {
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+        $post = Post::findOrFail($postId);
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        $comment = $post->comments()->create([
+            'user_id' => $user->id,
+            'comment' => $request->comment,
+        ]);
+        // eager load user info for response
+        $comment->load('user:id,name,image');
+        return response()->json([
+            'id' => $comment->id,
+            'user_id' => $comment->user_id,
+            'user_name' => $comment->user->name,
+            'user_image' => $comment->user->image ?? null,
+            'comment' => $comment->comment,
+            'created_at' => $comment->created_at->toDateTimeString(),
+        ]);
     }
 }
