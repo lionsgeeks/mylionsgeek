@@ -6,13 +6,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Logo } from "../../../../../../../public/assets/icons/logo";
 import axios from 'axios';
 import CommentsModal from './CommentsModal';
+import LikesModal from "./LikesModal";
 
 export default function PostsTab({ posts, user }) {
-  console.log(posts.posts[0].likes_count);
-  
+  // console.log(posts.posts[0].likes_count);
+
   const [likedPostIds, setLikedPostIds] = useState([])
   const [likesCountMap, setLikesCountMap] = useState({})
   const [commentsOpenFor, setCommentsOpenFor] = useState(null); // postId of open modal or null
+  const [likesOpenFor, setLikesOpenFor] = useState(null); // postId of open modal or null
   const getInitials = useInitials();
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function PostsTab({ posts, user }) {
     const likesCounts = {};
     posts.posts.forEach(p => {
       if (p.liked_by_current_user) likedIds.push(p.id);
-      likesCounts[p.id] = p.likes_count;
+      likesCounts[p.id] = p?.likes_count;
     });
     setLikedPostIds(likedIds);
     setLikesCountMap(likesCounts);
@@ -80,7 +82,7 @@ export default function PostsTab({ posts, user }) {
       <div className="max-w-2xl mx-auto p-4 bg-[#fafafa] dark:bg-[#171717] min-h-screen">
         {posts.posts.map((p, index) => {
           const isLiked = likedPostIds.includes(p.id);
-          const likeCount = likesCountMap[p.id] !== undefined ? likesCountMap[p.id] : p.likes_count;
+          const likeCount = likesCountMap[p.id] !== undefined ? likesCountMap[p.id] : p?.likes_count;
           return (
             <div key={index} className="bg-white dark:bg-[#1f2326] rounded-lg shadow">
               {/* Post Header */}
@@ -136,9 +138,9 @@ export default function PostsTab({ posts, user }) {
                       </svg>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">{likeCount}</span>
+                  <span onClick={() => setLikesOpenFor(p.id)} className="text-xs text-gray-600 dark:text-gray-400 hover:underline cursor-pointer">{likeCount}</span>
                 </div>
-                <div className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
+                <div onClick={() => setCommentsOpenFor(p.id)} className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
                   <span>{p.comments_count} comments</span>
                 </div>
               </div>
@@ -191,6 +193,10 @@ export default function PostsTab({ posts, user }) {
           currentUser={user}
         />
       )}
+      <LikesModal
+        postId={likesOpenFor}
+        open={!!likesOpenFor}
+        onClose={() => setLikesOpenFor(null)} />
     </>
   );
 }
