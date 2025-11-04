@@ -84,10 +84,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                             key={member.id}
                             className="flex items-center gap-2 p-2 border rounded-lg"
                         >
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={member.image} alt={member.name} />
-                                <AvatarFallback>{member.name[0]}</AvatarFallback>
-                            </Avatar>
+                            <Avatar className="h-8 w-8" image={member.image} name={member.name} onlineCircleClass="w-4 h-4" />
                             <span className="flex-1 text-sm">{member.name}</span>
                             <Button
                                 type="button"
@@ -135,10 +132,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
-                                            <Avatar className="h-10 w-10">
-                                                <AvatarImage src={user.image} alt={user.name} />
-                                                <AvatarFallback>{user.name[0]}</AvatarFallback>
-                                            </Avatar>
+                                            <Avatar className="h-10 w-10" image={user.image} name={user.name} onlineCircleClass="w-5 h-5" />
                                             <span className="flex-1 text-sm">{user.name}</span>
                                         </div>
                                     );

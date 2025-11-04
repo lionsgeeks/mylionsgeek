@@ -98,15 +98,13 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 className="font-medium flex gap-4 items-center"
                                 onClick={() => onShow(user)}
                             >
-                                <Avatar className="h-8 w-8 overflow-hidden rounded-full">
-                                    <AvatarImage
-                                        src={`/storage/img/profile/${user.image}`}
-                                        alt={user.name}
-                                    />
-                                    <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                        {getInitials(user.name)}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <Avatar
+                                    className="h-8 w-8 overflow-hidden rounded-full"
+                                    image={user.image}
+                                    name={user.name}
+                                    lastActivity={user.last_online || null}
+                                    onlineCircleClass="hidden"
+                                />
 
 
                                 <div className="flex flex-col">

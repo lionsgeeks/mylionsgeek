@@ -3,7 +3,7 @@ import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
 import { Input } from '@headlessui/react';
@@ -147,18 +147,13 @@ const User = ({ user, trainings, close, open }) => {
                                 <div className="flex flex-col items-center">
                                     {/* Avatar */}
                                     <div className="relative">
-                                        <Avatar className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-alpha/20">
-                                            {user?.image ? (
-                                                <AvatarImage
-                                                    src={`/storage/img/profile/${user.image}`}
-                                                    alt={user?.name}
-                                                />
-                                            ) : (
-                                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                    {getInitials(user?.name)}
-                                                </AvatarFallback>
-                                            )}
-                                        </Avatar>
+                                        <Avatar
+                                            className="w-28 h-28 rounded-full overflow-hidden ring-4 ring-alpha/20"
+                                            image={user.image}
+                                            name={user.name}
+                                            lastActivity={user.last_online || null}
+                                            onlineCircleClass="w-7 h-7"
+                                        />
                                         <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full border-4 border-light dark:border-dark ${timeAgo(user.last_online) === 'Online now' ? 'bg-green-500' : 'bg-neutral-500'
                                             }`}></div>
                                     </div>

@@ -38,17 +38,17 @@ export function AppHeader({ breadcrumbs = [] }) {
         },
         {
             title: 'Spaces ',
-        url : '/spaces',
-        icon: Building2,
+            url: '/spaces',
+            icon: Building2,
 
-    },
-    { title: 'Reservations', url: '/reservations', icon: Timer },
-    
-    // {
-    //     title: 'Games',
-    //     url: '/games',
-    //     icon: Gamepad2,
-    // },
+        },
+        { title: 'Reservations', url: '/reservations', icon: Timer },
+
+        // {
+        //     title: 'Games',
+        //     url: '/games',
+        //     icon: Gamepad2,
+        // },
     ];
     const getInitials = useInitials();
     return (
@@ -57,7 +57,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                 <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden flex items-center gap-2">
-                        <SearchDialog 
+                        <SearchDialog
                             trigger={
                                 <Button variant="ghost" size="icon" className="h-[34px] w-[34px]">
                                     <Search className="h-5 w-5" />
@@ -125,28 +125,23 @@ export function AppHeader({ breadcrumbs = [] }) {
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
-                <div className="flex items-center gap-4">
-                    <SearchDialog className="hidden sm:flex" />
-                    <div className="">
-                        {/* component change mode */}
-                        <ThemeToggle />
-                    </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="size-10 rounded-full p-1">
-                                    <Avatar className="size-8 overflow-hidden rounded-full">
-                                        <AvatarImage src={auth.user.avatarUrl || auth.user.avatar || auth.user.image} alt={auth.user.name} />
-                                        <AvatarFallback className="rounded-lg bg-alpha text-white dark:bg-neutral-700 dark:text-white">
-                                            {getInitials(auth.user.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-56" align="end">
-                                <UserMenuContent user={auth.user} />
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                        <div className="flex items-center gap-4">
+                            <SearchDialog className="hidden sm:flex" />
+                            <div className="">
+                                {/* component change mode */}
+                                <ThemeToggle />
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="size-10 rounded-full p-1">
+                                        <Avatar className="size-8 overflow-hidden rounded-full" image={auth.user.image} name={auth.user.name} lastActivity={null} onlineCircleClass="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56" align="end">
+                                    <UserMenuContent user={auth.user} />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
             </div>

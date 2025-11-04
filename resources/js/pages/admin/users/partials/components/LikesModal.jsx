@@ -98,18 +98,7 @@ const LikesModal = ({ postId, open, onClose }) => {
                                 className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-beta border border-alpha/10 hover:border-alpha/30 transition duration-200 hover:shadow-md"
                             >
                                 {/* Avatar */}
-                                <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30">
-                                    {like.user_image ? (
-                                        <AvatarImage
-                                            src={`/storage/img/profile/${like.user_image}`}
-                                            alt={like.user_name}
-                                        />
-                                    ) : (
-                                        <AvatarFallback className="bg-alpha/80 text-white font-semibold text-sm">
-                                            {getInitials(like.user_name)}
-                                        </AvatarFallback>
-                                    )}
-                                </Avatar>
+                                <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30" image={like.user_image} name={like.user_name} width="w-11" height="h-11" />
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">

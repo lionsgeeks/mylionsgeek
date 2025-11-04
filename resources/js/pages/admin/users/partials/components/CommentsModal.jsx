@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useInitials } from "@/hooks/use-initials";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+// import { useInitials } from "@/hooks/use-initials";
+import { Avatar } from "@/components/ui/avatar";
 import { usePage } from "@inertiajs/react";
 
 function CommentsModal({ postId, open, onClose }) {
@@ -10,7 +10,7 @@ function CommentsModal({ postId, open, onClose }) {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
-  const getInitials = useInitials();
+  // const getInitials = useInitials();
   const { auth } = usePage().props;
 
   // prevent body scroll
@@ -134,19 +134,8 @@ function CommentsModal({ postId, open, onClose }) {
                 key={c.id}
                 className="flex gap-3 animate-in fade-in slide-in-from-left-2"
               >
-                <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30">
-                  {c.user_image ? (
-                    <AvatarImage
-                      src={`/storage/img/profile/${c.user_image}`}
-                      alt={c.user_name}
-                    />
-                  ) : (
-                    <AvatarFallback className="bg-alpha/80 text-white font-semibold text-sm">
-                      {getInitials(c.user_name)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-
+                <Avatar className="w-11 h-11 flex-shrink-0" image={c.user_image} name={c.user_name} width="w-11" height="h-11" lastActivity={c.user_lastActivity || null}
+                  onlineCircleClass="hidden" />
                 <div className="flex-1 px-3 py-2.5 rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-whgite dark:text-yellow-300 text-sm truncate">
@@ -176,18 +165,8 @@ function CommentsModal({ postId, open, onClose }) {
           onSubmit={handleSubmit}
           className="border-t border-alpha/20 bg-neutral-100/60 dark:bg-[#1b1d20] px-5 py-4 flex items-end gap-3"
         >
-          <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30">
-            {auth.user.image ? (
-              <AvatarImage
-                src={`/storage/img/profile/${auth.user.image}`}
-                alt={auth.user.name}
-              />
-            ) : (
-              <AvatarFallback className="bg-alpha/80 text-white font-semibold text-sm">
-                {getInitials(auth.user.name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
+          <Avatar className="w-11 h-11 flex-shrink-0" image={auth.user.image} name={auth.name} width="w-11" height="h-11" />
+
 
           <div className="flex-1 flex gap-2">
             <input
