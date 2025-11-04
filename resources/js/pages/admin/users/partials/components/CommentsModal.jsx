@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 // import { useInitials } from "@/hooks/use-initials";
 import { Avatar } from "@/components/ui/avatar";
-import { usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 
 function CommentsModal({ postId, open, onClose }) {
   const [comments, setComments] = useState([]);
@@ -134,13 +134,15 @@ function CommentsModal({ postId, open, onClose }) {
                 key={c.id}
                 className="flex gap-3 animate-in fade-in slide-in-from-left-2"
               >
-                <Avatar className="w-11 h-11 flex-shrink-0" image={c.user_image} name={c.user_name} width="w-11" height="h-11" lastActivity={c.user_lastActivity || null}
-                  onlineCircleClass="hidden" />
+                <Link href={'/admin/users/' + c.user_id}>
+                  <Avatar className="w-11 h-11 flex-shrink-0" image={c.user_image} name={c.user_name} width="w-11" height="h-11" lastActivity={c.user_lastActivity || null}
+                    onlineCircleClass="hidden" />
+                </Link>
                 <div className="flex-1 px-3 py-2.5 rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-whgite dark:text-yellow-300 text-sm truncate">
+                    <Link href={'/admin/users/' + c.user_id} className="font-bold text-whgite dark:text-yellow-300 text-sm truncate">
                       {c.user_name || "User"}
-                    </span>
+                    </Link>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(c.created_at).toLocaleString(undefined, {
                         month: "short",

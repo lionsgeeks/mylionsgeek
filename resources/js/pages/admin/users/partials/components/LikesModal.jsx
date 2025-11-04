@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from "axios";
 import { useInitials } from "@/hooks/use-initials";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Link } from '@inertiajs/react';
 
 const LikesModal = ({ postId, open, onClose }) => {
     const [likes, setLikes] = useState([]);
@@ -98,13 +99,15 @@ const LikesModal = ({ postId, open, onClose }) => {
                                 className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-beta border border-alpha/10 hover:border-alpha/30 transition duration-200 hover:shadow-md"
                             >
                                 {/* Avatar */}
-                                <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30" image={like.user_image} name={like.user_name} width="w-11" height="h-11" />
-
+                                <Link href={'/admin/users/' + like.user_id}>
+                                    <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30" image={like.user_image} name={like.user_name} width="w-11" height="h-11" />
+                                </Link>
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-beta dark:text-light text-sm truncate">
+                                    <Link className="font-semibold text-beta dark:text-light text-sm truncate" href={'/admin/users/' + like.user_id}>
+
                                         {like.user_name}
-                                    </div>
+                                    </Link>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
                                         {like.user_status}
                                     </div>
