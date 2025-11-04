@@ -189,12 +189,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                             <Card key={member.id} className="hover:shadow-md transition-shadow">
                                 <CardContent className="p-4">
                                     <div className="flex items-center space-x-3">
-                                        <Avatar>
-                                            <AvatarImage src={member.avatar} />
-                                            <AvatarFallback>
-                                                {member.name.charAt(0).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
+                                        <Avatar
+                                            image={member.avatar}
+                                            name={member.name}
+                                            lastActivity={member.pivot.joined_at || member.pivot.invited_at || null}
+                                            className="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden ring-2 ring-alpha/20"
+                                        />
                                         <div className="flex-1">
                                             <h3 className="font-medium">{member.name}</h3>
                                             <p className="text-sm text-muted-foreground">{member.email}</p>

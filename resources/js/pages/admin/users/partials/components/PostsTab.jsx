@@ -89,13 +89,13 @@ export default function PostsTab({ posts, user }) {
                 {/* Post Header */}
                 <div className="p-4 flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <Avatar className="w-12 h-12 overflow-hidden relative z-50">
-                      {user?.image ? (
-                        <AvatarImage src={`/storage/img/profile/${user.image}`} alt={user?.name} />
-                      ) : (
-                        <AvatarFallback className="w-12 h-12 overflow-hidden">{getInitials(user?.name)}</AvatarFallback>
-                      )}
-                    </Avatar>
+                    <Avatar className="w-12 h-12 overflow-hidden relative z-50"
+
+                      image={user?.image ? `/storage/img/profile/${user.image}` : undefined}
+                      name={user?.name}
+                      lastActivity={user?.last_online || null}
+                      onlineCircleClass="hidden" // hide the built-in circle since we’re using a custom one
+                    />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-sm text-gray-900 dark:text-white">{user.name}</h3>

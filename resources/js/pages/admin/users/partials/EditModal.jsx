@@ -120,20 +120,18 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                     {/* Avatar */}
                     <div className="col-span-1 md:col-span-2 flex justify-center items-center gap-4 mb-4">
                         <div className="relative w-24 h-24">
-                            <Avatar className="w-24 h-24 rounded-full overflow-hidden">
-                                {/* If the user has an image, display it */}
-                                {formData.image ? (
-                                    <AvatarImage
-                                        src={formData.image instanceof File ? URL.createObjectURL(formData.image) : `/storage/img/profile/${formData.image}`}
-                                        alt="User Avatar"
-                                    />
-                                ) : (
-                                    // Fallback to initials if no image is provided
-                                    <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                        {getInitials(formData.name)}
-                                    </AvatarFallback>
-                                )}
-                            </Avatar>
+                            <Avatar
+                                image={
+                                    formData.image instanceof File
+                                        ? URL.createObjectURL(formData.image) // Use Object URL for file input
+                                        : formData.image || editedUser.image // Use the provided image URL or the fallback editedUser image
+                                }
+                                name={formData.name}
+                                lastActivity={editedUser?.last_online || null}
+                                className="w-24 h-24 rounded-full overflow-hidden"
+                                onlineCircleClass="hidden"
+                            />
+
 
                             <label className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-alpha rounded-full cursor-pointer border-2 border-white hover:bg-alpha/80">
                                 <ImagePlus size={18} className="text-white" />
@@ -196,7 +194,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent>
-                                {status.map((s, idx) => (
+                                {status?.map((s, idx) => (
                                     <SelectItem key={idx} value={s}>
                                         {s}
                                     </SelectItem>

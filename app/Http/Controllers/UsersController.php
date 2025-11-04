@@ -157,8 +157,29 @@ class UsersController extends Controller
         // Get all formations
         $allFormations = Formation::latest()->get();
 
+        $roles = [
+            'student',
+            'admin',
+            'studio manager',
+            'coach',
+            'pro',
+            'moderator',
+            'recruiter',
+            'coworker'
+        ];
+        $stats = [
+            'studying',
+            'unemployed',
+            'internship',
+            'freelancing',
+            'working'
+        ];
+
+
         return Inertia::render('admin/users/[id]', [
             'user' => $this->formatUserPayload($user, $isOnline),
+            'roles' => $roles,
+            'stats' => $stats,
             'trainings' => $allFormations,
             'assignedComputer' => $this->formatComputer($assignedComputer),
             'userProjects' => $userProjects,
@@ -568,16 +589,16 @@ class UsersController extends Controller
 
         // dd($request->all());
         $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'name' => 'nullable|string',
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
             'roles' => 'nullable|array',
             'roles.*' => 'string',
-            'status' => 'nullable|string|max:100',
+            'status' => 'nullable|string',
             'formation_id' => 'nullable|integer|exists:formations,id',
-            'phone' => 'nullable|string|max:15',
-            'cin' => 'nullable|string|max:100',
-            'image' => 'nullable|image|max:2048',
-            'cover' => 'nullable|image|max:4096', // <-- allow cover image
+            'phone' => 'nullable|string',
+            'cin' => 'nullable|string',
+            'image' => 'nullable|image',
+            'cover' => 'nullable|image', // <-- allow cover image
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
         ]);
@@ -851,7 +872,8 @@ class UsersController extends Controller
                     'id' => $c->id,
                     'user_id' => $c->user_id,
                     'user_name' => $c->user->name,
-                    'user_image' => $c->user->image ?? null,
+                    'user_lastActivity' => $c->user->last_online,
+                    'user_image' => $c->user->image,
                     'comment' => $c->comment,
                     'created_at' => $c->created_at->toDateTimeString(),
                 ];
@@ -863,8 +885,7 @@ class UsersController extends Controller
         $post = Post::findOrFail($postId);
         $Likes = $post->likes()
             ->with(['user:id,name,image'])
-            ->orderBy('created_at', 'asc')
-            ->get()
+            ->orderBy('created_at', 'desc')->get()
             ->map(function ($l) {
                 return [
                     'id' => $l->id,
