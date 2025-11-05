@@ -20,6 +20,7 @@ use App\Mail\ReservationCanceledMail;
 use App\Mail\ReservationCreatedAdminMail;
 use App\Mail\ReservationTimeAcceptedAdminMail;
 use App\Mail\ReservationTimeDeclinedAdminMail;
+use App\Mail\ReservationTimeProposalMail;
 use App\Mail\ReservationTimeSuggestedAdminMail;
 
 class ReservationsController extends Controller
@@ -346,7 +347,7 @@ class ReservationsController extends Controller
             $res = DB::table('reservations')->where('id', $reservation)->first();
             $verificationNotes = $res->verification_notes ?? null;
         }
-        
+
         $result = [
             'reservation_id' => $reservation,
             'team_name' => null,
@@ -428,7 +429,7 @@ class ReservationsController extends Controller
                     }
                     $img = asset($img);
                 }
-                
+
                 // Get verification data for this equipment if available
                 $verification = null;
                 if (Schema::hasTable('equipment_verifications')) {
@@ -437,7 +438,7 @@ class ReservationsController extends Controller
                         ->where('equipment_id', $e->equipment_id)
                         ->first();
                 }
-                
+
                 return [
                     'id' => $e->equipment_id,
                     'reference' => $e->reference,
@@ -472,6 +473,7 @@ class ReservationsController extends Controller
                     'r.title',
                     'r.approved',
                     'r.canceled',
+                    'r.user_id as user_id',
                     'u.name as user_name'
                 )
                 ->get()
@@ -482,6 +484,8 @@ class ReservationsController extends Controller
                         'start' => $r->start . 'T' . $r->startTime,
                         'end' => $r->start . 'T' . $r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
                     ];
                 });
         }
@@ -498,6 +502,7 @@ class ReservationsController extends Controller
                     'rc.end as endTime',
                     'rc.approved',
                     'rc.canceled',
+                    'rc.user_id as user_id',
                     'u.name as user_name',
                     'c.table as table_number'
                 )
@@ -509,6 +514,8 @@ class ReservationsController extends Controller
                         'start' => $r->start . 'T' . $r->startTime,
                         'end' => $r->start . 'T' . $r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
                     ];
                 });
         }
@@ -524,6 +531,7 @@ class ReservationsController extends Controller
                     'rmr.end as endTime',
                     'rmr.approved',
                     'rmr.canceled',
+                    'rmr.user_id as user_id',
                     'u.name as user_name'
                 )
                 ->get()
@@ -534,6 +542,8 @@ class ReservationsController extends Controller
                         'start' => $r->start . 'T' . $r->startTime,
                         'end' => $r->start . 'T' . $r->endTime,
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
                     ];
                 });
         }
@@ -544,6 +554,7 @@ class ReservationsController extends Controller
     /**
      * Get all users for team member selector modal
      */
+
     public function getUsers()
     {
         $authUser = auth()->user();
@@ -1428,7 +1439,7 @@ class ReservationsController extends Controller
                             ->where('reservation_id', $reservation)
                             ->where('equipment_id', $equipmentId)
                             ->first();
-                        
+
                         $verificationData = [
                             'reservation_id' => $reservation,
                             'equipment_id' => $equipmentId,
@@ -1437,7 +1448,7 @@ class ReservationsController extends Controller
                             'not_returned' => $isNotReturned ? 1 : 0,
                             'updated_at' => now(),
                         ];
-                        
+
                         if ($existing) {
                             DB::table('equipment_verifications')
                                 ->where('id', $existing->id)
@@ -1627,7 +1638,7 @@ class ReservationsController extends Controller
                         }
                         $img = asset($img);
                     }
-                    
+
                     // Get verification data for this equipment if available
                     $verification = null;
                     if (Schema::hasTable('equipment_verifications')) {
@@ -1636,7 +1647,7 @@ class ReservationsController extends Controller
                             ->where('equipment_id', $equipment->id)
                             ->first();
                     }
-                    
+
                     return [
                         'id' => $equipment->id,
                         'reference' => $equipment->reference,
@@ -2284,7 +2295,7 @@ class ReservationsController extends Controller
                        'start' => $r->start ?? null,
                        'end' => $r->end ?? null,
                        'type' => 'cowork',
-                       'title' => $r->title ?? ('Cowork Table ' . ($r->table_number ?? $r->table ?? '')), 
+                       'title' => $r->title ?? ('Cowork Table ' . ($r->table_number ?? $r->table ?? '')),
                        'description' => $r->description ?? null,
                        'approved' => (bool) ($r->approved ?? 0),
                        'canceled' => (bool) ($r->canceled ?? 0),
@@ -2347,7 +2358,7 @@ class ReservationsController extends Controller
     public function cancelOwn(int $reservation)
     {
         $userId = auth()->id();
-        
+
         // Try regular reservations first
         if (Schema::hasTable('reservations')) {
             $row = DB::table('reservations')->where('id', $reservation)->first();
@@ -2360,7 +2371,7 @@ class ReservationsController extends Controller
                 return back()->with('success', 'Reservation canceled');
             }
         }
-        
+
         // Try cowork reservations
         if (Schema::hasTable('reservation_coworks')) {
             $coworkRow = DB::table('reservation_coworks')->where('id', $reservation)->first();
@@ -2370,7 +2381,7 @@ class ReservationsController extends Controller
                     'approved' => 0,
                     'updated_at' => now(),
                 ]);
-                
+
                 // Send cancellation email if needed
                 try {
                     Mail::to($coworkRow->user_email ?? auth()->user()->email)->send(
@@ -2386,11 +2397,11 @@ class ReservationsController extends Controller
                 } catch (\Exception $e) {
                     \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
                 }
-                
+
                 return back()->with('success', 'Reservation canceled');
             }
         }
-        
+
         return back()->with('error', 'Reservation not found or you do not have permission to cancel it');
     }
 
