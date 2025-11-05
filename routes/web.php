@@ -27,12 +27,6 @@ Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->gr
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::delete('/admin/users/{id}/projects/{projectId}', [UserProjectController::class, 'destroy'])->name('user-projects.destroy');
-    Route::post('/admin/users/{id}/projects', [UserProjectController::class, 'store']);
-
-});
-
 
 
 

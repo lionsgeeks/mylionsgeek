@@ -8,27 +8,13 @@ import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
 import { Input } from '@headlessui/react';
 import DeleteModal from '../../../../components/DeleteModal';
-import ProjectCard from "./components/ProjectCard";
-import AddProjectModal from "./components/AddProjectModal";
-import ViewProjectModal from "./components/ViewProjectModal";
-
 const User = ({ user, trainings, close, open }) => {
     const { auth } = usePage().props
 
-    const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
-    const [isViewProjectModalOpen, setIsViewProjectModalOpen] = useState(false);
-    const [selectedProject, setSelectedProject] = useState(null);
-
-    const [projects, setProjects] = useState(user.user_projects || []);
-
-    useEffect(() => {
-        setProjects(user.user_projects || []);
-    }, [user.user_projects]);
-
-    const handleViewProject = (project) => {
-        setSelectedProject(project);
-        setIsViewProjectModalOpen(true);
-    };
+const [projects, setProjects] = useState([]);
+const [rejectingId, setRejectingId] = useState(null);
+const [rejectionReason, setRejectionReason] = useState('');
+const [processingId, setProcessingId] = useState(null);
 
     const getInitials = useInitials();
     const [activeTab, setActiveTab] = useState('overview');
@@ -73,6 +59,11 @@ const User = ({ user, trainings, close, open }) => {
                 medicals: Array.isArray(data?.medicals) ? data.medicals : [],
             }))
             .catch(() => setDocs({ contracts: [], medicals: [] }));
+    // Fetch projects
+    fetch(`/admin/users/${user.id}/projects`)
+        .then(r => r.json())
+        .then((data) => setProjects(Array.isArray(data?.projects) ? data.projects : []))
+        .catch(() => setProjects([]));
     }, [open, user.id]);
     const [processing, setProcessing] = useState(false);
     const [uploadError, setUploadError] = useState('');
@@ -330,55 +321,177 @@ const User = ({ user, trainings, close, open }) => {
                 )}
 
                 {activeTab === 'projects' && (
-                    <div className="mt-4 rounded-xl border border-alpha/20 p-6 bg-light dark:bg-dark flex flex-col max-h-96">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                                Projects
-                            </h3>
-                            {auth.user?.id === user.id && (
-                                <Button
-                                    onClick={() => setIsAddProjectModalOpen(true)}
-                                    className="bg-[var(--color-alpha)] text-black hover:bg-gray-900 hover:text-white dark:bg-[var(--color-alpha)] dark:hover:bg-gray-200 dark:hover:text-black transition-colors duration-200 cursor-pointer"
-                                >
-                                    Add Project
-                                </Button>
-                            )}
-                        </div>
+                    <div className="p-6 space-y-4">
+                        <h3 className="text-lg font-semibold">Projects</h3>
+                        
+                        {projects && projects.length > 0 ? (
+                            <div className="space-y-3">
+                                {projects.map((project) => (
+                                    <div 
+                                        key={project.id} 
+                                        className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg flex gap-4 "
+                                    >
+                                        {/* Image */}
+                                        {project.image && (
+                                            <div className="w-50 h-30 rounded-lg overflow-hidden flex-shrink-0">
+                                                <img
+                                                    src={`/storage/${project.image}`}
+                                                    alt={project.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        )}
 
-                        {projects.length > 0 ? (
-                            <div className="flex-1 overflow-y-auto pr-2">
-                                <div className="grid grid-cols-3 gap-6">
-                                    {projects.map(project => (
-                                        <ProjectCard
-                                            key={project.id}
-                                            project={project}
-                                            onView={handleViewProject}
-                                        />
-                                    ))}
-                                </div>
+                                        {/* Content */}
+                                        <div className="flex flex-col justify-between w-full">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <h4 className="font-semibold mb-1">{project.title}</h4>
+                                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2 line-clamp-2">
+                                                                {project.description}
+                                                            </p>
+                                                        <p className="text-xs text-neutral-500">
+                                                            {new Date(project.created_at).toLocaleString('en-US', {
+                                                                year: 'numeric',
+                                                                month: '2-digit',
+                                                                day: '2-digit',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                hour12: false
+                                                            })}
+                                                        </p>
+                                                </div>
+                                                <span
+                                                    className={`px-2 py-1 text-xs rounded-full font-semibold whitespace-nowrap ${
+                                                        project.status === 'approved'
+                                                            ? 'bg-green-600 text-green-50 dark:text-white'
+                                                            : project.status === 'rejected'
+                                                            ? 'bg-red-600 text-red-50 dark:text-white'
+                                                            : 'bg-yellow-600 text-yellow-50 dark:text-white'
+                                                    }`}
+                                                >
+                                                    {project.status === 'pending' ? 'Pending' : project.status}
+                                                </span>
+                                            </div>
+
+
+                                            <div className="flex gap-2 flex-wrap mb-1">
+                                                {project.url && (
+                                                    <a
+                                                        href={project.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[var(--color-alpha)] hover:underline text-sm font-medium"
+                                                    >
+                                                        View →
+                                                    </a>
+                                                )}
+
+                                                {project.status === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setProcessingId(project.id);
+                                                                router.post(`/admin/projects/${project.id}/approve`, {}, {
+                                                                    onSuccess: () => {
+                                                                        setProjects(prev => 
+                                                                            prev.map(p => 
+                                                                                p.id === project.id 
+                                                                                    ? { ...p, status: 'approved' }
+                                                                                    : p
+                                                                            )
+                                                                        );
+                                                                    },
+                                                                    onFinish: () => setProcessingId(null),
+                                                                });
+                                                            }}
+                                                            disabled={processingId === project.id}
+                                                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium cursor-pointer"
+                                                        >
+                                                            {processingId === project.id ? 'Approving...' : 'Approve'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setRejectingId(project.id)}
+                                                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium cursor-pointer"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Reject Modal */}
+                                        {rejectingId === project.id && (
+                                            <Dialog open={rejectingId === project.id} onOpenChange={() => {
+                                                setRejectingId(null);
+                                                setRejectionReason('');
+                                            }}>
+                                                <DialogContent className="max-w-sm">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Reject Project</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <Label className="text-sm">Rejection Reason *</Label>
+                                                            <textarea
+                                                                value={rejectionReason}
+                                                                onChange={(e) => setRejectionReason(e.target.value)}
+                                                                placeholder="Explain why this project is being rejected..."
+                                                                rows={3}
+                                                                className="w-full p-2 border border-neutral-300 rounded text-sm dark:bg-neutral-800 dark:border-neutral-600"
+                                                            />
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    setRejectingId(null);
+                                                                    setRejectionReason('');
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </Button>
+                                                            <Button
+                                                                onClick={() => {
+                                                                    if (!rejectionReason.trim()) {
+                                                                        alert('Please provide a rejection reason');
+                                                                        return;
+                                                                    }
+                                                                    setProcessingId(project.id);
+                                                                    router.post(`/admin/projects/${project.id}/reject`, {
+                                                                        rejection_reason: rejectionReason,
+                                                                    }, {
+                                                                        onSuccess: () => {
+                                                                            setProjects(prev => 
+                                                                                prev.map(p => 
+                                                                                    p.id === project.id 
+                                                                                        ? { ...p, status: 'rejected' }
+                                                                                        : p
+                                                                                )
+                                                                            );
+                                                                            setRejectingId(null);
+                                                                            setRejectionReason('');
+                                                                        },
+                                                                        onFinish: () => setProcessingId(null),
+                                                                    });
+                                                                }}
+                                                                disabled={processingId === project.id}
+                                                                className="bg-red-600 hover:bg-red-700"
+                                                            >
+                                                                {processingId === project.id ? 'Rejecting...' : 'Reject'}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         ) : (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-neutral-700 rounded-lg border border-alpha/20">
-                                <p className="text-gray-500 dark:text-gray-400">
-                                    No projects yet
-                                </p>
-                            </div>
+                            <p className="text-neutral-500 text-center py-8">No projects</p>
                         )}
-                        <AddProjectModal
-                            isOpen={isAddProjectModalOpen}
-                            onClose={() => setIsAddProjectModalOpen(false)}
-                            userId={user.id}
-                            onProjectAdded={(project) => {
-                                setProjects(prev => [project, ...prev]);
-                                setIsAddProjectModalOpen(false);
-                            }}
-                        />
-
-                        <ViewProjectModal
-                            isOpen={isViewProjectModalOpen}
-                            onClose={() => setIsViewProjectModalOpen(false)}
-                            project={selectedProject}
-                        />
                     </div>
                 )}
 
