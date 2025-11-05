@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Github, Linkedin, Twitter, Globe, Edit3, Calendar } from 'lucide-react';
+import { Github, Linkedin, Twitter, Globe, Edit3, Calendar, ImagePlus } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import EditUserModal from '../EditModal';
+import { Camera } from 'lucide-react'; // Icon for changing the cover image
+import { router } from '@inertiajs/react';
 
 const ProfileHeader = ({ user, trainings, roles, stats }) => {
   const [open, setOpen] = useState(false)
@@ -10,6 +12,29 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
   const lastOnline = user?.last_online ? new Date(user.last_online).toLocaleString() : 'No last activity available';
   const socials = user?.socials || {};
   const getInitials = useInitials();
+  const [data, setData] = useState({ cover: '' });
+
+
+  const changeCover = (event, userId) => {
+    const file = event.target.files[0]; // Get the first file
+    if (!file) return; // If no file is selected, don't proceed
+
+    const formData = new FormData();
+    formData.append('cover', file); // Append the selected file to FormData
+
+    // Send the POST request with the form data
+    router.post(`/admin/users/changeCover/${userId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
+      },
+      onSuccess: () => {
+        console.log('Cover changed successfully');
+      },
+      onError: (error) => {
+        console.log('Cover not changed', error);
+      }
+    });
+  };
 
   return (
     <>
@@ -17,25 +42,27 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
         <div className="max-w-6xl mx-auto">
           {/* Cover Photo with Overlay Pattern */}
           <div className="relative h-64 md:h-80 overflow-hidden">
-            {user.cover ? (
-              <img
-                src={user.cover.startsWith('http') ? user.cover : `/storage/img/cover/${user.cover}`}
-                alt="Cover"
-                className="object-cover w-full h-full"
-              />
-            ) : (
-              <div className="h-full w-full bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600" />
-            )}
+            <img
+              src={`/storage/${user.cover}`}
+              alt="Cover"
+              className="object-cover w-full h-full"
+            />
             {/* Mesh gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-            {/* Decorative dots pattern */}
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-white" />
-              <div className="absolute top-20 left-32 w-1.5 h-1.5 rounded-full bg-white" />
-              <div className="absolute top-32 right-40 w-2 h-2 rounded-full bg-white" />
-              <div className="absolute bottom-20 right-20 w-1.5 h-1.5 rounded-full bg-white" />
-            </div>
+            {/* Change Cover Icon */}
+            <label
+              className="absolute top-5 right-5 flex items-center justify-center w-12 h-12 bg-dark_gray rounded-full"
+              aria-label="Change cover image"
+            >
+              <Camera size={24} className="text-white cursor-pointer" />
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={(e) => changeCover(e, user.id)}
+              />
+            </label>
           </div>
 
           {/* Profile Content */}

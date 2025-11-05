@@ -124,7 +124,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                                 image={
                                     formData.image instanceof File
                                         ? URL.createObjectURL(formData.image) // Use Object URL for file input
-                                        : formData.image || editedUser.image // Use the provided image URL or the fallback editedUser image
+                                        : formData.image || editedUser?.image // Use the provided image URL or the fallback editedUser image
                                 }
                                 name={formData.name}
                                 lastActivity={editedUser?.last_online || null}

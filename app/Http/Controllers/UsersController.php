@@ -925,4 +925,28 @@ class UsersController extends Controller
             'created_at' => $comment->created_at->toDateTimeString(),
         ]);
     }
+    public function changeCover(Request $request, $id)
+    {
+        $user = User::find($id);  // Use find() to get the user by ID
+
+        // Validate the uploaded file
+        $validated = $request->validate([
+            'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        // Handle the uploaded file
+        if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
+            // Store the cover image in the public disk (storage/app/public)
+            $path = $request->file('cover')->store('img/cover', 'public'); // Store file in 'covers' folder
+
+            // Update the user's cover image in the database
+            $user->update([
+                'cover' => $path, // Store the file path in the database
+            ]);
+
+            return redirect()->back()->with('success', 'Cover changed successfully');
+        }
+
+        return redirect()->back()->with('error', 'There was an error changing the cover.');
+    }
 }

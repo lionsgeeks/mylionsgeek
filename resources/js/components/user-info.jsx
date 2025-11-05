@@ -11,7 +11,7 @@ export function UserInfo({ user, showEmail = false }) {
                 <span className="truncate font-extralight text-xs text-dark dark:text-white/80">{user.role}</span>
                 {showEmail && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
             </div>
-            <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="w-4 h-4" />
+            <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="hidden" />
         </>
     );
 }
