@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Equipment;
 use App\Models\Reservation;
+use App\Models\ReservationCowork;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,10 +34,41 @@ class ReservationController extends Controller
                     'id' => $reservation->id,
                     'title' => $reservation->title,
                     'description' => $reservation->description,
-                    'type' => $reservation->type,
+                    'day' => $reservation->day,
                     'start' => $reservation->start,
                     'end' => $reservation->end,
-                    'status' => $reservation->status ?? 'pending',
+                    'approved' => $reservation->approved,
+                    'canceled' => $reservation->canceled,
+                    'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
+                    'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
+                ];
+            });
+
+        return response()->json(['reservations' => $reservations]);
+    }
+    public function indexcowork(Request $request)
+    {
+        // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $reservations = ReservationCowork::orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'title' => $reservation->table,
+                    'start' => $reservation->start,
+                    'end' => $reservation->end,
+                    'day' => $reservation->day,
+                    'approved' => $reservation->approved,
                     'canceled' => $reservation->canceled,
                     'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
                     'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
@@ -173,7 +205,7 @@ class ReservationController extends Controller
 
     public function getEquipment()
     {
-          // Check authentication
+        // Check authentication
         $checkResult = $this->checkRequestedUser();
         if ($checkResult) {
             return $checkResult;
@@ -201,7 +233,7 @@ class ReservationController extends Controller
 
     public function getUserss()
     {
-          // Check authentication
+        // Check authentication
         $checkResult = $this->checkRequestedUser();
         if ($checkResult) {
             return $checkResult;
