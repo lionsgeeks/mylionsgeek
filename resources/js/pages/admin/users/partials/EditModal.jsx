@@ -50,7 +50,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                 formation_id: editedUser.formation_id || null,
                 phone: editedUser.phone || '',
                 cin: editedUser.cin || '',
-                image: editedUser.image || null, // User's image from DB (if exists)
+                image: editedUser?.image || null, // User's image from DB (if exists)
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
             });
@@ -78,8 +78,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
 
         // Append image ONLY if it's a File
-        if (formData.image instanceof File) {
-            form.append('image', formData.image);
+        if (formData?.image instanceof File) {
+            form.append('image', formData?.image);
         }
 
         // Sending data to backend
@@ -122,11 +122,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                         <div className="relative w-24 h-24">
                             <Avatar
                                 image={
-                                    formData.image instanceof File
-                                        ? URL.createObjectURL(formData.image) // Use Object URL for file input
-                                        : formData.image || editedUser?.image // Use the provided image URL or the fallback editedUser image
+                                    formData?.image instanceof File
+                                        ? URL.createObjectURL(formData?.image) // Use Object URL for file input
+                                        : formData?.image || editedUser?.image // Use the provided image URL or the fallback editedUser image
                                 }
-                                name={formData.name}
+                                name={formData?.name}
                                 lastActivity={editedUser?.last_online || null}
                                 className="w-24 h-24 rounded-full overflow-hidden"
                                 onlineCircleClass="hidden"
