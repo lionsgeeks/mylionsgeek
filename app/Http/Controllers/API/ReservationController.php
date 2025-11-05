@@ -10,10 +10,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+
 class ReservationController extends Controller
 {
     public function index(Request $request)
     {
+        // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
         $user = Auth::guard('sanctum')->user();
 
         if (!$user) {
@@ -42,6 +48,11 @@ class ReservationController extends Controller
 
     public function show(Request $request, $id)
     {
+        // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
         $user = Auth::guard('sanctum')->user();
 
         if (!$user) {
@@ -67,6 +78,11 @@ class ReservationController extends Controller
 
     public function storemobile(Request $request)
     {
+        // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
         $validated = $request->validate([
             'studio_id' => 'required|integer|exists:studios,id',
             'title' => 'required|string|max:255',
@@ -155,8 +171,13 @@ class ReservationController extends Controller
         }
     }
 
-     public function getEquipment()
+    public function getEquipment()
     {
+          // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
         $equipment = Equipment::with('equipmentType')
             ->where('state', 1) // Only available equipment
             ->orderBy('created_at', 'desc')
@@ -178,8 +199,13 @@ class ReservationController extends Controller
         return response()->json($equipment);
     }
 
-      public function getUserss()
+    public function getUserss()
     {
+          // Check authentication
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
 
         $query = User::select('id', 'name', 'image')->orderBy('name');
 
