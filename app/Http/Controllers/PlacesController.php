@@ -7,9 +7,78 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Http\JsonResponse;
 
 class PlacesController extends Controller
 {
+
+
+    public function getPlacesJson(): JsonResponse
+    {
+        $data = [
+            'studios' => [],
+            'coworks' => [],
+            'meeting_rooms' => [],
+        ];
+
+        if (Schema::hasTable('studios')) {
+            $data['studios'] = DB::table('studios')
+                ->select('id', 'name', 'image')
+                ->get()
+                ->map(function ($row) {
+                    $img = $row->image
+                        ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/')
+                            ? $row->image
+                            : asset('storage/img/studio/' . ltrim($row->image, '/')))
+                        : null;
+                    return [
+                        'id' => $row->id,
+                        'name' => $row->name,
+                        'image' => $img,
+                    ];
+                });
+        }
+
+        if (Schema::hasTable('coworks')) {
+            $data['coworks'] = DB::table('coworks')
+                ->select('id', 'table as name', 'image')
+                ->get()
+                ->map(function ($row) {
+                    $img = $row->image
+                        ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/')
+                            ? $row->image
+                            : asset('storage/img/cowork/' . ltrim($row->image, '/')))
+                        : null;
+                    return [
+                        'id' => $row->id,
+                        'name' => 'Table ' . ($row->name ?? ''),
+                        'image' => $img,
+                    ];
+                });
+        }
+
+        if (Schema::hasTable('meeting_rooms')) {
+            $data['meeting_rooms'] = DB::table('meeting_rooms')
+                ->select('id', 'name', 'image')
+                ->get()
+                ->map(function ($row) {
+                    $img = $row->image
+                        ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/')
+                            ? $row->image
+                            : asset('storage/img/meeting_room/' . ltrim($row->image, '/')))
+                        : null;
+                    return [
+                        'id' => $row->id,
+                        'name' => $row->name,
+                        'image' => $img,
+                    ];
+                });
+        }
+
+        return response()->json($data);
+    }
+
+
     public function index()
     {
         $places = collect();
@@ -20,10 +89,10 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
-                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/cowork/'.ltrim($row->image, '/'))) : null;
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/cowork/' . ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
-                        'name' => 'Table '.($row->table ?? ''),
+                        'name' => 'Table ' . ($row->table ?? ''),
                         'place_type' => 'cowork',
                         'state' => (bool) ($row->state ?? 0),
                         'image' => $img ? asset($img) : null,
@@ -39,7 +108,7 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
-                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/studio/'.ltrim($row->image, '/'))) : null;
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/studio/' . ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
@@ -58,7 +127,7 @@ class PlacesController extends Controller
                 ->orderByDesc('created_at')
                 ->get()
                 ->map(function ($row) {
-                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/meeting_room/'.ltrim($row->image, '/'))) : null;
+                    $img = $row->image ? (str_starts_with($row->image, 'http') || str_starts_with($row->image, 'storage/') ? $row->image : ('storage/img/meeting_room/' . ltrim($row->image, '/'))) : null;
                     return [
                         'id' => $row->id,
                         'name' => $row->name,
@@ -73,7 +142,9 @@ class PlacesController extends Controller
 
         // Globally sort newest first and compute available types
         $places = $places
-            ->sortByDesc(function ($p) { return $p['created_at'] ?? null; })
+            ->sortByDesc(function ($p) {
+                return $p['created_at'] ?? null;
+            })
             ->values();
 
         $types = $places->pluck('place_type')->unique()->values();
@@ -85,7 +156,10 @@ class PlacesController extends Controller
         $equipmentImages = $this->listPublicImages('img/equipment');
 
         return Inertia::render('admin/places/index', [
-            'places' => $places->map(function ($p) { unset($p['created_at']); return $p; }),
+            'places' => $places->map(function ($p) {
+                unset($p['created_at']);
+                return $p;
+            }),
             'types' => $types,
             'studioImages' => $studioImages,
             'meetingRoomImages' => $meetingRoomImages,
@@ -113,7 +187,7 @@ class PlacesController extends Controller
             // Always use default cowork image
             $imagePath = 'storage/img/cowork/cowork.jpg';
         } else if ($request->hasFile('image')) {
-            $imagePath = 'storage/'.$request->file('image')->store('places', 'public');
+            $imagePath = 'storage/' . $request->file('image')->store('places', 'public');
         }
 
         // Some SQLite tables may not have AUTOINCREMENT configured for id.
@@ -129,7 +203,7 @@ class PlacesController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-        }else {
+        } else {
             DB::table($table)->insert([
                 'id' => $nextId,
                 'name' => $data['name'],
@@ -164,7 +238,7 @@ class PlacesController extends Controller
                 'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
                 'updated_at' => now(),
             ];
-        }else {
+        } else {
             $update = [
                 'name' => $data['name'],
                 'state' => (int) ((string)$data['state'] === '1' || $data['state'] === 1 || $data['state'] === true),
@@ -175,7 +249,7 @@ class PlacesController extends Controller
 
 
         if ($table !== 'coworks' && $request->hasFile('image')) {
-            $update['image'] = 'storage/'.$request->file('image')->store('places', 'public');
+            $update['image'] = 'storage/' . $request->file('image')->store('places', 'public');
         }
 
         DB::table($table)->where('id', $place)->update($update);
@@ -212,7 +286,7 @@ class PlacesController extends Controller
      */
     private function listPublicImages(string $folder): array
     {
-        $diskPath = 'public/'.trim($folder, '/');
+        $diskPath = 'public/' . trim($folder, '/');
         if (!Storage::exists($diskPath)) {
             return [];
         }

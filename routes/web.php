@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Jobs\CreateInvitedUser;
 use App\Models\User;
 use App\Http\Controllers\UserProjectController;
+use App\Http\Controllers\Admin\GlobalAnalyticsController;
 
 
 Route::get('/', function () {
@@ -21,6 +22,9 @@ Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->gr
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    // Global Analytics (admin)
+    Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

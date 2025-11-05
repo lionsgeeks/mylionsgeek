@@ -367,9 +367,12 @@ export default function TicTacToe() {
         if (board[index] || gameOver) return;
         
         const symbol = isXNext ? 'X' : 'O';
-        
-        if (isConnected && assignedSymbol && symbol !== assignedSymbol) {
-            return; // Not your turn
+
+        // In online mode, strictly enforce assigned role. If role is unknown yet, block moves.
+        if (isConnected) {
+            if (!assignedSymbol || symbol !== assignedSymbol) {
+                return; // Not your turn or role not assigned yet
+            }
         }
         
         // Calculate new state
