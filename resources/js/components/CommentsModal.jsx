@@ -1,19 +1,18 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-// import { useInitials } from "@/hooks/use-initials";
 import { Avatar } from "@/components/ui/avatar";
 import { Link, usePage } from "@inertiajs/react";
+import {timeAgo} from '../lib/utils' 
 
-function CommentsModal({ postId, open, onClose }) {
+function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
-  // const getInitials = useInitials();
   const { auth } = usePage().props;
 
-  // prevent body scroll
+  // ✅ Prevent body scroll when modal is open
   useEffect(() => {
     if (open) {
       const originalOverflow = document.body.style.overflow;
@@ -24,7 +23,7 @@ function CommentsModal({ postId, open, onClose }) {
     }
   }, [open]);
 
-  // fetch comments
+  // ✅ Fetch comments when modal opens
   useEffect(() => {
     if (open && postId) {
       setLoading(true);
@@ -37,34 +36,64 @@ function CommentsModal({ postId, open, onClose }) {
             80
           );
         })
+        .catch((err) => console.error("Failed to fetch comments:", err))
         .finally(() => setLoading(false));
     } else {
+      // Reset when closed
       setComments([]);
       setNewComment("");
       setLoading(false);
     }
   }, [open, postId]);
 
+  // ✅ Handle new comment submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     setSubmitting(true);
+
     try {
       const res = await axios.post(`/admin/users/post/${postId}/comments`, {
         comment: newComment.trim(),
       });
+
+      // Add new comment locally
       setComments((prev) => [...prev, res.data]);
       setNewComment("");
+
+      // Notify parent (PostCard) to increment count
+      if (typeof onCommentAdded === "function") {
+        onCommentAdded(postId);
+      }
+
+      // Scroll to the new comment
       setTimeout(
         () => commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }),
         120
       );
-    } catch {
+    } catch (error) {
+      console.error("Failed to add comment:", error);
       alert("Failed to add comment");
     } finally {
       setSubmitting(false);
     }
   };
+
+  // ✅ Handle comment deletion (optional)
+  // const handleDeleteComment = async (commentId) => {
+  //   try {
+  //     await axios.delete(`/admin/users/post/comment/${commentId}/delete`);
+  //     setComments((prev) => prev.filter((c) => c.id !== commentId));
+
+  //     // Notify parent to decrement count
+  //     if (typeof onCommentRemoved === "function") {
+  //       onCommentRemoved(postId);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to delete comment:", error);
+  //     alert("Failed to delete comment");
+  //   }
+  // };
 
   if (!open) return null;
 
@@ -129,32 +158,44 @@ function CommentsModal({ postId, open, onClose }) {
               </p>
             </div>
           ) : (
-            comments.map((c, index) => (
-              <div
-                key={c.id}
-                className="flex gap-3 animate-in fade-in slide-in-from-left-2"
-              >
-                <Link href={'/admin/users/' + c.user_id}>
-                  <Avatar className="w-11 h-11 flex-shrink-0" image={c.user_image} name={c.user_name} width="w-11" height="h-11" lastActivity={c.user_lastActivity || null}
-                    onlineCircleClass="hidden" />
+            comments.map((c) => (
+              <div key={c.id} className="flex gap-3 animate-in fade-in slide-in-from-left-2">
+                <Link href={`/admin/users/${c.user_id}`}>
+                  <Avatar
+                    className="w-11 h-11 flex-shrink-0"
+                    image={c.user_image}
+                    name={c.user_name}
+                    width="w-11"
+                    height="h-11"
+                    lastActivity={c.user_lastActivity || null}
+                    onlineCircleClass="hidden"
+                  />
                 </Link>
                 <div className="flex-1 px-3 py-2.5 rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
                   <div className="flex items-center justify-between mb-1">
-                    <Link href={'/admin/users/' + c.user_id} className="font-bold text-whgite dark:text-yellow-300 text-sm truncate">
+                    <Link
+                      href={`/admin/users/${c.user_id}`}
+                      className="font-bold text-white dark:text-yellow-300 text-sm truncate"
+                    >
                       {c.user_name || "User"}
                     </Link>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(c.created_at).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {timeAgo(c.created_at)}
                     </span>
                   </div>
                   <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words">
                     {c.comment}
                   </p>
+
+                  {/* Optional delete button (if user owns comment) */}
+                  {/* {auth.user.id === c.user_id && (
+                    <button
+                      onClick={() => handleDeleteComment(c.id)}
+                      className="text-xs text-red-500 mt-1 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  )} */}
                 </div>
               </div>
             ))
@@ -167,8 +208,13 @@ function CommentsModal({ postId, open, onClose }) {
           onSubmit={handleSubmit}
           className="border-t border-alpha/20 bg-neutral-100/60 dark:bg-[#1b1d20] px-5 py-4 flex items-end gap-3"
         >
-          <Avatar className="w-11 h-11 flex-shrink-0" image={auth.user.image} name={auth.name} width="w-11" height="h-11" />
-
+          <Avatar
+            className="w-11 h-11 flex-shrink-0"
+            image={auth.user.image}
+            name={auth.name}
+            width="w-11"
+            height="h-11"
+          />
 
           <div className="flex-1 flex gap-2">
             <input

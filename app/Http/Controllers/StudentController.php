@@ -10,7 +10,7 @@ class StudentController extends Controller
 {
     public function index()
     {
-        $user = Auth::user()->load('formation' , 'likes');
+        $user = Auth::user()->load('formation');
         
         return Inertia::render('student/feed/index' , [
             'user' => $user

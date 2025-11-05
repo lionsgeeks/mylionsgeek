@@ -5,65 +5,74 @@ import { Avatar } from '@/components/ui/avatar';
 
 const LeftSideBar = ({ user }) => {
     console.log(user);
-    
+    const getField = (user) => {
+        if (user?.formation?.name?.toLowerCase().includes('creator')) {
+            return 'Content Creator'
+        }
+        return 'Web Developer'
+    }
+
     return (
         <>
             {/* Left Sidebar - Fixed */}
             <div className="lg:col-span-3 space-y-4">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                    <div className="h-16 bg-gradient-to-r from-blue-600 to-blue-400"></div>
+                <div className="bg-white dark:bg-beta rounded-lg shadow overflow-hidden">
+                    <div className="h-16 dark:bg-light bg-dark">
+                        <img src={`/storage/${user.cover}`} alt={user.name} className="w-full h-full object-cover bg" />
+                    </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">
                             <Avatar
-                                className="w-16 h-16 rounded-full overflow-hidden "
+                                className="w-20 h-20 rounded-full overflow-hidden border-2 dark:border-light border-dark"
                                 image={user?.image}
                                 name={user?.name}
                                 lastActivity={user?.last_online || null}
                                 onlineCircleClass="hidden"
                             />
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                        <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
                             {user?.name}
                         </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {user?.formation?.name}
+                        <p className="text-xs text-dark dark:text-light mt-1">
+                            {getField(user)}
                         </p>
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="text-gray-600 dark:text-gray-400">Profile viewers</span>
-                                <span className="text-blue-600 dark:text-blue-400 font-semibold">24</span>
+                                <span className=" text-dark dark:text-light">Profile viewers</span>
+                                <span className=" text-dark dark:text-alpha font-semibold">24</span>
                             </div>
                             <div className="flex justify-between text-xs">
-                                <span className="text-gray-600 dark:text-gray-400">Post impressions</span>
-                                <span className="text-blue-600 dark:text-blue-400 font-semibold">87</span>
+                                <span className=" text-dark dark:text-light">Post impressions</span>
+                                <span className=" text-dark dark:text-alpha font-semibold">87</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Quick Links */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hidden lg:block">
+                <div className="bg-white dark:bg-beta rounded-lg shadow p-4 hidden lg:block">
                     <div className="space-y-3">
-                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <BookOpen className="w-4 h-4" />
                             <span>Saved items</span>
                         </a>
-                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <Users className="w-4 h-4" />
                             <span>Groups</span>
                         </a>
-                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <Calendar className="w-4 h-4" />
                             <span>Events</span>
                         </a>
-                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                        <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <Hash className="w-4 h-4" />
                             <span>Hashtags</span>
                         </a>
                     </div>
                 </div>
             </div>
+
         </>
     );
 };
