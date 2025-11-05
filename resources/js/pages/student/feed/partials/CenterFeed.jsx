@@ -1,37 +1,41 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, Repeat2, ThumbsUp, MoreHorizontal, X, Image, Video, Calendar, FileText, Briefcase, Users, BookOpen, Hash, TrendingUp } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 
-export default function CenterFeed() {
+export default function CenterFeed({ user }) {
+    const [openAddPost , setOpenAddPost] = useState(false)
 
     return (
         <>
             {/* Center Feed - Scrollable */}
             <div className="lg:col-span-6 space-y-4">
                 {/* Create Post Box */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg font-bold">
-                            YM
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Start a post"
-                            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-full outline-none border-2 border-transparent focus:border-blue-500"
+                        <Avatar
+                            className="w-12 h-12 rounded-full overflow-hidden border-2 dark:border-light border-dark"
+                            image={user?.image}
+                            name={user?.name}
+                            lastActivity={user?.last_online || null}
+                            onlineCircleClass="hidden"
                         />
+                        <button onClick={() => setOpenAddPost(true)} className='cursor-pointer border-2 border-beta dark:border-light flex-1 px-4 py-2 bg-transparent text-left rounded-full hover:bg-beta/5 dark:hover:bg-light/5 transition-all duration-300'>
+                            Add Post
+                        </button>
                     </div>
                     <div className="flex justify-around">
-                        <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 rounded">
-                            <Image className="w-5 h-5 text-blue-500" />
-                            <span className="text-sm font-medium">Media</span>
+                        <button className="flex items-center gap-2 hover:bg-dark/5 dark:hover:bg-light/5 px-4 py-2 rounded-full">
+                            <Image className="w-5 h-5 text-beta dark:text-alpha" />
+                            <span className="text-sm text-beta dark:text-alpha">Media</span>
                         </button>
-                        <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 rounded">
+                        {/* <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 rounded">
                             <Calendar className="w-5 h-5 text-orange-500" />
                             <span className="text-sm font-medium">Event</span>
                         </button>
                         <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2 rounded">
                             <FileText className="w-5 h-5 text-red-500" />
                             <span className="text-sm font-medium">Write article</span>
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 

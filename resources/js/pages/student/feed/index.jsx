@@ -16,7 +16,7 @@ export default function StudentFeed({ user }) {
 
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                 <LeftSideBar user={user} />
-                                <CenterFeed />
+                                <CenterFeed user={user} />
                                 <RightSideBar />
                             </div>
                         </div>
