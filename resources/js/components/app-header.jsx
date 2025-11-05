@@ -10,11 +10,12 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2, Building2, Timer } from 'lucide-react';
+import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2, Building2, Timer, Home } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
 import SearchDialog from './search-dialog';
+
 
 
 
@@ -27,9 +28,9 @@ export function AppHeader({ breadcrumbs = [] }) {
     const { auth } = page.props;
     const mainNavItems = [
         {
-            title: 'Dashboard',
-            url: '/dashboard',
-            icon: LayoutGrid,
+            title: 'Home',
+            url: '/feed',
+            icon: Home,
         },
         {
             title: 'Leaderboard',
@@ -54,7 +55,7 @@ export function AppHeader({ breadcrumbs = [] }) {
     return (
         <>
             <div className="border-sidebar-border/80 border-b">
-                <div className="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
+                <div className="mx-auto flex justify-between h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden flex items-center gap-2">
                         <SearchDialog
@@ -73,7 +74,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                             <SheetContent side="left" className="bg-sidebar flex h-full w-64 flex-col items-stretch justify-between">
                                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <Link href="/dashboard" prefetch className="flex items-center space-x-2">
+                                    <Link href="/feed" prefetch className="flex items-center space-x-2">
                                         <AppLogo />
                                     </Link>
                                 </SheetHeader>
@@ -94,10 +95,10 @@ export function AppHeader({ breadcrumbs = [] }) {
                         </Sheet>
                     </div>
 
-                    <Link href="/dashboard" prefetch className="flex items-center space-x-2">
+                    <Link href="/feed" prefetch className="flex items-center space-x-2">
                         <AppLogo />
                     </Link>
-
+                    <SearchDialog className="hidden sm:flex" />
                     {/* Desktop Navigation */}
                     <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
                         <NavigationMenu className="flex h-full items-stretch">
@@ -126,7 +127,7 @@ export function AppHeader({ breadcrumbs = [] }) {
 
                     <div className="ml-auto flex items-center space-x-2">
                         <div className="flex items-center gap-4">
-                            <SearchDialog className="hidden sm:flex" />
+
                             <div className="">
                                 {/* component change mode */}
                                 <ThemeToggle />
@@ -134,7 +135,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="size-10 rounded-full p-1">
-                                        <Avatar className="size-8 overflow-hidden rounded-full" image={auth.user.image} name={auth.user.name} lastActivity={null} onlineCircleClass="w-4 h-4" />
+                                        <Avatar className="size-8 overflow-hidden rounded-full" image={auth.user.image} name={auth.user.name} lastActivity={null} onlineCircleClass="hidden" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent className="w-56" align="end">

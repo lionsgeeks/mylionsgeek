@@ -30,25 +30,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('student/dashboard');
-    })->name('student.dashboard');
-});
-
 
 
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
-require __DIR__ . '/users.php';
-require __DIR__ . '/computers.php';
-require __DIR__ . '/leaderboard.php';
-require __DIR__ . '/training.php';
-require __DIR__ . '/geeko.php';
-require __DIR__ . '/equipment.php';
-require __DIR__ . '/places.php';
-require __DIR__ . '/reservations.php';
-require __DIR__ . '/projects.php';
-require __DIR__ . '/recuiter.php';
-require __DIR__ . '/games.php';
+require __DIR__ . '/admin/users.php';
+require __DIR__ . '/admin/computers.php';
+require __DIR__ . '/admin/leaderboard.php';
+require __DIR__ . '/admin/training.php';
+require __DIR__ . '/admin/geeko.php';
+require __DIR__ . '/admin/equipment.php';
+require __DIR__ . '/admin/places.php';
+require __DIR__ . '/admin/reservations.php';
+require __DIR__ . '/admin/projects.php';
+require __DIR__ . '/admin/recuiter.php';
+require __DIR__ . '/admin/games.php';
+require __DIR__ . '/student/feed.php';

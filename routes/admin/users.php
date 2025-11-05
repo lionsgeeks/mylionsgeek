@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::post('/users/post/{id}/comments', [UsersController::class, 'addPostComment']);
     Route::get('/users/get/{id}/comments', [UsersController::class, 'getPostComments']);
     Route::get('/users/get/{id}/likes', [UsersController::class, 'getPostLikes']);
+    Route::post('/users/changeCover/{id}' , [UsersController::class , 'changeCover']);
 });
 
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PlacesController;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
@@ -16,7 +17,7 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur'])->pref
 // USER-FACING SPACES (PUBLIC, NO MIDDLEWARE)
 // =====================
 Route::get('/spaces', function () {
-    $studios = \DB::table('studios')->select('id','name','state','image')->orderBy('name')->get()
+    $studios = DB::table('studios')->select('id','name','state','image')->orderBy('name')->get()
         ->map(function($studio) {
             $img = $studio->image ? (
                 str_starts_with($studio->image, 'http') || str_starts_with($studio->image, 'storage/')
@@ -31,7 +32,7 @@ Route::get('/spaces', function () {
                 'type' => 'studio'
             ];
         });
-    $coworks = \DB::table('coworks')->select('id','table','state','image')->orderBy('table')->get()
+    $coworks = DB::table('coworks')->select('id','table','state','image')->orderBy('table')->get()
         ->map(function($cowork) {
             $img = $cowork->image ? (
                 str_starts_with($cowork->image, 'http') || str_starts_with($cowork->image, 'storage/')
