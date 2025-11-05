@@ -930,7 +930,7 @@ class UsersController extends Controller
         $user = User::find($id);  // Use find() to get the user by ID
 
         // Validate the uploaded file
-        $validated = $request->validate([
+        $request->validate([
             'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
