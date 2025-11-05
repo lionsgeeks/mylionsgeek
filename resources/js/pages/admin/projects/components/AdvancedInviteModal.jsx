@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useForm } from '@inertiajs/react';
 import { Mail, UserPlus, X, Check, User, AtSign } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 
 const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = [] }) => {
     const [inputValue, setInputValue] = useState('');

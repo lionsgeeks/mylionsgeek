@@ -11,7 +11,7 @@ import DeleteModal from '../../../../components/DeleteModal';
 import ProjectCard from "./components/ProjectCard";
 import AddProjectModal from "./components/AddProjectModal";
 import ViewProjectModal from "./components/ViewProjectModal";
-
+import { timeAgo } from '../../../../lib/utils'
 const User = ({ user, trainings, close, open }) => {
     const { auth } = usePage().props
 
@@ -97,20 +97,6 @@ const User = ({ user, trainings, close, open }) => {
                 }
             });
         }
-    }
-    function timeAgo(timestamp) {
-        if (!timestamp) return 'Never';
-
-        const now = new Date();
-        const last = new Date(timestamp + 'Z');
-
-        const diff = Math.floor((now - last) / 1000); // seconds
-
-        if (diff < 60) return 'Online now';
-        if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
-        if (diff < 172800) return 'Yesterday';
-        return last.toLocaleDateString();
     }
 
     return (

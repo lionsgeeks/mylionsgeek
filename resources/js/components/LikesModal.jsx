@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from "axios";
 import { useInitials } from "@/hooks/use-initials";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar,  } from "@/components/ui/avatar";
 import { Link } from '@inertiajs/react';
+import { timeAgo } from '../lib/utils'
 
 const LikesModal = ({ postId, open, onClose }) => {
     const [likes, setLikes] = useState([]);
@@ -42,17 +43,6 @@ const LikesModal = ({ postId, open, onClose }) => {
     //     ];
     //     return gradients[index % gradients.length];
     // };
-
-    const timeAgo = (dateString) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now - date) / 1000);
-        if (seconds < 60) return "Just now";
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-        return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    };
 
     if (!open) return null;
     console.log(likes);
