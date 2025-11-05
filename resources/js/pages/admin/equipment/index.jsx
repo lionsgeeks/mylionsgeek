@@ -590,13 +590,6 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                         <div className="inline-flex items-center gap-1.5">
                                             <button
                                                 className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
-                                                title="History"
-                                                onClick={() => openHistory(e)}
-                                            >
-                                                <History size={18} className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >

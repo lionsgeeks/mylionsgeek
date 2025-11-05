@@ -48,25 +48,30 @@ class HandleInertiaRequests extends Middleware
                 'id' => $request->session()->getId(),
             ],
             'auth' => [
-                'user' => tap($request->user(), function ($user) {
-                    if ($user && Schema::hasTable('accesses')) {
+                'user' => (function () use ($request) {
+                    $user = $request->user();
+                    if (! $user) {
+                        return null;
+                    }
+
+                    if (Schema::hasTable('accesses')) {
                         $user->loadMissing('access');
                     }
-                    if ($user) {
-                        $rawImage = $user->image ?? null;
-                        $avatarUrl = null;
 
-                        if ($rawImage) {
-                            // Accept absolute URLs as-is; otherwise, fallback to storage path
-                            $avatarUrl = Str::startsWith($rawImage, ['http://', 'https://'])
-                                ? $rawImage
-                                : asset('storage/' . ltrim($rawImage, '/'));
-                        }
-
-                        $user->setAttribute('avatarUrl', $avatarUrl);
-                        $user->setAttribute('isProfileImageMissing', empty($avatarUrl));
+                    $rawImage = $user->image ?? null;
+                    $avatarUrl = null;
+                    if ($rawImage) {
+                        $avatarUrl = Str::startsWith($rawImage, ['http://', 'https://'])
+                            ? $rawImage
+                            : asset('storage/' . ltrim($rawImage, '/'));
                     }
-                }),
+
+                    // Return user data merged with computed fields WITHOUT mutating/saving them on the model
+                    return array_merge($user->toArray(), [
+                        'avatarUrl' => $avatarUrl,
+                        'isProfileImageMissing' => empty($avatarUrl),
+                    ]);
+                })(),
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
