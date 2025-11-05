@@ -2,9 +2,11 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { Avatar } from "@/components/ui/avatar";
 import { Link, usePage } from "@inertiajs/react";
-import {timeAgo} from '../lib/utils' 
+import { timeAgo } from '../lib/utils'
 
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved }) {
+  console.log(postId);
+
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
     if (open && postId) {
       setLoading(true);
       axios
-        .get(`/admin/users/get/${postId}/comments`)
+        .get(`/posts/comments/${postId}`)
         .then((res) => {
           setComments(res.data.comments || []);
           setTimeout(
@@ -53,7 +55,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
     setSubmitting(true);
 
     try {
-      const res = await axios.post(`/admin/users/post/${postId}/comments`, {
+      const res = await axios.post(`/posts/comments/${postId}`, {
         comment: newComment.trim(),
       });
 
@@ -98,7 +100,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"

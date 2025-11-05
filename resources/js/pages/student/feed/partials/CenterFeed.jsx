@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, Repeat2, ThumbsUp, MoreHorizontal, X, Image, Video, Calendar, FileText, Briefcase, Users, BookOpen, Hash, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
+import PostCard from '../../../../components/PostCard';
 
-export default function CenterFeed({ user }) {
-    const [openAddPost , setOpenAddPost] = useState(false)
+export default function CenterFeed({ user, posts }) {
+    const [openAddPost, setOpenAddPost] = useState(false)
+    // console.log(posts.posts);
+
 
     return (
         <>
@@ -40,9 +43,16 @@ export default function CenterFeed({ user }) {
                 </div>
 
                 {/* Post Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-                    {/* Post Header */}
-                    <div className="p-4">
+
+                {posts.posts.map((p, index) => {
+                    return (
+                        <PostCard user={user} p={p} posts={posts.posts} />
+                    )
+                })}
+
+                {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
+                {/* Post Header */}
+                {/* <div className="p-4">
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3">
                                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-lg font-bold">
@@ -69,21 +79,21 @@ export default function CenterFeed({ user }) {
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                        </div>
+                        </div> */}
 
-                        {/* Post Content */}
-                        <div className="mt-3">
+                {/* Post Content */}
+                {/* <div className="mt-3">
                             <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">
                                 Développeur web junior sans emploi 😔 ! <span className="text-blue-600">#Recrutement</span> <span className="text-blue-600">#Stage</span> <span className="text-blue-600">#Freelance</span> <span className="text-blue-600">#EmploiMaroc</span> <span className="text-blue-600">#DéveloppeurWeb</span> <span className="text-blue-600">#CodeurMaroc</span> <span className="text-blue-600">#FullStack</span> <span className="text-blue-600">#ReactJS</span> <span className="text-blue-600">#NodeJS</span> <span className="text-blue-600">#RechercheEmploi</span> <span className="text-blue-600">#TechMaroc</span>
                             </p>
                             <button className="text-blue-600 dark:text-blue-400 text-sm font-medium mt-2">
                                 Show translation
                             </button>
-                        </div>
-                    </div>
+                        </div> */}
+                {/* </div> */}
 
-                    {/* Embedded Document/Resume */}
-                    <div className="px-4 pb-4">
+                {/* Embedded Document/Resume */}
+                {/* <div className="px-4 pb-4">
                         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                             <div className="bg-gray-50 dark:bg-gray-900 p-3 border-b border-gray-200 dark:border-gray-700">
                                 <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -137,10 +147,10 @@ export default function CenterFeed({ user }) {
                                 <span className="text-xs text-gray-500 dark:text-gray-400">1 / 2 pages</span>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
-                    {/* Post Stats */}
-                    <div className="px-4 pb-3">
+                {/* Post Stats */}
+                {/* <div className="px-4 pb-3">
                         <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                             <div className="flex items-center gap-1">
                                 <div className="flex -space-x-1">
@@ -155,10 +165,10 @@ export default function CenterFeed({ user }) {
                                 <span>3 reposts</span>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
-                    {/* Action Buttons */}
-                    <div className="border-t border-gray-200 dark:border-gray-700 px-2 py-1">
+                {/* Action Buttons */}
+                {/* <div className="border-t border-gray-200 dark:border-gray-700 px-2 py-1">
                         <div className="flex justify-around">
                             <button className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
                                 <ThumbsUp className="w-5 h-5" />
@@ -177,14 +187,14 @@ export default function CenterFeed({ user }) {
                                 <span className="text-sm font-medium">Send</span>
                             </button>
                         </div>
-                    </div>
-                </div>
+                    </div> */}
+                {/* </div> */}
 
                 {/* Additional Posts Placeholder */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
+                {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
                     <p>More posts would appear here...</p>
-                </div>
-            </div>
+                </div> */}
+            </div >
         </>
     );
 }

@@ -13,7 +13,7 @@ const LikesModal = ({ postId, open, onClose }) => {
         if (open && postId) {
             setLoading(true);
             axios
-                .get(`/admin/users/get/${postId}/likes`)
+                .get(`/posts/likes/${postId}`)
                 .then((res) => {
                     setLikes(res.data.likes || []);
                 })
@@ -62,7 +62,7 @@ const LikesModal = ({ postId, open, onClose }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Overlay */}
             <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
                 onClick={onClose}
             />
 

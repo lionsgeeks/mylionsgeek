@@ -54,7 +54,7 @@ export function AppHeader({ breadcrumbs = [] }) {
     const getInitials = useInitials();
     return (
         <>
-            <div className="border-sidebar-border/80 border-b">
+            <div className="border-sidebar-border/80  fixed z-50 bg-black  mx-auto w-full border-b">
                 <div className="mx-auto flex justify-between h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden flex items-center gap-2">
@@ -100,7 +100,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                     </Link>
                     <SearchDialog className="hidden sm:flex" />
                     {/* Desktop Navigation */}
-                    <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
+                    <div className="ml-6 hidden h-full z-50  items-center space-x-6 lg:flex">
                         <NavigationMenu className="flex h-full items-stretch">
                             <NavigationMenuList className={`flex h-full items-stretch space-x-2 ${auth.user.language == "ar" ? 'flex-row-reverse' : ''}`}>
                                 {mainNavItems.map((item, index) => (
