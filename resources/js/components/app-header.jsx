@@ -45,6 +45,11 @@ export function AppHeader({ breadcrumbs = [] }) {
         },
         { title: 'Reservations', url: '/reservations', icon: Timer },
 
+        {
+            title: 'Projects', 
+            url: '/projects', 
+            icon: Folder  
+        },
         // {
         //     title: 'Games',
         //     url: '/games',

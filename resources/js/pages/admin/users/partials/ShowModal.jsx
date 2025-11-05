@@ -394,13 +394,8 @@ const [processingId, setProcessingId] = useState(null);
                                                                 setProcessingId(project.id);
                                                                 router.post(`/admin/projects/${project.id}/approve`, {}, {
                                                                     onSuccess: () => {
-                                                                        setProjects(prev => 
-                                                                            prev.map(p => 
-                                                                                p.id === project.id 
-                                                                                    ? { ...p, status: 'approved' }
-                                                                                    : p
-                                                                            )
-                                                                        );
+                                                                        setProjects(prev => prev.filter(p => p.id !== project.id));
+
                                                                     },
                                                                     onFinish: () => setProcessingId(null),
                                                                 });
@@ -463,13 +458,8 @@ const [processingId, setProcessingId] = useState(null);
                                                                         rejection_reason: rejectionReason,
                                                                     }, {
                                                                         onSuccess: () => {
-                                                                            setProjects(prev => 
-                                                                                prev.map(p => 
-                                                                                    p.id === project.id 
-                                                                                        ? { ...p, status: 'rejected' }
-                                                                                        : p
-                                                                                )
-                                                                            );
+                                                                            setProjects(prev => prev.filter(p => p.id !== project.id));
+
                                                                             setRejectingId(null);
                                                                             setRejectionReason('');
                                                                         },

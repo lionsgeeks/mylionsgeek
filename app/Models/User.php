@@ -88,6 +88,28 @@ class User extends Authenticatable
     }
 
     /**
+     * User projects
+     */
+    // public function projects()
+    // {
+    //     return $this->hasMany(UserProject::class, 'user_id');
+    // }
+    
+    public function projects(): HasMany
+    {
+        return $this->hasMany(UserProject::class, 'user_id');
+    }
+
+    /**
+     * Projects this user approved
+     */
+    public function approvedProjects()
+    {
+        return $this->hasMany(UserProject::class, 'approved_by');
+    }
+
+
+    /**
      * Get Geekos created by this user.
      */
     public function createdGeekos()
