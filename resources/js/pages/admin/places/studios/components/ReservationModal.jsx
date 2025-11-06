@@ -12,6 +12,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
+    const [timeError, setTimeError] = useState('');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         studio_id: studio.id,
@@ -25,7 +26,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
     });
 
     // Update form when selectedRange changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (selectedRange) {
             setData({
                 ...data,
@@ -41,11 +42,21 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
         setCurrentStep(1);
         setSelectedMembers([]);
         setSelectedEquipment([]);
+        setTimeError('');
         onClose();
     };
 
     const handleNext = () => {
+        // Validate time range
+        const startHour = parseInt(data.start.split(':')[0], 10);
+        const endHour = parseInt(data.end.split(':')[0], 10);
+
+        if (startHour < 8 || endHour > 18) {
+            setTimeError('Reservation time must be between 08:00 and 18:00.');
+            return;
+        }
         if (currentStep < 3) {
+            setTimeError('');
             setCurrentStep(currentStep + 1);
         }
     };
@@ -66,7 +77,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         const formData = {
             ...data,
             team_members: selectedMembers.map(m => m.id),
@@ -158,8 +169,16 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                 </div>
                             </div>
 
+                            {timeError && (
+                                <p className="text-sm text-red-500 font-medium">{timeError}</p>
+                            )}
+
                             <div className="flex justify-end">
-                                <Button type="button" onClick={handleNext} className="cursor-pointer text-black hover:text-white dark:hover:text-black">
+                                <Button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
+                                >
                                     Next →
                                 </Button>
                             </div>

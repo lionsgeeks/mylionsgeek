@@ -40,7 +40,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         post('/admin/reservations/storeReservationCowork', {
             onSuccess: () => {
                 handleClose();
@@ -133,6 +133,8 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 onChange={(e) => setData('start', e.target.value)}
                                 className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
+                                min="08:00"
+                                max="18:00"
                             />
                             {errors.start && (
                                 <p className="text-red-500 text-sm mt-1">{errors.start}</p>
@@ -149,11 +151,14 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 onChange={(e) => setData('end', e.target.value)}
                                 className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
+                                min="08:00"
+                                max="18:00"
                             />
                             {errors.end && (
                                 <p className="text-red-500 text-sm mt-1">{errors.end}</p>
                             )}
                         </div>
+
                     </div>
 
                     {/* BUTTONS */}
