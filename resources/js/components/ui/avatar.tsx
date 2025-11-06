@@ -33,7 +33,7 @@ function Avatar({
   const onlineStatus = isUserOnline(lastActivity);
 
   return (
-    <div className="relative">
+    <div className="relative z-0">
       <AvatarPrimitive.Root
         data-slot="avatar"
         className={cn(
@@ -45,7 +45,7 @@ function Avatar({
         {image ? (
           <AvatarImage src={`/storage/img/profile/${image}`} alt={name} />
         ) : (
-          <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+          <AvatarFallback className="rounded-lg  bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
             {getInitials(name)}
           </AvatarFallback>
         )}

@@ -3,7 +3,7 @@ import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { Transition } from '@headlessui/react';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { useMemo, useRef, useState } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
@@ -20,6 +20,7 @@ const breadcrumbs = [
 ];
 
 export default function Password() {
+    const { flash } = usePage().props;
     const passwordInput = useRef(null);
     const currentPasswordInput = useRef(null);
     const [showCurrent, setShowCurrent] = useState(false);
@@ -46,6 +47,11 @@ export default function Password() {
 
             <SettingsLayout>
                 <div className="space-y-6">
+                    {flash?.success && (
+                        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/40 dark:bg-green-900/30 dark:text-green-300">
+                            {flash.success}
+                        </div>
+                    )}
                     <HeadingSmall title="Update password" description="Ensure your account is using a long, random password to stay secure" />
 
                     <Form
@@ -68,6 +74,7 @@ export default function Password() {
                     >
                         {({ errors, processing, recentlySuccessful }) => (
                             <>
+                                <input type="hidden" name="_token" value={typeof document !== 'undefined' ? document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' : ''} />
                                 <div className="grid gap-2">
                                     <Label htmlFor="current_password">Current password</Label>
 
@@ -138,7 +145,7 @@ export default function Password() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-password-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save password</Button>
+                                    <Button type="submit" disabled={processing} data-test="update-password-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save password</Button>
 
                                     <Transition
                                         show={recentlySuccessful}

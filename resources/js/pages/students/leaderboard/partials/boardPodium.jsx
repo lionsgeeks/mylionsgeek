@@ -2,7 +2,7 @@
 import React from "react";
 import { PodiumSkeleton } from "@/components/LoadingSkeleton";
 import { CrownIcon, MedalIcon, AwardIcon } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar,  } from "@/components/ui/avatar";
 import { useInitials } from "@/hooks/use-initials";
 
 const BoardPodium = ({

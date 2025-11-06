@@ -26,14 +26,15 @@ class PasswordController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
+            'current_password' => ['required', 'current_password:web'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        // Use the "hashed" cast on the User model by assigning plain text; it will be hashed automatically
+        $request->user()->forceFill([
+            'password' => $validated['password'],
+        ])->save();
 
-        return back();
+        return back()->with('status', __('Password updated successfully.'));
     }
 }

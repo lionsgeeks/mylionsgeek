@@ -1,5 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import profile from '@/routes/profile';
 import { Link, usePage } from '@inertiajs/react';

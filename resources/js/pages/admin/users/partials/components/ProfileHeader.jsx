@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Github, Linkedin, Twitter, Globe, Edit3, Calendar, ImagePlus } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 import EditUserModal from '../EditModal';
 import { Camera } from 'lucide-react'; // Icon for changing the cover image
 import { router } from '@inertiajs/react';
