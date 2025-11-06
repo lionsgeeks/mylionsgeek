@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ForgotPasswordLinkMail;
 
 class User extends Authenticatable
 {
@@ -172,5 +174,15 @@ class User extends Authenticatable
     public function comments()
     {
         return $this->hasMany(Comment::class);
+    }
+
+    /**
+     * Send the password reset notification using our custom mailable and layout.
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $resetUrl = url(route('password.reset', ['token' => $token, 'email' => $this->email], false));
+
+        Mail::to($this->email)->send(new ForgotPasswordLinkMail($this, $resetUrl));
     }
 }

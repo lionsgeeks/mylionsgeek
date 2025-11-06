@@ -16,7 +16,7 @@ import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Organizing projects-pana.png"
 import AdvancedInviteModal from './components/AdvancedInviteModal'
 import { useInitials } from '@/hooks/use-initials';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 import FlashMessage from '@/components/FlashMessage';
 
 

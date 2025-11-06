@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 
 const TeamMemberSelector = ({ selected, onSelect }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);

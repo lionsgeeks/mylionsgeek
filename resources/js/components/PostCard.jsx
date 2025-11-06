@@ -9,7 +9,7 @@ import LikesModal from "./LikesModal";
 // Function to calculate "time ago"
 
 const PostCard = ({ user, p, posts }) => {
-    console.log(posts);
+    // console.log(posts);
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -42,7 +42,7 @@ const PostCard = ({ user, p, posts }) => {
                 prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
             );
 
-            const response = await axios.post(`/admin/users/post/${postId}/addLike`);
+            const response = await axios.post(`/posts/likes/${postId}`);
             const { liked, likes_count } = response.data;
 
             // Adjust liked post IDs based on response
@@ -93,6 +93,7 @@ const PostCard = ({ user, p, posts }) => {
                                 image={user?.image ? `/storage/img/profile/${user.image}` : undefined}
                                 name={user?.name}
                                 lastActivity={user?.last_online || null}
+                                zIndex={'z-10'}
                                 onlineCircleClass="hidden"
                             />
                             <div>
