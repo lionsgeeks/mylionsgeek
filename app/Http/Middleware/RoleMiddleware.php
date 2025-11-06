@@ -34,7 +34,7 @@ class RoleMiddleware
         if (! $hasAccess) {
             // Redirect user to their own dashboard based on role
             if (in_array('student', $userRoles)) {
-                return redirect()->route('student.dashboard');
+                return redirect()->route('student.feed');
             } elseif (in_array('admin', $userRoles)) {
                 return redirect()->route('dashboard');
             }

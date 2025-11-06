@@ -9,7 +9,7 @@ export default function StudentFeed({ user , posts }) {
     return (
         <>
             <AppLayout>
-                <div className='z-30 pt-20'>
+                <div className='z-30'>
                     <div className="min-h-screen bg-transparent ">
                         {/* Main Container */}
                         <div className="max-w-7xl mx-auto px-4">

@@ -54,10 +54,10 @@ export function AppHeader({ breadcrumbs = [] }) {
     const getInitials = useInitials();
     return (
         <>
-            <div className="border-sidebar-border/80  fixed z-50 bg-black  mx-auto w-full border-b">
+            <div className={`border-sidebar-border/80 ${auth.user.role.includes('student') && 'fixed'} z-50 bg-light dark:bg-beta  mx-auto w-full border-b`}>
                 <div className="mx-auto flex justify-between h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
-                    <div className="lg:hidden flex items-center gap-2">
+                    <div className="lg:hidden flex items-center">
                         <SearchDialog
                             trigger={
                                 <Button variant="ghost" size="icon" className="h-[34px] w-[34px]">
@@ -98,7 +98,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                     <Link href="/feed" prefetch className="flex items-center space-x-2">
                         <AppLogo />
                     </Link>
-                    <SearchDialog className="hidden sm:flex" />
+                    <SearchDialog className="hidden sm:flex ml-4 dark:bg-light/10 dark:hover:bg-light/10 bg-dark_gray/4" />
                     {/* Desktop Navigation */}
                     <div className="ml-6 hidden h-full z-50  items-center space-x-6 lg:flex">
                         <NavigationMenu className="flex h-full items-stretch">
