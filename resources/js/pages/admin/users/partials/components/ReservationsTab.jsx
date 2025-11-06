@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import TablePagination from "@/components/TablePagination";
+import { router } from "@inertiajs/react";
 
 export default function ReservationsTab({ reservations = { data: [], meta: {} } }) {
 
@@ -119,7 +120,7 @@ export default function ReservationsTab({ reservations = { data: [], meta: {} } 
                   const StatusIcon = statusBadge.icon;
 
                   return (
-                    <tr key={reservation.id || index} className="hover:bg-neutral-50 dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
+                    <tr onClick={() => router.visit(`/admin/reservations/${reservation.id}`)} key={reservation.id || index} className="hover:bg-neutral-50 cursor-pointer dark:hover:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
                       <td className="p-3 font-medium">{reservation.title || 'Untitled Reservation'}</td>
                       <td className="p-3 text-left">
                         <div className="inline-flex items-center gap-2">
