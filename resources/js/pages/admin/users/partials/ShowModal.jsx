@@ -394,8 +394,13 @@ const [processingId, setProcessingId] = useState(null);
                                                                 setProcessingId(project.id);
                                                                 router.post(`/admin/projects/${project.id}/approve`, {}, {
                                                                     onSuccess: () => {
-                                                                        setProjects(prev => prev.filter(p => p.id !== project.id));
-
+                                                                        setProjects(prev => 
+                                                                            prev.map(p => 
+                                                                                p.id === project.id 
+                                                                                    ? { ...p, status: 'approved' }
+                                                                                    : p
+                                                                            )
+                                                                        );
                                                                     },
                                                                     onFinish: () => setProcessingId(null),
                                                                 });
@@ -450,7 +455,7 @@ const [processingId, setProcessingId] = useState(null);
                                                             <Button
                                                                 onClick={() => {
                                                                     if (!rejectionReason.trim()) {
-                                                                        alert('Please provide a rejection reason');
+                                                                        alert('Please provide a rejection reason minimum 1 characters');
                                                                         return;
                                                                     }
                                                                     setProcessingId(project.id);
@@ -458,8 +463,13 @@ const [processingId, setProcessingId] = useState(null);
                                                                         rejection_reason: rejectionReason,
                                                                     }, {
                                                                         onSuccess: () => {
-                                                                            setProjects(prev => prev.filter(p => p.id !== project.id));
-
+                                                                            setProjects(prev =>
+                                                                                prev.map(p =>
+                                                                                    p.id === project.id
+                                                                                        ? { ...p, status: 'rejected' }
+                                                                                        : p
+                                                                                )
+                                                                            );
                                                                             setRejectingId(null);
                                                                             setRejectionReason('');
                                                                         },

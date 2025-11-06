@@ -40,7 +40,7 @@ class AdminProjectController extends Controller
     public function reject(Request $request, UserProject $userProject)
     {
         $validated = $request->validate([
-            'rejection_reason' => 'required|string|min:10',
+            'rejection_reason' => 'required|string|min:1',
         ]);
 
         $userProject->update([

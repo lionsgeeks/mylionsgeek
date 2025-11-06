@@ -27,9 +27,10 @@ Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->gr
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/admin/users/{user}/projects', [AdminProjectController::class, 'getUserProjects'])
-        ->name('admin.users.projects');
+Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
+    Route::get('/feed', function () {
+        return Inertia::render('student/dashboard');
+    })->name('student.dashboard');
 });
 
 
