@@ -1,6 +1,8 @@
 <?php
 
 // use App\Http\Controllers\CompleteProfile;
+
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
@@ -17,17 +19,20 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     // Documents API for user overview modal
     Route::get('/users/{user}/documents', [UsersController::class, 'documents']);
     Route::post('/users/{user}/documents', [UsersController::class, 'uploadDocument']);
-    Route::get('/users/{user}/documents/{kind}/{doc}', [UsersController::class, 'viewDocument'])->where(['kind' => 'contract|medical','doc' => '[0-9]+'])->name('admin.users.documents.view');
+    Route::get('/users/{user}/documents/{kind}/{doc}', [UsersController::class, 'viewDocument'])->where(['kind' => 'contract|medical', 'doc' => '[0-9]+'])->name('admin.users.documents.view');
     Route::post('/users/store', [UsersController::class, 'store']);
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
-    Route::post('/users/post/{id}/addLike', [UsersController::class, 'AddLike']);
-    Route::post('/users/post/{id}/comments', [UsersController::class, 'addPostComment']);
-    Route::get('/users/get/{id}/comments', [UsersController::class, 'getPostComments']);
-    Route::get('/users/get/{id}/likes', [UsersController::class, 'getPostLikes']);
-    Route::post('/users/changeCover/{id}' , [UsersController::class , 'changeCover']);
+    Route::post('/users/changeCover/{id}', [UsersController::class, 'changeCover']);
+});
+
+Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
+    Route::post('/likes/{id}', [PostController::class, 'AddLike']);
+    Route::post('/comments/{id}', [PostController::class, 'addPostComment']);
+    Route::get('/likes/{id}', [PostController::class, 'getPostLikes']);
+    Route::get('/comments/{id}', [PostController::class, 'getPostComments']);
 });
 
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);

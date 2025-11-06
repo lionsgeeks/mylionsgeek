@@ -1,7 +1,7 @@
 import { Activity, Award, Calendar, Clock, Code, Laptop, Medal, Monitor, RefreshCw, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import React from 'react';
 import { TableRowSkeleton } from '@/components/LoadingSkeleton';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar,  } from "@/components/ui/avatar";
 import { useInitials } from "@/hooks/use-initials";
 
 

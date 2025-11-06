@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { BookOpen, Timer, Trash2, TrendingUp, User, Sparkles, Award, Clock, Target, GraduationCap, X, CheckCircle2, Building2, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar,  } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import UpdateTraining from './partials/UpdateTraining';
 import Banner from "@/components/banner"
