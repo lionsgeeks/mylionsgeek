@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,8 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
         end: selectedRange?.end || '',
     });
 
-    // Update form when selectedRange changes
+    const [timeError, setTimeError] = useState('');
+
     useEffect(() => {
         if (selectedRange) {
             setData({
@@ -23,22 +24,49 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                 end: selectedRange.end,
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRange]);
 
     const handleClose = () => {
         reset();
+        setTimeError('');
         onClose();
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // 🕒 Prevent end time before or equal start time
-        if (data.start >= data.end) {
-            alert('End time must be after start time.');
+        const toMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        const minMinutes = 8 * 60;
+        const maxMinutes = 18 * 60;
+        const startMinutes = data.start ? toMinutes(data.start) : null;
+        const endMinutes = data.end ? toMinutes(data.end) : null;
+
+
+        if (!data.start || !data.end) {
+            setTimeError('Please select both start and end times.');
             return;
         }
+
+        if (startMinutes < minMinutes || startMinutes > maxMinutes) {
+            setTimeError('Start time must be between 08:00 and 18:00.');
+            return;
+        }
+
+        if (endMinutes < minMinutes || endMinutes > maxMinutes) {
+            setTimeError('End time must be between 08:00 and 18:00.');
+            return;
+        }
+
+        if (endMinutes <= startMinutes) {
+            setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        setTimeError('');
 
         const formData = {
             meeting_room_id: data.meeting_room_id,
@@ -81,6 +109,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
 
                         {/* Date & Time Inputs */}
                         <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
+                            {/* Date */}
                             <div>
                                 <Label htmlFor="day">Date</Label>
                                 <Input
@@ -93,6 +122,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                 />
                             </div>
 
+                            {/* Start Time */}
                             <div>
                                 <Label htmlFor="start">Start Time</Label>
                                 <Input
@@ -110,6 +140,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                 )}
                             </div>
 
+                            {/* End Time */}
                             <div>
                                 <Label htmlFor="end">End Time</Label>
                                 <Input
@@ -127,6 +158,11 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                 )}
                             </div>
                         </div>
+
+                        {/* Time validation error */}
+                        {timeError && (
+                            <p className="text-red-500 text-sm mt-2">{timeError}</p>
+                        )}
 
                         {/* Buttons */}
                         <div className="flex justify-end gap-3">
