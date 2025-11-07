@@ -1,13 +1,50 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MessageSquare, Send, Repeat2, ThumbsUp, MoreHorizontal, X, Image, Video, Calendar, FileText, Briefcase, Users, BookOpen, Hash, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import PostCard from '../../../../components/PostCard';
+import UndoRemove from '../../../../components/UndoRemove';
 
 export default function CenterFeed({ user, posts }) {
     const [openAddPost, setOpenAddPost] = useState(false)
+    const [allPosts, setAllPosts] = useState(posts.posts)
+    const [undoState, setUndoState] = useState(false)
+    const [pendingDeleteId, setPendingDeleteId] = useState(null);
+    const [undoTimer, setUndoTimer] = useState(null);
+
+    // console.log(allPosts);
+
     // //(posts.posts);
+    useEffect(() => {
+        return () => {
+            if (undoTimer) clearTimeout(undoTimer);
+        };
+    }, [undoTimer]);
+    const handlePostRemoved = (postId) => {
+        const newPosts = allPosts.filter(p => p.id !== postId);
+        setAllPosts(newPosts);
+        console.log('🗑️ Post removed successfully');
+    };
+    const handleRemoveClick = (postId) => {
+        setPendingDeleteId(postId);
+        setUndoState(true);
 
+        // ⏱️ Start a 5-second timer to auto-remove the post
+        const timer = setTimeout(() => {
+            handlePostRemoved(postId);
+            setUndoState(false);
+            setPendingDeleteId(null);
+        }, 5000); // 5 seconds
 
+        setUndoTimer(timer);
+    };
+    const handleUndoClick = () => {
+        // 🛑 Cancel the removal
+        if (undoTimer) clearTimeout(undoTimer);
+
+        console.log('✅ Undo clicked — post restored');
+        setUndoState(false);
+        setPendingDeleteId(null);
+    };
     return (
         <>
             {/* Center Feed - Scrollable */}
@@ -44,11 +81,24 @@ export default function CenterFeed({ user, posts }) {
 
                 {/* Post Card */}
 
-                {posts.posts.map((p, index) => {
-                    return (
-                        <PostCard user={user} p={p} posts={posts.posts} />
-                    )
-                })}
+                {allPosts.map((p) => (
+                    <PostCard
+                        key={p.id}
+                        user={user}
+                        p={p}
+                        posts={posts.posts}
+                        changeUndo={() => handleRemoveClick(p.id)}
+                    />
+                ))}
+
+                {/* Single Undo Popup */}
+                {undoState && (
+                    <UndoRemove
+                        state={undoState}
+                        onUndo={handleUndoClick}
+                    />
+                )}
+
 
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
                 {/* Post Header */}

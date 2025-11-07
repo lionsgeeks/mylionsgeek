@@ -2,7 +2,7 @@
 import React from "react";
 import { PodiumSkeleton } from "@/components/LoadingSkeleton";
 import { CrownIcon, MedalIcon, AwardIcon } from "lucide-react";
-import { Avatar,  } from "@/components/ui/avatar";
+import { Avatar, } from "@/components/ui/avatar";
 import { useInitials } from "@/hooks/use-initials";
 
 const BoardPodium = ({
@@ -101,9 +101,9 @@ const BoardPodium = ({
                                             </div>
                                             <div className="">
 
-                                            {/* Avatar */}
-                                            <div className="text-center mb-4 flex justify-center">
-                                                <Avatar className="h-26 w-26 overflow-hidden rounded-full">
+                                                {/* Avatar */}
+                                                <div className="text-center mb-4 flex justify-center">
+                                                    {/* <Avatar className="h-26 w-26 overflow-hidden rounded-full">
                                                     <AvatarImage
                                                         src={winner.user?.image}
                                                         alt={winner.user?.name}
@@ -111,22 +111,29 @@ const BoardPodium = ({
                                                     <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                         {getInitials(winner.user?.name)}
                                                     </AvatarFallback>
-                                                </Avatar>
-                                            </div>
-                                            {/* Name */}
-                                            <div className="text-center mb-4">
-                                                <h3
-                                                    className={`font-bold text-gray-900 dark:text-white ${rank === 1 ? "text-xl" : "text-lg"
-                                                        } mb-1`}
-                                                >
-                                                    {winner.user?.name || "Unknown"}
-                                                </h3>
-                                                {/* <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                </Avatar> */}
+                                                    <Avatar
+                                                        className="h-26 w-26 overflow-hidden rounded-full"
+                                                        image={winner?.user.image}
+                                                        name={winner?.user.name}
+                                                        lastActivity={winner?.user.last_online || null}
+                                                        onlineCircleClass="hidden"
+                                                    />
+                                                </div>
+                                                {/* Name */}
+                                                <div className="text-center mb-4">
+                                                    <h3
+                                                        className={`font-bold text-gray-900 dark:text-white ${rank === 1 ? "text-xl" : "text-lg"
+                                                            } mb-1`}
+                                                    >
+                                                        {winner.user?.name || "Unknown"}
+                                                    </h3>
+                                                    {/* <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 {winner.user?.promo
                                                     ? `Promo ${winner.user.promo}`
                                                     : "No Promo"}
                                             </p> */}
-                                            </div>
+                                                </div>
                                             </div>
 
 
@@ -157,7 +164,7 @@ const BoardPodium = ({
                                     const isThird = rank === 3;
 
                                     // Olympic podium heights: 1st (center, highest), 2nd (left, medium), 3rd (right, lowest)
-                                    const podiumHeights = { 
+                                    const podiumHeights = {
                                         2: "h-[200px] sm:h-[220px]", // Winner - highest
                                         1: "h-[160px] sm:h-[180px]", // Second - medium  
                                         3: "h-[120px] sm:h-[140px]"  // Third - lowest
@@ -182,22 +189,28 @@ const BoardPodium = ({
                                     return (
                                         <div key={idx} className="flex flex-col items-center cursor-pointer group" onClick={() => handleUserClick(winner)}>
                                             {/* Rank badge */}
-                                            <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg z-10 ${
-                                                isWinner ? 'bg-yellow-500 text-white' :
+                                            <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg z-10 ${isWinner ? 'bg-yellow-500 text-white' :
                                                 isSecond ? 'bg-gray-400 text-white' :
-                                                'bg-amber-600 text-white'
-                                            }`}>
+                                                    'bg-amber-600 text-white'
+                                                }`}>
                                                 {rank}
                                             </div>
 
                                             {/* Avatar with ring */}
                                             <div className={`relative mb-3 ${isWinner ? 'z-10' : ''}`}>
-                                                <Avatar className={`${isWinner ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-16 w-16 sm:h-20 sm:w-20'} ring-4 ring-white/80 shadow-xl`}>
+                                                {/* <Avatar className={`${isWinner ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-16 w-16 sm:h-20 sm:w-20'} ring-4 ring-white/80 shadow-xl`}>
                                                     <AvatarImage src={winner.user?.image} alt={winner.user?.name} />
                                                     <AvatarFallback className="bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white text-lg font-bold">
                                                         {getInitials(winner.user?.name)}
                                                     </AvatarFallback>
-                                                </Avatar>
+                                                </Avatar> */}
+                                                <Avatar
+                                                    className="h-20 w-20 overflow-hidden rounded-full"
+                                                    image={winner.user?.image}
+                                                    name={winner.user?.name}
+                                                    lastActivity={winner.user?.last_online || null}
+                                                    onlineCircleClass="hidden"
+                                                />
                                             </div>
 
                                             {/* Name and time */}
@@ -214,15 +227,15 @@ const BoardPodium = ({
                                             <div className={`w-20 sm:w-24 ${podiumHeights[rank]} ${bgStyle} rounded-t-xl flex flex-col items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-300 relative overflow-hidden`}>
                                                 {/* Shine effect */}
                                                 <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 rounded-t-xl"></div>
-                                                
+
                                                 {/* Icon */}
                                                 <div className="relative z-10">
                                                     {icon}
                                                 </div>
-                                                
+
                                                 {/* Rank number on podium */}
                                                 <div className=" bottom-2 right-2 text-white/80 font-bold text-lg">
-                                                    {rank ==2 ? 1 : rank == 1 ? 2 : 3}
+                                                    {rank == 2 ? 1 : rank == 1 ? 2 : 3}
                                                 </div>
                                             </div>
                                         </div>
