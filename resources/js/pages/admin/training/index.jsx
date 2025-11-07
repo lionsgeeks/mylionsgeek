@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { BookOpen, Timer, Trash2, TrendingUp, User, Sparkles, Award, Clock, Target, GraduationCap, X, CheckCircle2, Building2, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import UpdateTraining from './partials/UpdateTraining';
 import Banner from "@/components/banner"
@@ -321,7 +321,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {training.coach?.name && (
                                         <div className="relative group/coach">
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-600/30 transition-all duration-300 group-hover/coach:translate-x-20 group-hover/coach:opacity-0">
-                                                <Avatar className="h-10 w-10 ring-2 ring-yellow-400">
+                                                {/* <Avatar className="h-10 w-10 ring-2 ring-yellow-400">
                                                     <AvatarImage
                                                         className="h-full w-full object-cover"
                                                         src={training.coach.image}
@@ -330,7 +330,13 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                     <AvatarFallback className="bg-yellow-400 text-black font-bold text-sm">
                                                         {getInitials(training.coach.name)}
                                                     </AvatarFallback>
-                                                </Avatar>
+                                                </Avatar> */}
+                                                <Avatar
+                                                    className="h-10 w-10"
+                                                    image={training.coach.image}
+                                                    name={training.coach.name}
+                                                    onlineCircleClass="hidden"
+                                                />
                                                 <div>
                                                     <div className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold">
                                                         Coach
@@ -566,10 +572,10 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         const coachTrainings = trainings.filter(t => t.coach && t.coach.id === selectedCoach);
 
                                         const totalStudents = coachTrainings.reduce((sum, training) => {
-    if (Array.isArray(training.users)) return sum + training.users.length;
-    if (typeof training.users_count === 'number') return sum + training.users_count;
-    return sum;
-}, 0);
+                                            if (Array.isArray(training.users)) return sum + training.users.length;
+                                            if (typeof training.users_count === 'number') return sum + training.users_count;
+                                            return sum;
+                                        }, 0);
 
 
 
