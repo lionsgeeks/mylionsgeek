@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-    MoreHorizontal, 
-    MessageSquare, 
-    Users, 
-    Trash, 
+import {
+    MoreHorizontal,
+    MessageSquare,
+    Users,
+    Trash,
     Plus,
     Search,
     Mail,
@@ -27,7 +27,7 @@ const Team = ({ teamMembers = [] }) => {
         role: 'member'
     });
 
-    const filteredMembers = teamMembers.filter(member => 
+    const filteredMembers = teamMembers.filter(member =>
         member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -48,9 +48,9 @@ const Team = ({ teamMembers = [] }) => {
             member: { color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300", label: "Member" },
             viewer: { color: "bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300", label: "Viewer" }
         };
-        
+
         const config = roleConfig[role] || roleConfig.member;
-        
+
         return (
             <Badge variant="outline" className={`${config.color} border-none`}>
                 {config.label}
@@ -61,9 +61,8 @@ const Team = ({ teamMembers = [] }) => {
     const getStatusIndicator = (status) => {
         return (
             <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${
-                    status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                }`}></div>
+                <div className={`h-2 w-2 rounded-full ${status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                    }`}></div>
                 <span className="capitalize">{status}</span>
             </div>
         );
@@ -76,9 +75,9 @@ const Team = ({ teamMembers = [] }) => {
                 <div className="flex items-center gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search team members..." 
+                        <Input
+                            type="search"
+                            placeholder="Search team members..."
                             className="pl-8 w-[200px] md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -116,10 +115,16 @@ const Team = ({ teamMembers = [] }) => {
                                 <TableRow key={member.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8">
+                                            {/* <Avatar className="h-8 w-8">
                                                 <AvatarImage src={member.avatar} alt={member.name} />
                                                 <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
+                                            </Avatar> */}
+                                            <Avatar
+                                                className="h-8 w-8"
+                                                image={member.avatar}
+                                                name={member.name}
+                                                onlineCircleClass="hidden"
+                                            />
                                             <div>
                                                 <div className="font-medium">{member.name}</div>
                                                 <div className="text-sm text-muted-foreground">{member.email}</div>
@@ -182,19 +187,19 @@ const Team = ({ teamMembers = [] }) => {
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="email">Email Address</Label>
-                            <Input 
-                                id="email" 
+                            <Input
+                                id="email"
                                 type="email"
                                 value={inviteData.email}
-                                onChange={(e) => setInviteData({...inviteData, email: e.target.value})}
+                                onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                                 placeholder="Enter email address"
                             />
                         </div>
                         <div>
                             <Label htmlFor="role">Role</Label>
-                            <Select 
-                                value={inviteData.role} 
-                                onValueChange={(value) => setInviteData({...inviteData, role: value})}
+                            <Select
+                                value={inviteData.role}
+                                onValueChange={(value) => setInviteData({ ...inviteData, role: value })}
                             >
                                 <SelectTrigger>
                                     <SelectValue />

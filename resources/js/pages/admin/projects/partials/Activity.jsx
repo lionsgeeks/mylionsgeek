@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
-import { 
+import {
     CheckCircle,
     GitBranch,
     GitCommit,
@@ -115,16 +115,21 @@ const Activity = ({ activities = [] }) => {
                     filteredActivities.map((activity) => (
                         <div
                             key={activity.id}
-                            className={`flex gap-3 p-4 rounded-lg border ${
-                                !activity.read 
-                                    ? "bg-primary/5 border-primary/20" 
-                                    : "bg-card"
-                            }`}
+                            className={`flex gap-3 p-4 rounded-lg border ${!activity.read
+                                ? "bg-primary/5 border-primary/20"
+                                : "bg-card"
+                                }`}
                         >
-                            <Avatar className="h-10 w-10 flex-shrink-0">
+                            {/* <Avatar className="h-10 w-10 flex-shrink-0">
                                 <AvatarImage src={activity.user?.image ? `/storage/${activity.user.image}` : null} alt={activity.user?.name} />
                                 <AvatarFallback>{activity.user?.name?.substring(0, 2).toUpperCase() || '??'}</AvatarFallback>
-                            </Avatar>
+                            </Avatar> */}
+                            <Avatar
+                                className="h-10 w-10"
+                                image={activity.user?.image}
+                                name={activity.user?.name}
+                                onlineCircleClass="hidden"
+                            />
                             <div className="flex-1">
                                 <div className="flex items-baseline gap-1 flex-wrap">
                                     <span className="font-medium">{activity.user?.name || 'Unknown User'}</span>

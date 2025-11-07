@@ -46,7 +46,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="md:col-span-1">
                                         <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                            <Avatar className="h-24 w-24 overflow-hidden rounded-full" image={auth.user.image ? `/storage/${auth.user.image}` : undefined} name={auth.user.name} lastActivity={auth.user.last_activity || null} onlineCircleClass="w-6 h-6" />
+                                            <Avatar className="h-24 w-24 overflow-hidden rounded-full" image={auth.user.image} name={auth.user.name} lastActivity={auth.user.last_activity || null} onlineCircleClass="w-6 h-6" />
 
                                             <div className="w-full">
                                                 <Label htmlFor="image">Avatar</Label>

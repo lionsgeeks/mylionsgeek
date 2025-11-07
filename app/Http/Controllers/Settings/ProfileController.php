@@ -33,9 +33,21 @@ class ProfileController extends Controller
         $data = $request->validated();
 
         // Handle avatar upload if provided
+        // if ($request->hasFile('image')) {
+        //     $path = $request->file('image')->store('', 'public');
+        //     $data['image'] = $path; // Store just the path without /storage/ prefix
+        // }
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('users', 'public');
-            $data['image'] = $path; // Store just the path without /storage/ prefix
+            $file = $request->file('image');
+
+            // Generate a unique hashed filename (like 68fb430843ce2.jpg)
+            $filename = $file->hashName();
+
+            // Move the file to public/img/profile/
+            $file->move(public_path('/storage/img/profile'), $filename);
+
+            // Store only the filename in database
+            $data['image'] = $filename;
         }
 
         // Only update the fields that are actually in the database

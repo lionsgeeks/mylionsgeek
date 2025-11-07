@@ -352,6 +352,12 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                         {getInitials(training.coach.name)}
                                                     </AvatarFallback>
                                                 </Avatar> */}
+                                                <Avatar
+                                                    className="h-10 w-10"
+                                                    image={training.coach.image}
+                                                    name={training.coach.name}
+                                                    onlineCircleClass="hidden"
+                                                />
                                                 <div>
                                                     <div className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold">
                                                         Coach
@@ -653,17 +659,6 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                     </div>
                 </div>
             )}
-
-
-
-
-
-
-
-
-
-
-
         </AppLayout>
     );
 }
