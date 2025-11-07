@@ -202,16 +202,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {items.map((item, index) => (
-                        <StatCard
-                            key={index}
-                            title={item.title}
-                            number={item.number}
-                            icon={item.icon}
-                        />
-                    ))}
-                </div>
+                <StatCard items={items} />
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
@@ -221,13 +212,15 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             placeholder="Search by name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-64"
+
+                            className=" bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
                         />
                     </div>
                     <div className="flex items-center gap-2">
                         <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48">
+                        <Select value={filterType} onValueChange={setFilterType} >
+                            <SelectTrigger className="w-48 bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
+                            >
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
