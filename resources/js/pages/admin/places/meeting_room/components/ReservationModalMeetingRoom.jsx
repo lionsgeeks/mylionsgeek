@@ -36,7 +36,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
 
         // 🕒 Prevent end time before or equal start time
         if (data.start >= data.end) {
-            alert('End time must be after start time.');
+            //alert('End time must be after start time.');
             return;
         }
 

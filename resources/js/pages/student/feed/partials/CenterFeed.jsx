@@ -11,7 +11,7 @@ export default function CenterFeed({ user, posts }) {
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     const [undoTimer, setUndoTimer] = useState(null);
 
-    // console.log(allPosts);
+    // //console.log(allPosts);
 
     // //(posts.posts);
     useEffect(() => {
@@ -22,7 +22,7 @@ export default function CenterFeed({ user, posts }) {
     const handlePostRemoved = (postId) => {
         const newPosts = allPosts.filter(p => p.id !== postId);
         setAllPosts(newPosts);
-        console.log('🗑️ Post removed successfully');
+        //console.log('🗑️ Post removed successfully');
     };
     const handleRemoveClick = (postId) => {
         setPendingDeleteId(postId);
@@ -41,7 +41,7 @@ export default function CenterFeed({ user, posts }) {
         // 🛑 Cancel the removal
         if (undoTimer) clearTimeout(undoTimer);
 
-        console.log('✅ Undo clicked — post restored');
+        //console.log('✅ Undo clicked — post restored');
         setUndoState(false);
         setPendingDeleteId(null);
     };

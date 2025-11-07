@@ -66,7 +66,7 @@ export default function Dashboard() {
                         selectMirror={true}               // allow selecting time slots
                         editable={true}                    // allow drag/drop
                         // events={events}                    // your JS array of events
-                        eventClick={(info) => alert(`Event: ${info.event.title}`)}
+                        eventClick={(info) => //alert(`Event: ${info.event.title}`)}
                         dateClick={(info) => //(`Clicked date: ${info.dateStr}`)}
                         height="auto"
                         

@@ -155,12 +155,12 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                     router.visit(`/geeko/play/${session.id}/waiting`);
                 }, 3000);
             } else {
-                alert(`Failed to submit answer: ${data.error || 'Unknown error'}`);
+                //alert(`Failed to submit answer: ${data.error || 'Unknown error'}`);
                 setIsSubmitting(false);
             }
         } catch (error) {
             console.error('Failed to submit answer:', error);
-            alert('Failed to submit answer. Please try again.');
+            //alert('Failed to submit answer. Please try again.');
             setIsSubmitting(false);
         }
     };

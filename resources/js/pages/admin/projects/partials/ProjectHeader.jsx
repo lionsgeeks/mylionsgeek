@@ -93,7 +93,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             },
             onError: (errors) => {
                 console.error('Failed to update project:', errors);
-                alert('Failed to update project: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to update project: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -105,7 +105,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             },
             onError: (errors) => {
                 console.error('Failed to delete project:', errors);
-                alert('Failed to delete project: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to delete project: ' + (errors.message || 'Unknown error'));
             }
         });
     };

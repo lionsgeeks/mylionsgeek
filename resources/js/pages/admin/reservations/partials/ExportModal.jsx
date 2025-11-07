@@ -57,7 +57,7 @@ const ExportModal = ({ open, onClose, reservations }) => {
         const selectedFields = Object.keys(exportFilters).filter(key => exportFilters[key]);
 
         if (selectedFields.length === 0) {
-            alert('Please select at least one field to export');
+            //alert('Please select at least one field to export');
             return;
         }
 

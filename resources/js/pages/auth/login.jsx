@@ -18,7 +18,7 @@ export default function Login({ status, canResetPassword }) {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const handleCustomErrors = (responseErrors) => {
         if (responseErrors.email) {
-            alert("h")
+            //alert("h")
         }
     };
     return (

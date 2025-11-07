@@ -345,7 +345,7 @@ const TaskModal = ({
         if (status === 'completed') {
             const hasIncompleteSubtasks = (taskData.subtasks || []).some(subtask => !subtask.completed);
             if (hasIncompleteSubtasks) {
-                alert('Cannot mark task as complete. Please complete all subtasks first.'); // Will be replaced by modal
+                //alert('Cannot mark task as complete. Please complete all subtasks first.'); // Will be replaced by modal
                 return;
             }
         }
@@ -651,7 +651,7 @@ const TaskModal = ({
                 onError: () => {
                     setIsConfirmCommentDeleteModalOpen(false);
                     setCommentToDelete(null);
-                    alert('Failed to delete comment.');
+                    //alert('Failed to delete comment.');
                 }
             });
         }
@@ -675,7 +675,7 @@ const TaskModal = ({
                 onError: () => {
                     setIsConfirmTaskArchiveModalOpen(false);
                     setTaskToActOn(null);
-                    alert('Failed to archive task.');
+                    //alert('Failed to archive task.');
                 }
             });
         }
@@ -699,7 +699,7 @@ const TaskModal = ({
                 onError: () => {
                     setIsConfirmTaskDeleteModalOpen(false);
                     setTaskToActOn(null);
-                    alert('Failed to delete task.');
+                    //alert('Failed to delete task.');
                 }
             });
         }

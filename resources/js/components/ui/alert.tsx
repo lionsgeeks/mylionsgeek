@@ -19,7 +19,7 @@ const alertVariants = cva(
   }
 )
 
-function Alert({
+function //alert({
   className,
   variant,
   ...props
