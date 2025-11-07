@@ -38,57 +38,58 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
         // 🕒 Prevent end time before or equal start time
         if (data.start >= data.end) {
             //alert('End time must be after start time.');
-        const toMinutes = (time) => {
-            const [h, m] = time.split(':').map(Number);
-            return h * 60 + m;
+            const toMinutes = (time) => {
+                const [h, m] = time.split(':').map(Number);
+                return h * 60 + m;
+            };
+
+            const minMinutes = 8 * 60;
+            const maxMinutes = 18 * 60;
+            const startMinutes = data.start ? toMinutes(data.start) : null;
+            const endMinutes = data.end ? toMinutes(data.end) : null;
+
+
+            if (!data.start || !data.end) {
+                setTimeError('Please select both start and end times.');
+                return;
+            }
+
+            if (startMinutes < minMinutes || startMinutes > maxMinutes) {
+                setTimeError('Start time must be between 08:00 and 18:00.');
+                return;
+            }
+
+            if (endMinutes < minMinutes || endMinutes > maxMinutes) {
+                setTimeError('End time must be between 08:00 and 18:00.');
+                return;
+            }
+
+            if (endMinutes <= startMinutes) {
+                setTimeError('End time must be later than start time.');
+                return;
+            }
+
+            setTimeError('');
+
+            const formData = {
+                meeting_room_id: data.meeting_room_id,
+                day: data.day,
+                start: data.start,
+                end: data.end,
+            };
+
+            post('/admin/reservations/storeReservationMeetingRoom', {
+                data: formData,
+                onSuccess: () => {
+                    handleClose();
+                    onSuccess();
+                },
+                onError: (errors) => {
+                    console.error('Meeting room reservation error:', errors);
+                },
+            });
         };
-
-        const minMinutes = 8 * 60;
-        const maxMinutes = 18 * 60;
-        const startMinutes = data.start ? toMinutes(data.start) : null;
-        const endMinutes = data.end ? toMinutes(data.end) : null;
-
-
-        if (!data.start || !data.end) {
-            setTimeError('Please select both start and end times.');
-            return;
-        }
-
-        if (startMinutes < minMinutes || startMinutes > maxMinutes) {
-            setTimeError('Start time must be between 08:00 and 18:00.');
-            return;
-        }
-
-        if (endMinutes < minMinutes || endMinutes > maxMinutes) {
-            setTimeError('End time must be between 08:00 and 18:00.');
-            return;
-        }
-
-        if (endMinutes <= startMinutes) {
-            setTimeError('End time must be later than start time.');
-            return;
-        }
-
-        setTimeError('');
-
-        const formData = {
-            meeting_room_id: data.meeting_room_id,
-            day: data.day,
-            start: data.start,
-            end: data.end,
-        };
-
-        post('/admin/reservations/storeReservationMeetingRoom', {
-            data: formData,
-            onSuccess: () => {
-                handleClose();
-                onSuccess();
-            },
-            onError: (errors) => {
-                console.error('Meeting room reservation error:', errors);
-            },
-        });
-    };
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
