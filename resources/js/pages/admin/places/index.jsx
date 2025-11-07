@@ -202,7 +202,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-                     <StatCard items={items} />
+                <StatCard items={items} />
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
@@ -212,13 +212,15 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             placeholder="Search by name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-64"
+
+                            className=" bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
                         />
                     </div>
                     <div className="flex items-center gap-2">
                         <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48">
+                        <Select value={filterType} onValueChange={setFilterType} >
+                            <SelectTrigger className="w-48 bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
+                            >
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
