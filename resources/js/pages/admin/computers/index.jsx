@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Pencil, Route, Search, Trash } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
 
@@ -34,6 +35,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [historyError, setHistoryError] = useState('');
     const [selectedComputer, setSelectedComputer] = useState(null);
     const [assignmentHistory, setAssignmentHistory] = useState([]);
+    const [quickAssign, setQuickAssign] = useState({ computerId: null, search: '' });
+    const [assigningComputerId, setAssigningComputerId] = useState(null);
+    const quickAssignInputRef = useRef(null);
 
     const displayDate = (value) => {
         if (!value) return null;
@@ -78,6 +82,19 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         return list;
     }, [computers, query, users, damaged, assigned]);
 
+    const quickAssignMatches = useMemo(() => {
+        const q = quickAssign.search.trim().toLowerCase();
+        return users
+            .filter(u => {
+                if (!q) return true;
+                return (
+                    u.name.toLowerCase().includes(q) ||
+                    (u.email || '').toLowerCase().includes(q)
+                );
+            })
+            .slice(0, 12);
+    }, [quickAssign.search, users]);
+
     function resetFilters() {
         setQuery('');
         setDamaged('all');
@@ -114,8 +131,56 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             end: computer.contractEnd || '',
             mark: computer.mark || '',
         });
+        setUserSearch('');
         setShowEditModal(true);
     }
+
+    function computeStateForComputer(computer) {
+        if (computer.state) return computer.state;
+        if (computer.isBroken === true) return 'not_working';
+        if (computer.isBroken === false) return 'working';
+        return 'working';
+    }
+
+    function assignComputer(computer, userId) {
+        if (!computer?.id) return;
+        const payload = {
+            reference: computer.reference || '',
+            cpu: computer.cpu || '',
+            gpu: computer.gpu || '',
+            state: computeStateForComputer(computer),
+            mark: computer.mark || '',
+            user_id: userId,
+        };
+
+        setAssigningComputerId(computer.id);
+        router.put(`/admin/computers/${computer.id}`, payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setComputers(prev =>
+                    prev.map(c =>
+                        c.id === computer.id
+                            ? {
+                                ...c,
+                                assignedUserId: userId,
+                            }
+                            : c
+                    )
+                );
+                setQuickAssign({ computerId: null, search: '' });
+                setAssigningComputerId(null);
+            },
+            onError: () => {
+                setAssigningComputerId(null);
+            }
+        });
+    }
+
+    useEffect(() => {
+        if (quickAssign.computerId && quickAssignInputRef.current) {
+            quickAssignInputRef.current.focus();
+        }
+    }, [quickAssign.computerId]);
 
     function updateComputer() {
         if (!editTargetId) return;
@@ -221,7 +286,53 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                 {user.name}
                                             </a>
                                         ) : (
-                                            <span className="text-sm text-gray-500">Not assigned</span>
+                                            <Popover
+                                                open={quickAssign.computerId === c.id}
+                                                onOpenChange={(open) => {
+                                                    setQuickAssign(open ? { computerId: c.id, search: '' } : { computerId: null, search: '' });
+                                                }}
+                                            >
+                                                <PopoverTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center justify-center rounded border border-dashed border-neutral-300 px-2 py-1 text-muted-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-neutral-700"
+                                                        title="Assign to user"
+                                                    >
+                                                        <Plus size={18} className="text-current" />
+                                                        <span className="sr-only">Assign to user</span>
+                                                    </button>
+                                                </PopoverTrigger>
+                                                <PopoverContent align="start" className="w-72 space-y-3">
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm font-medium">Assign to user</p>
+                                                        <Input
+                                                            ref={quickAssignInputRef}
+                                                            placeholder="Search name or email"
+                                                            value={quickAssign.search}
+                                                            onChange={e => setQuickAssign(q => ({ ...q, search: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                    <div className="max-h-56 overflow-auto border rounded divide-y">
+                                                        {quickAssignMatches.map(u => (
+                                                                <button
+                                                                    key={u.id}
+                                                                    type="button"
+                                                                    onClick={() => assignComputer(c, u.id)}
+                                                                    disabled={assigningComputerId === c.id}
+                                                                    className={`w-full px-3 py-2 text-left text-sm transition hover:bg-muted ${assigningComputerId === c.id ? 'opacity-60 cursor-wait' : ''}`}
+                                                                >
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium">{u.name}</span>
+                                                                        <span className="text-xs text-muted-foreground">{u.email}</span>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        {quickAssignMatches.length === 0 && (
+                                                            <p className="px-3 py-4 text-sm text-muted-foreground">No users found.</p>
+                                                        )}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
                                         )}
                                     </TableCell>
                                     <TableCell>
