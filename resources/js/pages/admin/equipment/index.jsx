@@ -352,7 +352,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     return (
         <AppLayout>
             <Head title="Equipment" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
                 <Banner
                     illustration={illustration}
                 />

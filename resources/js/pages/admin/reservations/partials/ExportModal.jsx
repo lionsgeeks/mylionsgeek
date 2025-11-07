@@ -29,11 +29,11 @@ const ExportModal = ({ open, onClose, reservations }) => {
 
         Object.keys(sampleReservation).forEach(key => {
             const value = sampleReservation[key];
-            
+
             if (value !== null && typeof value === 'object') {
                 return;
             }
-            
+
             fields[key] = formatFieldLabel(key);
         });
 
@@ -55,7 +55,7 @@ const ExportModal = ({ open, onClose, reservations }) => {
 
     const handleExport = () => {
         const selectedFields = Object.keys(exportFilters).filter(key => exportFilters[key]);
-        
+
         if (selectedFields.length === 0) {
             alert('Please select at least one field to export');
             return;
@@ -72,20 +72,20 @@ const ExportModal = ({ open, onClose, reservations }) => {
         } catch (e) {
             // ignore
         }
-        
+
         window.location.href = `/admin/reservations?${params.toString()}`;
-        
+
         setExportFilters({});
         onClose();
     };
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl bg-light dark:bg-dark">
                 <DialogHeader>
                     <DialogTitle>Filter Export</DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="grid gap-4">
                     <div className="space-y-3">
                         <h4 className="font-medium text-sm text-gray-950 dark:text-gray-200">Select fields to export:</h4>
@@ -113,25 +113,25 @@ const ExportModal = ({ open, onClose, reservations }) => {
 
                 <DialogFooter className="flex justify-between">
                     <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={handleSelectAll}
                             className="text-sm cursor-pointer"
                         >
                             Select All
                         </Button>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={handleDeselectAll}
                             className="text-sm cursor-pointer"
                         >
                             Deselect All
                         </Button>
                     </div>
-                    
+
                     <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={() => {
                                 setExportFilters({});
                                 onClose();
@@ -140,7 +140,7 @@ const ExportModal = ({ open, onClose, reservations }) => {
                         >
                             Cancel
                         </Button>
-                        <Button 
+                        <Button
                             onClick={handleExport}
                             className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                         >

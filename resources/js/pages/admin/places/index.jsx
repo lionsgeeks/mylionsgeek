@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List } from 'lucide-react';
+import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import ReservationModalCowork from './coworks/components/ReservationModalCowork'
 import ReservationModalMeetingRoom from './meeting_room/components/ReservationModalMeetingRoom';
 import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
+import StatCard from '../../../components/StatCard';
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -154,11 +155,21 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
             .catch(() => setEvents([]))
             .finally(() => setLoadingEvents(false));
     }, [calendarFor]);
+    console.log(places);
+    const studioCount = places.filter(p => p.place_type === "studio").length;
+    const coworkCount = places.filter(p => p.place_type === "cowork").length;
+    const meetingCount = places.filter(p => p.place_type === "meeting_room").length;
 
+    const items = [
+        { title: "All places", number: places.length, icon: ArrowRight },
+        { title: "Studio", number: studioCount, icon: ArrowRight },
+        { title: "Cowork", number: coworkCount, icon: ArrowRight },
+        { title: "Meeting Room", number: meetingCount, icon: ArrowRight },
+    ];
     return (
         <AppLayout>
             <Head title="Places" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
                 <Banner
                     illustration={illustration}
                 />
@@ -191,7 +202,16 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-
+                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {items.map((item, index) => (
+                        <StatCard
+                            key={index}
+                            title={item.title}
+                            number={item.number}
+                            icon={item.icon}
+                        />
+                    ))}
+                </div>
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>

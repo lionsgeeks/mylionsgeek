@@ -225,7 +225,9 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     return (
         <AppLayout>
             <Head title="Projects Management" />
+            
 
+            <div className="p-4 md:p-6 space-y-6">
             <Banner
                 illustration={illustration}
                 greeting="Welcome"
@@ -233,8 +235,6 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                 title="Project Management System"
                 description="Manage your projects, track progress, and collaborate with your team efficiently."
             />
-
-            <div className="p-6 space-y-6">
                 {/* Flash Messages */}
                 {flashMessage && (
                     <FlashMessage

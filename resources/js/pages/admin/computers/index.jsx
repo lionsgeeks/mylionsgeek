@@ -266,7 +266,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     return (
         <AppLayout>
             <Head title="Computers" />
-            <div className="p-6 md:p-10">
+            <div className="p-4 md:p-6">
 
                 <Banner
                     illustration={illustration}
