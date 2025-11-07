@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import LeftSideBar from './partials/LeftSideBar';
 import CenterFeed from './partials/CenterFeed';
 import RightSideBar from './partials/RightSideBar';
 
 
-export default function StudentFeed({ user , posts }) {
+export default function StudentFeed({ user, posts }) {
+
     return (
         <>
             <AppLayout>
                 <div className='z-30'>
-                    <div className="min-h-screen bg-transparent ">
+                    <div className="min-h-screen  bg-transparent ">
                         {/* Main Container */}
                         <div className="max-w-7xl mx-auto px-4">
-
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            <div className="grid relative grid-cols-1 lg:grid-cols-12 gap-6">
                                 <LeftSideBar user={user} />
                                 <CenterFeed user={user} posts={posts} />
                                 <RightSideBar />
@@ -23,6 +23,7 @@ export default function StudentFeed({ user , posts }) {
                     </div>
                 </div>
             </AppLayout>
+
         </>
     );
 }
