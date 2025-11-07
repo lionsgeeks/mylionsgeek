@@ -9,7 +9,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 const ITEMS_PER_PAGE = 5;
 
-export default function Analytics({ 
+export default function Analytics({
     totalStats = {},
     studioReservations = [],
     timeSlotStats = {},
@@ -44,18 +44,18 @@ export default function Analytics({
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
-            
+
             <div className="px-4 py-6 sm:p-8 lg:p-10 max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-6">
-                    <Link 
-                        href="/admin/reservations" 
+                    <Link
+                        href="/admin/reservations"
                         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Back to Reservations
                     </Link>
-                    
+
                     <h1 className="text-3xl font-bold text-foreground mb-2">Reservation Analytics & Reporting</h1>
                     <p className="text-muted-foreground">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
@@ -115,7 +115,7 @@ export default function Analytics({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Studio Reservations Chart */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Building2 className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
@@ -137,7 +137,7 @@ export default function Analytics({
                     </Card>
 
                     {/* Monthly Trend */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <TrendingUp className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
@@ -160,7 +160,7 @@ export default function Analytics({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Top Equipment */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
@@ -173,7 +173,7 @@ export default function Analytics({
                                 {(topEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topEquipment, equipmentPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/10 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 border rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
@@ -226,7 +226,7 @@ export default function Analytics({
                     </Card>
 
                     {/* Damaged Equipment */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-red-600 dark:text-red-400" />
@@ -239,7 +239,7 @@ export default function Analytics({
                                 {(damagedEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(damagedEquipment, damagedPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/10 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 border rounded-xl hover:shadow-md transition-shadow">
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
@@ -290,7 +290,7 @@ export default function Analytics({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Active Equipment */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Package className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
@@ -352,7 +352,7 @@ export default function Analytics({
                     </Card>
 
                     {/* Active Equipment by Type */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <BarChart3 className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
@@ -392,7 +392,7 @@ export default function Analytics({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
                     {/* Top Users */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Users className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
@@ -405,7 +405,7 @@ export default function Analytics({
                                 {(topUsers?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topUsers, userPage).map((user, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 rounded-xl hover:shadow-md transition-shadow">
+                                            <div key={index} className="flex items-center space-x-3 p-4 border  rounded-xl hover:shadow-md transition-shadow">
                                                 {user.image ? (
                                                     <img
                                                         src={user.image}
@@ -413,7 +413,7 @@ export default function Analytics({
                                                         className="h-16 w-16 object-cover rounded-full border-2 border-green-200 flex-shrink-0"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-gradient-to-br from-green-400 to-green-600 dark:from-green-700 dark:to-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <div className="h-16 w-16  rounded-full flex items-center justify-center flex-shrink-0">
                                                         <span className="text-white font-bold text-lg">
                                                             {user.name?.charAt(0).toUpperCase() || '?'}
                                                         </span>
@@ -459,7 +459,7 @@ export default function Analytics({
                     </Card>
 
                     {/* Time Slot Statistics */}
-                    <Card>
+                    <Card className="bg-light dark:bg-dark ">
                         <CardHeader>
                             <CardTitle className="flex items-center">
                                 <Clock className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
@@ -469,22 +469,22 @@ export default function Analytics({
                         <CardContent>
                             <div className="space-y-4">
                                 {timeSlotStats.most_reserved && (
-                                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50">
+                                    <div className="p-4  rounded-lg border border-green-200 dark:border-green-800/50">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-green-900 dark:text-green-300">Most Reserved Time:</span>
+                                            <span className="font-semibold text-dark dark:text-light">Most Reserved Time:</span>
                                             <span className="text-2xl font-bold text-green-700 dark:text-green-300">{timeSlotStats.most_reserved.time}</span>
                                         </div>
-                                        <p className="text-sm text-green-700 dark:text-green-300/90">{timeSlotStats.most_reserved.count} reservations</p>
+                                        <p className="text-sm text-dark dark:text-light">{timeSlotStats.most_reserved.count} reservations</p>
                                     </div>
                                 )}
-                                
+
                                 {timeSlotStats.least_reserved && (
-                                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800/50">
+                                    <div className="p-4  rounded-lg border border-orange-200 dark:border-orange-800/50">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-orange-900 dark:text-orange-300">Least Reserved Time:</span>
+                                            <span className="font-semibold text-dark dark:text-light">Least Reserved Time:</span>
                                             <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{timeSlotStats.least_reserved.time}</span>
                                         </div>
-                                        <p className="text-sm text-orange-700 dark:text-orange-300/90">{timeSlotStats.least_reserved.count} reservations</p>
+                                        <p className="text-sm text-dark dark:text-light">{timeSlotStats.least_reserved.count} reservations</p>
                                     </div>
                                 )}
                             </div>

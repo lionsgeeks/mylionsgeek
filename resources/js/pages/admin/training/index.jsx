@@ -3,12 +3,12 @@ import { Head, router } from '@inertiajs/react';
 import { BookOpen, Timer, Trash2, TrendingUp, User, Sparkles, Award, Clock, Target, GraduationCap, X, CheckCircle2, Building2, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import UpdateTraining from './partials/UpdateTraining';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Lesson-bro.png"
-
+import StatCard from "@/components/StatCard";
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
@@ -80,7 +80,24 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
     const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
     const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
-
+    const stats = [
+        {
+            title: "Total Programs",
+            number: trainings.length,
+            icon: BookOpen,
+        },
+        {
+            title: "Active Now",
+            number: activeTrainingsCount,
+            icon: Timer,
+        },
+        {
+            title: filteredCoach ? "Expert Mentor" : "Expert Mentors",
+            number: filteredCoach ? filteredCoach.name : coaches.length,
+            icon: Award,
+            isSmallNumber: !!filteredCoach,
+        },
+    ];
     return (
         <AppLayout>
             <Head title="Training" />
@@ -113,7 +130,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 {/* Stats Cards - Premium Design */}
                 {trainings && trainings.length > 0 && (
                     <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div
+                        {/* <div
                             className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 border-2 border-yellow-200 dark:border-yellow-600/30 hover:border-yellow-400 dark:hover:border-yellow-400 transition-all duration-300 hover:scale-105 cursor-pointer shadow-lg hover:shadow-2xl"
                         >
                             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
@@ -163,9 +180,13 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     <Award className="w-8 h-8 text-white" />
                                 </div>
                             </div>
-                        </div>
-
+                        </div> */}
+                        {stats.map((stat, index) => (
+                            <StatCard key={index} {...stat} />
+                        ))}
                     </div>
+
+
                 )}
 
                 {/* Filters - Modern Design */}
@@ -321,7 +342,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {training.coach?.name && (
                                         <div className="relative group/coach">
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-600/30 transition-all duration-300 group-hover/coach:translate-x-20 group-hover/coach:opacity-0">
-                                                <Avatar className="h-10 w-10 ring-2 ring-yellow-400">
+                                                {/* <Avatar className="h-10 w-10 ring-2 ring-yellow-400">
                                                     <AvatarImage
                                                         className="h-full w-full object-cover"
                                                         src={training.coach.image}
@@ -330,7 +351,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                     <AvatarFallback className="bg-yellow-400 text-black font-bold text-sm">
                                                         {getInitials(training.coach.name)}
                                                     </AvatarFallback>
-                                                </Avatar>
+                                                </Avatar> */}
                                                 <div>
                                                     <div className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold">
                                                         Coach
@@ -566,10 +587,10 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                         const coachTrainings = trainings.filter(t => t.coach && t.coach.id === selectedCoach);
 
                                         const totalStudents = coachTrainings.reduce((sum, training) => {
-    if (Array.isArray(training.users)) return sum + training.users.length;
-    if (typeof training.users_count === 'number') return sum + training.users_count;
-    return sum;
-}, 0);
+                                            if (Array.isArray(training.users)) return sum + training.users.length;
+                                            if (typeof training.users_count === 'number') return sum + training.users_count;
+                                            return sum;
+                                        }, 0);
 
 
 
