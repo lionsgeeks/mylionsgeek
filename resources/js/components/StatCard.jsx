@@ -1,8 +1,8 @@
 import React from "react";
 
-export default function StatCard({ items }) {
+export default function StatCard({ items = [] }) {
     return (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${items.length % 2 == 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
             {items.map((item, index) => {
                 const { title, number, icon: Icon } = item;
                 return (

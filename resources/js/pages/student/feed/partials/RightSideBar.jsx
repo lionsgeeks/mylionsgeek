@@ -6,7 +6,7 @@ const RightSideBar = () => {
     return (
         <>
             {/* Right Sidebar - Fixed */}
-            <div className="lg:col-span-3 space-y-4">
+            <div className="lg:col-span-3 space-y-4 sticky top-0 h-fit">
                 {/* News Section */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                     <div className="flex items-center justify-between mb-4">
