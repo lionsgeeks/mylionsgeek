@@ -202,16 +202,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    {items.map((item, index) => (
-                        <StatCard
-                            key={index}
-                            title={item.title}
-                            number={item.number}
-                            icon={item.icon}
-                        />
-                    ))}
-                </div>
+                     <StatCard items={items} />
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
