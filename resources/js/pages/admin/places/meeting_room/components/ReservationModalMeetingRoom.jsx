@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
     });
 
     // Update form when selectedRange changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (selectedRange) {
             setData({
                 ...data,
@@ -23,6 +23,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                 end: selectedRange.end,
             });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRange]);
 
     const handleClose = () => {
@@ -32,26 +33,31 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
+        // 🕒 Prevent end time before or equal start time
+        if (data.start >= data.end) {
+            alert('End time must be after start time.');
+            return;
+        }
+
         const formData = {
             meeting_room_id: data.meeting_room_id,
             day: data.day,
             start: data.start,
             end: data.end,
         };
-        
+
         post('/admin/reservations/storeReservationMeetingRoom', {
-            data: formData,  // ← ZID DATA HNA!
+            data: formData,
             onSuccess: () => {
                 handleClose();
                 onSuccess();
             },
             onError: (errors) => {
                 console.error('Meeting room reservation error:', errors);
-            }
+            },
         });
     };
-
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -78,55 +84,66 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                             <div>
                                 <Label htmlFor="day">Date</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                     id="day"
                                     type="date"
                                     value={data.day}
                                     onChange={(e) => setData('day', e.target.value)}
                                     required
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                 />
                             </div>
+
                             <div>
                                 <Label htmlFor="start">Start Time</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                     id="start"
                                     type="time"
                                     value={data.start}
                                     onChange={(e) => setData('start', e.target.value)}
                                     required
+                                    min="08:00"
+                                    max="18:00"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                 />
+                                {errors.start && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.start}</p>
+                                )}
                             </div>
+
                             <div>
                                 <Label htmlFor="end">End Time</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                     id="end"
                                     type="time"
                                     value={data.end}
                                     onChange={(e) => setData('end', e.target.value)}
                                     required
+                                    min="08:00"
+                                    max="18:00"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
                                 />
+                                {errors.end && (
+                                    <p className="text-red-500 text-sm mt-1">{errors.end}</p>
+                                )}
                             </div>
                         </div>
 
-                        {/* Cancel & Save Buttons */}
+                        {/* Buttons */}
                         <div className="flex justify-end gap-3">
-                            <Button 
-                                type="button" 
-                                onClick={handleClose} 
+                            <Button
+                                type="button"
+                                onClick={handleClose}
                                 variant="outline"
                                 className="cursor-pointer"
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="button" 
-                                onClick={handleSubmit} 
+                            <Button
+                                type="submit"
                                 className="cursor-pointer text-black hover:text-white dark:hover:text-black"
                                 disabled={processing}
                             >
-                                save
+                                Save
                             </Button>
                         </div>
                     </div>
