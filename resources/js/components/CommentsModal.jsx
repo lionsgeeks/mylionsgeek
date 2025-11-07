@@ -12,6 +12,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [updateComment, setUpdateComment] = useState(false);
   const [deletedCommentId, setDeletedCommentId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
@@ -84,9 +85,8 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
     }
   };
 
-  // ✅ Handle comment deletion (optional)
+  // ✅ Handle comment deletion
   const handleDeleteComment = async (commentId) => {
-    console.log(commentId);
 
     try {
       await axios.delete(`/posts/comments/${commentId}`);
@@ -101,6 +101,20 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       alert("Failed to delete comment");
     }
   };
+
+  //Handle comment update (optional)
+  //! hna fin w9eft 7/11/2025 
+  const handleUpdateComment = async (commentId) => {
+    try {
+      const res = await axios.put(`/posts/comments/${commentId}`);
+      // console.log(res.data);
+      alert('success')
+    } catch (error) {
+      console.error("failed to update : "  , error);
+      alert('failed to update comment')
+      
+    }
+  }
 
   if (!open) return null;
 
@@ -197,15 +211,24 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
                     {/* Optional delete button (if user owns comment) */}
                     {auth.user.id === c.user_id && (
-                      <button
-                        onClick={() => {
-                          setDeletedCommentId(c.id)
-                          setOpenDelete(true)
-                        }}
-                        className="text-xs text-red-500 mt-1 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setDeletedCommentId(c.id)
+                            setOpenDelete(true)
+                          }}
+                          className="text-xs text-red-500 mt-1 hover:underline cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          // onClick={() => setUpdateComment(true)}
+                          onClick={() => handleUpdateComment(c.id)}
+                          className="text-xs dark:text-alpha text-beta mt-1 hover:underline cursor-pointer"
+                        >
+                          Update
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

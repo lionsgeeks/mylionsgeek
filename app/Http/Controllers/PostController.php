@@ -109,4 +109,7 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
+    public function updateComment(Request $request, $id) {
+        return response()->json($request);
+    }
 }
