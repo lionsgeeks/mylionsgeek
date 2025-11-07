@@ -12,7 +12,8 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [updateComment, setUpdateComment] = useState(false);
+  const [openUpdatedComment, setOpenUpdatedComment] = useState(null);
+  const [editedComment, setEditedComment] = useState('');
   const [deletedCommentId, setDeletedCommentId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
@@ -103,16 +104,22 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   };
 
   //Handle comment update (optional)
-  //! hna fin w9eft 7/11/2025 
-  const handleUpdateComment = async (commentId) => {
+  const handleUpdatedComment = async (commentId) => {
     try {
-      const res = await axios.put(`/posts/comments/${commentId}`);
-      // console.log(res.data);
+      const res = await axios.put(`/posts/comments/${commentId}`, {
+        'comment': editedComment
+      });
+      console.log(res.data);
+      setComments((prevComments) =>
+        prevComments.map((comment) => comment.id === commentId ? { ...comment, comment: editedComment } : comment)
+      )
+      setOpenUpdatedComment(null);
+      setEditedComment('');
       alert('success')
     } catch (error) {
-      console.error("failed to update : "  , error);
+      console.error("failed to update : ", error);
       alert('failed to update comment')
-      
+
     }
   }
 
@@ -180,6 +187,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                 </p>
               </div>
             ) : (
+
               comments.map((c) => (
                 <div key={c.id} className="flex gap-3 animate-in fade-in slide-in-from-left-2">
                   <Link href={`/admin/users/${c.user_id}`}>
@@ -193,7 +201,8 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                       onlineCircleClass="hidden"
                     />
                   </Link>
-                  <div className="flex-1 px-3 py-2.5 rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
+
+                  <div className="flex-1 px-3 py-2.5 w-[70%] rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
                     <div className="flex items-center justify-between mb-1">
                       <Link
                         href={`/admin/users/${c.user_id}`}
@@ -205,29 +214,58 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                         {timeAgo(c.created_at)}
                       </span>
                     </div>
-                    <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words">
-                      {c.comment}
-                    </p>
 
-                    {/* Optional delete button (if user owns comment) */}
+                    {/* ✅ Edit only the selected comment */}
+                    {openUpdatedComment === c.id ? (
+                      <textarea
+                        className="text-sm text-neutral-800 outline-2 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full resize-none bg-white dark:bg-dark/50 border border-alpha/20 rounded-lg p-2 min-h-[80px]"
+                        value={editedComment}
+                        onChange={(e) => setEditedComment(e.target.value)}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full">
+                        {c.comment}
+                      </p>
+                    )}
+
+                    {/* Buttons */}
                     {auth.user.id === c.user_id && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setDeletedCommentId(c.id)
-                            setOpenDelete(true)
-                          }}
-                          className="text-xs text-red-500 mt-1 hover:underline cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          // onClick={() => setUpdateComment(true)}
-                          onClick={() => handleUpdateComment(c.id)}
-                          className="text-xs dark:text-alpha text-beta mt-1 hover:underline cursor-pointer"
-                        >
-                          Update
-                        </button>
+                      <div className="w-full flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          {openUpdatedComment !== c.id && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setDeletedCommentId(c.id);
+                                  setOpenDelete(true);
+                                }}
+                                className="text-xs text-red-500 mt-1 hover:underline cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setOpenUpdatedComment(c.id);
+                                  setEditedComment(c.comment);
+                                }}
+                                className="text-xs dark:text-alpha text-beta mt-1 hover:underline cursor-pointer"
+                              >
+                                Update
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        {openUpdatedComment === c.id && (
+                          <button
+                            onClick={() => {
+                              handleUpdatedComment(c.id, editedComment); // optional
+                            }}
+                            className="text-sm font-semibold hover:bg-alpha/80 text-dark rounded-lg bg-alpha py-1 px-2 mt-1 cursor-pointer"
+                          >
+                            Save
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -278,6 +316,8 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
           </form>
         </div>
       </div>
+
+
       {openDelete && <DeleteModal open={openDelete} onOpenChange={setOpenDelete} onConfirm={() => handleDeleteComment(deletedCommentId)} description="This action cannot be undone. This will permanently delete this Comment." title="Delete Comment" />}
     </>
   );

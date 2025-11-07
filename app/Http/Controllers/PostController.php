@@ -109,7 +109,16 @@ class PostController extends Controller
 
         return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
-    public function updateComment(Request $request, $id) {
-        return response()->json($request);
+    public function updateComment(Request $request, $id)
+    {
+        $request->validate([
+            'comment' => 'required|string',
+        ]);
+
+        $comment = Comment::find($id);
+        $comment->update([
+            'comment' => $request->comment
+        ]);
+        return response()->json(['message' => 'Comment edited succesfully']);
     }
 }
