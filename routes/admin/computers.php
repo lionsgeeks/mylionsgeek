@@ -141,6 +141,127 @@ Route::middleware(['auth','role:admin'])->group(function () {
         return response()->json(['history' => $combined]);
     })->name('admin.computers.history');
 
+    Route::get('/admin/users/{user}/computer-history', function (Request $request, User $user) {
+        $activityHistory = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('activity_log')) {
+            $activityRows = DB::table('activity_log as al')
+                ->leftJoin('computers as c', 'c.id', '=', 'al.subject_id')
+                ->select(
+                    'al.id',
+                    'al.subject_id',
+                    'al.properties',
+                    'c.id as computer_id',
+                    'c.reference',
+                    'c.cpu',
+                    'c.gpu',
+                    'c.mark'
+                )
+                ->where('al.log_name', 'computer')
+                ->where('al.description', 'computer history')
+                ->where('al.subject_type', 'App\\Models\\Computer')
+                ->where('al.causer_type', 'App\\Models\\User')
+                ->where('al.causer_id', $user->id)
+                ->where('al.event', 'assigned')
+                ->orderByDesc('al.created_at')
+                ->limit(1000)
+                ->get();
+
+            $activityHistory = $activityRows->map(function ($row) {
+                $props = json_decode($row->properties ?? '{}', true);
+                $props = is_array($props) ? $props : [];
+                $start = $props['start'] ?? null;
+                $end = $props['end'] ?? null;
+                return [
+                    'id' => 'act_' . $row->id,
+                    'computer' => $row->computer_id ? [
+                        'id' => $row->computer_id,
+                        'reference' => $row->reference,
+                        'cpu' => $row->cpu,
+                        'gpu' => $row->gpu,
+                        'mark' => $row->mark,
+                    ] : null,
+                    'start' => $start ? (new \Carbon\Carbon($start))->format('d-m-Y') : null,
+                    'end' => ($end !== null && $end !== '') ? (new \Carbon\Carbon($end))->format('d-m-Y') : null,
+                ];
+            });
+        }
+
+        $tableHistory = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('computer_histories')) {
+            $tableRows = DB::table('computer_histories as ch')
+                ->leftJoin('computers as c', 'c.id', '=', 'ch.computer_id')
+                ->select(
+                    'ch.id',
+                    'ch.start',
+                    'ch.end',
+                    'ch.computer_id',
+                    'c.reference',
+                    'c.cpu',
+                    'c.gpu',
+                    'c.mark'
+                )
+                ->where('ch.user_id', $user->id)
+                ->orderByDesc('ch.start')
+                ->limit(1000)
+                ->get();
+
+            $tableHistory = $tableRows->map(function ($row) {
+                return [
+                    'id' => 'tbl_' . $row->id,
+                    'computer' => $row->computer_id ? [
+                        'id' => $row->computer_id,
+                        'reference' => $row->reference,
+                        'cpu' => $row->cpu,
+                        'gpu' => $row->gpu,
+                        'mark' => $row->mark,
+                    ] : null,
+                    'start' => $row->start ? (new \Carbon\Carbon($row->start))->format('d-m-Y') : null,
+                    'end' => $row->end ? (new \Carbon\Carbon($row->end))->format('d-m-Y') : null,
+                ];
+            });
+        }
+
+        $combined = $activityHistory->merge($tableHistory)
+            ->filter(function ($entry) {
+                return $entry['start'] !== null || $entry['computer'] !== null;
+            })
+            ->values();
+
+        $currentAssignments = Computer::where('user_id', $user->id)->get();
+        foreach ($currentAssignments as $computer) {
+            $hasOpenRow = $combined->contains(function ($entry) use ($computer) {
+                return $entry['computer'] && $entry['computer']['id'] === $computer->id && $entry['end'] === null;
+            });
+
+            if (!$hasOpenRow) {
+                $combined->push([
+                    'id' => 'cur_user_' . $computer->id,
+                    'computer' => [
+                        'id' => $computer->id,
+                        'reference' => $computer->reference,
+                        'cpu' => $computer->cpu,
+                        'gpu' => $computer->gpu,
+                        'mark' => $computer->mark,
+                    ],
+                    'start' => $computer->start ? $computer->start->format('d-m-Y') : now()->format('d-m-Y'),
+                    'end' => null,
+                ]);
+            }
+        }
+
+        $combined = $combined
+            ->sortByDesc(function ($entry) {
+                try {
+                    return $entry['start'] ? \Carbon\Carbon::createFromFormat('d-m-Y', $entry['start'])->timestamp : 0;
+                } catch (\Throwable $e) {
+                    return 0;
+                }
+            })
+            ->values();
+
+        return response()->json(['history' => $combined]);
+    })->name('admin.users.computer-history');
+
 });
 
 
