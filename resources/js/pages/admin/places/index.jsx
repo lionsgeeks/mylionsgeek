@@ -454,7 +454,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 </Dialog>
 
                 {/* Calendar modal */}
-                <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
+                {/* <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
                     <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
                         {calendarFor && (
                             <div className="flex flex-col w-full h-full">
@@ -509,7 +509,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             </div>
                         )}
                     </DialogContent>
-                </Dialog>
+                </Dialog> */}
 
                 {/* Event details modal */}
                 <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -816,7 +816,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     height="88%"
                                     eventColor="#FFC801"
                                     eventTextColor="#000000"
+                                    slotMinTime="08:00:00"   // ⏰ Start time
+                                    slotMaxTime="18:30:00"   // ⏰ End time
                                 />
+
                             </div>
                         )}
                     </DialogContent>
