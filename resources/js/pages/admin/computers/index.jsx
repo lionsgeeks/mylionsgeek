@@ -287,12 +287,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             </a>
                                         ) : (
                                             <Popover
+                                                
                                                 open={quickAssign.computerId === c.id}
                                                 onOpenChange={(open) => {
                                                     setQuickAssign(open ? { computerId: c.id, search: '' } : { computerId: null, search: '' });
                                                 }}
                                             >
-                                                <PopoverTrigger asChild>
+                                                <PopoverTrigger  asChild>
                                                     <button
                                                         type="button"
                                                         className="inline-flex items-center justify-center rounded border border-dashed border-neutral-300 px-2 py-1 text-muted-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-neutral-700"
@@ -302,7 +303,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                         <span className="sr-only">Assign to user</span>
                                                     </button>
                                                 </PopoverTrigger>
-                                                <PopoverContent align="start" className="w-72 space-y-3">
+                                                <PopoverContent align="start" className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light border-alpha/20">
                                                     <div className="space-y-2">
                                                         <p className="text-sm font-medium">Assign to user</p>
                                                         <Input
@@ -439,7 +440,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Add Modal */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent>
+                <DialogContent  className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light border-alpha/20">
                     <DialogHeader>
                         <DialogTitle>Add a Computer</DialogTitle>
                     </DialogHeader>
