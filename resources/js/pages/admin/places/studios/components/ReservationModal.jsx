@@ -47,19 +47,30 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
     };
 
     const handleNext = () => {
-        // Validate time range
-        const startHour = parseInt(data.start.split(':')[0], 10);
-        const endHour = parseInt(data.end.split(':')[0], 10);
+        const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
+        const endTime = data.end ? parseFloat(data.end.replace(':', '.')) : null;
 
-        if (startHour < 8 || endHour > 18) {
+        if (!startTime || !endTime) {
+            setTimeError('Please select both start and end times.');
+            return;
+        }
+
+        if (startTime < 8.0 || endTime > 18.0) {
             setTimeError('Reservation time must be between 08:00 and 18:00.');
             return;
         }
+
+        if (endTime <= startTime) {
+            setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        setTimeError('');
         if (currentStep < 3) {
-            setTimeError('');
             setCurrentStep(currentStep + 1);
         }
     };
+
 
     const handlePrevious = () => {
         if (currentStep > 1) {
@@ -154,6 +165,8 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                         value={data.start}
                                         onChange={(e) => setData('start', e.target.value)}
                                         required
+                                        min="08:00"
+                                        max="18:00"
                                     />
                                 </div>
                                 <div>
@@ -165,6 +178,8 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                         value={data.end}
                                         onChange={(e) => setData('end', e.target.value)}
                                         required
+                                        min="08:00"
+                                        max="18:00"
                                     />
                                 </div>
                             </div>
