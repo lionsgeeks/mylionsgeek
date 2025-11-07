@@ -8,7 +8,7 @@ import LikesModal from "./LikesModal";
 
 // Function to calculate "time ago"
 
-const PostCard = ({ user, p, posts }) => {
+const PostCard = ({ user, p, posts, changeUndo }) => {
     // //(posts);
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
@@ -116,7 +116,7 @@ const PostCard = ({ user, p, posts }) => {
                             <button className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
                                 <MoreHorizontal className="w-5 h-5" />
                             </button>
-                            <button className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
+                            <button alt='Remove from Feed' onClick={changeUndo} className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>

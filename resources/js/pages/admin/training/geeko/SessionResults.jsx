@@ -19,7 +19,7 @@ export default function SessionResults({ session, leaderboard, questionStats, fo
 
     const exportResults = () => {
         // TODO: Implement CSV export
-        alert('Export functionality coming soon!');
+        //alert('Export functionality coming soon!');
     };
 
     const calculateSessionStats = () => {

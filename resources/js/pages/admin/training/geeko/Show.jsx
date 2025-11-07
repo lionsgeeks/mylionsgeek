@@ -248,7 +248,7 @@ export default function ShowGeeko({ formation, geeko }) {
             onError: (errors) => {
                 console.error('Failed to create session:', errors);
                 console.error('Error details:', JSON.stringify(errors, null, 2));
-                alert('Failed to create session. Please check the console for details.');
+                //alert('Failed to create session. Please check the console for details.');
             }
         });
     };

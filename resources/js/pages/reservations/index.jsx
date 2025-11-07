@@ -74,7 +74,7 @@ export default function ReservationsPage() {
     router.post(`/reservations/${reservationId}/cancel`, {}, {
       onSuccess: () => router.reload(),
       onError: (errors) => {
-        alert(errors.message || 'Failed to cancel reservation. Please try again.');
+        //alert(errors.message || 'Failed to cancel reservation. Please try again.');
       },
     });
   };

@@ -39,7 +39,7 @@ export default function DeleteModal({
       }
       onOpenChange(false);
     } catch {
-      alert('error')
+      //alert('error')
     } finally {
       setInternalLoading(false);
     }

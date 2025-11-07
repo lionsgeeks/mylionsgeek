@@ -102,10 +102,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
     const resetPassword = (id) => {
         router.post(`/admin/users/${id}/reset-password`, {
             onSuccess: () => {
-                alert('Password reset successfully');
+                //alert('Password reset successfully');
             },
             onError: () => {
-                alert('Error resetting password');
+                //alert('Error resetting password');
             }
         });
     };

@@ -35,6 +35,9 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        // 🕒 Prevent end time before or equal start time
+        if (data.start >= data.end) {
+            //alert('End time must be after start time.');
         const toMinutes = (time) => {
             const [h, m] = time.split(':').map(Number);
             return h * 60 + m;

@@ -599,7 +599,7 @@ export default function TicTacToe() {
                                     onClick={async () => {
                                         const link = buildInviteUrl();
                                         try { await navigator.clipboard.writeText(link); } catch {}
-                                        alert('Invite link copied. Share it with your friend.');
+                                        //alert('Invite link copied. Share it with your friend.');
                                     }}
                                     className="px-4 py-2 rounded bg-gray-100 border hover:bg-gray-200 md:hidden"
                                     disabled={!roomId || !playerName.trim()}

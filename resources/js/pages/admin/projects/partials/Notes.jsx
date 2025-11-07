@@ -61,7 +61,7 @@ const Notes = ({ notes = [], projectId }) => {
             },
             onError: (errors) => {
                 console.error('Failed to create note:', errors);
-                alert('Failed to create note: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to create note: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -81,7 +81,7 @@ const Notes = ({ notes = [], projectId }) => {
             },
             onError: (errors) => {
                 console.error('Failed to update note:', errors);
-                alert('Failed to update note: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to update note: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -91,7 +91,7 @@ const Notes = ({ notes = [], projectId }) => {
             deleteNote(`/admin/project-notes/${noteId}`, {
                 onError: (errors) => {
                     console.error('Failed to delete note:', errors);
-                    alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
+                    //alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
                 }
             });
         }
@@ -101,7 +101,7 @@ const Notes = ({ notes = [], projectId }) => {
         router.post(`/admin/project-notes/${noteId}/pin`, {}, {
             onError: (errors) => {
                 console.error('Failed to toggle pin:', errors);
-                alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
             }
         });
     };

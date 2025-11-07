@@ -20,7 +20,7 @@ export function createRealtime(roomId, onMessage) {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel(channelName);
         bc.onmessage = (ev) => {
-            // console.log('[Realtime] BroadcastChannel received message:', channelName, ev.data);
+            // //console.log('[Realtime] BroadcastChannel received message:', channelName, ev.data);
             if (ev && ev.data) {
                 notify(ev.data);
             } else {
@@ -31,7 +31,7 @@ export function createRealtime(roomId, onMessage) {
             console.error('[Realtime] BroadcastChannel message error:', ev);
         };
         connected = true;
-        // console.log('[Realtime] BroadcastChannel created for room:', channelName);
+        // //console.log('[Realtime] BroadcastChannel created for room:', channelName);
     } else {
         console.warn('[Realtime] BroadcastChannel not available');
     }
@@ -55,7 +55,7 @@ export function createRealtime(roomId, onMessage) {
         const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
 
         // Debug log (commented out)
-        // console.log('[Realtime] Sending message:', msg.type, {
+        // //console.log('[Realtime] Sending message:', msg.type, {
         //     bc: !!bc,
         //     ws: ws?.readyState === 1,
         //     channelName,

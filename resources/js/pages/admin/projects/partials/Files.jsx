@@ -108,7 +108,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
             },
             onError: (errors) => {
                 console.error('Upload failed:', errors);
-                alert('Upload failed: ' + (errors.message || 'Unknown error'));
+                //alert('Upload failed: ' + (errors.message || 'Unknown error'));
             }
         });
     };
