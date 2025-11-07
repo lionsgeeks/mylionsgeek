@@ -76,8 +76,8 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
 
 
 
-    // console.log('All users:', currentItems);
-    // console.log('First user roles:', currentItems[0]?.roles);
+    // //('All users:', currentItems);
+    // //('First user roles:', currentItems[0]?.roles);
     return (
         <div>
             <Table>

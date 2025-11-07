@@ -67,7 +67,7 @@ export default function Dashboard() {
                         editable={true}                    // allow drag/drop
                         // events={events}                    // your JS array of events
                         eventClick={(info) => alert(`Event: ${info.event.title}`)}
-                        dateClick={(info) => console.log(`Clicked date: ${info.dateStr}`)}
+                        dateClick={(info) => //(`Clicked date: ${info.dateStr}`)}
                         height="auto"
                         
                     /> */}

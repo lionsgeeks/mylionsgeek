@@ -158,7 +158,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     setIsDeleteOpen(false);
                     setComputers(prev => prev.filter(c => c.id !== deletingComputer.id));
                     setDeletingComputer(null);
-                    console.log("Deleted successfully")
+                    //("Deleted successfully")
                 }
             })
         }

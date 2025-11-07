@@ -47,7 +47,7 @@ const Activity = ({ activities = [] }) => {
     const markAsRead = (activityId) => {
         setUnreadCount((prev) => Math.max(0, prev - 1));
         // In a real app, you would update the activity as read
-        console.log('Marking activity as read:', activityId);
+        //('Marking activity as read:', activityId);
     };
 
     const getActivityIcon = (type) => {

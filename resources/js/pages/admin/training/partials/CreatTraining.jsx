@@ -47,7 +47,7 @@ export default function CreatTraining({ coaches }) {
         router.reload({ only: ['trainings'], preserveState: false });
       },
       onError: (errors) => {
-        console.log('Form errors:', errors);
+        //('Form errors:', errors);
       }
     });
   }

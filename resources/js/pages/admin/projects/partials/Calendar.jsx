@@ -29,10 +29,10 @@ const Calendar = ({ events = [] }) => {
                     </div>
                 )}
                 eventClick={(info) => {
-                    console.log('Event clicked:', info.event.title);
+                    //('Event clicked:', info.event.title);
                 }}
                 dateClick={(info) => {
-                    console.log('Date clicked:', info.dateStr);
+                    //('Date clicked:', info.dateStr);
                 }}
             />
         </div>

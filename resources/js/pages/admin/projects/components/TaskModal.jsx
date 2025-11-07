@@ -396,7 +396,7 @@ const TaskModal = ({
         const taskUrl = `${window.location.origin}/admin/projects/${selectedTask.project_id}/tasks/${selectedTask.id}`;
         navigator.clipboard.writeText(taskUrl).then(() => {
             // You could add a toast notification here
-            console.log('Task URL copied to clipboard');
+            //('Task URL copied to clipboard');
         });
     };
 

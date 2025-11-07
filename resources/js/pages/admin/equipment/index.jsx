@@ -140,7 +140,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 openHistory(historyEquipment);
             },
             onError: (errors) => {
-                console.log('Note validation errors:', errors);
+                //('Note validation errors:', errors);
             }
         });
     };
@@ -155,7 +155,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 setEditingEquipment(null);
             },
             onError: (errors) => {
-                console.log('Validation errors:', errors);
+                //('Validation errors:', errors);
             }
         });
     };
@@ -173,7 +173,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 setIsAddOpen(false);
             },
             onError: (errors) => {
-                console.log('Validation errors:', errors);
+                //('Validation errors:', errors);
             }
         });
     };
@@ -206,7 +206,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 loadEquipmentTypes(); // Refresh the list
             },
             onError: (errors) => {
-                console.log('Type validation errors:', errors);
+                //('Type validation errors:', errors);
             }
         });
     };
@@ -226,7 +226,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 loadEquipmentTypes(); // Refresh the list
             },
             onError: (errors) => {
-                console.log('Type validation errors:', errors);
+                //('Type validation errors:', errors);
             }
         });
     };

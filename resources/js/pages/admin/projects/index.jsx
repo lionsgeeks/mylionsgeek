@@ -104,7 +104,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
     const handleUpdate = useCallback((e) => {
         e.preventDefault();
-        console.log(data.photo);
+        //(data.photo);
         
         // Transform data to FormData if photo is present
         const formData = new FormData();

@@ -36,7 +36,7 @@ export default function ShowGeeko({ formation, geeko }) {
         const falsySet = new Set(['false', 'f', '0', 'no', 'n']);
 
         return qs.map(q => {
-            console.log('Processing question:', q.id, 'Raw options:', q.options, 'Raw correct_answers:', q.correct_answers);
+            //('Processing question:', q.id, 'Raw options:', q.options, 'Raw correct_answers:', q.correct_answers);
 
             // Handle options - could be array or JSON string
             let optionsArray = [];
@@ -124,7 +124,7 @@ export default function ShowGeeko({ formation, geeko }) {
                 correct_answers: correctIndexes,
             };
 
-            console.log('Normalized question:', q.id, 'Options:', result.options, 'Correct answers:', result.correct_answers);
+            //('Normalized question:', q.id, 'Options:', result.options, 'Correct answers:', result.correct_answers);
             return result;
         });
     };
@@ -230,7 +230,7 @@ export default function ShowGeeko({ formation, geeko }) {
         setShowDetailsModal(false);
         
         // Create session directly - skip the quiz update for now
-        console.log('Creating session with params:', {
+        //('Creating session with params:', {
             formationId: formation.id,
             geekoId: geeko.id,
             title: meta.title,
@@ -242,7 +242,7 @@ export default function ShowGeeko({ formation, geeko }) {
             description: meta.description
         }, {
             onSuccess: (page) => {
-                console.log('Session created successfully:', page);
+                //('Session created successfully:', page);
                 // The backend should redirect automatically to control page
             },
             onError: (errors) => {
@@ -332,13 +332,13 @@ export default function ShowGeeko({ formation, geeko }) {
     };
 
     const toggleLocalCorrect = (questionId, optionIndex, type) => {
-        console.log('Toggling correct answer:', { questionId, optionIndex, type });
+        //('Toggling correct answer:', { questionId, optionIndex, type });
         setQuestions(prev => prev.map(q => {
             if (q.id !== questionId) return q;
             const current = Array.isArray(q.correct_answers) ? [...q.correct_answers] : [];
             let newCorrectAnswers;
 
-            console.log('Current correct answers:', current);
+            //('Current correct answers:', current);
 
             if (type === 'multiple_choice') {
                 // Multiple selections allowed
@@ -352,7 +352,7 @@ export default function ShowGeeko({ formation, geeko }) {
                 newCorrectAnswers = [optionIndex];
             }
 
-            console.log('New correct answers:', newCorrectAnswers);
+            //('New correct answers:', newCorrectAnswers);
             return { ...q, correct_answers: newCorrectAnswers };
         }));
     };

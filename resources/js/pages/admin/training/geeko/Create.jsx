@@ -171,8 +171,8 @@ export default function Create({ formation, coach, coachId }) {
 
     const payload = { ...data, data: { questions: sanitizedQuestions } };
 
-    console.log('Submitting data:', payload);
-    console.log('Questions:', sanitizedQuestions);
+    //('Submitting data:', payload);
+    //('Questions:', sanitizedQuestions);
 
     router.post(`/training/${formation.id}/geeko`, payload, {
       onSuccess: () => {

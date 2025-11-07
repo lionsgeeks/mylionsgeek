@@ -20,7 +20,7 @@ export function createRealtime(roomId, onMessage) {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel(channelName);
         bc.onmessage = (ev) => {
-            console.log('[Realtime] BroadcastChannel received message on channel:', channelName, ev.data);
+            //('[Realtime] BroadcastChannel received message on channel:', channelName, ev.data);
             // Ensure we always notify, even if data seems odd
             if (ev && ev.data) {
                 notify(ev.data);
@@ -33,7 +33,7 @@ export function createRealtime(roomId, onMessage) {
             console.error('[Realtime] BroadcastChannel message error:', ev);
         };
         connected = true;
-        console.log('[Realtime] BroadcastChannel created for room:', channelName, 'Channel name:', channelName);
+        //('[Realtime] BroadcastChannel created for room:', channelName, 'Channel name:', channelName);
     } else {
         console.warn('[Realtime] BroadcastChannel not available');
     }
@@ -55,7 +55,7 @@ export function createRealtime(roomId, onMessage) {
 
     const send = (msg) => {
         const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
-        console.log('[Realtime] Sending message:', msg.type, { 
+        //('[Realtime] Sending message:', msg.type, { 
             bc: !!bc, 
             ws: ws?.readyState === 1,
             channelName,
@@ -64,9 +64,9 @@ export function createRealtime(roomId, onMessage) {
         if (bc) {
             try {
                 // BroadcastChannel can send objects directly
-                console.log('[Realtime] Posting to BroadcastChannel:', channelName, msg);
+                //('[Realtime] Posting to BroadcastChannel:', channelName, msg);
                 bc.postMessage(msg);
-                console.log('[Realtime] Message posted successfully');
+                //('[Realtime] Message posted successfully');
             } catch (error) {
                 console.error('[Realtime] Error posting to BroadcastChannel:', error);
             }

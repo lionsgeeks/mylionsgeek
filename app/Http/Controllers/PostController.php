@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,5 +100,13 @@ class PostController extends Controller
             'liked' => $liked,
             'likes_count' => $count,
         ]);
+    }
+    public function deleteComment($id)
+    {
+        $comment = Comment::find($id);
+
+        $comment->delete();
+
+        return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
 }
