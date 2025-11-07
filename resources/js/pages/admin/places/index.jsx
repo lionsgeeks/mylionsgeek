@@ -169,7 +169,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     return (
         <AppLayout>
             <Head title="Places" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
                 <Banner
                     illustration={illustration}
                 />
