@@ -5,6 +5,7 @@ import axios from 'axios';
 import { timeAgo } from '../lib/utils'
 import CommentsModal from './CommentsModal';
 import LikesModal from "./LikesModal";
+import PostMenuDropDown from './PostMenuDropDown';
 
 // Function to calculate "time ago"
 
@@ -15,6 +16,7 @@ const PostCard = ({ user, p, posts, changeUndo }) => {
     const [likesCountMap, setLikesCountMap] = useState({});
     const [commentsCountMap, setCommentsCountMap] = useState({});
     const [likedPostIds, setLikedPostIds] = useState([]);
+    const [openDetails, setOpenDetails] = useState(false);
     const [commentsPostIds, setCommentsPostIds] = useState([]);
 
     useEffect(() => {
@@ -90,7 +92,7 @@ const PostCard = ({ user, p, posts, changeUndo }) => {
                         <div className="flex items-start gap-3">
                             <Avatar
                                 className="w-12 h-12 overflow-hidden relative z-50"
-                                image={user?.image ? `/storage/img/profile/${user.image}` : undefined}
+                                image={user?.image}
                                 name={user?.name}
                                 lastActivity={user?.last_online || null}
                                 zIndex={'z-10'}
@@ -113,8 +115,12 @@ const PostCard = ({ user, p, posts, changeUndo }) => {
 
                         {/* Actions (More, Close) */}
                         <div className="flex items-center gap-2">
-                            <button className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
-                                <MoreHorizontal className="w-5 h-5" />
+                            <button className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
+                                <MoreHorizontal onClick={() => openDetails ? setOpenDetails(false) : setOpenDetails(true)} className="w-5 h-5" />
+                                {openDetails && (
+                                    <PostMenuDropDown open={openDetails} openChange={setOpenDetails} />
+                                )
+                                }
                             </button>
                             <button alt='Remove from Feed' onClick={changeUndo} className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
                                 <X className="w-5 h-5" />
@@ -219,6 +225,7 @@ const PostCard = ({ user, p, posts, changeUndo }) => {
                 postId={likesOpenFor}
                 open={!!likesOpenFor}
                 onClose={() => setLikesOpenFor(null)} />
+            {/* {openCreateModal && <CreatePostModal />} */}
         </>
     );
 };

@@ -3,6 +3,7 @@ import { MessageSquare, Send, Repeat2, ThumbsUp, MoreHorizontal, X, Image, Video
 import { Avatar } from '@/components/ui/avatar';
 import PostCard from '../../../../components/PostCard';
 import UndoRemove from '../../../../components/UndoRemove';
+import CreatePostModal from '../../../../components/CreatePostModal';
 
 export default function CenterFeed({ user, posts }) {
     const [openAddPost, setOpenAddPost] = useState(false)
@@ -98,6 +99,7 @@ export default function CenterFeed({ user, posts }) {
                         onUndo={handleUndoClick}
                     />
                 )}
+                
 
 
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
