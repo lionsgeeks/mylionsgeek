@@ -7,11 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp, Activity } from 'lucide-react';
+import { Check, X, Search, FileText, Download, ChevronDown, ChevronUp, Activity, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, PieChart, Pie, LineChart, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, Users } from 'lucide-react';
 import ExportModal from './partials/ExportModal';
+import StatCard from '../../../components/StatCard';
 const StatusBadge = ({ yes, trueText, falseText }) => (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${yes ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
         {yes ? trueText : falseText}
@@ -347,9 +348,24 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         { name: 'Studios', value: baseStudioPI.length, color: '#8b5cf6' },
         { name: 'Other', value: baseAll.length - baseCowork.length - baseStudioPI.length, color: '#10b981' }
     ];
+    if (Object.keys(perPlaceDynamic).length === 0) return null;
 
+    // Convert your data into an array for StatCard
+    const items = [
+        ...Object.entries(perPlaceDynamic).map(([placeName, count]) => ({
+            title: placeName,
+            number: count,
+            icon: ArrowRight, // optional; you can choose any icon
+        })),
+        {
+            title: "Exterior",
+            number: exteriorCount,
+            icon: ArrowRight,
+        },
+    ];
     // export
     const [showExportModal, setShowExportModal] = useState(false);
+
     return (
         <AppLayout>
             <Head title="Reservations" />
@@ -358,6 +374,25 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                     <div>
                         <h1 className="text-2xl font-medium">Reservations</h1>
                         <p className="text-sm text-muted-foreground">{(rangeActive ? baseAll.length : allReservations.length)} total — {(rangeActive ? baseCowork.length : coworkReservations.length)} coworks — {(rangeActive ? baseStudio.length : studioReservations.length)} studios</p>
+                    </div>
+                    <div className="flex items-end justify-end">
+                        <div className='flex gap-x-2'>
+
+                            <Button onClick={() => setShowExportModal(true)}
+                                className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                            >
+                                <Download /> Export
+                            </Button>
+
+                            <Link
+                                href="/admin/reservations/analytics"
+                                className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
+                            >
+                                <Activity className="w-6 h-4" />
+                                Analytics
+                            </Link>
+
+                        </div>
                     </div>
                     <div className="flex items-center gap-2 ">
                         <div className="relative ">
@@ -510,50 +545,83 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </Card>
                     </>
                 )}
-                <div className="flex items-center justify-between">
-                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-                    <div className='flex gap-x-2'>
 
-                        <Button onClick={() => setShowExportModal(true)}
-                            className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
-                        >
-                            <Download /> Export
-                        </Button>
-
-                        <Link
-                            href="/admin/reservations/analytics"
-                            className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
-                        >
-                            <Activity className="w-6 h-4" />
-                            Analytics
-                        </Link>
-
-                    </div>
-                </div>
                 {/* Per-place breakdown (studios + meeting rooms, range-aware) */}
-                {Object.keys(perPlaceDynamic).length > 0 && (
-                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                        {Object.entries(perPlaceDynamic).map(([placeName, count]) => (
-                            <Card key={placeName} className="min-h-[120px]">
-                                <CardHeader>
-                                    <CardTitle className="text-sm text-muted-foreground truncate">{placeName}</CardTitle>
+                {/* {Object.keys(perPlaceDynamic).length > 0 && (
+                    <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                        {Object.entries(perPlaceDynamic).map(([placeName, count], index) => (
+                            <Card
+                                key={placeName}
+                                className={`
+                    relative group min-h-[140px]
+                    border border-zinc-700/40 dark:border-zinc-800
+                    bg-zinc-100 dark:bg-zinc-900
+                    hover:bg-yellow-400 hover:text-black dark:hover:bg-yellow-400
+                    transition-all duration-300 ease-in-out
+                    rounded-2xl shadow-sm hover:shadow-lg
+                    `}
+                            >
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm text-zinc-600 dark:text-zinc-400 group-hover:text-black truncate">
+                                        {placeName}
+                                    </CardTitle>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="text-xl font-semibold">{count}</div>
+                                <CardContent className="flex items-center justify-between">
+                                    <div className="text-3xl font-bold">{count}</div>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="w-6 h-6 text-black/70"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                        </svg>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
-                        <Card key="Exterior" className="min-h-[120px]">
-                            <CardHeader>
-                                <CardTitle className="text-sm text-muted-foreground truncate">Exterior</CardTitle>
+
+                        <Card
+                            key="Exterior"
+                            className="relative group min-h-[140px] border border-zinc-700/40 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 hover:bg-yellow-400 hover:text-black dark:hover:bg-yellow-400 transition-all duration-300 ease-in-out rounded-2xl shadow-sm hover:shadow-lg"
+                        >
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm text-zinc-600 dark:text-zinc-400 group-hover:text-black truncate">
+                                    Exterior
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-xl font-semibold">{exteriorCount}</div>
+                            <CardContent className="flex items-center justify-between">
+                                <div className="text-3xl font-bold">{exteriorCount}</div>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="w-6 h-6 text-black/70"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                    </svg>
+                                </div>
                             </CardContent>
                         </Card>
-
                     </div>
-                )}
+                )} */}
+                <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {items.map((item, index) => (
+                        <StatCard
+                            key={index}
+                            title={item.title}
+                            number={item.number}
+                            icon={item.icon}
+                        />
+                    ))}
+                </div>
+
 
 
                 <div className="mt-6">
@@ -674,8 +742,14 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                 </div>
 
                 {/* Combined Details & Info Modal with Tabs */}
-                <Dialog open={!!selected || !!infoFor} onOpenChange={() => { setSelected(null); setInfoFor(null); }}>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <Dialog
+                    open={!!selected || !!infoFor}
+                    onOpenChange={() => {
+                        setSelected(null);
+                        setInfoFor(null);
+                    }}
+                >
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-light dark:bg-dark transition-colors duration-300">
                         {(selected || infoFor) && (
                             <ReservationModal
                                 reservation={selected || infoFor}
@@ -685,6 +759,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         )}
                     </DialogContent>
                 </Dialog>
+
             </div>
             <ExportModal
                 open={showExportModal}
@@ -703,23 +778,24 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
             </DialogHeader>
 
             <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    {((reservation.type || reservation.place_type) !== 'cowork') && (
+                {((reservation.type || reservation.place_type) !== 'cowork') && (
+
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="info">Equipment & Team</TabsTrigger>
-                    )}
-                </TabsList>
+                    </TabsList>
+                )}
 
                 <TabsContent value="details" className="space-y-4">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <div className="text-muted-foreground">User</div>
-                            <div className="font-medium">{reservation.user_name ?? '—'}</div>
+                            <div className="text-muted-foreground">Title</div>
+                            <div className="font-medium">{reservation.title ?? '—'}</div>
                         </div>
-                        <div>
+                        {/* <div>
                             <div className="text-muted-foreground">Type</div>
                             <div className="font-medium capitalize">{(reservation.type || reservation.place_type)?.replace('_', ' ') ?? '—'}</div>
-                        </div>
+                        </div> */}
                         {((reservation.type || reservation.place_type) === 'studio') && (
                             <div>
                                 <div className="text-muted-foreground">Studio Name</div>
@@ -740,7 +816,7 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                             <div className="text-muted-foreground">Time</div>
                             <div className="font-medium">{reservation.start} - {reservation.end}</div>
                         </div>
-                        {reservation.type !== 'cowork' && (
+                        {/* {reservation.type !== 'cowork' && (
                             <>
                                 <div className="col-span-2">
                                     <div className="text-muted-foreground">Title</div>
@@ -751,81 +827,88 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                                     <div className="font-medium whitespace-pre-wrap break-words">{reservation.description || '—'}</div>
                                 </div>
                             </>
-                        )}
-                        <div>
+                        )} */}
+                        {/* <div>
                             <div className="text-muted-foreground">Approved</div>
                             <div><StatusBadge yes={!!reservation.approved} trueText="Approved" falseText="Pending" /></div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Status</div>
                             <div>{reservation.canceled ? <Badge variant="destructive">Canceled</Badge> : reservation.passed ? <Badge>Passed</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</div>
-                        </div>
+                        </div> */}
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-3 cursor-pointer"
-                            onClick={() => {
-                                router.visit(`/admin/reservations/${reservation.id}/details`);
-                            }}
-                        >
-                            <FileText className="h-4 w-4 mr-1" /> View Full Details
-                        </Button>
-                        {reservation.approved && reservation.type !== 'cowork' && (
+                    <div className="flex justify-between gap-2 pt-2">
+
+                        {((reservation.type || reservation.place_type) !== 'cowork') && (
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 px-3 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
-                                onClick={() => {
-                                    window.open(`/admin/reservations/${reservation.id}/pdf`, '_blank');
-                                }}
-                            >
-                                <Download className="h-4 w-4 mr-1" /> Download PDF
-                            </Button>
-                        )}
-                        {!reservation.approved && !reservation.canceled && (
-                            <Button
-                                size="sm"
-                                className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
-                                disabled={loadingAction.id === reservation.id}
-                                onClick={() => {
-                                    setLoadingAction({ id: reservation.id, type: 'approve' });
-                                    router.post(`/admin/reservations/${reservation.id}/approve`, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
-                                }}
-                            >
-                                <Check className="h-4 w-4 mr-1" /> Approve
-                            </Button>
-                        )}
-                        {!reservation.canceled && (
-                            <Button
-                                size="sm"
-                                variant="destructive"
                                 className="h-8 px-3 cursor-pointer"
-                                disabled={loadingAction.id === reservation.id}
                                 onClick={() => {
-                                    const confirmMsg = reservation.approved ?
-                                        'Cancel this approved reservation?' :
-                                        'Cancel this reservation?';
-                                    if (!window.confirm(confirmMsg)) return;
-                                    setLoadingAction({ id: reservation.id, type: 'cancel' });
-
-                                    // Use different routes for cowork vs regular reservations
-                                    const cancelRoute = reservation.type === 'cowork'
-                                        ? `/admin/reservations/cowork/${reservation.id}/cancel`
-                                        : `/admin/reservations/${reservation.id}/cancel`;
-
-                                    router.post(cancelRoute, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
+                                    router.visit(`/admin/reservations/${reservation.id}/details`);
                                 }}
                             >
-                                <X className="h-4 w-4 mr-1" /> Cancel
+                                <FileText className="h-4 w-4 mr-1" /> View Full Details
                             </Button>
                         )}
+
+                        <div className='flex gap-x-2'>
+
+                            {reservation.approved && reservation.type !== 'cowork' && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-3 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
+                                    onClick={() => {
+                                        window.open(`/admin/reservations/${reservation.id}/pdf`, '_blank');
+                                    }}
+                                >
+                                    <Download className="h-4 w-4 " />
+                                </Button>
+                            )}
+                            {!reservation.approved && !reservation.canceled && (
+                                <Button
+                                    size="sm"
+                                    className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
+                                    disabled={loadingAction.id === reservation.id}
+                                    onClick={() => {
+                                        setLoadingAction({ id: reservation.id, type: 'approve' });
+                                        router.post(`/admin/reservations/${reservation.id}/approve`, {}, {
+                                            onFinish: () => setLoadingAction({ id: null, type: null })
+                                        });
+                                    }}
+                                >
+                                    <Check className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {!reservation.canceled && (
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="h-8 px-3 cursor-pointer"
+                                    disabled={loadingAction.id === reservation.id}
+                                    onClick={() => {
+                                        const confirmMsg = reservation.approved ?
+                                            'Cancel this approved reservation?' :
+                                            'Cancel this reservation?';
+                                        if (!window.confirm(confirmMsg)) return;
+                                        setLoadingAction({ id: reservation.id, type: 'cancel' });
+
+                                        // Use different routes for cowork vs regular reservations
+                                        const cancelRoute = reservation.type === 'cowork'
+                                            ? `/admin/reservations/cowork/${reservation.id}/cancel`
+                                            : `/admin/reservations/${reservation.id}/cancel`;
+
+                                        router.post(cancelRoute, {}, {
+                                            onFinish: () => setLoadingAction({ id: null, type: null })
+                                        });
+                                    }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </TabsContent>
 
