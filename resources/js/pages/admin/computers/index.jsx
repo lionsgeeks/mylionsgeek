@@ -38,6 +38,11 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [quickAssign, setQuickAssign] = useState({ computerId: null, search: '' });
     const [assigningComputerId, setAssigningComputerId] = useState(null);
     const quickAssignInputRef = useRef(null);
+    const [showUserHistoryModal, setShowUserHistoryModal] = useState(false);
+    const [userHistoryLoading, setUserHistoryLoading] = useState(false);
+    const [userHistoryError, setUserHistoryError] = useState('');
+    const [selectedUserForHistory, setSelectedUserForHistory] = useState(null);
+    const [userAssignmentHistory, setUserAssignmentHistory] = useState([]);
 
     const displayDate = (value) => {
         if (!value) return null;
@@ -246,6 +251,23 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             .finally(() => setHistoryLoading(false));
     }
 
+    function openUserHistoryModal(user) {
+        if (!user) return;
+        setSelectedUserForHistory(user);
+        setShowUserHistoryModal(true);
+        setUserHistoryLoading(true);
+        setUserHistoryError('');
+        setUserAssignmentHistory([]);
+        fetch(`/admin/users/${user.id}/computer-history`, { headers: { 'Accept': 'application/json' } })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Failed to load user history');
+                const data = await res.json();
+                setUserAssignmentHistory(Array.isArray(data.history) ? data.history : []);
+            })
+            .catch((e) => setUserHistoryError(e.message || 'Failed to load user history'))
+            .finally(() => setUserHistoryLoading(false));
+    }
+
     function renderAllTable() {
         return (
             <div className="overflow-x-auto">
@@ -279,12 +301,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                                     <TableCell>
                                         {user ? (
-                                            <a
+                                            <button
+                                                type="button"
                                                 className="text-sm font-medium underline underline-offset-2 hover:text-primary"
-                                                href={`/admin/users/${user.id}`}
+                                                onClick={() => openUserHistoryModal(user)}
                                             >
                                                 {user.name}
-                                            </a>
+                                            </button>
                                         ) : (
                                             <Popover
                                                 
@@ -787,6 +810,66 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 </div>
                             ) : (
                                 <p className="text-sm text-muted-foreground">No assignment history yet.</p>
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* User History Modal */}
+            <Dialog className="" open={showUserHistoryModal} onOpenChange={setShowUserHistoryModal}>
+                <DialogContent className="sm:max-w-[780px] bg-light text-dark dark:bg-dark dark:text-light border-b border-alpha/20">
+                    <DialogHeader>
+                        <DialogTitle>User computer history{selectedUserForHistory ? ` - ${selectedUserForHistory.name}` : ''}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {userHistoryLoading && (
+                            <p className="text-sm text-muted-foreground">Loading history…</p>
+                        )}
+                        {userHistoryError && (
+                            <p className="text-sm text-red-600">{userHistoryError}</p>
+                        )}
+                        {!userHistoryLoading && !userHistoryError && (
+                            userAssignmentHistory.length ? (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Computer</TableHead>
+                                                <TableHead>Start</TableHead>
+                                                <TableHead>End</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {userAssignmentHistory.map((entry) => (
+                                                <TableRow key={entry.id}>
+                                                    <TableCell>
+                                                        {entry.computer ? (
+                                                            <div className="flex flex-col gap-0.5">
+                                                                {entry.computer.reference && (
+                                                                    <span className="text-sm font-medium">{entry.computer.reference}</span>
+                                                                )}
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {entry.computer.cpu || 'Unknown CPU'}
+                                                                    {entry.computer.gpu ? ` / ${entry.computer.gpu}` : ''}
+                                                                </span>
+                                                                {entry.computer.mark && (
+                                                                    <span className="text-xs text-muted-foreground">Mark: {entry.computer.mark}</span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-muted-foreground">Unknown computer</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-sm">{displayDate(entry.start) || '—'}</TableCell>
+                                                    <TableCell className="text-sm">{displayDate(entry.end) || '—'}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No computer history for this user.</p>
                             )
                         )}
                     </div>
