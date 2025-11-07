@@ -54,7 +54,7 @@ export function AppHeader({ breadcrumbs = [] }) {
     const getInitials = useInitials();
     return (
         <>
-            <div className={`border-sidebar-border/80 ${auth.user.role.includes('student') && 'fixed'} z-50 bg-light dark:bg-beta  mx-auto w-full border-b`}>
+            <div className={`border-sidebar-border/80 ${auth.user.role.includes('student') && 'fixed'} z-50 bg-light dark:bg-dark  mx-auto w-full border-b`}>
                 <div className="mx-auto flex justify-between h-16 items-center px-4 md:max-w-7xl">
                     {/* Mobile Menu */}
                     <div className="lg:hidden flex items-center">

@@ -4,7 +4,7 @@ import { Avatar } from '@/components/ui/avatar';
 
 
 const LeftSideBar = ({ user }) => {
-    //(user);
+    console.log(user);
     const getField = (user) => {
         if (user?.formation?.name?.toLowerCase().includes('creator')) {
             return 'Content Creator'
@@ -15,7 +15,7 @@ const LeftSideBar = ({ user }) => {
     return (
         <>
             {/* Left Sidebar - Fixed */}
-            <div className="lg:col-span-3 space-y-4">
+            <div className="lg:col-span-3 sticky top-0 space-y-4">
                 {/* Profile Card */}
                 <div className="bg-white dark:bg-beta rounded-lg shadow overflow-hidden">
                     <div className="h-16 dark:bg-light bg-dark">

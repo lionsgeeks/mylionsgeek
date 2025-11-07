@@ -157,7 +157,7 @@ export default function SpacesPage() {
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-6 pb-6">
         <h1 className="text-3xl font-bold mb-6 tracking-tight">Spaces</h1>
         {/* Tabs/Selector */}
         <div className="flex gap-4 mb-6">
