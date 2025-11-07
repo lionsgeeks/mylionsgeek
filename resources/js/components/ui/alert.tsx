@@ -19,7 +19,7 @@ const alertVariants = cva(
   }
 )
 
-function //alert({
+function Alert({
   className,
   variant,
   ...props
@@ -63,4 +63,4 @@ function AlertDescription({
   )
 }
 
-export { Alert, AlertTitle, AlertDescription }
+export { Alert , AlertTitle, AlertDescription }
