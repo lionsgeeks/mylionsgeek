@@ -95,7 +95,7 @@ const CompleteProfile = ({ user }) => {
                 console.error('Validation Errors:', errors);
             },
             onFinish: () => {
-                console.log('Request finished');
+                //('Request finished');
             }
         });
     };

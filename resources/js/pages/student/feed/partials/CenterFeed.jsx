@@ -5,7 +5,7 @@ import PostCard from '../../../../components/PostCard';
 
 export default function CenterFeed({ user, posts }) {
     const [openAddPost, setOpenAddPost] = useState(false)
-    // console.log(posts.posts);
+    // //(posts.posts);
 
 
     return (

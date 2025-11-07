@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
     Route::post('/comments/{id}', [PostController::class, 'addPostComment']);
     Route::get('/likes/{id}', [PostController::class, 'getPostLikes']);
     Route::get('/comments/{id}', [PostController::class, 'getPostComments']);
+    Route::delete('/comments/{id}', [PostController::class, 'deleteComment']);
+    Route::put('/comments/{id}', [PostController::class, 'updateComment']);
 });
 
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);

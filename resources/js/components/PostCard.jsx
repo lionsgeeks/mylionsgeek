@@ -9,7 +9,7 @@ import LikesModal from "./LikesModal";
 // Function to calculate "time ago"
 
 const PostCard = ({ user, p, posts }) => {
-    // console.log(posts);
+    // //(posts);
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [likesCountMap, setLikesCountMap] = useState({});

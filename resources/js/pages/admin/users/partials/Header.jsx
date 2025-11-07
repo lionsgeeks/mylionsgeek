@@ -79,7 +79,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 })
             },
             onError: (errors) => {
-                console.log(errors);
+                //(errors);
             }
         });
     };

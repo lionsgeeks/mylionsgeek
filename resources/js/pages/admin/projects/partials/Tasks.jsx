@@ -142,7 +142,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             project_id: projectId
         };
         
-        console.log(taskDataWithProject);
+        //(taskDataWithProject);
         createTask('/admin/tasks', taskDataWithProject, {
             data: taskDataWithProject,
             onSuccess: () => {

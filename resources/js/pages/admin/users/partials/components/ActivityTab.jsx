@@ -10,8 +10,8 @@ export default function AttendanceTab({ absences = { data: [], meta: {} }, disci
   // Debug: Log absences data to console (remove in production)
   React.useEffect(() => {
     if (absencesData.length > 0) {
-      console.log('Absences Data:', absencesData);
-      console.log('Absences Meta:', meta);
+      //('Absences Data:', absencesData);
+      //('Absences Meta:', meta);
     }
   }, [absencesData, meta]);
 

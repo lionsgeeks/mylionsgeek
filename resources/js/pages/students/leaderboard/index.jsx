@@ -47,7 +47,7 @@ export default function Leaderboard() {
       const res = await fetch(`/leaderboard/data?${params}`);
       const data = await res.json();
 
-      console.log(data);
+      //(data);
 
 
       // Store all data for client-side filtering

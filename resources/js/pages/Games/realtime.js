@@ -20,20 +20,18 @@ export function createRealtime(roomId, onMessage) {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         bc = new BroadcastChannel(channelName);
         bc.onmessage = (ev) => {
-            console.log('[Realtime] BroadcastChannel received message on channel:', channelName, ev.data);
-            // Ensure we always notify, even if data seems odd
+            // console.log('[Realtime] BroadcastChannel received message:', channelName, ev.data);
             if (ev && ev.data) {
                 notify(ev.data);
             } else {
                 console.warn('[Realtime] Received message with no data:', ev);
             }
         };
-        // Also listen for errors
         bc.onmessageerror = (ev) => {
             console.error('[Realtime] BroadcastChannel message error:', ev);
         };
         connected = true;
-        console.log('[Realtime] BroadcastChannel created for room:', channelName, 'Channel name:', channelName);
+        // console.log('[Realtime] BroadcastChannel created for room:', channelName);
     } else {
         console.warn('[Realtime] BroadcastChannel not available');
     }
@@ -47,7 +45,7 @@ export function createRealtime(roomId, onMessage) {
                 const parsed = safeParse(ev.data);
                 if (parsed) notify(parsed);
             };
-            ws.onerror = () => { /* noop to satisfy no-empty */ };
+            ws.onerror = () => { /* noop */ };
         } catch {
             // ignore ws errors; BroadcastChannel still works locally
         }
@@ -55,24 +53,25 @@ export function createRealtime(roomId, onMessage) {
 
     const send = (msg) => {
         const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
-        console.log('[Realtime] Sending message:', msg.type, { 
-            bc: !!bc, 
-            ws: ws?.readyState === 1,
-            channelName,
-            msgData: msg 
-        });
+
+        // Debug log (commented out)
+        // console.log('[Realtime] Sending message:', msg.type, {
+        //     bc: !!bc,
+        //     ws: ws?.readyState === 1,
+        //     channelName,
+        //     msgData: msg
+        // });
+
         if (bc) {
             try {
-                // BroadcastChannel can send objects directly
-                console.log('[Realtime] Posting to BroadcastChannel:', channelName, msg);
-                bc.postMessage(msg);
-                console.log('[Realtime] Message posted successfully');
+                bc.postMessage(msg); // BroadcastChannel can send objects directly
             } catch (error) {
                 console.error('[Realtime] Error posting to BroadcastChannel:', error);
             }
         } else {
             console.warn('[Realtime] No BroadcastChannel available to send');
         }
+
         if (ws && ws.readyState === 1) {
             ws.send(payload);
         }
@@ -101,5 +100,3 @@ export function randomRoomId(prefix = 'room') {
     const rnd = Math.random().toString(36).slice(2, 8);
     return `${prefix}-${rnd}`;
 }
-
-

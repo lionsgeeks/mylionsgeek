@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-    Plus, Play, Settings, Trash2, Edit3, ArrowLeft, 
-    Clock, Users, Trophy, CheckCircle, XCircle, 
+import {
+    Plus, Play, Settings, Trash2, Edit3, ArrowLeft,
+    Clock, Users, Trophy, CheckCircle, XCircle,
     Eye, ChevronUp, ChevronDown, Save, X, Upload,
     Copy, ExternalLink, GripVertical
 } from 'lucide-react';
@@ -36,7 +36,7 @@ export default function ShowGeeko({ formation, geeko }) {
         const falsySet = new Set(['false', 'f', '0', 'no', 'n']);
 
         return qs.map(q => {
-            console.log('Processing question:', q.id, 'Raw options:', q.options, 'Raw correct_answers:', q.correct_answers);
+            //('Processing question:', q.id, 'Raw options:', q.options, 'Raw correct_answers:', q.correct_answers);
 
             // Handle options - could be array or JSON string
             let optionsArray = [];
@@ -124,7 +124,7 @@ export default function ShowGeeko({ formation, geeko }) {
                 correct_answers: correctIndexes,
             };
 
-            console.log('Normalized question:', q.id, 'Options:', result.options, 'Correct answers:', result.correct_answers);
+            //('Normalized question:', q.id, 'Options:', result.options, 'Correct answers:', result.correct_answers);
             return result;
         });
     };
@@ -187,13 +187,13 @@ export default function ShowGeeko({ formation, geeko }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        const url = editingQuestion 
+
+        const url = editingQuestion
             ? `/training/${formation.id}/geeko/${geeko.id}/questions/${editingQuestion}`
             : `/training/${formation.id}/geeko/${geeko.id}/questions`;
 
         const method = editingQuestion ? 'put' : 'post';
-        
+
         router[method](url, data, {
             onSuccess: () => {
                 resetForm();
@@ -228,21 +228,21 @@ export default function ShowGeeko({ formation, geeko }) {
     const handleConfirmAndCreateSession = () => {
         // Close modal first
         setShowDetailsModal(false);
-        
+
         // Create session directly - skip the quiz update for now
-        console.log('Creating session with params:', {
+        ('Creating session with params:', {
             formationId: formation.id,
             geekoId: geeko.id,
             title: meta.title,
             description: meta.description
         });
-        
+
         router.post(`/training/${formation.id}/geeko/${geeko.id}/session/create`, {
             title: meta.title,
             description: meta.description
         }, {
             onSuccess: (page) => {
-                console.log('Session created successfully:', page);
+                //('Session created successfully:', page);
                 // The backend should redirect automatically to control page
             },
             onError: (errors) => {
@@ -256,7 +256,7 @@ export default function ShowGeeko({ formation, geeko }) {
     const handleTypeChange = (type) => {
         setData('type', type);
         setData('correct_answers', []);
-        
+
         if (type === 'true_false') {
             setData('options', ['True', 'False']);
         } else if (type === 'multiple_choice') {
@@ -332,13 +332,13 @@ export default function ShowGeeko({ formation, geeko }) {
     };
 
     const toggleLocalCorrect = (questionId, optionIndex, type) => {
-        console.log('Toggling correct answer:', { questionId, optionIndex, type });
+        //('Toggling correct answer:', { questionId, optionIndex, type });
         setQuestions(prev => prev.map(q => {
             if (q.id !== questionId) return q;
             const current = Array.isArray(q.correct_answers) ? [...q.correct_answers] : [];
             let newCorrectAnswers;
 
-            console.log('Current correct answers:', current);
+            //('Current correct answers:', current);
 
             if (type === 'multiple_choice') {
                 // Multiple selections allowed
@@ -352,7 +352,7 @@ export default function ShowGeeko({ formation, geeko }) {
                 newCorrectAnswers = [optionIndex];
             }
 
-            console.log('New correct answers:', newCorrectAnswers);
+            //('New correct answers:', newCorrectAnswers);
             return { ...q, correct_answers: newCorrectAnswers };
         }));
     };
@@ -448,21 +448,20 @@ export default function ShowGeeko({ formation, geeko }) {
                                 </svg>
                                 Back to Geeko
                             </button>
-                            
+
                             <div className="flex items-center space-x-4">
-                            <button
+                                <button
                                     onClick={() => router.visit(`/training/${formation.id}/geeko/${geeko.id}/edit`)}
                                     className="p-2 rounded-lg hover:bg-alpha/10 transition-colors"
                                 >
                                     <Settings size={18} />
-                            </button>
+                                </button>
                                 <button
                                     onClick={handleToggleStatus}
-                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                                        geeko.status === 'ready'
-                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            : 'bg-alpha/20 text-alpha hover:bg-alpha/30'
-                                    }`}
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${geeko.status === 'ready'
+                                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        : 'bg-alpha/20 text-alpha hover:bg-alpha/30'
+                                        }`}
                                 >
                                     {geeko.status === 'ready' ? 'Draft' : 'Ready'}
                                 </button>
@@ -473,16 +472,16 @@ export default function ShowGeeko({ formation, geeko }) {
                                     >
                                         <Play size={16} />
                                         <span>Start Game</span>
-                                </button>
-                            )}
-                                </div>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Minimalist Lobby */}
                 <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6">
-                  
+
 
                     {/* Questions Section */}
                     <div className="flex items-center justify-between mb-6">
@@ -499,236 +498,236 @@ export default function ShowGeeko({ formation, geeko }) {
                         </button>
                     </div>
 
-                {/* Questions Grid */}
-                <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-12 space-y-6">
+                    {/* Questions Grid */}
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-12 space-y-6">
 
-                    {/* Add/Edit Question Form */}
-                    {showAddQuestion && (
-                        <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 shadow-xl">
-                            <h3 className="text-xl font-bold text-dark dark:text-light mb-6">
-                                {editingQuestion ? 'Edit Question' : 'Add New Question'}
-                            </h3>
-                            
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Question Text */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                        Question *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.question}
-                                        onChange={(e) => setData('question', e.target.value)}
-                                        className="w-full text-lg border border-white/20 rounded-xl px-5 py-4 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20 placeholder:text-dark/50 dark:placeholder:text-light/50"
-                                        placeholder="Start typing your question"
-                                        required
-                                    />
-                                    {errors.question && (
-                                        <p className="text-error text-sm mt-1">{errors.question}</p>
-                                    )}
-                                </div>
+                        {/* Add/Edit Question Form */}
+                        {showAddQuestion && (
+                            <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 shadow-xl">
+                                <h3 className="text-xl font-bold text-dark dark:text-light mb-6">
+                                    {editingQuestion ? 'Edit Question' : 'Add New Question'}
+                                </h3>
 
-                                {/* Media Upload */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                        Media (optional)
-                                    </label>
-                                    <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-white/30 bg-white/40 dark:bg-dark/40 backdrop-blur p-6">
-                                        <label className="cursor-pointer inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10 text-dark dark:text-light">
-                                            <Upload size={16} />
-                                            <span>Upload file</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*,video/*"
-                                                className="hidden"
-                                                onChange={(e) => setData('question_image', e.target.files?.[0] || null)}
-                                            />
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    {/* Question Text */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
+                                            Question *
                                         </label>
-                                    </div>
-                                </div>
-
-                                {/* Question Type */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                        Question Type
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {questionTypes.map((type) => (
-                                            <button
-                                                key={type.value}
-                                                type="button"
-                                                onClick={() => handleTypeChange(type.value)}
-                                                className={`p-3 rounded-full border transition-all ${data.type === type.value
-                                                        ? 'border-alpha bg-alpha/10'
-                                                        : 'border-white/20 hover:border-alpha/40'
-                                                }`}
-                                            >
-                                                <div className="text-xs font-semibold">{type.label}</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Answer Options */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                        Answer Options
-                                    </label>
-                                    <div className="space-y-3">
-                                        {data.options.map((option, index) => (
-                                            <div key={index} className="flex items-center gap-3">
-                                                <div className={`w-4 h-10 rounded-l-md ${index === 0 ? 'bg-red-500' : index === 1 ? 'bg-blue-500' : index === 2 ? 'bg-yellow-500' : 'bg-green-600'}`}></div>
-                                                <input
-                                                    type="text"
-                                                    value={option}
-                                                    onChange={(e) => updateOption(index, e.target.value)}
-                                                    className="flex-1 border border-white/20 rounded-r-md px-4 py-2 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
-                                                    placeholder={`Add answer ${index + 1}${index > 1 ? ' (optional)' : ''}`}
-                                                    disabled={data.type === 'true_false'}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleCorrectAnswer(index)}
-                                                    className={`px-3 py-2 rounded-lg border text-sm font-semibold ${data.correct_answers.includes(index)
-                                                            ? 'bg-good/20 border-good text-good'
-                                                            : 'border-white/20 hover:border-alpha/40'
-                                                    }`}
-                                                >
-                                                    Correct
-                                                </button>
-                                                {data.type === 'multiple_choice' && data.options.length > 2 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeOption(index)}
-                                                        className="p-2 text-error hover:bg-error/10 rounded-lg"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-
-                                        {data.type === 'multiple_choice' && data.options.length < 6 && (
-                                            <button
-                                                type="button"
-                                                onClick={addOption}
-                                                className="flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold"
-                                            >
-                                                <Plus size={16} />
-                                                <span>Add Option</span>
-                                            </button>
+                                        <input
+                                            type="text"
+                                            value={data.question}
+                                            onChange={(e) => setData('question', e.target.value)}
+                                            className="w-full text-lg border border-white/20 rounded-xl px-5 py-4 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20 placeholder:text-dark/50 dark:placeholder:text-light/50"
+                                            placeholder="Start typing your question"
+                                            required
+                                        />
+                                        {errors.question && (
+                                            <p className="text-error text-sm mt-1">{errors.question}</p>
                                         )}
                                     </div>
-                                    <p className="text-xs text-dark/60 dark:text-light/60 mt-2">
-                                        Click the circle to mark correct answers
-                                    </p>
-                                </div>
 
-                                {/* Points and Time */}
-                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Media Upload */}
                                     <div>
                                         <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Points
+                                            Media (optional)
                                         </label>
-                                        <input
-                                            type="number"
-                                            min="100"
-                                            max="2000"
-                                            step="100"
-                                            value={data.points}
-                                            onChange={(e) => setData('points', parseInt(e.target.value))}
-                                            className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
-                                        />
+                                        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-white/30 bg-white/40 dark:bg-dark/40 backdrop-blur p-6">
+                                            <label className="cursor-pointer inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10 text-dark dark:text-light">
+                                                <Upload size={16} />
+                                                <span>Upload file</span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*,video/*"
+                                                    className="hidden"
+                                                    onChange={(e) => setData('question_image', e.target.files?.[0] || null)}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
-                                    
+
+                                    {/* Question Type */}
                                     <div>
                                         <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Time Limit (seconds)
+                                            Question Type
                                         </label>
-                                        <input
-                                            type="number"
-                                            min="5"
-                                            max="300"
-                                            value={data.time_limit || ''}
-                                            onChange={(e) => setData('time_limit', e.target.value ? parseInt(e.target.value) : null)}
-                                            className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
-                                            placeholder={`Default: ${geeko.time_limit}s`}
-                                        />
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {questionTypes.map((type) => (
+                                                <button
+                                                    key={type.value}
+                                                    type="button"
+                                                    onClick={() => handleTypeChange(type.value)}
+                                                    className={`p-3 rounded-full border transition-all ${data.type === type.value
+                                                        ? 'border-alpha bg-alpha/10'
+                                                        : 'border-white/20 hover:border-alpha/40'
+                                                        }`}
+                                                >
+                                                    <div className="text-xs font-semibold">{type.label}</div>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Form Actions */}
-                                <div className="flex justify-end space-x-3 pt-4">
-                                    <button
-                                        type="button"
-                                        onClick={resetForm}
-                                        className="flex items-center space-x-2 px-4 py-2 border border-white/20 rounded-lg hover:bg-white/40 transition-colors backdrop-blur"
-                                    >
-                                        <X size={16} />
-                                        <span>Cancel</span>
-                                    </button>
-                                    
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="flex items-center space-x-2 bg-gradient-to-r from-alpha to-yellow-400 text-dark px-6 py-3 rounded-xl hover:from-alpha/90 hover:to-yellow-400/90 transition-all disabled:opacity-50 font-bold shadow"
-                                    >
-                                        <Save size={16} />
-                                        <span>{processing ? 'Saving...' : (editingQuestion ? 'Update' : 'Add Question')}</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    )}
+                                    {/* Answer Options */}
+                                    <div>
+                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
+                                            Answer Options
+                                        </label>
+                                        <div className="space-y-3">
+                                            {data.options.map((option, index) => (
+                                                <div key={index} className="flex items-center gap-3">
+                                                    <div className={`w-4 h-10 rounded-l-md ${index === 0 ? 'bg-red-500' : index === 1 ? 'bg-blue-500' : index === 2 ? 'bg-yellow-500' : 'bg-green-600'}`}></div>
+                                                    <input
+                                                        type="text"
+                                                        value={option}
+                                                        onChange={(e) => updateOption(index, e.target.value)}
+                                                        className="flex-1 border border-white/20 rounded-r-md px-4 py-2 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                                        placeholder={`Add answer ${index + 1}${index > 1 ? ' (optional)' : ''}`}
+                                                        disabled={data.type === 'true_false'}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleCorrectAnswer(index)}
+                                                        className={`px-3 py-2 rounded-lg border text-sm font-semibold ${data.correct_answers.includes(index)
+                                                            ? 'bg-good/20 border-good text-good'
+                                                            : 'border-white/20 hover:border-alpha/40'
+                                                            }`}
+                                                    >
+                                                        Correct
+                                                    </button>
+                                                    {data.type === 'multiple_choice' && data.options.length > 2 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeOption(index)}
+                                                            className="p-2 text-error hover:bg-error/10 rounded-lg"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
 
-                    {/* Questions Grid */}
-                    {questions && questions.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {questions.map((question, index) => (
-                                <QuestionCard
-                                    key={question.id}
-                                    question={question}
-                                    index={index}
-                                    isExpanded={expandedQuestion === question.id}
-                                    onExpand={() => setExpandedQuestion(expandedQuestion === question.id ? null : question.id)}
-                                    onEdit={() => handleEditQuestion(question)}
-                                    onDelete={() => setConfirmDelete(question.id)}
-                                    onDragStart={(e) => handleDragStart(e, index)}
-                                    onDragOver={handleDragOver}
-                                    onDragEnd={handleDragEnd}
-                                    onDrop={(e) => handleDrop(e, index)}
-                                    isDragging={draggedIndex === index}
-                                    // Edit handlers
-                                    updateLocalQuestionField={updateLocalQuestionField}
-                                    updateLocalOption={updateLocalOption}
-                                    addLocalOption={addLocalOption}
-                                    removeLocalOption={removeLocalOption}
-                                    toggleLocalCorrect={toggleLocalCorrect}
-                                    changeTypeAdjustOptions={changeTypeAdjustOptions}
-                                    saveQuestion={saveQuestion}
-                                    geeko={geeko}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-20">
-                            <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha">QUIZ</div>
-                            <h3 className="text-2xl font-bold text-dark dark:text-light mb-4">
-                                No Questions Yet
-                            </h3>
-                            <p className="text-dark/70 dark:text-light/70 mb-8 max-w-md mx-auto">
-                                Add your first question to get started. You can create multiple choice, true/false, or open-ended questions.
-                            </p>
-                            <button
-                                onClick={handleAddQuestion}
-                                className="inline-flex items-center space-x-2 bg-alpha text-dark px-6 py-3 rounded-lg hover:bg-alpha/90 transition-colors font-semibold"
-                            >
-                                <Plus size={20} />
-                                <span>Add Your First Question</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
+                                            {data.type === 'multiple_choice' && data.options.length < 6 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={addOption}
+                                                    className="flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold"
+                                                >
+                                                    <Plus size={16} />
+                                                    <span>Add Option</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-dark/60 dark:text-light/60 mt-2">
+                                            Click the circle to mark correct answers
+                                        </p>
+                                    </div>
+
+                                    {/* Points and Time */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
+                                                Points
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="100"
+                                                max="2000"
+                                                step="100"
+                                                value={data.points}
+                                                onChange={(e) => setData('points', parseInt(e.target.value))}
+                                                className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
+                                                Time Limit (seconds)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="5"
+                                                max="300"
+                                                value={data.time_limit || ''}
+                                                onChange={(e) => setData('time_limit', e.target.value ? parseInt(e.target.value) : null)}
+                                                className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                                placeholder={`Default: ${geeko.time_limit}s`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Form Actions */}
+                                    <div className="flex justify-end space-x-3 pt-4">
+                                        <button
+                                            type="button"
+                                            onClick={resetForm}
+                                            className="flex items-center space-x-2 px-4 py-2 border border-white/20 rounded-lg hover:bg-white/40 transition-colors backdrop-blur"
+                                        >
+                                            <X size={16} />
+                                            <span>Cancel</span>
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="flex items-center space-x-2 bg-gradient-to-r from-alpha to-yellow-400 text-dark px-6 py-3 rounded-xl hover:from-alpha/90 hover:to-yellow-400/90 transition-all disabled:opacity-50 font-bold shadow"
+                                        >
+                                            <Save size={16} />
+                                            <span>{processing ? 'Saving...' : (editingQuestion ? 'Update' : 'Add Question')}</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* Questions Grid */}
+                        {questions && questions.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {questions.map((question, index) => (
+                                    <QuestionCard
+                                        key={question.id}
+                                        question={question}
+                                        index={index}
+                                        isExpanded={expandedQuestion === question.id}
+                                        onExpand={() => setExpandedQuestion(expandedQuestion === question.id ? null : question.id)}
+                                        onEdit={() => handleEditQuestion(question)}
+                                        onDelete={() => setConfirmDelete(question.id)}
+                                        onDragStart={(e) => handleDragStart(e, index)}
+                                        onDragOver={handleDragOver}
+                                        onDragEnd={handleDragEnd}
+                                        onDrop={(e) => handleDrop(e, index)}
+                                        isDragging={draggedIndex === index}
+                                        // Edit handlers
+                                        updateLocalQuestionField={updateLocalQuestionField}
+                                        updateLocalOption={updateLocalOption}
+                                        addLocalOption={addLocalOption}
+                                        removeLocalOption={removeLocalOption}
+                                        toggleLocalCorrect={toggleLocalCorrect}
+                                        changeTypeAdjustOptions={changeTypeAdjustOptions}
+                                        saveQuestion={saveQuestion}
+                                        geeko={geeko}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20">
+                                <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha">QUIZ</div>
+                                <h3 className="text-2xl font-bold text-dark dark:text-light mb-4">
+                                    No Questions Yet
+                                </h3>
+                                <p className="text-dark/70 dark:text-light/70 mb-8 max-w-md mx-auto">
+                                    Add your first question to get started. You can create multiple choice, true/false, or open-ended questions.
+                                </p>
+                                <button
+                                    onClick={handleAddQuestion}
+                                    className="inline-flex items-center space-x-2 bg-alpha text-dark px-6 py-3 rounded-lg hover:bg-alpha/90 transition-colors font-semibold"
+                                >
+                                    <Plus size={20} />
+                                    <span>Add Your First Question</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Delete Confirmation Modal */}
@@ -887,9 +886,9 @@ function QuestionCard({
                             className="p-1.5 rounded-md hover:bg-alpha/10 transition-colors"
                         >
                             {/* {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} */}
-                        <Edit3 size={14} />
+                            <Edit3 size={14} />
                         </button>
-                      
+
                         <button
                             onClick={onDelete}
                             className="p-1.5 rounded-md hover:bg-error/10 text-error transition-colors"
@@ -904,7 +903,7 @@ function QuestionCard({
                     <h3 className="font-medium text-dark dark:text-light line-clamp-2 mb-2">
                         {question.question || 'Untitled question'}
                     </h3>
-                    
+
                     {/* Options Preview */}
                     <div className="space-y-1">
                         {(Array.isArray(question.options) ? question.options.slice(0, 2) : []).map((option, optionIndex) => {

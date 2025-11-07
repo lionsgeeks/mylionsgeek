@@ -116,7 +116,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
             <span className="sm:ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                 <Keyboard className="size-3" />
                 <span className="hidden sm:inline">Ctrl</span>
-                <kbd className="hidden sm:inline pointer-events-none h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+                <kbd className="hidden dark:bg-dark_gray/80 bg-light sm:inline pointer-events-none h-5 select-none items-center gap-1 rounded pt-1 px-1.5 font-mono text-[10px] font-medium opacity-100">
                     K
                 </kbd>
             </span>

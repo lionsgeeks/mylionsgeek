@@ -45,7 +45,7 @@ const LikesModal = ({ postId, open, onClose }) => {
     // };
 
     if (!open) return null;
-    console.log(likes);
+    //(likes);
 
 
     return (

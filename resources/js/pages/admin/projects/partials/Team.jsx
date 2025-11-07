@@ -33,7 +33,7 @@ const Team = ({ teamMembers = [] }) => {
     );
 
     const handleInvite = () => {
-        console.log('Inviting member:', inviteData);
+        //('Inviting member:', inviteData);
         setInviteData({
             email: '',
             role: 'member'

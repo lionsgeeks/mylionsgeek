@@ -126,7 +126,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         } else {
             // For task attachments, we need to find the task and remove the attachment
             // This would require additional backend logic
-            console.log('Task attachment deletion not implemented yet');
+            //('Task attachment deletion not implemented yet');
         }
     };
 
