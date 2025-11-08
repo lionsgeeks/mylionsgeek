@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
         end: selectedRange?.end || '',
     });
 
+    const [timeError, setTimeError] = useState('');
+
     useEffect(() => {
         if (selectedRange) {
             setData({
@@ -26,7 +28,6 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
         }
     }, [selectedRange]);
 
-    // Sync selected table when cowork prop changes (e.g., user picked table in header)
     useEffect(() => {
         if (cowork && cowork.id) {
             setData('table', cowork.id);
@@ -35,12 +36,47 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     const handleClose = () => {
         reset();
+        setTimeError('');
         onClose();
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
+        const toMinutes = (time) => {
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        const startMinutes = data.start ? toMinutes(data.start) : null;
+        const endMinutes = data.end ? toMinutes(data.end) : null;
+
+        const minMinutes = 8 * 60;
+        const maxMinutes = 18 * 60;
+
+        if (!data.start || !data.end) {
+            setTimeError('Please select both start and end times.');
+            return;
+        }
+
+        // Validate time range
+        if (startMinutes < minMinutes || startMinutes > maxMinutes) {
+            setTimeError('Start time must be between 08:00 and 18:00.');
+            return;
+        }
+
+        if (endMinutes < minMinutes || endMinutes > maxMinutes) {
+            setTimeError('End time must be between 08:00 and 18:00.');
+            return;
+        }
+
+        if (endMinutes <= startMinutes) {
+            setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        setTimeError('');
+
         post('/admin/reservations/storeReservationCowork', {
             onSuccess: () => {
                 handleClose();
@@ -48,7 +84,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
             },
             onError: (errors) => {
                 console.error('Cowork Reservation Errors:', errors);
-            }
+            },
         });
     };
 
@@ -59,37 +95,17 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                     <DialogTitle className="text-white">
                         {(() => {
                             const current = coworks.find(t => String(t.id) === String(data.table)) || cowork;
-                            return current ? `Cowork Reservation - ${current.table ? `Table ${current.table}` : (current.name || `Table ${current.id}`)}` : 'Cowork Reservation';
+                            return current
+                                ? `Cowork Reservation - ${current.table ? `Table ${current.table}` : (current.name || `Table ${current.id}`)}`
+                                : 'Cowork Reservation';
                         })()}
                     </DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Table selector */}
-                    {/* <div>
-                        <Label htmlFor="table" className="text-white/80">Table</Label>
-                        <Select
-                            value={String(data.table || '')}
-                            onValueChange={(val) => setData('table', val)}
-                        >
-                            <SelectTrigger id="table" className="bg-black border-[var(--color-alpha)] text-white h-10">
-                                <SelectValue placeholder="Select a table" />
-                            </SelectTrigger>
-                            <SelectContent className="text-black">
-                                {coworks.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>{t.table || t.name || `Table ${t.id}`}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {errors.table && (
-                            <p className="text-red-500 text-sm mt-1">{errors.table}</p>
-                        )}
-                    </div> */}
                     {/* Number of Seats */}
                     <div>
-                        <Label htmlFor="seats" className="text-white/80">
-                            Number of Seats
-                        </Label>
+                        <Label htmlFor="seats" className="text-white/80">Number of Seats</Label>
                         <Input
                             id="seats"
                             type="number"
@@ -100,9 +116,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                             className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                             required
                         />
-                        {errors.seats && (
-                            <p className="text-red-500 text-sm mt-1">{errors.seats}</p>
-                        )}
+                        {errors.seats && <p className="text-red-500 text-sm mt-1">{errors.seats}</p>}
                     </div>
 
                     {/* Date, Start Time, End Time Row */}
@@ -118,9 +132,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
                             />
-                            {errors.day && (
-                                <p className="text-red-500 text-sm mt-1">{errors.day}</p>
-                            )}
+                            {errors.day && <p className="text-red-500 text-sm mt-1">{errors.day}</p>}
                         </div>
 
                         {/* START TIME */}
@@ -133,10 +145,10 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 onChange={(e) => setData('start', e.target.value)}
                                 className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
+                                min="08:00"
+                                max="18:00"
                             />
-                            {errors.start && (
-                                <p className="text-red-500 text-sm mt-1">{errors.start}</p>
-                            )}
+                            {errors.start && <p className="text-red-500 text-sm mt-1">{errors.start}</p>}
                         </div>
 
                         {/* END TIME */}
@@ -149,12 +161,15 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 onChange={(e) => setData('end', e.target.value)}
                                 className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
+                                min="08:00"
+                                max="18:00"
                             />
-                            {errors.end && (
-                                <p className="text-red-500 text-sm mt-1">{errors.end}</p>
-                            )}
+                            {errors.end && <p className="text-red-500 text-sm mt-1">{errors.end}</p>}
                         </div>
                     </div>
+
+                    {/* Time Validation Message */}
+                    {timeError && <p className="text-red-500 text-sm">{timeError}</p>}
 
                     {/* BUTTONS */}
                     <div className="flex justify-end gap-2 pt-4">
@@ -171,7 +186,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                             disabled={processing || !data.table}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/80 text-black font-semibold"
                         >
-                            {processing ? 'Saving...' : 'save'}
+                            {processing ? 'Saving...' : 'Save'}
                         </Button>
                     </div>
                 </form>

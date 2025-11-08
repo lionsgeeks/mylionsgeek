@@ -359,7 +359,7 @@ export default function MemoryGame() {
                                     ) : (
                                         <button onClick={disconnectRoom} className="px-4 py-2 rounded bg-gray-600 text-white">Leave Room</button>
                                     )}
-                                    <button onClick={async () => { const link = buildInviteUrl(); try { await navigator.clipboard.writeText(link); } catch {} alert('Invite link copied.'); }} className="px-4 py-2 rounded bg-gray-100 border">Copy Link</button>
+                                    <button onClick={async () => { const link = buildInviteUrl(); try { await navigator.clipboard.writeText(link); } catch {} //alert('Invite link copied.'); }} className="px-4 py-2 rounded bg-gray-100 border">Copy Link</button>
                                     {isConnected && (
                                         <div className="text-sm text-gray-600 self-center">Connected — Share Room ID with a friend</div>
                                     )}

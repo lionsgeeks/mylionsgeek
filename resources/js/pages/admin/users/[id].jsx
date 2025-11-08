@@ -27,7 +27,7 @@ export default function AdminUserProfile({
     <AppLayout>
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
         <ProfileHeader user={user} trainings={trainings} roles={roles} stats={stats} />
-        <div className="bg-neutral-50 dark:bg-neutral-950">
+        <div className="bg-neutral-50 dark:bg-dark">
           <div className="max-w-7xl mx-auto px-6">
             <ProfileStatsGrid user={user} />
             <ProfileMainContent

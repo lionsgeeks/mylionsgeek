@@ -27,7 +27,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
 
     return (
         <Layout breadcrumbs={breadcrumbs} {...props}>
-            <div className="bg-light dark:bg-dark shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg">
+            <div className={`bg-light dark:bg-dark ${auth.user.role.includes('student') && 'pt-20'}  shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg`}>
                 <ShowSkippableModal />
                 {children}
             </div>

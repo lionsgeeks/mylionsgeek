@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 const tabs = [
+  'posts',
   'attendance',
   'projects',
-  'posts',
   'reservations',
   'training',
 ];
@@ -11,7 +11,7 @@ const tabs = [
 const ProfileMainContent = ({ sidebar, tabs: tabComponents }) => {
   const [selectedTab, setSelectedTab] = useState('posts'); // Set attendance as default
   return (
-    <div className="bg-neutral-50 dark:bg-neutral-950">
+    <div className="bg-neutral-50 dark:bg-dark">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
           {/* Render actual sidebar */}

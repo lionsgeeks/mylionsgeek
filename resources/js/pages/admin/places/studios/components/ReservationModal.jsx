@@ -12,6 +12,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
+    const [timeError, setTimeError] = useState('');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         studio_id: studio.id,
@@ -25,7 +26,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
     });
 
     // Update form when selectedRange changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (selectedRange) {
             setData({
                 ...data,
@@ -41,14 +42,35 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
         setCurrentStep(1);
         setSelectedMembers([]);
         setSelectedEquipment([]);
+        setTimeError('');
         onClose();
     };
 
     const handleNext = () => {
+        const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
+        const endTime = data.end ? parseFloat(data.end.replace(':', '.')) : null;
+
+        if (!startTime || !endTime) {
+            setTimeError('Please select both start and end times.');
+            return;
+        }
+
+        if (startTime < 8.0 || endTime > 18.0) {
+            setTimeError('Reservation time must be between 08:00 and 18:00.');
+            return;
+        }
+
+        if (endTime <= startTime) {
+            setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        setTimeError('');
         if (currentStep < 3) {
             setCurrentStep(currentStep + 1);
         }
     };
+
 
     const handlePrevious = () => {
         if (currentStep > 1) {
@@ -66,7 +88,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         const formData = {
             ...data,
             team_members: selectedMembers.map(m => m.id),
@@ -143,6 +165,8 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                         value={data.start}
                                         onChange={(e) => setData('start', e.target.value)}
                                         required
+                                        min="08:00"
+                                        max="18:00"
                                     />
                                 </div>
                                 <div>
@@ -154,12 +178,22 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                                         value={data.end}
                                         onChange={(e) => setData('end', e.target.value)}
                                         required
+                                        min="08:00"
+                                        max="18:00"
                                     />
                                 </div>
                             </div>
 
+                            {timeError && (
+                                <p className="text-sm text-red-500 font-medium">{timeError}</p>
+                            )}
+
                             <div className="flex justify-end">
-                                <Button type="button" onClick={handleNext} className="cursor-pointer text-black hover:text-white dark:hover:text-black">
+                                <Button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
+                                >
                                     Next →
                                 </Button>
                             </div>

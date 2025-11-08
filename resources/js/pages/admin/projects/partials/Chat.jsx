@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageSquare, Send } from 'lucide-react';
@@ -40,10 +40,16 @@ const Chat = ({ messages = [], onSendMessage }) => {
                             ) : (
                                 messages.map((message) => (
                                     <div key={message.id} className="flex gap-3">
-                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                        {/* <Avatar className="h-8 w-8 flex-shrink-0">
                                             <AvatarImage src={message.user.avatar} alt={message.user.name} />
                                             <AvatarFallback>{message.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
+                                        </Avatar> */}
+                                        <Avatar
+                                            className="h-8 w-8"
+                                            image={message.user.avatar}
+                                            name={message.user.name}
+                                            onlineCircleClass="hidden"
+                                        />
                                         <div className="flex-1 space-y-1">
                                             <div className="flex items-baseline gap-2">
                                                 <span className="font-medium text-sm">{message.user.name}</span>

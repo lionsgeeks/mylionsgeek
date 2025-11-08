@@ -38,6 +38,8 @@ export default function DeleteModal({
         await maybePromise;
       }
       onOpenChange(false);
+    } catch {
+      //alert('error')
     } finally {
       setInternalLoading(false);
     }

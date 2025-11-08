@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { useForm, router } from '@inertiajs/react';
-import { 
-    MoreHorizontal, 
-    Edit, 
-    ArrowRight, 
-    Trash, 
+import {
+    MoreHorizontal,
+    Edit,
+    ArrowRight,
+    Trash,
     Plus,
     Search,
     StickyNote,
@@ -34,7 +34,7 @@ const Notes = ({ notes = [], projectId }) => {
         project_id: projectId
     });
 
-    const filteredNotes = notes.filter(note => 
+    const filteredNotes = notes.filter(note =>
         note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         note.content.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -61,7 +61,7 @@ const Notes = ({ notes = [], projectId }) => {
             },
             onError: (errors) => {
                 console.error('Failed to create note:', errors);
-                alert('Failed to create note: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to create note: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -73,7 +73,7 @@ const Notes = ({ notes = [], projectId }) => {
 
     const handleUpdateNote = () => {
         if (!selectedNote) return;
-        
+
         updateNote(`/admin/project-notes/${selectedNote.id}`, {
             onSuccess: () => {
                 setIsEditModalOpen(false);
@@ -81,7 +81,7 @@ const Notes = ({ notes = [], projectId }) => {
             },
             onError: (errors) => {
                 console.error('Failed to update note:', errors);
-                alert('Failed to update note: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to update note: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -91,7 +91,7 @@ const Notes = ({ notes = [], projectId }) => {
             deleteNote(`/admin/project-notes/${noteId}`, {
                 onError: (errors) => {
                     console.error('Failed to delete note:', errors);
-                    alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
+                    //alert('Failed to delete note: ' + (errors.message || 'Unknown error'));
                 }
             });
         }
@@ -101,7 +101,7 @@ const Notes = ({ notes = [], projectId }) => {
         router.post(`/admin/project-notes/${noteId}/pin`, {}, {
             onError: (errors) => {
                 console.error('Failed to toggle pin:', errors);
-                alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
+                //alert('Failed to toggle pin: ' + (errors.message || 'Unknown error'));
             }
         });
     };
@@ -113,9 +113,9 @@ const Notes = ({ notes = [], projectId }) => {
                 <div className="flex items-center gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search notes..." 
+                        <Input
+                            type="search"
+                            placeholder="Search notes..."
                             className="pl-8 w-[200px] md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -176,7 +176,7 @@ const Notes = ({ notes = [], projectId }) => {
                                                 <span>Share</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem 
+                                            <DropdownMenuItem
                                                 className="text-destructive"
                                                 onClick={() => handleDeleteNote(note.id)}
                                             >
@@ -188,7 +188,7 @@ const Notes = ({ notes = [], projectId }) => {
                                 </div>
                                 <div className="flex items-center justify-between mt-2">
                                     <div className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
+                                        {/* <Avatar className="h-6 w-6">
                                             <AvatarImage 
                                                 src={note.user?.image ? `/storage/${note.user.image}` : null} 
                                                 alt={note.user?.name} 
@@ -196,7 +196,13 @@ const Notes = ({ notes = [], projectId }) => {
                                             <AvatarFallback>
                                                 {note.user?.name?.substring(0, 2).toUpperCase() || '??'}
                                             </AvatarFallback>
-                                        </Avatar>
+                                        </Avatar> */}
+                                        <Avatar
+                                            className="w-16 h-16 mx-auto mb-4"
+                                            image={note?.user?.image}
+                                            name={note?.user?.name}
+                                            onlineCircleClass="hidden"
+                                        />
                                         <span className="text-xs text-muted-foreground">
                                             {note.user?.name || 'Unknown User'}
                                         </span>
@@ -226,8 +232,8 @@ const Notes = ({ notes = [], projectId }) => {
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="title">Note Title</Label>
-                            <Input 
-                                id="title" 
+                            <Input
+                                id="title"
                                 value={newNote.title}
                                 onChange={(e) => setNewNote('title', e.target.value)}
                                 placeholder="Enter note title..."
@@ -235,8 +241,8 @@ const Notes = ({ notes = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="content">Content</Label>
-                            <Textarea 
-                                id="content" 
+                            <Textarea
+                                id="content"
                                 value={newNote.content}
                                 onChange={(e) => setNewNote('content', e.target.value)}
                                 placeholder="Enter note content..."
@@ -245,8 +251,8 @@ const Notes = ({ notes = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="color">Color Theme</Label>
-                            <Select 
-                                value={newNote.color} 
+                            <Select
+                                value={newNote.color}
                                 onValueChange={(value) => setNewNote('color', value)}
                             >
                                 <SelectTrigger>
@@ -286,26 +292,26 @@ const Notes = ({ notes = [], projectId }) => {
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="edit-title">Note Title</Label>
-                                <Input 
-                                    id="edit-title" 
+                                <Input
+                                    id="edit-title"
                                     value={selectedNote.title}
-                                    onChange={(e) => setSelectedNote({...selectedNote, title: e.target.value})}
+                                    onChange={(e) => setSelectedNote({ ...selectedNote, title: e.target.value })}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-content">Content</Label>
-                                <Textarea 
-                                    id="edit-content" 
+                                <Textarea
+                                    id="edit-content"
                                     value={selectedNote.content}
-                                    onChange={(e) => setSelectedNote({...selectedNote, content: e.target.value})}
+                                    onChange={(e) => setSelectedNote({ ...selectedNote, content: e.target.value })}
                                     rows={6}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="edit-color">Color Theme</Label>
-                                <Select 
+                                <Select
                                     value={selectedNote.color || 'bg-amber-50 dark:bg-amber-950/50'}
-                                    onValueChange={(value) => setSelectedNote({...selectedNote, color: value})}
+                                    onValueChange={(value) => setSelectedNote({ ...selectedNote, color: value })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue />

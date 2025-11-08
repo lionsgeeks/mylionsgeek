@@ -122,12 +122,12 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                 time_taken: timeTaken,
             };
 
-            console.log('=== FRONTEND SUBMISSION DEBUG ===');
-            console.log('Request data:', requestData);
-            console.log('Question type:', question.type);
-            console.log('Selected answer:', selectedAnswer);
-            console.log('Time taken:', timeTaken);
-            console.log('================================');
+            //('=== FRONTEND SUBMISSION DEBUG ===');
+            //('Request data:', requestData);
+            //('Question type:', question.type);
+            //('Selected answer:', selectedAnswer);
+            //('Time taken:', timeTaken);
+            //('================================');
 
             const response = await fetch(`/geeko/play/${session.id}/answer`, {
                 method: 'POST',
@@ -138,11 +138,11 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                 body: JSON.stringify(requestData),
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
+            //('Response status:', response.status);
+            //('Response headers:', response.headers);
             
             const data = await response.json();
-            console.log('Response data:', data);
+            //('Response data:', data);
             
             
             if (data.success) {
@@ -155,12 +155,12 @@ export default function GeekoQuestion({ session, participant, question, hasAnswe
                     router.visit(`/geeko/play/${session.id}/waiting`);
                 }, 3000);
             } else {
-                alert(`Failed to submit answer: ${data.error || 'Unknown error'}`);
+                //alert(`Failed to submit answer: ${data.error || 'Unknown error'}`);
                 setIsSubmitting(false);
             }
         } catch (error) {
             console.error('Failed to submit answer:', error);
-            alert('Failed to submit answer. Please try again.');
+            //alert('Failed to submit answer. Please try again.');
             setIsSubmitting(false);
         }
     };

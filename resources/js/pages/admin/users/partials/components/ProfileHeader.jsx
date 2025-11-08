@@ -28,10 +28,10 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
         'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
       },
       onSuccess: () => {
-        console.log('Cover changed successfully');
+        //('Cover changed successfully');
       },
       onError: (error) => {
-        console.log('Cover not changed', error);
+        //('Cover not changed', error);
       }
     });
   };

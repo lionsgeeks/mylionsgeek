@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List } from 'lucide-react';
+import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import ReservationModalCowork from './coworks/components/ReservationModalCowork'
 import ReservationModalMeetingRoom from './meeting_room/components/ReservationModalMeetingRoom';
 import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
+import StatCard from '../../../components/StatCard';
 
 const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -154,11 +155,21 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
             .catch(() => setEvents([]))
             .finally(() => setLoadingEvents(false));
     }, [calendarFor]);
+    //console.log(places);
+    const studioCount = places.filter(p => p.place_type === "studio").length;
+    const coworkCount = places.filter(p => p.place_type === "cowork").length;
+    const meetingCount = places.filter(p => p.place_type === "meeting_room").length;
 
+    const items = [
+        { title: "All places", number: places.length, icon: ArrowRight },
+        { title: "Studio", number: studioCount, icon: ArrowRight },
+        { title: "Cowork", number: coworkCount, icon: ArrowRight },
+        { title: "Meeting Room", number: meetingCount, icon: ArrowRight },
+    ];
     return (
         <AppLayout>
             <Head title="Places" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
                 <Banner
                     illustration={illustration}
                 />
@@ -191,7 +202,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-
+                <StatCard items={items} />
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
@@ -201,13 +212,15 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             placeholder="Search by name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-64"
+
+                            className=" bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
                         />
                     </div>
                     <div className="flex items-center gap-2">
                         <Label htmlFor="filter-type" className="text-sm font-medium">Filter by type:</Label>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-48">
+                        <Select value={filterType} onValueChange={setFilterType} >
+                            <SelectTrigger className="w-48 bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder-[#0a0a0a]/50 dark:placeholder-white"
+                            >
                                 <SelectValue placeholder="All types" />
                             </SelectTrigger>
                             <SelectContent>
@@ -454,7 +467,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                 </Dialog>
 
                 {/* Calendar modal */}
-                <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
+                {/* <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
                     <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
                         {calendarFor && (
                             <div className="flex flex-col w-full h-full">
@@ -509,7 +522,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                             </div>
                         )}
                     </DialogContent>
-                </Dialog>
+                </Dialog> */}
 
                 {/* Event details modal */}
                 <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -816,7 +829,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                                     height="88%"
                                     eventColor="#FFC801"
                                     eventTextColor="#000000"
+                                    slotMinTime="08:00:00"   // ⏰ Start time
+                                    slotMaxTime="18:30:00"   // ⏰ End time
                                 />
+
                             </div>
                         )}
                     </DialogContent>

@@ -22,7 +22,7 @@ export default function Dashboard() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
 
                 {/* l9aw  liha blasa  */}
 
@@ -66,8 +66,8 @@ export default function Dashboard() {
                         selectMirror={true}               // allow selecting time slots
                         editable={true}                    // allow drag/drop
                         // events={events}                    // your JS array of events
-                        eventClick={(info) => alert(`Event: ${info.event.title}`)}
-                        dateClick={(info) => console.log(`Clicked date: ${info.dateStr}`)}
+                        eventClick={(info) => //alert(`Event: ${info.event.title}`)}
+                        dateClick={(info) => //(`Clicked date: ${info.dateStr}`)}
                         height="auto"
                         
                     /> */}

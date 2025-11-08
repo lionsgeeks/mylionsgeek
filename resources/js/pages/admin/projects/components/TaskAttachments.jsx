@@ -25,7 +25,7 @@ const TaskAttachments = ({ attachments = [], onUpdateAttachments }) => {
             link.download = attachment.name;
             link.click();
         } else {
-            console.log('Downloading:', attachment.name);
+            //('Downloading:', attachment.name);
         }
     };
 

@@ -74,7 +74,7 @@ export default function ReservationsPage() {
     router.post(`/reservations/${reservationId}/cancel`, {}, {
       onSuccess: () => router.reload(),
       onError: (errors) => {
-        alert(errors.message || 'Failed to cancel reservation. Please try again.');
+        //alert(errors.message || 'Failed to cancel reservation. Please try again.');
       },
     });
   };
@@ -84,7 +84,7 @@ export default function ReservationsPage() {
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto px-6 pb-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">My Reservations</h1>
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,5 +100,25 @@ class PostController extends Controller
             'liked' => $liked,
             'likes_count' => $count,
         ]);
+    }
+    public function deleteComment($id)
+    {
+        $comment = Comment::find($id);
+
+        $comment->delete();
+
+        return response()->json(['message' => 'Comment Deleted Succesfully']);
+    }
+    public function updateComment(Request $request, $id)
+    {
+        $request->validate([
+            'comment' => 'required|string',
+        ]);
+
+        $comment = Comment::find($id);
+        $comment->update([
+            'comment' => $request->comment
+        ]);
+        return response()->json(['message' => 'Comment edited succesfully']);
     }
 }

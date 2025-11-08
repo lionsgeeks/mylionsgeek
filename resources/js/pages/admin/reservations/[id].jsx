@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft,
@@ -406,12 +406,18 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="text-center">
-                                    <Avatar className="w-16 h-16 mx-auto mb-4">
+                                    {/* <Avatar className="w-16 h-16 mx-auto mb-4">
                                         <AvatarImage src={normalizeImageUrl(reservation.user_avatar)} />
                                         <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold">
                                             {getInitials(reservation.user_name)}
                                         </AvatarFallback>
-                                    </Avatar>
+                                    </Avatar> */}
+                                    <Avatar
+                                        className="w-16 h-16 mx-auto mb-4"
+                                        image={normalizeImageUrl(reservation.user_avatar)}
+                                        name={reservation.user_name}
+                                        onlineCircleClass="hidden"
+                                    />
                                     <h3 className="text-lg font-semibold text-foreground mb-2">
                                         {reservation.user_name || 'Unknown User'}
                                     </h3>
@@ -435,11 +441,11 @@ export default function AdminReservationDetails({ reservation }) {
 
                         {reservation.members && reservation.members.length > 0 && (
                             <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10">
+                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10">
                                     <CardTitle className="flex items-center gap-2">
                                         <Users className="w-5 h-5" />
                                         Team Members
-                                    <span className="bg-muted text-foreground text-xs px-2 py-1 rounded-full">
+                                        <span className="bg-muted text-foreground text-xs px-2 py-1 rounded-full">
                                             {reservation.members.length}
                                         </span>
                                     </CardTitle>
@@ -447,30 +453,36 @@ export default function AdminReservationDetails({ reservation }) {
                                 <CardContent className="p-6">
                                     <div className="space-y-3">
                                         {reservation.members.map((member, index) => (
-                                        <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                                                <Avatar className="w-12 h-12">
+                                            <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                                                {/* <Avatar className="w-12 h-12">
                                                     <AvatarImage src={normalizeImageUrl(member.avatar)} />
-                                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold">
+                                                    <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-semibold">
                                                         {getInitials(member.name)}
                                                     </AvatarFallback>
-                                                </Avatar>
+                                                </Avatar> */}
+                                                <Avatar
+                                                    className="w-12 h-12"
+                                                    image={normalizeImageUrl(member.avatar)}
+                                                    name={member.name}
+                                                    onlineCircleClass="hidden"
+                                                />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-foreground truncate">
+                                                        <p className="text-sm font-medium text-foreground truncate">
                                                             {member.name}
                                                         </p>
                                                         {member.role && (
-                                                        <Badge variant="secondary" className="text-xs bg-accent/30 text-foreground">
+                                                            <Badge variant="secondary" className="text-xs bg-accent/30 text-foreground">
                                                                 {member.role}
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                <p className="text-xs text-muted-foreground truncate">
+                                                    <p className="text-xs text-muted-foreground truncate">
                                                         {member.email}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                <UserCheck className="w-4 h-4 text-green-600 dark:text-green-300" />
+                                                    <UserCheck className="w-4 h-4 text-green-600 dark:text-green-300" />
                                                 </div>
                                             </div>
                                         ))}
@@ -478,34 +490,34 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardContent>
                             </Card>
                         )}
-                         <Rolegard authorized = {["admin", "super_admin"]}>
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Quick Actions</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-6">
-                                <div className="space-y-3">
-                                    <Link href="/admin/reservations" className="block">
-                                        <Button variant="outline" className="w-full justify-start">
-                                            <ArrowLeft className="w-4 h-4 mr-2" />
-                                            Back to reservations
-                                        </Button>
-                                    </Link>
-                                    {reservation.status === 'upcoming' && (
-                                        <Button variant="destructive" className="w-full justify-start">
-                                            <XCircle className="w-4 h-4 mr-2" />
-                                            Cancel Reservation
-                                        </Button>
-                                    )}
-                                    {reservation.status === 'active' && (
-                                        <Button variant="default" className="w-full justify-start">
-                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                            End Reservation
-                                        </Button>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <Rolegard authorized={["admin", "super_admin"]}>
+                            <Card className="shadow-sm bg-card border border-sidebar-border/70">
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Quick Actions</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6">
+                                    <div className="space-y-3">
+                                        <Link href="/admin/reservations" className="block">
+                                            <Button variant="outline" className="w-full justify-start">
+                                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                                Back to reservations
+                                            </Button>
+                                        </Link>
+                                        {reservation.status === 'upcoming' && (
+                                            <Button variant="destructive" className="w-full justify-start">
+                                                <XCircle className="w-4 h-4 mr-2" />
+                                                Cancel Reservation
+                                            </Button>
+                                        )}
+                                        {reservation.status === 'active' && (
+                                            <Button variant="default" className="w-full justify-start">
+                                                <CheckCircle className="w-4 h-4 mr-2" />
+                                                End Reservation
+                                            </Button>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </Rolegard>
                     </div>
                 </div>

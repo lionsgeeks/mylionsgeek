@@ -140,7 +140,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 openHistory(historyEquipment);
             },
             onError: (errors) => {
-                console.log('Note validation errors:', errors);
+                //('Note validation errors:', errors);
             }
         });
     };
@@ -155,7 +155,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 setEditingEquipment(null);
             },
             onError: (errors) => {
-                console.log('Validation errors:', errors);
+                //('Validation errors:', errors);
             }
         });
     };
@@ -173,7 +173,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 setIsAddOpen(false);
             },
             onError: (errors) => {
-                console.log('Validation errors:', errors);
+                //('Validation errors:', errors);
             }
         });
     };
@@ -206,7 +206,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 loadEquipmentTypes(); // Refresh the list
             },
             onError: (errors) => {
-                console.log('Type validation errors:', errors);
+                //('Type validation errors:', errors);
             }
         });
     };
@@ -226,7 +226,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 loadEquipmentTypes(); // Refresh the list
             },
             onError: (errors) => {
-                console.log('Type validation errors:', errors);
+                //('Type validation errors:', errors);
             }
         });
     };
@@ -352,7 +352,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     return (
         <AppLayout>
             <Head title="Equipment" />
-            <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
+            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
                 <Banner
                     illustration={illustration}
                 />
