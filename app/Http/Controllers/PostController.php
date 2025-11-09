@@ -136,11 +136,27 @@ class PostController extends Controller
     {
         $request->validate([
             'description' => 'required|string|max:500',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,gif',
         ]);
-        $post = Post::find($id);
-        $post->update([
-            'description' => $request->description
-        ]);
-        return redirect()->back()->with('success', 'Post Updated Succesfully');
+
+        $post = Post::findOrFail($id);
+
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($post->image && file_exists(public_path('storage/posts/' . $post->image))) {
+                unlink(public_path('storage/posts/' . $post->image));
+            }
+
+            $file = $request->file('image');
+            $fileName = $file->hashName();
+            $file->move(public_path('storage/posts/'), $fileName);
+            $post->image = $fileName;
+        }
+
+        $post->description = $request->description;
+        $post->save();
+
+        return redirect()->back()->with('success', 'Post updated successfully');
     }
 }

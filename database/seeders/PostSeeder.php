@@ -37,7 +37,7 @@ class PostSeeder extends Seeder
             Post::create([
                 'user_id' => 202,
                 'description' => $faker->paragraph(2),
-                'image' => '/posts/post.jpg',
+                'image' => 'post.jpg',
                 'hashTags' => '#' . implode(' #', $faker->words(3)),
                 'status' => $faker->boolean(80),
             ]);

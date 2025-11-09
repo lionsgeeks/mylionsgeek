@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, MoreHorizontal } from 'lucide-react';
-import { Avatar } from '@/components/ui/avatar';  // Assuming Avatar component is correctly imported
+import { MoreHorizontal } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import axios from 'axios';
 import { timeAgo } from '../lib/utils';
-import PostMenuDropDown from './PostMenuDropDown'; // Importing PostMenuDropDown
-import EditPost from './EditPost'; // Importing EditPost modal component
-import { router } from '@inertiajs/react'; // Assuming Inertia.js is being used
+import PostMenuDropDown from './PostMenuDropDown';
+import EditPost from './EditPost';
+import { router } from '@inertiajs/react';
 
 const PostCard = ({ user, posts }) => {
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
@@ -16,8 +16,8 @@ const PostCard = ({ user, posts }) => {
     const [likedPostIds, setLikedPostIds] = useState([]);
     const [openDetails, setOpenDetails] = useState(null);
     const [allPosts, setAllPosts] = useState(posts);
-    const [isModalOpen, setIsModalOpen] = useState(false); // Controls modal visibility
-    const [selectedPost, setSelectedPost] = useState(null); // The post currently being edited
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPost, setSelectedPost] = useState(null);
 
     useEffect(() => {
         const likedIds = [];
@@ -34,19 +34,34 @@ const PostCard = ({ user, posts }) => {
         setLikesCountMap(likesCounts);
         setCommentsPostIds(commentIds);
         setCommentsCountMap(commentsCounts);
-    }, [posts]);
+    }, [allPosts]);
 
     const handleEditPost = (post) => {
         setSelectedPost(post);
-        setIsModalOpen(true); // Open the modal
+        setIsModalOpen(true);
+        setOpenDetails(null);
     };
 
-    const handleUpdatePost = (updatedPost) => {
-        const updatedPosts = allPosts.map((post) =>
-            post.id === updatedPost.id ? updatedPost : post
-        );
-        setAllPosts(updatedPosts); // Update the posts state with the new post data
-        setIsModalOpen(false); // Close the modal
+    const handleUpdatePost = (postId, description, imageFile) => {
+        const formData = {
+            description: description,
+            // _method: 'put'
+        };
+
+        if (imageFile) {
+            formData.image = imageFile;
+        }
+
+        router.post(`/posts/post/${postId}`, formData, {
+            forceFormData: true,
+            onSuccess: () => {
+                router.reload({ only: ['posts'] });
+                setIsModalOpen(false);
+            },
+            onError: (errors) => {
+                console.error('Failed to update post:', errors);
+            }
+        });
     };
 
     const toggleLike = async (postId) => {
@@ -86,16 +101,16 @@ const PostCard = ({ user, posts }) => {
     };
 
     const handleOpenDetails = (postId) => {
-        setOpenDetails(openDetails === postId ? null : postId); // Toggle post details
+        setOpenDetails(openDetails === postId ? null : postId);
     };
 
     return (
         <>
-            {allPosts.map((p, index) => {
+            {allPosts.map((p) => {
                 const isLiked = likedPostIds.includes(p?.id);
                 const likeCount = likesCountMap[p?.id] !== undefined ? likesCountMap[p?.id] : p?.likes_count;
                 return (
-                    <div key={index} className="bg-white dark:bg-beta rounded-lg shadow">
+                    <div key={p.id} className="bg-white dark:bg-beta rounded-lg shadow">
                         <div className="p-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
@@ -120,38 +135,38 @@ const PostCard = ({ user, posts }) => {
                                     </div>
                                 </div>
 
-                                {/* Actions (More, Edit, Delete) */}
                                 <div className="flex relative items-center gap-2">
                                     <button
                                         className="text-gray-600 dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded"
-                                        onClick={() => handleOpenDetails(p.id)} // Toggle post details dropdown
+                                        onClick={() => handleOpenDetails(p.id)}
                                     >
                                         <MoreHorizontal className="w-5 h-5" />
                                     </button>
 
-                                    {/* Conditionally render the dropdown menu */}
                                     {openDetails === p.id && (
                                         <PostMenuDropDown
                                             post={p}
                                             handleDelete={() => handleDeletePost(p.id)}
-                                            handleEdittePost={() => handleEditPost(p)} // Open edit modal
+                                            handleEdittePost={() => handleEditPost(p)}
                                         />
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Post Content */}
                         <div className="mt-3">
                             <p className="text-gray-800 dark:text-light text-sm leading-relaxed px-4">{p?.description}</p>
                         </div>
 
-                        {/* Media Container (Image/Video) */}
                         <div className="relative bg-black aspect-video mt-3">
-                            <img src={`/storage${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
+                            <img
+                                src={`/storage/posts/${p.image}`}
+                                alt="Post media"
+                                className="w-full h-full object-cover"
+                                key={p.image}
+                            />
                         </div>
 
-                        {/* Engagement Stats */}
                         <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray">
                             <div className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400">
                                 <span
@@ -170,7 +185,6 @@ const PostCard = ({ user, posts }) => {
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
                         <div className="px-2 py-2 flex justify-around items-center rounded-lg shadow-sm bg-light dark:bg-dark_gray dark:border-dark">
                             <button
                                 onClick={() => toggleLike(p?.id)}
@@ -219,13 +233,12 @@ const PostCard = ({ user, posts }) => {
                 );
             })}
 
-            {/* EditPost Modal */}
             {isModalOpen && selectedPost && (
                 <EditPost
                     post={selectedPost}
                     user={user}
                     onOpenChange={setIsModalOpen}
-                    onConfirm={handleUpdatePost}
+                    onUpdate={handleUpdatePost}
                 />
             )}
         </>
