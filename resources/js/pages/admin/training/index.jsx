@@ -80,7 +80,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
     const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
     const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
-    const stats = [
+    const items = [
         {
             title: "Total Programs",
             number: trainings.length,
@@ -129,68 +129,14 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
                 {/* Stats Cards - Premium Design */}
                 {trainings && trainings.length > 0 && (
-                    <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* <div
-                            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 border-2 border-yellow-200 dark:border-yellow-600/30 hover:border-yellow-400 dark:hover:border-yellow-400 transition-all duration-300 hover:scale-105 cursor-pointer shadow-lg hover:shadow-2xl"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                            <div className="relative z-10 flex items-center justify-between">
-                                <div>
-                                    <div className="text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2">{trainings.length}</div>
-                                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">Total Programs</div>
-                                </div>
-                                <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                                    <BookOpen className="w-8 h-8 text-white" />
-                                </div>
-                            </div>
-                        </div>
 
-                        <div
-                            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 border-2 border-yellow-200 dark:border-yellow-600/30 hover:border-yellow-400 dark:hover:border-yellow-400 transition-all duration-300 hover:scale-105 cursor-pointer shadow-lg hover:shadow-2xl"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                            <div className="relative z-10 flex items-center justify-between">
-                                <div>
-                                    <div className="text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2">{activeTrainingsCount}</div>
-                                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">Active Now</div>
-                                </div>
-                                <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                                    <Timer className="w-8 h-8 text-white" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 p-6 border-2 border-yellow-200 dark:border-yellow-600/30 hover:border-yellow-400 dark:hover:border-yellow-400 transition-all duration-300 hover:scale-105 cursor-pointer shadow-lg hover:shadow-2xl"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                            <div className="relative z-10 flex items-center justify-between">
-                                <div>
-                                    <div className={filteredCoach ?
-                                        "text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1" :
-                                        "text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2"}>
-                                        {filteredCoach ? filteredCoach.name : coaches.length}
-                                    </div>
-                                    <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">
-                                        {filteredCoach ? "Expert Mentor" : "Expert Mentors"}
-                                    </div>
-                                </div>
-
-                                <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                                    <Award className="w-8 h-8 text-white" />
-                                </div>
-                            </div>
-                        </div> */}
-                        {stats.map((stat, index) => (
-                            <StatCard key={index} {...stat} />
-                        ))}
-                    </div>
+                        <StatCard items={items} />
 
 
                 )}
 
                 {/* Filters - Modern Design */}
-                <div className="mb-8 rounded-2xl border-2 border-yellow-200 dark:border-yellow-600/30 bg-white dark:bg-[#1c1c1c] p-6 shadow-xl">
+                <div className="my-8 rounded-2xl border-2 border-yellow-200 dark:border-yellow-600/30 bg-white dark:bg-[#1c1c1c] p-6 shadow-xl">
                     <div className="mb-4 flex items-center gap-2">
                         <Target className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                         <h3 className="text-lg font-bold text-dark dark:text-light">Filter Programs</h3>
