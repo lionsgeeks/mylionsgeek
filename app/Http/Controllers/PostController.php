@@ -132,4 +132,15 @@ class PostController extends Controller
         $post->delete();
         return redirect()->back()->with('success', 'Post must be deleted');
     }
+    public function editPost(Request $request, $id)
+    {
+        $request->validate([
+            'description' => 'required|string|max:500',
+        ]);
+        $post = Post::find($id);
+        $post->update([
+            'description' => $request->description
+        ]);
+        return redirect()->back()->with('success', 'Post Updated Succesfully');
+    }
 }
