@@ -282,7 +282,7 @@ class UsersController extends Controller
             $p->liked_by_current_user = in_array($p->id, $likedPostIds);
             return $p;
         });
-
+        // dd($posts);
         return [
             'posts' => $posts
         ];

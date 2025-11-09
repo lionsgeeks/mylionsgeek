@@ -121,4 +121,15 @@ class PostController extends Controller
         ]);
         return response()->json(['message' => 'Comment edited succesfully']);
     }
+    public function deletePost($id)
+    {
+        $post = Post::find($id);
+        if (!$post) {
+            return redirect()->back()->with('error', 'Post not found');
+        } else if (Auth::user()->id != $post->user_id) {
+            return redirect()->back()->with('error', "You can't delete this post");
+        }
+        $post->delete();
+        return redirect()->back()->with('success', 'Post must be deleted');
+    }
 }
