@@ -140,6 +140,7 @@ class PostController extends Controller
             'image' => 'nullable|mimes:png,jpg,gif,jpeg'
         ]);
         $post = Post::find($id);
+        // dd($post);
         if ($request->hasFile('image')) {
             # code...
             $file = $request->file('image');
@@ -151,6 +152,9 @@ class PostController extends Controller
             'description' => $request->description,
             'image' => $request->image
         ]);
-        return redirect()->back()->with('success', 'Post Updated SuccesFully');
+        return back()->with([
+            'success' => 'Post Updated SuccesFully',
+            'post' => $post
+        ]);
     }
 }

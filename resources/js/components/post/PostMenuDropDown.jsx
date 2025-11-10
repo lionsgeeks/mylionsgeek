@@ -24,7 +24,7 @@ const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDele
                 </ul>
             </div>
             {openDelete && <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title='Delete Post' onConfirm={handleDelete} />}
-            {openEditPost && <EditPost user={user} open={openEditPost} onOpenChange={openChangeEdit} post={post} postText={postText} onPostTextChange={onPostTextChange} postImage={postImage} onPostImageChange={onPostImageChange} onConfirm={handleEditePost} />}
+            {openEditPost && <EditPost user={user} open={openEditPost} onOpenChange={openChangeEdit} post={post} postText={postText} onPostTextChange={onPostTextChange} onPostImageChange={onPostImageChange} onConfirm={handleEditePost} />}
         </>
     );
 };

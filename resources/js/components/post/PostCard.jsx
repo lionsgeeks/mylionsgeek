@@ -145,16 +145,19 @@ const PostCard = ({ user, posts }) => {
             router.post(`/posts/post/${post.id}`, {
                 description: postText,
                 image: postImage,
-            }, {})
-            console.log('edit success');
-            console.log(post);
-            const editedpost = allPosts.find(p => p.id == post.id)
-            editedpost.description = postText
-            console.log(editedpost);
-
-
-            setOpenEditPost(false)
-            setOpenDetails(null)
+            }, {
+                onSuccess: (page) => {
+                    // console.log('edit success');
+                    setOpenEditPost(false);
+                    setOpenDetails(null);
+                    const editedPost = page.props.posts?.posts?.find(p => p.id === post.id);
+                    if (editedPost) {
+                        setAllPosts(prevPosts =>
+                            prevPosts.map(p => p.id === editedPost.id ? editedPost : p)
+                        );
+                    }
+                }
+            })
         } catch (error) {
             console.log('failed Update : ' + error);
         }
@@ -197,7 +200,7 @@ const PostCard = ({ user, posts }) => {
                                         <button className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
                                             <MoreHorizontal onClick={() => handleOpenDetails(p)} className="w-5 h-5" />
                                             {openDetails == p.id && (
-                                                <PostMenuDropDown user={user} openDelete={openDeletePost} openChangeDelete={setOpenDeletePost} openEditPost={openEditPost} openChangeEdit={setOpenEditPost} post={p} handleDelete={() => handleDeletePost(p.id)} postText={postText} onPostTextChange={setPostText} postImage={postImage} onPostImageChange={setPostImage} handleEditePost={() => handleEdite(p)} />
+                                                <PostMenuDropDown user={user} openDelete={openDeletePost} openChangeDelete={setOpenDeletePost} openEditPost={openEditPost} openChangeEdit={setOpenEditPost} post={p} handleDelete={() => handleDeletePost(p.id)} postText={postText} onPostTextChange={setPostText} onPostImageChange={setPostImage} handleEditePost={() => handleEdite(p)} />
                                             )
                                             }
                                         </button>

@@ -2,8 +2,15 @@ import React, { useState } from 'react';
 import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 
-const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, postImage, onPostImageChange, onConfirm }) => {
+const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, onPostImageChange, onConfirm }) => {
     const [preview, setPreview] = useState(post?.image ? `/storage/img/posts/${post.image}` : null);
+    const handleImagePreview = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const newPreview = URL.createObjectURL(file);
+        setPreview(newPreview);
+        onPostImageChange(file);
+    }
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="w-full max-w-[70%] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-beta overflow-hidden transition-all duration-300">
@@ -41,14 +48,11 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                         placeholder="What do you want to talk about?"
                         className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
-
-                    {preview && (
-                        <img
-                            src={preview}
-                            alt="Preview"
-                            className="w-full  object-cover rounded-xl"
-                        />
-                    )}
+                    <img
+                        src={preview}
+                        alt="Preview"
+                        className="w-full object-cover rounded-xl"
+                    />
                 </div>
 
                 {/* Footer */}
@@ -64,17 +68,7 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                                 type="file"
                                 accept="image/*"
                                 // onChange={(e) => onPostImageChange(e.target.files[0])} // your handler
-                                onChange={(e) => {
-                                    const file = e.target.files[0];
-                                    if (!file) return;
-
-                                    const newPreview = URL.createObjectURL(file);
-                                    setPreview(newPreview);
-                                    console.log(postImage);
-                                    
-                                    onPostImageChange(file); // now uses the right URL
-                                    console.log(postImage);
-                                }}
+                                onChange={(e) => handleImagePreview(e)}
                                 className="hidden"
                             />
                         </label>
