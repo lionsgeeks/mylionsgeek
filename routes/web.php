@@ -51,3 +51,4 @@ require __DIR__ . '/admin/games.php';
 require __DIR__ . '/student/feed.php';
 require __DIR__ . '/studentProjects.php';
 require __DIR__ . '/admin/project-approvals.php';
+require __DIR__ . '/student/posts.php';

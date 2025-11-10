@@ -28,15 +28,6 @@ Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(fu
     Route::post('/users/changeCover/{id}', [UsersController::class, 'changeCover']);
 });
 
-Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
-    Route::post('/likes/{id}', [PostController::class, 'AddLike']);
-    Route::post('/comments/{id}', [PostController::class, 'addPostComment']);
-    Route::get('/likes/{id}', [PostController::class, 'getPostLikes']);
-    Route::get('/comments/{id}', [PostController::class, 'getPostComments']);
-    Route::delete('/comments/{id}', [PostController::class, 'deleteComment']);
-    Route::put('/comments/{id}', [PostController::class, 'updateComment']);
-});
-
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])
     ->name('user.complete-profile');
