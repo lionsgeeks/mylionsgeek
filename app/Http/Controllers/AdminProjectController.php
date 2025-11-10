@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\StudentProject;
 use App\Models\User;
-use App\Models\UserProject;
 use Illuminate\Http\Request;
 
 class AdminProjectController extends Controller
 {
     public function getUserProjects(User $user)
     {
-        $projects = $user->projects()
+        $projects = $user->studentProjects()
             ->latest()
             ->get()
             ->map(fn($project) => [
@@ -18,7 +18,7 @@ class AdminProjectController extends Controller
                 'title' => $project->title,
                 'description' => $project->description,
                 'image' => $project->image,
-                'url' => $project->url,
+                'project' => $project->project,
                 'status' => $project->status,
                 'created_at' => (string) $project->created_at,
             ]);
@@ -26,9 +26,9 @@ class AdminProjectController extends Controller
         return response()->json(['projects' => $projects]);
     }
 
-    public function approve(Request $request, UserProject $userProject)
+    public function approve(Request $request, StudentProject $studentProject)
     {
-        $userProject->update([
+        $studentProject->update([
             'status' => 'approved',
             'approved_by' => auth()->id(),
             'approved_at' => now(),
@@ -37,13 +37,13 @@ class AdminProjectController extends Controller
         return back()->with('success', 'Project approved!');
     }
 
-    public function reject(Request $request, UserProject $userProject)
+    public function reject(Request $request, StudentProject $studentProject)
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|min:1',
         ]);
 
-        $userProject->update([
+        $studentProject->update([
             'status' => 'rejected',
             'approved_by' => auth()->id(),
             'approved_at' => now(),

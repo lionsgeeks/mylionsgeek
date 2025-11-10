@@ -97,9 +97,9 @@ class User extends Authenticatable
     //     return $this->hasMany(UserProject::class, 'user_id');
     // }
     
-    public function projects(): HasMany
+    public function studentProjects(): HasMany
     {
-        return $this->hasMany(UserProject::class, 'user_id');
+        return $this->hasMany(StudentProject::class, 'user_id');
     }
 
     /**
@@ -107,7 +107,7 @@ class User extends Authenticatable
      */
     public function approvedProjects()
     {
-        return $this->hasMany(UserProject::class, 'approved_by');
+        return $this->hasMany(StudentProject::class, 'approved_by');
     }
 
 
@@ -157,11 +157,6 @@ class User extends Authenticatable
     public function badges()
     {
         return $this->belongsToMany(Badge::class)->withTimestamps();
-    }
-    // user project
-    public function userProjects()
-    {
-        return $this->hasMany(UserProject::class);
     }
     public function posts()
     {

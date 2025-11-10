@@ -363,9 +363,9 @@ const [processingId, setProcessingId] = useState(null);
 
 
                                             <div className="flex gap-2 flex-wrap mb-1">
-                                                {project.url && (
+                                                {project.project && (
                                                     <a
-                                                        href={project.url}
+                                                        href={project.project}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-[var(--color-alpha)] hover:underline text-sm font-medium"

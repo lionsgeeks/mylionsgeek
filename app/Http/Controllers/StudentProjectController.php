@@ -15,8 +15,7 @@ class StudentProjectController extends Controller
      */
     public function index()
     {
-        $projects = auth()->user()
-            ->projects()
+        $projects = auth()->user()->studentProjects()
             ->where('status', '!=', 'rejected')
             ->latest()
             ->paginate(15)
@@ -25,7 +24,7 @@ class StudentProjectController extends Controller
                 'title' => $project->title,
                 'description' => $project->description,
                 'image' => $project->image,
-                'url' => $project->url,
+                'project' => $project->project,
                 'status' => $project->status,
                 'created_at' => (string) $project->created_at,
             ]);
@@ -43,40 +42,40 @@ class StudentProjectController extends Controller
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'url' => 'nullable|url',
+            'project' => 'nullable|url',
             'image' => 'nullable|image|max:2048',
         ]);
 
         $hasImage = $request->hasFile('image');
-        $hasUrl = !empty($validated['url']);
+        $hasProject = !empty($validated['project']);
         $hasTitle = !empty($validated['title']);
         $hasDescription = !empty($validated['description']);
 
         $isValid = (
-            //title + img + desc + url
-            ($hasTitle && $hasImage && $hasDescription && $hasUrl) ||
+            //title + img + desc + project
+            ($hasTitle && $hasImage && $hasDescription && $hasProject) ||
             //title + img + desc
-            ($hasTitle && $hasImage && $hasDescription && !$hasUrl) ||
-            //title + img + url
-            ($hasTitle && $hasImage && !$hasDescription && $hasUrl) ||
-            //title + desc + url
-            ($hasTitle && !$hasImage && $hasDescription && $hasUrl) ||
-            //img + desc + url
-            (!$hasTitle && $hasImage && $hasDescription && $hasUrl) ||
+            ($hasTitle && $hasImage && $hasDescription && !$hasProject) ||
+            //title + img + project
+            ($hasTitle && $hasImage && !$hasDescription && $hasProject) ||
+            //title + desc + project
+            ($hasTitle && !$hasImage && $hasDescription && $hasProject) ||
+            //img + desc + project
+            (!$hasTitle && $hasImage && $hasDescription && $hasProject) ||
             //title + img 
-            ($hasTitle && $hasImage && !$hasDescription && !$hasUrl) ||
+            ($hasTitle && $hasImage && !$hasDescription && !$hasProject) ||
             //img
-            (!$hasTitle && $hasImage && !$hasDescription && !$hasUrl) ||
+            (!$hasTitle && $hasImage && !$hasDescription && !$hasProject) ||
             //img + desc
-            (!$hasTitle && $hasImage && $hasDescription && !$hasUrl) ||
-            //img + url
-            (!$hasTitle && $hasImage && !$hasDescription && $hasUrl) ||
-            //title + url        
-            ($hasTitle && !$hasImage && !$hasDescription && $hasUrl) ||
-            //url        
-            (!$hasTitle && !$hasImage && !$hasDescription && $hasUrl) ||
-            //desc + url        
-            (!$hasTitle && !$hasImage && $hasDescription && $hasUrl)
+            (!$hasTitle && $hasImage && $hasDescription && !$hasProject) ||
+            //img + project
+            (!$hasTitle && $hasImage && !$hasDescription && $hasProject) ||
+            //title + project        
+            ($hasTitle && !$hasImage && !$hasDescription && $hasProject) ||
+            //project        
+            (!$hasTitle && !$hasImage && !$hasDescription && $hasProject) ||
+            //desc + project        
+            (!$hasTitle && !$hasImage && $hasDescription && $hasProject)
         );
 
         if (!$isValid) {
@@ -90,10 +89,10 @@ class StudentProjectController extends Controller
             $imagePath = $request->file('image')->store('projects', 'public');
         }
 
-        auth()->user()->projects()->create([
+        auth()->user()->studentProjects()->create([
             'title' => $validated['title'] ?? null,
             'description' => $validated['description'] ?? null,
-            'url' => $validated['url'] ?? null,
+            'project' => $validated['project'] ?? null,
             'image' => $imagePath,
             'status' => 'pending',
         ]);

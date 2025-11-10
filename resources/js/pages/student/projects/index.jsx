@@ -16,7 +16,7 @@ export default function ProjectsIndex({ projects }) {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        url: '',
+        project: '',
         image: null,
     });
     const [imagePreview, setImagePreview] = useState(null);
@@ -57,7 +57,7 @@ export default function ProjectsIndex({ projects }) {
         const data = new FormData();
         data.append('title', formData.title);
         data.append('description', formData.description);
-        data.append('url', formData.url);
+        data.append('project', formData.project);
         if (formData.image) {
             data.append('image', formData.image);
         }
@@ -89,7 +89,7 @@ export default function ProjectsIndex({ projects }) {
         setFormData({
             title: project.title,
             description: project.description,
-            url: project.url,
+            project: project.project,
             image: null,
         });
         setImagePreview(project.image ? `/storage/${project.image}` : null);
@@ -100,7 +100,7 @@ export default function ProjectsIndex({ projects }) {
     const closeModals = () => {
         setIsAddModalOpen(false);
         setEditingProject(null);
-        setFormData({ title: '', description: '', url: '', image: null });
+        setFormData({ title: '', description: '', project: '', image: null });
         setImagePreview(null);
     };
 
@@ -197,12 +197,12 @@ export default function ProjectsIndex({ projects }) {
                             </div>
 
                             <div>
-                                <Label htmlFor="url" className="text-white block mb-2">Project URL</Label>
+                                <Label htmlFor="project" className="text-white block mb-2">Project URL</Label>
                                 <Input
-                                    id="url"
-                                    name="url"
+                                    id="project"
+                                    name="project"
                                     type="url"
-                                    value={formData.url}
+                                    value={formData.project}
                                     onChange={handleInputChange}
                                     placeholder="https://example.com"
                                     className=" border-2 border-[var(--color-alpha)] text-white placeholder-gray-500 rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]"
@@ -285,9 +285,9 @@ export default function ProjectsIndex({ projects }) {
                                                 {project.description}
                                             </p>
                                             <div className="flex gap-2 flex-wrap">
-                                                {project.url && (
+                                                {project.project && (
                                                     <a
-                                                        href={project.url}
+                                                        href={project.project}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-[var(--color-alpha)] hover:underline text-sm flex items-center gap-1"

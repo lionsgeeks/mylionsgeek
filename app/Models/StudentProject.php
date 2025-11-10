@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UserProject extends Model
+class StudentProject extends Model
 {
+    protected $table = 'student_projects';
+    
     protected $fillable = [
         'user_id',
         'title',
-        'image',
         'description',
-        'url',
+        'image',
+        'project',
         'status',
         'approved_by',
         'approved_at',
@@ -23,33 +25,21 @@ class UserProject extends Model
         'approved_at' => 'datetime',
     ];
 
-    /**
-     * Get the route key for implicit model binding
-     */
     public function getRouteKeyName()
     {
         return 'id';
     }
 
-    /**
-     * Project owner
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Admin who approved
-     */
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /**
-     * Scopes for filtering
-     */
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
