@@ -259,7 +259,7 @@ class UsersController extends Controller
         ];
     }
 
-    public function getPosts(User $user, Request $request)
+    public function getPosts(User $user)
     {
         // Get posts for the user
         $posts = Post::where('user_id', $user->id)

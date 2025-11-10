@@ -136,12 +136,20 @@ class PostController extends Controller
     public function editPost(Request $request, $id)
     {
         $request->validate([
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
+            'image' => 'nullable|mimes:png,jpg,gif,jpeg'
         ]);
         $post = Post::find($id);
-
+        if ($request->hasFile('image')) {
+            # code...
+            $file = $request->file('image');
+            $fileName = $file->hashName();
+            $file->move(public_path('/storage/img/posts'), $fileName);
+            $request->image = $fileName;
+        };
         $post->update([
-            'description' => $request->description
+            'description' => $request->description,
+            'image' => $request->image
         ]);
         return redirect()->back()->with('success', 'Post Updated SuccesFully');
     }

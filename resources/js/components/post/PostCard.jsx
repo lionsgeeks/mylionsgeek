@@ -27,6 +27,7 @@ const PostCard = ({ user, posts }) => {
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     const [undoTimer, setUndoTimer] = useState(null);
     const [postText, setPostText] = useState(null)
+    const [postImage, setPostImage] = useState(null)
     // console.log(allPosts);
 
 
@@ -136,14 +137,22 @@ const PostCard = ({ user, posts }) => {
     const handleOpenDetails = (post) => {
         openDetails === null ? setOpenDetails(post.id) : setOpenDetails(null);
         setPostText(post.description)
+        setPostImage(post.image)
     }
     //! edit Post function 
     const handleEdite = (post) => {
         try {
             router.post(`/posts/post/${post.id}`, {
                 description: postText,
+                image: postImage,
             }, {})
             console.log('edit success');
+            console.log(post);
+            const editedpost = allPosts.find(p => p.id == post.id)
+            editedpost.description = postText
+            console.log(editedpost);
+
+
             setOpenEditPost(false)
             setOpenDetails(null)
         } catch (error) {
@@ -188,7 +197,7 @@ const PostCard = ({ user, posts }) => {
                                         <button className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
                                             <MoreHorizontal onClick={() => handleOpenDetails(p)} className="w-5 h-5" />
                                             {openDetails == p.id && (
-                                                <PostMenuDropDown user={user} openDelete={openDeletePost} openChangeDelete={setOpenDeletePost} openEditPost={openEditPost} openChangeEdit={setOpenEditPost} post={p} handleDelete={() => handleDeletePost(p.id)} postText={postText} onPostTextChange={setPostText} handleEditePost={() => handleEdite(p)} />
+                                                <PostMenuDropDown user={user} openDelete={openDeletePost} openChangeDelete={setOpenDeletePost} openEditPost={openEditPost} openChangeEdit={setOpenEditPost} post={p} handleDelete={() => handleDeletePost(p.id)} postText={postText} onPostTextChange={setPostText} postImage={postImage} onPostImageChange={setPostImage} handleEditePost={() => handleEdite(p)} />
                                             )
                                             }
                                         </button>
@@ -206,7 +215,7 @@ const PostCard = ({ user, posts }) => {
 
                             {/* Media Container (Image/Video) */}
                             <div className="relative bg-black aspect-video mt-3">
-                                <img src={`/storage/img${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
+                                <img src={`/storage/img/posts/${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
                             </div>
 
                             {/* Engagement Stats */}
