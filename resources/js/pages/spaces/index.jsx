@@ -18,18 +18,22 @@ const TABS = [
 ];
 
 export default function SpacesPage() {
-    const { studios = [], coworks = [] } = usePage().props;
+    const { studios = [], coworks = [], auth } = usePage().props;
     const [type, setType] = useState('all');
     const [modalStudio, setModalStudio] = useState(null);
     const [modalCowork, setModalCowork] = useState(false);
-    const [calendarFor, setCalendarFor] = useState(null); // { place_type, id, name }
+    const [calendarFor, setCalendarFor] = useState(null);
     const [events, setEvents] = useState([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
     const [selectedCoworkId, setSelectedCoworkId] = useState(null);
     const [selectedStudioId, setSelectedStudioId] = useState(null);
-    const [selectedEvent, setSelectedEvent] = useState(null); // calendar event details
+    const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventExtras, setEventExtras] = useState({ team_members: [], equipments: [] });
+
+    // New state for selection modal
+    const [showSelectionModal, setShowSelectionModal] = useState(false);
+    const [tempSelectedId, setTempSelectedId] = useState(null);
 
     const breadcrumbs = [
         { title: 'Spaces', href: '/spaces' }
@@ -60,7 +64,7 @@ export default function SpacesPage() {
             setLoadingEvents(true);
         }
         if (card.cardType === 'cowork') {
-            // Default to first available cowork table
+
             const firstAvailable = coworks.find(c => c.state) || coworks[0];
             setSelectedCoworkId(firstAvailable ? firstAvailable.id : null);
             setCalendarFor({ place_type: 'cowork', id: firstAvailable ? firstAvailable.id : null, name: 'Cowork' });
@@ -68,30 +72,110 @@ export default function SpacesPage() {
             setLoadingEvents(true);
         }
     }
+
     function handleStudioSuccess() {
         setModalStudio(null);
         router.reload();
     }
+
     function handleCoworkSuccess() {
         setModalCowork(false);
         router.reload();
     }
 
-    // Load events when calendar target changes or cowork table changes
+    function handleOpenSelectionModal() {
+        if (type === 'studio') {
+            setTempSelectedId(selectedStudioId);
+        } else if (type === 'cowork') {
+            setTempSelectedId(selectedCoworkId);
+        }
+        setShowSelectionModal(true);
+    }
+
+    function handleConfirmSelection() {
+        setShowSelectionModal(false);
+
+        // Update the selected ID
+        if (type === 'studio' || calendarFor?.place_type === 'studio') {
+            setSelectedStudioId(tempSelectedId);
+            const studio = studios.find(s => s.id === tempSelectedId);
+            if (studio) {
+                setCalendarFor({ place_type: 'studio', id: tempSelectedId, name: studio.name });
+            }
+            // Open reservation modal after selection
+            if (selectedRange) {
+                setModalStudio({ id: tempSelectedId, name: studio?.name || 'Studio', cardType: 'studio' });
+            }
+        } else if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
+            setSelectedCoworkId(tempSelectedId);
+            setCalendarFor({ place_type: 'cowork', id: tempSelectedId, name: 'Cowork' });
+            // Open reservation modal after selection
+            if (selectedRange) {
+                setModalCowork(true);
+            }
+        }
+    }
+
     useEffect(() => {
-        // Determine source from current mode
         let typeToLoad = null;
         let idToLoad = null;
+        let fetchAllStudios = false;
+        let fetchAllCoworks = false;
+
         if (type === 'studio') {
-            typeToLoad = 'studio';
-            idToLoad = selectedStudioId;
+            fetchAllStudios = true;
         } else if (type === 'cowork') {
-            typeToLoad = 'cowork';
-            idToLoad = selectedCoworkId;
+
+            fetchAllCoworks = true;
         } else if (calendarFor) {
             typeToLoad = calendarFor.place_type;
             idToLoad = calendarFor.id;
         }
+
+        if (fetchAllStudios) {
+            setLoadingEvents(true);
+            Promise.all(
+                studios.map(studio =>
+                    fetch(`/reservations/public-place/studio/${studio.id}`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => {
+                            return (Array.isArray(data) ? data : []).map(event => ({
+                                ...event,
+                                title: `${event.title} — ${studio.name}`
+                            }));
+                        })
+                        .catch(() => [])
+                )
+            )
+                .then(allEvents => {
+                    setEvents(allEvents.flat());
+                })
+                .finally(() => setLoadingEvents(false));
+            return;
+        }
+
+        if (fetchAllCoworks) {
+            setLoadingEvents(true);
+            Promise.all(
+                coworks.map(cowork =>
+                    fetch(`/reservations/public-place/cowork/${cowork.id}`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => {
+                            return (Array.isArray(data) ? data : []).map(event => ({
+                                ...event,
+                                title: `${event.title} — ${cowork.table || `Table ${cowork.id}`}`
+                            }));
+                        })
+                        .catch(() => [])
+                )
+            )
+                .then(allEvents => {
+                    setEvents(allEvents.flat());
+                })
+                .finally(() => setLoadingEvents(false));
+            return;
+        }
+
         if (!typeToLoad || !idToLoad) return;
         setLoadingEvents(true);
         fetch(`/reservations/public-place/${typeToLoad}/${idToLoad}`, { headers: { 'Accept': 'application/json' } })
@@ -99,9 +183,8 @@ export default function SpacesPage() {
             .then(data => setEvents(Array.isArray(data) ? data : []))
             .catch(() => setEvents([]))
             .finally(() => setLoadingEvents(false));
-    }, [type, calendarFor, selectedCoworkId, selectedStudioId]);
+    }, [type, calendarFor, selectedCoworkId, selectedStudioId, studios, coworks]);
 
-    // Keep calendar target in sync with selector changes
     useEffect(() => {
         if (type === 'studio' && selectedStudioId) {
             const s = studios.find(st => st.id === selectedStudioId);
@@ -122,20 +205,33 @@ export default function SpacesPage() {
         const startTime = start.toTimeString().slice(0, 5);
         const endTime = end.toTimeString().slice(0, 5);
         setSelectedRange({ day, start: startTime, end: endTime });
-        // Open reservation modal after selecting a time in all modes
-        if (type === 'studio' || calendarFor?.place_type === 'studio') {
-            const sId = selectedStudioId ?? calendarFor?.id;
-            const studio = studios.find(s => s.id === sId);
-            if (sId) setModalStudio({ id: sId, name: studio?.name || calendarFor?.name || 'Studio', cardType: 'studio' });
-            return;
+
+        if (type === 'all' && calendarFor) {
+            if (calendarFor.place_type === 'studio') {
+                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                return;
+            }
+            if (calendarFor.place_type === 'cowork') {
+                setModalCowork(true);
+                return;
+            }
         }
-        if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
-            setModalCowork(true);
-            return;
+
+        // Only show selection modal if NOT in 'all' tab
+        if (type !== 'all') {
+            if (type === 'studio' || calendarFor?.place_type === 'studio') {
+                setTempSelectedId(selectedStudioId);
+                setShowSelectionModal(true);
+                return;
+            }
+            if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
+                setTempSelectedId(selectedCoworkId);
+                setShowSelectionModal(true);
+                return;
+            }
         }
     };
 
-    // When switching tabs, initialize calendar for studio/cowork
     useEffect(() => {
         if (type === 'studio' && studios.length) {
             const first = studios[0];
@@ -149,11 +245,11 @@ export default function SpacesPage() {
             setCalendarFor(null);
             setSelectedRange(null);
         }
-        // Ensure no modals are open on tab switch
         setModalStudio(null);
         setModalCowork(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [type]);
+
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -162,7 +258,7 @@ export default function SpacesPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
                 </div>
-                {/* Tabs/Selector */}
+
                 <div className="inline-flex items-center rounded-xl border border-gray-200 dark:border-sidebar-border/70 p-1 bg-white dark:bg-card shadow-sm mb-6">
                     {TABS.map(tab => (
                         <button
@@ -176,7 +272,7 @@ export default function SpacesPage() {
                         </button>
                     ))}
                 </div>
-                {/* All: show discovery cards. Studio/Cowork: show calendar inline */}
+
                 {type === 'all' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
                         {cards.length === 0 && (
@@ -193,7 +289,6 @@ export default function SpacesPage() {
                                 ) : (
                                     <div className="absolute inset-0 grid place-items-center text-gray-400">No Image</div>
                                 )}
-                                {/* Top badges */}
                                 <div className="absolute top-3 left-3 flex items-center gap-2">
                                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize backdrop-blur bg-white/85 text-gray-900`}>
                                         {place.type}
@@ -204,7 +299,6 @@ export default function SpacesPage() {
                                         {place.state ? 'Available' : 'Busy'}
                                     </span>
                                 </div>
-                                {/* Bottom name overlay */}
                                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
                                     <div className="text-white font-semibold text-base drop-shadow-sm line-clamp-1">{place.name}</div>
                                 </div>
@@ -212,46 +306,19 @@ export default function SpacesPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-card rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
+                    <div className="bg-light dark:bg-dark rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
                         <div className="flex items-center justify-between mb-3 gap-3">
                             <div className="text-lg font-semibold">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
-                            {type === 'studio' ? (
-                                <div className="min-w-[240px]">
-                                    <Select value={selectedStudioId ? String(selectedStudioId) : ''} onValueChange={(v) => setSelectedStudioId(Number(v))}>
-                                        <SelectTrigger className="h-9">
-                                            <SelectValue placeholder="Select studio" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {studios.map(s => (
-                                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ) : (
-                                <div className="min-w-[240px]">
-                                    <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v) => setSelectedCoworkId(Number(v))}>
-                                        <SelectTrigger className="h-9">
-                                            <SelectValue placeholder="Select table" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {coworks.map(t => (
-                                                <SelectItem key={t.id} value={String(t.id)}>{t.table || `Table ${t.id}`}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+
                             <button
                                 className={`ml-auto px-4 py-2 rounded-md text-sm font-semibold border ${selectedRange ? 'bg-[#FFC801] text-black border-[#FFC801]' : 'bg-white border-gray-300 text-gray-700'}`}
                                 onClick={() => {
                                     if (type === 'studio') {
-                                        const sId = selectedStudioId;
-                                        const studio = studios.find(s => s.id === sId);
-                                        setModalStudio({ id: sId, name: studio?.name || 'Studio', cardType: 'studio' });
+                                        setTempSelectedId(selectedStudioId);
                                     } else if (type === 'cowork') {
-                                        setModalCowork(true);
+                                        setTempSelectedId(selectedCoworkId);
                                     }
+                                    setShowSelectionModal(true);
                                 }}
                             >
                                 {selectedRange ? 'Add Reservation' : 'Add Reservation'}
@@ -260,7 +327,7 @@ export default function SpacesPage() {
                         {loadingEvents ? (
                             <div className="flex items-center justify-center h-[60vh]">Loading events...</div>
                         ) : (
-                            <div className="h-[70vh]">
+                            <div className="h-[70vh] bg-light dark:bg-dark">
                                 <FullCalendar
                                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                                     initialView="timeGridWeek"
@@ -270,8 +337,11 @@ export default function SpacesPage() {
                                     selectMirror={true}
                                     select={onCalendarDateSelect}
                                     eventClick={(info) => {
-                                        // Normalize payload for modal
                                         const e = info.event;
+
+                                        if (e.extendedProps?.user_id !== auth?.user?.id) {
+                                            return;
+                                        }
                                         setSelectedEvent({
                                             id: e.id,
                                             title: e.title,
@@ -279,7 +349,6 @@ export default function SpacesPage() {
                                             end: e.end?.toISOString?.() || e.end,
                                             backgroundColor: e.backgroundColor,
                                         });
-                                        // Load members & equipment for studio reservations if available (admin endpoint)
                                         setEventExtras({ team_members: [], equipments: [] });
                                         if ((type === 'studio' || (type === 'all' && calendarFor?.place_type === 'studio')) && e.id) {
                                             fetch(`/admin/reservations/${e.id}/info`, { headers: { 'Accept': 'application/json' } })
@@ -299,19 +368,116 @@ export default function SpacesPage() {
                                     height="100%"
                                     eventColor="#FFC801"
                                     eventTextColor="#000000"
-                                    slotMinTime="08:00:00"   // ⏰ Start time
-                                    slotMaxTime="18:30:00"   // ⏰ End time
-
+                                    slotMinTime="08:00:00"
+                                    slotMaxTime="18:30:00"
                                 />
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Calendar modal (shared) only for All view when clicking cards */}
+                {/* Selection Modal - Only show when NOT in 'all' tab */}
+                {showSelectionModal && type !== 'all' && (
+                    <Dialog open={showSelectionModal} onOpenChange={setShowSelectionModal}>
+                        <DialogContent className="max-w-md bg-light dark:bg-dark">
+                            <div className="space-y-4">
+                                <div>
+                                    <h2 className="text-xl font-semibold mb-1">
+                                        {type === 'studio' ? 'Select Studio' : 'Select Cowork Table'}
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Choose {type === 'studio' ? 'a studio' : 'a table'} to view its calendar and make a reservation
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                                    {type === 'studio' ? (
+                                        studios.map(studio => (
+                                            <button
+                                                key={studio.id}
+                                                onClick={() => setTempSelectedId(studio.id)}
+                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${
+                                                    tempSelectedId === studio.id
+                                                        ? 'border-[#FFC801] bg-[#FFC801]/10'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    {studio.image && (
+                                                        <img
+                                                            src={studio.image}
+                                                            alt={studio.name}
+                                                            className="w-12 h-12 rounded object-cover"
+                                                        />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <div className="font-medium">{studio.name}</div>
+                                                        <div className="text-xs text-muted-foreground capitalize">{studio.type}</div>
+                                                    </div>
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                        studio.state
+                                                            ? 'bg-green-100 text-green-700'
+                                                            : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                        {studio.state ? 'Available' : 'Busy'}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        coworks.filter(cowork => cowork.state == 1).map(cowork => (
+                                            <button
+                                                key={cowork.id}
+                                                onClick={() => setTempSelectedId(cowork.id)}
+                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${
+                                                    tempSelectedId === cowork.id
+                                                        ? 'border-[#FFC801] bg-[#FFC801]/10'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        {cowork.image && (
+                                                            <img
+                                                                src={cowork.image}
+                                                                alt={cowork.table || `Table ${cowork.id}`}
+                                                                className="w-12 h-12 rounded object-cover"
+                                                            />
+                                                        )}
+                                                        <div className="font-medium">
+                                                            {cowork.table || `Table ${cowork.id}`}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={() => setShowSelectionModal(false)}
+                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md font-medium hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmSelection}
+                                        disabled={!tempSelectedId}
+                                        className="flex-1 px-4 py-2 bg-[#FFC801] text-black rounded-md font-medium hover:bg-[#FFD633] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Confirm Selection
+                                    </button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                )}
+
+                {/* Calendar Modal - For 'all' tab */}
                 {type === 'all' && calendarFor && (
                     <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
-                        <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0">
+                        <DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-[90vw] h-[90vh] p-0 bg-light dark:bg-dark">
                             {calendarFor && (
                                 <div className="flex flex-col w-full h-full">
                                     <div className="shrink-0 px-5 pr-14 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
@@ -319,12 +485,16 @@ export default function SpacesPage() {
                                         <div className="flex items-center gap-3">
                                             {calendarFor.place_type === 'cowork' && (
                                                 <div className="min-w-[220px]">
-                                                    <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v) => setSelectedCoworkId(Number(v))}>
+                                                    <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v) => {
+                                                        const newId = Number(v);
+                                                        setSelectedCoworkId(newId);
+                                                        setCalendarFor({ place_type: 'cowork', id: newId, name: 'Cowork' });
+                                                    }}>
                                                         <SelectTrigger className="h-9">
                                                             <SelectValue placeholder="Select table" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {coworks.map(t => (
+                                                            {coworks.filter(c => c.state).map(t => (
                                                                 <SelectItem key={t.id} value={String(t.id)}>{t.table || `Table ${t.id}`}</SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -339,8 +509,13 @@ export default function SpacesPage() {
                                                     const endDate = new Date(now.getTime() + 60 * 60 * 1000);
                                                     const endTime = endDate.toTimeString().slice(0, 5);
                                                     setSelectedRange({ day, start: startTime, end: endTime });
-                                                    if (calendarFor.place_type === 'studio') setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
-                                                    if (calendarFor.place_type === 'cowork') setModalCowork(true);
+
+                                                    if (calendarFor.place_type === 'studio') {
+                                                        setTempSelectedId(calendarFor.id);
+                                                    } else if (calendarFor.place_type === 'cowork') {
+                                                        setTempSelectedId(selectedCoworkId);
+                                                    }
+                                                    setShowSelectionModal(true);
                                                 }}
                                                 className="px-4 py-2 bg-[#FFC801] text-black rounded-md font-medium"
                                             >
@@ -352,7 +527,7 @@ export default function SpacesPage() {
                                         {loadingEvents && (
                                             <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading events…</div>
                                         )}
-                                        <div className="absolute inset-0 px-4 pb-4">
+                                        <div className="absolute inset-0 px-4 pb-4 bg-light dark:bg-dark">
                                             <FullCalendar
                                                 plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
                                                 initialView="timeGridWeek"
@@ -363,6 +538,10 @@ export default function SpacesPage() {
                                                 select={onCalendarDateSelect}
                                                 eventClick={(info) => {
                                                     const e = info.event;
+
+                                                    if (e.extendedProps?.user_id !== auth?.user?.id) {
+                                                        return;
+                                                    }
                                                     setSelectedEvent({
                                                         id: e.id,
                                                         title: e.title,
@@ -395,8 +574,8 @@ export default function SpacesPage() {
                                                 height="100%"
                                                 eventColor="#FFC801"
                                                 eventTextColor="#000000"
-                                                slotMinTime="08:00:00"   // ⏰ Start time
-                                                slotMaxTime="18:30:00"   // ⏰ End time
+                                                slotMinTime="08:00:00"
+                                                slotMaxTime="18:30:00"
                                             />
                                         </div>
                                     </div>
@@ -405,95 +584,32 @@ export default function SpacesPage() {
                         </DialogContent>
                     </Dialog>
                 )}
-                {/* Cowork Modal */}
+
+                {/* Cowork Reservation Modal */}
                 {modalCowork && (
                     <ReservationModalCowork
-                        key={selectedCoworkId || 'cowork-modal'}
+                        key={selectedCoworkId || calendarFor?.id || 'cowork-modal'}
                         isOpen={modalCowork}
                         onClose={() => setModalCowork(false)}
-                        cowork={calendarFor?.place_type === 'cowork' ? coworks.find(c => c.id === selectedCoworkId) : null}
+                        cowork={coworks.find(c => c.id === (selectedCoworkId || calendarFor?.id))}
                         selectedRange={selectedRange}
                         coworks={coworks.filter(t => t.state)}
                         onSuccess={handleCoworkSuccess}
                     />
                 )}
-                {/* Studio Modal */}
+
+                {/* Studio Reservation Modal */}
                 {modalStudio && (
                     <ReservationModal
                         isOpen={!!modalStudio}
                         onClose={() => setModalStudio(null)}
-                        studio={{ id: calendarFor?.id, name: calendarFor?.name }}
+                        studio={{ id: modalStudio.id || calendarFor?.id, name: modalStudio.name || calendarFor?.name }}
                         selectedRange={selectedRange}
                         onSuccess={handleStudioSuccess}
                         userRouteMode
                     />
                 )}
-
-                {/* Reservation details modal (read-only) */}
-                {selectedEvent && (
-                    <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-                        <DialogContent className="max-w-lg">
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="text-lg font-semibold">Reservation details</div>
-                                    <div className="text-sm text-muted-foreground">{selectedEvent.title}</div>
-                                </div>
-                                <Tabs defaultValue="details">
-                                    <TabsList>
-                                        <TabsTrigger value="details">Details</TabsTrigger>
-                                        <TabsTrigger value="members">Members</TabsTrigger>
-                                        <TabsTrigger value="equipment">Equipment</TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="details">
-                                        <div className="grid grid-cols-2 gap-3 text-sm">
-                                            <div>
-                                                <div className="font-medium">Start</div>
-                                                <div>{new Date(selectedEvent.start).toLocaleString()}</div>
-                                            </div>
-                                            <div>
-                                                <div className="font-medium">End</div>
-                                                <div>{new Date(selectedEvent.end).toLocaleString()}</div>
-                                            </div>
-                                        </div>
-                                    </TabsContent>
-                                    <TabsContent value="members">
-                                        {eventExtras.team_members.length === 0 ? (
-                                            <div className="text-sm text-muted-foreground">No members linked.</div>
-                                        ) : (
-                                            <ul className="space-y-2">
-                                                {eventExtras.team_members.map(m => (
-                                                    <li key={m.id} className="flex items-center gap-2 text-sm">
-                                                        {m.image ? <img src={m.image} alt={m.name} className="w-6 h-6 rounded-full object-cover" /> : <span className="w-6 h-6 rounded-full bg-muted inline-block" />}
-                                                        <span>{m.name}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </TabsContent>
-                                    <TabsContent value="equipment">
-                                        {eventExtras.equipments.length === 0 ? (
-                                            <div className="text-sm text-muted-foreground">No equipment linked.</div>
-                                        ) : (
-                                            <ul className="space-y-2">
-                                                {eventExtras.equipments.map(eq => (
-                                                    <li key={eq.id} className="flex items-center gap-3 text-sm">
-                                                        {eq.image ? <img src={eq.image} alt={eq.reference} className="w-8 h-8 rounded object-cover" /> : <span className="w-8 h-8 rounded bg-muted inline-block" />}
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">{eq.reference || eq.mark}</span>
-                                                            {eq.mark && <span className="text-xs text-muted-foreground">{eq.mark}</span>}
-                                                        </div>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </TabsContent>
-                                </Tabs>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                )}
             </div>
         </AppLayout>
     );
 }
-

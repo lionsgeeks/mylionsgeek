@@ -611,7 +611,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </Card>
                     </div>
                 )} */}
-                    <StatCard items={items} />
+                <StatCard items={items} />
 
 
 
@@ -708,7 +708,13 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                                         }}
                                                         title="Cancel reservation"
                                                     >
-                                                        <X className="h-4 w-4" />
+                                                        {
+                                                            r.type == "cowork" ? (
+
+                                                                <X className="h-4 w-4" />
+                                                            ) : (<X className="h-4 w-4" />)
+                                                        }
+
                                                     </Button>
                                                 )}
                                             </div>
@@ -896,7 +902,16 @@ function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
                                         });
                                     }}
                                 >
-                                    <X className="h-4 w-4" />
+                                    {
+                                      reservation.type === "cowork" ? (
+                                            <div className="flex items-center gap-1 justify-center">
+                                                <span>Cancel</span>
+                                                <X className="h-4 w-4" />
+                                            </div>
+                                        ) : (
+                                            <X className="h-4 w-4" />
+                                        )
+                                    }
                                 </Button>
                             )}
                         </div>
