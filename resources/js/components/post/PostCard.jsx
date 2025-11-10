@@ -140,11 +140,14 @@ const PostCard = ({ user, posts }) => {
     //! edit Post function 
     const handleEdite = (post) => {
         try {
-            router.post(`/posts/post/${post.id}`, {}, {})
+            router.post(`/posts/post/${post.id}`, {
+                description: postText,
+            }, {})
             console.log('edit success');
+            setOpenEditPost(false)
+            setOpenDetails(null)
         } catch (error) {
             console.log('failed Update : ' + error);
-
         }
     }
     return (
