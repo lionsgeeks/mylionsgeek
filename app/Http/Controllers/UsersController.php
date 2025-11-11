@@ -148,7 +148,7 @@ class UsersController extends Controller
         $userProjects = $this->getUserProjects($user, $request);
         $collaborativeProjects = $this->getCollaborativeProjects($user, $request);
         $reservations = $this->getReservations($user, $request);
-        $posts = $this->getPosts($user, $request);
+        $posts = $this->getPosts($user);
         $absences = $this->getAbsences($user, $request);
 
         // Calculate discipline score
@@ -259,14 +259,42 @@ class UsersController extends Controller
         ];
     }
 
-    public function getPosts()
+    public function getPosts($user = null)
     {
-        $posts = Post::withCount(['likes', 'comments'])
-            ->latest()
-            ->get();
+        // Initialize the query
+        $dataPosts = Post::with(['user', 'likes', 'comments'])
+            ->withCount(['likes', 'comments'])
+            ->latest();
+
+        // If $user is truthy, filter by authenticated user
+        if ($user) {
+            $dataPosts = $dataPosts->where('user_id', Auth::id());
+        }
+
+        // Get the posts
+        $dataPosts = $dataPosts->get();
+
+        // Map and format response
+        $posts = $dataPosts->map(function ($post) {
+            return [
+                'user_id' => $post->user_id,
+                'user_name' => $post->user->name,
+                'user_image' => $post->user->image,
+                'user_last_online' => $post->user->last_online,
+                'user_status' => $post->user->status,
+                'user_formation' => $post->user->formation?->name,
+                'id' => $post->id,
+                'description' => $post->description,
+                'image' => $post->image,
+                'likes_count' => $post->likes_count,      // use eager count
+                'comments_count' => $post->comments_count, // use eager count
+                'created_at' => $post->created_at,
+            ];
+        });
 
         return ['posts' => $posts];
     }
+
 
 
 
