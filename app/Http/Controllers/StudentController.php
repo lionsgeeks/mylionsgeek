@@ -10,11 +10,12 @@ use Inertia\Inertia;
 
 class StudentController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $user = Auth::user()->load('formation');
         $userController = new UsersController();
-        $posts = $userController->getPosts($user, $request);
+        $posts = $userController->getPosts($user);
+        // dd($posts);
         return Inertia::render('student/feed/index', [
             'user' => $user,
             'posts' => $posts,

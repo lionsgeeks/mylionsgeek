@@ -1324,7 +1324,7 @@ class ReservationsController extends Controller
                 ->toArray();
         }
 
-        return Inertia::render('reservations/verify-end', [
+        return Inertia::render('admin/reservations/partials/verify-end', [
             'reservation' => [
                 'id' => $reservationData->id,
                 'title' => $reservationData->title,
@@ -2008,11 +2008,11 @@ class ReservationsController extends Controller
      */
     public function show(int $reservation)
     {
-        if (!Schema::hasTable('reservations')) {
-            return Inertia::render('reservations/ReservationDetails', [
-                'reservation' => null
-            ]);
-        }
+        // if (!Schema::hasTable('reservations')) {
+        //     return Inertia::render('reservations/ReservationDetails', [
+        //         'reservation' => null
+        //     ]);
+        // }
 
         // Get reservation details
         $reservationData = DB::table('reservations as r')
@@ -2029,11 +2029,11 @@ class ReservationsController extends Controller
             )
             ->first();
 
-        if (!$reservationData) {
-            return Inertia::render('reservations/ReservationDetails', [
-                'reservation' => null
-            ]);
-        }
+        // if (!$reservationData) {
+        //     return Inertia::render('reservations/ReservationDetails', [
+        //         'reservation' => null
+        //     ]);
+        // }
 
         // Normalize user avatar path
         $userAvatar = $reservationData->user_avatar ?? null;
@@ -2345,7 +2345,7 @@ class ReservationsController extends Controller
                     'type' => 'cowork',
                 ];
             });
-        return Inertia::render('reservations/index', [
+        return Inertia::render('students/reservations/index', [
             'reservations' => $reservations,
             'studios' => $studios,
             'coworks' => $coworks,
@@ -2408,75 +2408,75 @@ class ReservationsController extends Controller
     /**
      * Show details for a reservation belonging to the authenticated user only
      */
-    public function userDetails(int $reservation)
-    {
-        $row = \DB::table('reservations as r')
-            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
-            ->where('r.id', $reservation)
-            ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
-            ->first();
-        if (!$row || $row->user_id != auth()->id()) {
-            abort(404, 'Reservation not found.');
-        }
-        $equipments = [];
-        if (\Schema::hasTable('reservation_equipment') && \Schema::hasTable('equipment')) {
-            $equipments = \DB::table('reservation_equipment as re')
-                ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
-                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
-                ->where('re.reservation_id', $reservation)
-                ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
-                ->get()
-                ->map(function ($e) {
-                    $img = $e->image;
-                    if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
-                        $img = 'img/equipment/' . ltrim($img, '/');
-                    }
-                    return [
-                        'id' => $e->id,
-                        'reference' => $e->reference,
-                        'mark' => $e->mark,
-                        'type_name' => $e->type_name,
-                        'image' => $img,
-                    ];
-                });
-        }
-        $teamMembers = [];
-        if (\Schema::hasTable('reservation_teams')) {
-            $teamMembers = \DB::table('reservation_teams as rt')
-                ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
-                ->where('rt.reservation_id', $reservation)
-                ->select('u.id', 'u.name', 'u.email', 'u.image')
-                ->get()
-                ->map(function ($u) {
-                    $img = $u->image;
-                    if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
-                        $img = 'img/profile/' . ltrim($img, '/');
-                    }
-                    return [
-                        'id' => $u->id,
-                        'name' => $u->name,
-                        'email' => $u->email,
-                        'image' => $img,
-                    ];
-                });
-        }
-        $details = [
-            'id' => $row->id,
-            'user_name' => $row->user_name,
-            'user_email' => $row->user_email,
-            'studio_name' => $row->studio_name ?? null,
-            'date' => $row->date ?? $row->day,
-            'start' => $row->start,
-            'end' => $row->end,
-            'title' => $row->title,
-            'description' => $row->description,
-            'type' => $row->type,
-            'approved' => (bool) ($row->approved ?? 0),
-            'canceled' => (bool) ($row->canceled ?? 0),
-            'equipments' => $equipments,
-            'team_members' => $teamMembers,
-        ];
-        return Inertia::render('reservations/details', ['reservation' => $details]);
-    }
+    // public function userDetails(int $reservation)
+    // {
+    //     $row = \DB::table('reservations as r')
+    //         ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+    //         ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+    //         ->where('r.id', $reservation)
+    //         ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
+    //         ->first();
+    //     if (!$row || $row->user_id != auth()->id()) {
+    //         abort(404, 'Reservation not found.');
+    //     }
+    //     $equipments = [];
+    //     if (\Schema::hasTable('reservation_equipment') && \Schema::hasTable('equipment')) {
+    //         $equipments = \DB::table('reservation_equipment as re')
+    //             ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
+    //             ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+    //             ->where('re.reservation_id', $reservation)
+    //             ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
+    //             ->get()
+    //             ->map(function ($e) {
+    //                 $img = $e->image;
+    //                 if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
+    //                     $img = 'img/equipment/' . ltrim($img, '/');
+    //                 }
+    //                 return [
+    //                     'id' => $e->id,
+    //                     'reference' => $e->reference,
+    //                     'mark' => $e->mark,
+    //                     'type_name' => $e->type_name,
+    //                     'image' => $img,
+    //                 ];
+    //             });
+    //     }
+    //     $teamMembers = [];
+    //     if (\Schema::hasTable('reservation_teams')) {
+    //         $teamMembers = \DB::table('reservation_teams as rt')
+    //             ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
+    //             ->where('rt.reservation_id', $reservation)
+    //             ->select('u.id', 'u.name', 'u.email', 'u.image')
+    //             ->get()
+    //             ->map(function ($u) {
+    //                 $img = $u->image;
+    //                 if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
+    //                     $img = 'img/profile/' . ltrim($img, '/');
+    //                 }
+    //                 return [
+    //                     'id' => $u->id,
+    //                     'name' => $u->name,
+    //                     'email' => $u->email,
+    //                     'image' => $img,
+    //                 ];
+    //             });
+    //     }
+    //     $details = [
+    //         'id' => $row->id,
+    //         'user_name' => $row->user_name,
+    //         'user_email' => $row->user_email,
+    //         'studio_name' => $row->studio_name ?? null,
+    //         'date' => $row->date ?? $row->day,
+    //         'start' => $row->start,
+    //         'end' => $row->end,
+    //         'title' => $row->title,
+    //         'description' => $row->description,
+    //         'type' => $row->type,
+    //         'approved' => (bool) ($row->approved ?? 0),
+    //         'canceled' => (bool) ($row->canceled ?? 0),
+    //         'equipments' => $equipments,
+    //         'team_members' => $teamMembers,
+    //     ];
+    //     return Inertia::render('reservations/details', ['reservation' => $details]);
+    // }
 }

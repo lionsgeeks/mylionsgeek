@@ -3,7 +3,7 @@ import axios from "axios";
 import { useInitials } from "@/hooks/use-initials";
 import { Avatar,  } from "@/components/ui/avatar";
 import { Link } from '@inertiajs/react';
-import { timeAgo } from '../lib/utils'
+import { timeAgo } from '../../lib/utils'
 
 const LikesModal = ({ postId, open, onClose }) => {
     const [likes, setLikes] = useState([]);

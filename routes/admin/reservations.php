@@ -22,7 +22,7 @@ Route::middleware(['auth'])->group(function () {
 // USER READ-ONLY DETAILS (PROTECTED)
 // =====================
 
-Route::middleware(['auth', 'verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
+// Route::middleware(['auth', 'verified'])->get('/reservations/{reservation}', [\App\Http\Controllers\ReservationsController::class, 'userDetails'])->name('reservations.details');
 
 // =====================
 // ADMIN RESERVATIONS (PROTECTED)

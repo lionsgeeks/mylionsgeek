@@ -7,6 +7,7 @@ import RightSideBar from './partials/RightSideBar';
 
 export default function StudentFeed({ user, posts }) {
     // console.log(posts);
+    
     return (
         <>
             <AppLayout>
