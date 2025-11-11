@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { Avatar } from "@/components/ui/avatar";
 import { Link, usePage } from "@inertiajs/react";
-import { timeAgo } from '../lib/utils'
-import DeleteModal from "./DeleteModal";
+import { timeAgo } from '../../lib/utils'
+import DeleteModal from "../DeleteModal";
 import { CheckIcon, Pencil, Trash } from "lucide-react";
 
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved }) {
@@ -19,6 +19,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
   const { auth } = usePage().props;
+  
 
   // ✅ Prevent body scroll when modal is open
   useEffect(() => {

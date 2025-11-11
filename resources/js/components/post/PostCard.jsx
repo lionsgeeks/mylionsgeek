@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';  // Assuming Avatar component is correctly imported
 import axios from 'axios';
-import { timeAgo } from '../lib/utils'
+import { timeAgo } from '../../lib/utils'
 import CommentsModal from './CommentsModal';
 import LikesModal from "./LikesModal";
 import PostMenuDropDown from './PostMenuDropDown';
@@ -20,11 +20,14 @@ const PostCard = ({ user, posts }) => {
     const [likedPostIds, setLikedPostIds] = useState([]);
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
+    const [openEditPost, setOpenEditPost] = useState(false);
     const [commentsPostIds, setCommentsPostIds] = useState([]);
     const [allPosts, setAllPosts] = useState(posts)
     const [undoState, setUndoState] = useState(false)
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     const [undoTimer, setUndoTimer] = useState(null);
+    const [postText, setPostText] = useState(null)
+    const [postImage, setPostImage] = useState(null)
     // console.log(allPosts);
 
 
@@ -131,8 +134,33 @@ const PostCard = ({ user, posts }) => {
         setUndoState(false);
         setPendingDeleteId(null);
     };
-    const handleOpenDetails = (postId) => {
-        openDetails === null ? setOpenDetails(postId) : setOpenDetails(null);
+    const handleOpenDetails = (post) => {
+        openDetails === null ? setOpenDetails(post.id) : setOpenDetails(null);
+        setPostText(post.description)
+        setPostImage(post.image)
+    }
+    //! edit Post function 
+    const handleEdite = (post) => {
+        try {
+            router.post(`/posts/post/${post.id}`, {
+                description: postText,
+                image: postImage,
+            }, {
+                onSuccess: (page) => {
+                    // console.log('edit success');
+                    setOpenEditPost(false);
+                    setOpenDetails(null);
+                    const editedPost = page.props.posts?.posts?.find(p => p.id === post.id);
+                    if (editedPost) {
+                        setAllPosts(prevPosts =>
+                            prevPosts.map(p => p.id === editedPost.id ? editedPost : p)
+                        );
+                    }
+                }
+            })
+        } catch (error) {
+            console.log('failed Update : ' + error);
+        }
     }
     return (
         <>
@@ -170,9 +198,9 @@ const PostCard = ({ user, posts }) => {
                                     {/* Actions (More, Close) */}
                                     <div className="flex items-center gap-2">
                                         <button className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded">
-                                            <MoreHorizontal onClick={() => handleOpenDetails(p.id)} className="w-5 h-5" />
+                                            <MoreHorizontal onClick={() => handleOpenDetails(p)} className="w-5 h-5" />
                                             {openDetails == p.id && (
-                                                <PostMenuDropDown open={openDeletePost} openChange={setOpenDeletePost} post={p} handleDelete={() => handleDeletePost(p.id)} />
+                                                <PostMenuDropDown user={user} openDelete={openDeletePost} openChangeDelete={setOpenDeletePost} openEditPost={openEditPost} openChangeEdit={setOpenEditPost} post={p} handleDelete={() => handleDeletePost(p.id)} postText={postText} onPostTextChange={setPostText} onPostImageChange={setPostImage} handleEditePost={() => handleEdite(p)} />
                                             )
                                             }
                                         </button>
@@ -190,7 +218,7 @@ const PostCard = ({ user, posts }) => {
 
                             {/* Media Container (Image/Video) */}
                             <div className="relative bg-black aspect-video mt-3">
-                                <img src={`/storage${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
+                                <img src={`/storage/img/posts/${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
                             </div>
 
                             {/* Engagement Stats */}
