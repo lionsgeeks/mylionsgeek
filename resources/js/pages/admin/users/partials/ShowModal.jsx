@@ -312,15 +312,28 @@ const [processingId, setProcessingId] = useState(null);
                         <h3 className="text-lg font-semibold">Projects</h3>
                         
                         {projects && projects.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
                                 {projects.map((project) => (
                                     <div 
                                         key={project.id} 
-                                        className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg flex gap-4 "
+                                        className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg flex gap-4 flex-col relative"
                                     >
+                                        <div className="absolute right-4">
+                                            <span
+                                                className={`px-2 py-1 text-xs rounded-full font-semibold whitespace-nowrap ${
+                                                    project.status === 'approved'
+                                                        ? 'bg-green-600 text-green-50 dark:text-white'
+                                                        : project.status === 'rejected'
+                                                        ? 'bg-red-600 text-red-50 dark:text-white'
+                                                        : 'bg-yellow-600 text-yellow-50 dark:text-white'
+                                                }`}
+                                            >
+                                                {project.status === 'pending' ? 'Pending' : project.status}
+                                            </span>
+                                        </div>
                                         {/* Image */}
                                         {project.image && (
-                                            <div className="w-50 h-30 rounded-lg overflow-hidden flex-shrink-0">
+                                            <div className="w-full h-35 rounded-lg overflow-hidden flex-shrink-0">
                                                 <img
                                                     src={`/storage/${project.image}`}
                                                     alt={project.title}
@@ -348,17 +361,6 @@ const [processingId, setProcessingId] = useState(null);
                                                             })}
                                                         </p>
                                                 </div>
-                                                <span
-                                                    className={`px-2 py-1 text-xs rounded-full font-semibold whitespace-nowrap ${
-                                                        project.status === 'approved'
-                                                            ? 'bg-green-600 text-green-50 dark:text-white'
-                                                            : project.status === 'rejected'
-                                                            ? 'bg-red-600 text-red-50 dark:text-white'
-                                                            : 'bg-yellow-600 text-yellow-50 dark:text-white'
-                                                    }`}
-                                                >
-                                                    {project.status === 'pending' ? 'Pending' : project.status}
-                                                </span>
                                             </div>
 
 

@@ -234,16 +234,29 @@ export default function ProjectsIndex({ projects }) {
 
                 {projects.data && projects.data.length > 0 ? (
                     <div className="space-y-4">
-                        <div className="grid gap-4">
+                        <div className="grid gap-4 grid-cols-4 max-md:grid-cols-2 max-lg:grid-cols-3 max-sm:grid-cols-1">
                             {projects.data.map((project) => (
                                 <div
                                     key={project.id}
                                     className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:shadow-lg transition-shadow"
                                 >
-                                    <div className="flex gap-4">
+                                    <div className="flex flex-col gap-4 relative">
+                                        <div className="flex justify-end absolute right-0">
+                                            <span
+                                                className={`w-fit px-3 py-1 rounded-full text-xs font-bold ${
+                                                    project.status === 'approved'
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-600 dark:text-green-50'
+                                                        : project.status === 'rejected'
+                                                        ? 'bg-red-100 text-red-800 dark:bg-red-600 dark:text-red-50'
+                                                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-600 dark:text-yellow-50'
+                                                }`}
+                                            >
+                                                {project.status === 'pending' ? 'Pending' : project.status}
+                                            </span>
+                                        </div>
                                         {/* Image */}
                                         {project.image && (
-                                            <div className="w-60 h-40 rounded-lg overflow-hidden flex-shrink-0">
+                                            <div className="w-full h-50 rounded-lg overflow-hidden flex-shrink-0">
                                                 <img
                                                     src={`/storage/${project.image}`}
                                                     alt={project.title}
@@ -258,6 +271,9 @@ export default function ProjectsIndex({ projects }) {
                                             <div className="flex justify-between items-start">
                                                 <div className='my-3'>
                                                     <h3 className="text-lg font-semibold mb-1">{project.title}</h3>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
+                                                        {project.description}
+                                                    </p>
                                                     <p className="text-sm text-neutral-500">
                                                         {new Date(project.created_at).toLocaleString('fr-FR', {
                                                             year: 'numeric',
@@ -269,21 +285,8 @@ export default function ProjectsIndex({ projects }) {
                                                         })}
                                                     </p>
                                                 </div>
-                                                <span
-                                                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                        project.status === 'approved'
-                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                                                            : project.status === 'rejected'
-                                                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
-                                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
-                                                    }`}
-                                                >
-                                                    {project.status === 'pending' ? 'Pending Approval' : project.status}
-                                                </span>
                                             </div>
-                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
-                                                {project.description}
-                                            </p>
+
                                             <div className="flex gap-2 flex-wrap">
                                                 {project.project && (
                                                     <a
