@@ -46,7 +46,8 @@ class User extends Authenticatable
         'updated_at',
         'wakatime_api_key',
         'last_online',
-        'activation_token'
+        'activation_token',
+        // 'xp'
     ];
 
     /**
