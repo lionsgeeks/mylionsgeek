@@ -71,6 +71,11 @@ class StudentProjectController extends Controller
             'status' => 'pending',
         ]);
 
+        // xp lpgique
+        // $user = auth()->user();
+        // $user->xp = ($user->xp ?? 0) + 500;
+        // $user->save();
+
         return back()->with('success', 'Project created!');
     }
 
