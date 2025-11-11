@@ -157,4 +157,32 @@ class PostController extends Controller
             'post' => $post
         ]);
     }
+    public function storePost(Request $request)
+    {
+        $request->validate([
+            'description' => 'nullable|string',
+            // 'image' => 'nullable|image'
+        ]);
+        // dd($request->all());
+        if ($request->hasFile('image')) {
+            # code...
+            $file = $request->file('image');
+            $fileName = $file->hashName();
+            $file->move(public_path('/storage/img/posts'), $fileName);
+            $request->image = $fileName;
+        };
+        Post::create([
+            'user_id' => Auth::user()->id,
+            'description' => $request->description,
+            'image' => $request->image != "null" ? $request->image : Null
+        ]);
+        $posts = Post::withCount(['likes', 'comments'])
+            ->latest()
+            ->get();
+            
+        return back()->with([
+            'success' => 'Post Updated SuccesFully',
+            'posts' => $posts
+        ]);
+    }
 }

@@ -1,84 +1,107 @@
 import React, { useState } from 'react';
 import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
+import { router } from '@inertiajs/react';
 
-const CreatePostModal = () => {
+const CreatePostModal = ({ onOpenChange, user, onPostsChange }) => {
     const [postText, setPostText] = useState('');
-    const [showModal, setShowModal] = useState(true);
+    const [postImage, setPostImage] = useState(null);
+    const [preview, setPreview] = useState(null);
+    const handleImagePreview = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const newPreview = URL.createObjectURL(file);
+        setPreview(newPreview);
+        setPostImage(file);
+    }
+    //! create post
+    const handelCreatePost = () => {
+        const newFormData = new FormData()
+        newFormData.append('description', postText)
+        newFormData.append('image', postImage)
+
+        router.post('/posts/store/post', newFormData, {
+            onSuccess: (page) => {
+                //console.log('create post success');
+                const newPosts = page.props.post;
+                console.log(newPosts);
+
+                onPostsChange(newPosts);
+                onOpenChange(false)
+            },
+            onError: (error) => {
+                //console.log(error);
+            }
+        })
+    }
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col bg-white dark:bg-[#212529]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-[70%] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-beta overflow-hidden transition-all duration-300">
 
                 {/* Header */}
-                <div className="p-5 border-b border-gray-200 dark:border-[#1f2326] flex items-center justify-between">
+                <div className="p-5 border-b border-gray-200 dark:border-dark_gray flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-full bg-[#ffc801] flex items-center justify-center text-[#171717] font-bold text-lg">
-                                YM
-                            </div>
-                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#51b04f] rounded-full border-2 border-white dark:border-[#212529]"></div>
-                        </div>
-
+                        <Avatar
+                            className="w-12 h-12 overflow-hidden"
+                            image={user?.image}
+                            name={user?.name}
+                            lastActivity={user?.last_online || null}
+                            onlineCircleClass="hidden"
+                        />
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-base text-[#171717] dark:text-[#fafafa]">
-                                    Yahya Moussair
-                                </h3>
-                                <button className="text-sm px-2 py-0.5 rounded text-gray-600 hover:text-[#171717] dark:text-gray-400 dark:hover:text-[#fafafa]">
-                                    ▼
-                                </button>
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Post to Anyone</p>
+                            <h3 className="font-semibold text-base text-dark dark:text-light">{user?.name}</h3>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Create post</span>
                         </div>
                     </div>
 
                     <button
-                        onClick={() => setShowModal(false)}
-                        className="p-2 rounded-full transition hover:bg-gray-100 dark:hover:bg-[#1f2326] text-[#171717] dark:text-[#fafafa]"
+                        onClick={() => onOpenChange(false)}
+                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark_gray text-dark dark:text-light transition"
+                        aria-label="Close modal"
                     >
-                        <X size={24} />
+                        <X size={22} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-5">
+                <div className="flex-1 flex flex-col gap-4 px-5 py-4 overflow-y-auto">
                     <textarea
                         value={postText}
                         onChange={(e) => setPostText(e.target.value)}
                         placeholder="What do you want to talk about?"
-                        className="w-full min-h-[200px] resize-none text-lg outline-none bg-white dark:bg-[#212529] text-[#171717] dark:text-[#fafafa] placeholder-gray-400 dark:placeholder-gray-500"
+                        className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
+                    {preview && <img
+                        src={preview}
+                        alt="Preview"
+                        className="w-full object-cover rounded-xl"
+                    />}
                 </div>
 
                 {/* Footer */}
-                <div className="p-5 border-t border-gray-200 dark:border-[#1f2326]">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            {[Image, Calendar, Award, Plus].map((Icon, i) => (
-                                <button
-                                    key={i}
-                                    className="p-2 rounded-full transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1f2326]"
-                                >
-                                    <Icon size={20} />
-                                </button>
-                            ))}
-                        </div>
-
-                        <button className="p-2 rounded-full transition text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1f2326]">
-                            <Smile size={20} />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <button className="p-2 rounded-full transition flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1f2326]">
-                            <Clock size={20} />
-                        </button>
-
+                <div className="p-5 border-t border-gray-200 dark:border-dark_gray bg-white/50 dark:bg-beta/70 backdrop-blur-sm">
+                    <div className="flex w-full items-center justify-between mb-3">
+                        <label
+                            htmlFor="imageUpload"
+                            className="p-2 rounded-full hover:bg-gray-100 cursor-pointer dark:hover:bg-dark_gray text-gray-600 dark:text-gray-400 transition flex items-center justify-center"
+                        >
+                            <Image size={20} />
+                            <input
+                                id="imageUpload"
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImagePreview(e)}
+                                className="hidden"
+                            />
+                        </label>
                         <button
                             disabled={!postText.trim()}
-                            className={`px-6 py-2.5 rounded-full font-semibold transition 
-                ${postText.trim()
-                                    ? 'bg-[#ffc801] text-[#171717] hover:opacity-90'
-                                    : 'bg-gray-200 dark:bg-[#1f2326] text-gray-400 cursor-not-allowed'}`}
+                            onClick={() => handelCreatePost()}
+                            className={`px-6 py-2.5 rounded-full font-semibold transition-all duration-200 shadow-sm
+                   ${postText.trim()
+                                    ? 'bg-alpha text-dark hover:opacity-90'
+                                    : 'bg-gray-200 dark:bg-dark_gray text-gray-400 cursor-not-allowed'}
+                 `}
                         >
                             Post
                         </button>

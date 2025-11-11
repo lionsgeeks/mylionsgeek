@@ -15,4 +15,5 @@ Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
     Route::put('/comments/{id}', [PostController::class, 'updateComment']);
     Route::delete('/post/{id}', [PostController::class, 'deletePost']);
     Route::post('/post/{id}', [PostController::class, 'editPost']);
+    Route::post('/store/post', [PostController::class, 'storePost']);
 });

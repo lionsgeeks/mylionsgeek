@@ -4,7 +4,7 @@ import { Avatar } from '@/components/ui/avatar';
 
 
 const LeftSideBar = ({ user }) => {
-    //console.log(user);
+    ////console.log(user);
     const getField = (user) => {
         if (user?.formation?.name?.toLowerCase().includes('creator')) {
             return 'Content Creator'

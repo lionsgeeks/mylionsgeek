@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import PostCard from '../../../../components/post/PostCard';
+import CreatePostModal from '../../../../components/post/CreatePostModal';
 
 export default function CenterFeed({ user, posts }) {
-    
+    const [allPosts, setAllPosts] = useState(posts)
+
     const [openAddPost, setOpenAddPost] = useState(false)
     return (
         <>
@@ -44,7 +46,8 @@ export default function CenterFeed({ user, posts }) {
 
                 <PostCard
                     user={user}
-                    posts={posts.posts}
+                    posts={allPosts}
+                    onPostsChange={setAllPosts}
                 />
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
                 {/* Post Header */}
@@ -190,6 +193,7 @@ export default function CenterFeed({ user, posts }) {
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
                     <p>More posts would appear here...</p>
                 </div> */}
+                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} onPostsChange={setAllPosts} />}
             </div >
         </>
     );

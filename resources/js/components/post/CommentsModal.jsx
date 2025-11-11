@@ -9,6 +9,7 @@ import { CheckIcon, Pencil, Trash } from "lucide-react";
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved }) {
   //(postId);
 
+
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,7 +112,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       const res = await axios.put(`/posts/comments/${commentId}`, {
         'comment': editedComment
       });
-      //console.log(res.data);
+      ////console.log(res.data);
       setComments((prevComments) =>
         prevComments.map((comment) => comment.id === commentId ? { ...comment, comment: editedComment } : comment)
       )

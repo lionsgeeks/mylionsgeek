@@ -155,7 +155,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
             .catch(() => setEvents([]))
             .finally(() => setLoadingEvents(false));
     }, [calendarFor]);
-    //console.log(places);
+    ////console.log(places);
     const studioCount = places.filter(p => p.place_type === "studio").length;
     const coworkCount = places.filter(p => p.place_type === "cowork").length;
     const meetingCount = places.filter(p => p.place_type === "meeting_room").length;
