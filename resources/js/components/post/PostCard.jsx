@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import axios from 'axios';
@@ -23,25 +23,6 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
     const [undoTimer, setUndoTimer] = useState(null);
     const [postText, setPostText] = useState(null);
     const [postImage, setPostImage] = useState(null);
-
-    const dropdownRef = useRef(null);
-
-    // 🩵 Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setOpenDetails(null);
-            }
-        };
-
-        if (openDetails) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [openDetails]);
 
     // 🩵 Toggle Like
     const toggleLike = async (postId) => {
@@ -83,14 +64,13 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
         }));
     };
 
-    // 🩵 Delete Post
+    //! Delete Post
     const handleDeletePost = (postId) => {
         try {
             router.delete(`/posts/post/${postId}`, {
                 onSuccess: () => {
                     const newPosts = posts?.filter((p) => p?.id !== postId);
                     onPostsChange(newPosts);
-                    setOpenDetails(null); // Close dropdown after delete
                 },
             });
         } catch (error) {
@@ -130,8 +110,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
     };
 
     // 🩵 Open/close post details dropdown
-    const handleOpenDetails = (post, e) => {
-        e.stopPropagation(); // Prevent event bubbling
+        const handleOpenDetails = (post) => {
         setOpenDetails((prev) => (prev === post?.id ? null : post?.id));
         setPostText(post?.description);
         setPostImage(post?.image);
@@ -155,7 +134,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                         const editedPost = page.props.posts?.find((p) => p?.id === post?.id);
                         if (editedPost) {
                             onPostsChange((prevPosts) =>
-                                prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
+                                prevposts?.map((p) => (p?.id === editedpost?.id ? editedPost : p))
                             );
                         }
                     },
@@ -205,11 +184,11 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex items-center gap-2" ref={openDetails === p?.id ? dropdownRef : null}>
+                                <div className="flex items-center gap-2">
                                     {user?.id === p?.user_id && (
                                         <button
                                             className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded"
-                                            onClick={(e) => handleOpenDetails(p, e)}
+                                            onClick={() => handleOpenDetails(p)}
                                         >
                                             <MoreHorizontal className="w-5 h-5" />
                                             {openDetails === p?.id && (

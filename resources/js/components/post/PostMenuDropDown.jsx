@@ -4,7 +4,6 @@ import DeleteModal from '../DeleteModal';
 import EditPost from './EditPost';
 
 const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit, postText, onPostTextChange, postImage, onPostImageChange, handleEditePost }) => {
-
     return (
         <>
             {/* Dropdown */}
@@ -15,7 +14,9 @@ const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDele
                             <Edit size={16} />
                             Update
                         </li>
-                        <li onClick={() => openChangeDelete(true)} className="flex items-center gap-2 px-4 py-2 cursor-pointer text-sm text-error">
+                        <li onClick={() => {
+                            openChangeDelete(true)
+                        }} className="flex items-center gap-2 px-4 py-2 cursor-pointer text-sm text-error">
                             <Trash2 size={16} />
                             Delete
                         </li>
