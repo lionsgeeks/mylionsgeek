@@ -110,8 +110,8 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
     };
 
     // 🩵 Open/close post details dropdown
-        const handleOpenDetails = (post) => {
-        setOpenDetails((prev) => (prev === post?.id ? null : post?.id));
+    const handleOpenDetails = (post) => {
+        setOpenDetails(post?.id);
         setPostText(post?.description);
         setPostImage(post?.image);
     };
@@ -134,7 +134,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                         const editedPost = page.props.posts?.find((p) => p?.id === post?.id);
                         if (editedPost) {
                             onPostsChange((prevPosts) =>
-                                prevposts?.map((p) => (p?.id === editedpost?.id ? editedPost : p))
+                                prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
                             );
                         }
                     },
