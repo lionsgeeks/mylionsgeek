@@ -35,8 +35,7 @@ class UsersController extends Controller
 {
     public function index()
     {
-        $allUsers = User::with('userProjects')
-            ->where('role', '!=', 'admin')
+        $allUsers = User::where('role', '!=', 'admin')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -145,8 +144,6 @@ class UsersController extends Controller
             : null;
 
         // Paginated data
-        $userProjects = $this->getUserProjects($user, $request);
-        $collaborativeProjects = $this->getCollaborativeProjects($user, $request);
         $reservations = $this->getReservations($user, $request);
         $posts = $this->getPosts($user);
         $absences = $this->getAbsences($user, $request);
@@ -182,8 +179,6 @@ class UsersController extends Controller
             'stats' => $stats,
             'trainings' => $allFormations,
             'assignedComputer' => $this->formatComputer($assignedComputer),
-            'userProjects' => $userProjects,
-            'collaborativeProjects' => $collaborativeProjects,
             'posts' => $posts,
             'reservations' => $reservations,
             'discipline' => $discipline,
@@ -192,47 +187,6 @@ class UsersController extends Controller
         ]);
     }
 
-    private function getUserProjects(User $user, Request $request)
-    {
-        $projects = UserProject::where('user_id', $user->id)
-            ->latest()
-            ->paginate(10, ['*'], 'userProjects_page', $request->get('userProjects_page', 1))
-            ->onEachSide(1);
-
-        return [
-            'data' => $projects->map(fn($p) => [
-                'id' => $p->id,
-                'title' => $p->title,
-                'description' => $p->description,
-                'image' => $p->image,
-                'url' => $p->url,
-                'created_at' => (string) $p->created_at,
-            ]),
-            'meta' => $this->getPaginationMeta($projects),
-        ];
-    }
-
-    private function getCollaborativeProjects(User $user, Request $request)
-    {
-        $projects = Project::whereHas('users', fn($q) => $q->where('user_id', $user->id))
-            ->orWhere('created_by', $user->id)
-            ->latest()
-            ->paginate(10, ['*'], 'collaborativeProjects_page', $request->get('collaborativeProjects_page', 1))
-            ->onEachSide(1);
-
-        return [
-            'data' => $projects->map(fn($p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'description' => $p->description,
-                'photo' => $p->photo,
-                'link' => $p->link,
-                'status' => $p->status,
-                'created_at' => (string) $p->created_at,
-            ]),
-            'meta' => $this->getPaginationMeta($projects),
-        ];
-    }
 
     private function getReservations(User $user, Request $request)
     {
