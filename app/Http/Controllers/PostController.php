@@ -157,4 +157,8 @@ class PostController extends Controller
             'post' => $post
         ]);
     }
+    public function storePost(Request $request)
+    {
+        dd($request->all());
+    }
 }

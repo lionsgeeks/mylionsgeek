@@ -11,7 +11,7 @@ import { router } from '@inertiajs/react';
 
 // Function to calculate "time ago"
 
-const PostCard = ({ user, posts }) => {
+const PostCard = ({ user, posts, onPostsChange }) => {
 
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
@@ -22,13 +22,12 @@ const PostCard = ({ user, posts }) => {
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
     const [commentsPostIds, setCommentsPostIds] = useState([]);
-    const [allPosts, setAllPosts] = useState(posts)
     const [undoState, setUndoState] = useState(false)
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     const [undoTimer, setUndoTimer] = useState(null);
     const [postText, setPostText] = useState(null)
     const [postImage, setPostImage] = useState(null)
-    // console.log(allPosts);
+    // console.log(posts);
 
 
     useEffect(() => {
@@ -37,7 +36,7 @@ const PostCard = ({ user, posts }) => {
         const commentIds = [];
         const likesCounts = {};
         const commentsCounts = {};
-        allPosts?.forEach((post) => {
+        posts?.forEach((post) => {
             if (post?.liked_by_current_user) likedIds.push(post?.id);
             likesCounts[post?.id] = post?.likes_count;
             if (post?.commented_by_current_user) commentIds.push(post?.id);
@@ -96,8 +95,8 @@ const PostCard = ({ user, posts }) => {
         try {
             router.delete(`/posts/post/${postId}`);
             // console.log('Post deleted successfully');
-            const newAllPosts = allPosts.filter(p => p.id !== postId);
-            setAllPosts(newAllPosts);
+            const newposts = posts.filter(p => p.id !== postId);
+            onPostsChange(newposts);
         } catch (error) {
             console.log('Failed to delete post:', error);
         }
@@ -109,8 +108,8 @@ const PostCard = ({ user, posts }) => {
         };
     }, [undoTimer]);
     const handlePostRemoved = (postId) => {
-        const newPosts = allPosts.filter(p => p.id !== postId);
-        setAllPosts(newPosts);
+        const newPosts = posts.filter(p => p.id !== postId);
+        onPostsChange(newPosts);
         //console.log('🗑️ Post removed successfully');
     };
     const handleRemoveClick = (postId) => {
@@ -152,7 +151,7 @@ const PostCard = ({ user, posts }) => {
                     setOpenDetails(null);
                     const editedPost = page.props.posts?.posts?.find(p => p.id === post.id);
                     if (editedPost) {
-                        setAllPosts(prevPosts =>
+                        onPostsChange(prevPosts =>
                             prevPosts.map(p => p.id === editedPost.id ? editedPost : p)
                         );
                     }
@@ -165,7 +164,7 @@ const PostCard = ({ user, posts }) => {
     return (
         <>
             {
-                allPosts.map((p, index) => {
+                posts.map((p, index) => {
                     const isLiked = likedPostIds.includes(p?.id);
                     const likeCount = likesCountMap[p?.id] !== undefined ? likesCountMap[p?.id] : p?.likes_count;
                     return (
