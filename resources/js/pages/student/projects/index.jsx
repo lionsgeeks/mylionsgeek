@@ -300,6 +300,12 @@ export default function ProjectsIndex({ projects }) {
                                                     </a>
                                                 )}
                                             </div>
+                                            {project.status === 'rejected' && (
+                                            <div className="text-red-500 py-2">
+                                                <span>Your project is rejected : </span>
+                                                <span>{project.rejection_reason}</span>
+                                            </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

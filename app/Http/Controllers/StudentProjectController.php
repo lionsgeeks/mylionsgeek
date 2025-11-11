@@ -17,7 +17,6 @@ class StudentProjectController extends Controller
     public function index()
     {
         $projects = auth()->user()->studentProjects()
-            ->where('status', '!=', 'rejected')
             ->latest()
             ->paginate(15)
             ->through(fn($project) => [
@@ -26,6 +25,7 @@ class StudentProjectController extends Controller
                 'description' => $project->description,
                 'image' => $project->image,
                 'project' => $project->project,
+                'rejection_reason' => $project->rejection_reason,
                 'status' => $project->status,
                 'created_at' => (string) $project->created_at,
             ]);
