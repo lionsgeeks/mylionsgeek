@@ -5,9 +5,9 @@ import CenterFeed from './partials/CenterFeed';
 import RightSideBar from './partials/RightSideBar';
 
 
-export default function StudentFeed({ user, posts }) {
-    // console.log(posts);
-    
+export default function ({ user, posts }) {
+    //console.log(posts);
+
     return (
         <>
             <AppLayout>

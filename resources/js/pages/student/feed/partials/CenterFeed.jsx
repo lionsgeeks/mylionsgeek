@@ -5,7 +5,7 @@ import PostCard from '../../../../components/post/PostCard';
 import CreatePostModal from '../../../../components/post/CreatePostModal';
 
 export default function CenterFeed({ user, posts }) {
-    const [allPosts, setAllPosts] = useState(posts.posts)
+    const [allPosts, setAllPosts] = useState(posts)
 
     const [openAddPost, setOpenAddPost] = useState(false)
     return (

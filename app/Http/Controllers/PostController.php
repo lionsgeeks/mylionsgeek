@@ -176,9 +176,13 @@ class PostController extends Controller
             'description' => $request->description,
             'image' => $request->image != "null" ? $request->image : Null
         ]);
+        $posts = Post::withCount(['likes', 'comments'])
+            ->latest()
+            ->get();
+            
         return back()->with([
             'success' => 'Post Updated SuccesFully',
-            'posts' => Post::where('user_id', Auth::user()->id)->get()
+            'posts' => $posts
         ]);
     }
 }

@@ -19,9 +19,9 @@ return new class extends Migration
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
             $table->string('description');
-            $table->string('image');
-            $table->string('hashTags');
-            $table->integer('status');
+            $table->string('image')->nullable();
+            $table->string('hashTags')->nullable();
+            $table->integer('status')->nullable();
             $table->timestamps();
         });
     }

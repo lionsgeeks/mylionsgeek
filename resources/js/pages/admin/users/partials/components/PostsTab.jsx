@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import PostCard from "../../../../../components/PostCard";
+import PostCard from "../../../../../components/post/PostCard";
 
 export default function PostsTab({ posts, user }) {
   return (
@@ -13,7 +13,7 @@ export default function PostsTab({ posts, user }) {
           })
         }
       </div>
-      
+
     </>
   );
 }
