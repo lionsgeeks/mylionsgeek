@@ -106,7 +106,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw] bg-light dark:bg-dark">
                 <DialogHeader>
                     <DialogTitle>
                         Reservation — Step {currentStep}/3
@@ -135,7 +135,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
                             <div>
                                 <Label htmlFor="description">Description</Label>
                                 <Textarea
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] bg-light dark:bg-dark"
                                     id="description"
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}

@@ -84,14 +84,14 @@ export default function ReservationsPage() {
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-6xl mx-auto px-6 pb-6">
+      <div className="max-w-6xl mx-auto px-6 pb-6 bg-light dark:bg-dark">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">My Reservations</h1>
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
         </div>
         {/* Controls */}
-        <div className="bg-card rounded-xl border border-sidebar-border/70 shadow-sm">
-      
+        <div className="rounded-xl border border-sidebar-border/70 shadow-sm bg-light dark:bg-dark">
+
           <div className="p-4 sm:p-6">
             <ReservationTable
               columns={columns}

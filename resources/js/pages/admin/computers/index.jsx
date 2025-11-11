@@ -87,10 +87,23 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         return list;
     }, [computers, query, users, damaged, assigned]);
 
+    const userAssignmentMap = useMemo(() => {
+        const map = new Map();
+        computers.forEach(c => {
+            if (c.assignedUserId) {
+                map.set(c.assignedUserId, c.id);
+            }
+        });
+        return map;
+    }, [computers]);
+
+    const usersWithComputers = useMemo(() => new Set(Array.from(userAssignmentMap.keys())), [userAssignmentMap]);
+
     const quickAssignMatches = useMemo(() => {
         const q = quickAssign.search.trim().toLowerCase();
         return users
             .filter(u => {
+                if (usersWithComputers.has(u.id)) return false;
                 if (!q) return true;
                 return (
                     u.name.toLowerCase().includes(q) ||
@@ -98,7 +111,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                 );
             })
             .slice(0, 12);
-    }, [quickAssign.search, users]);
+    }, [quickAssign.search, users, usersWithComputers]);
 
     function resetFilters() {
         setQuery('');
@@ -643,7 +656,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <div className="max-h-48 overflow-auto border rounded">
                                         {users
                                             .filter(u => {
+                                                const assignedComputerId = userAssignmentMap.get(u.id);
+                                                if (assignedComputerId && assignedComputerId !== editTargetId) {
+                                                    return false;
+                                                }
                                                 const q = userSearch.trim().toLowerCase();
+                                                if (!q) return true;
                                                 return (
                                                     u.name.toLowerCase().includes(q) ||
                                                     (u.email || '').toLowerCase().includes(q)

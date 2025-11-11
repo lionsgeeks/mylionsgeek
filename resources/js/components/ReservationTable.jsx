@@ -4,7 +4,7 @@ import Rolegard from './rolegard';
 
 const ReservationTable = ({ columns, data, onRowClick, renderActions }) => {
   return (
-    <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
+    <div className="overflow-x-auto rounded-xl border border-sidebar-border/70 bg-light dark:bg-dark">
       <table className="min-w-full table-auto divide-y divide-sidebar-border/70">
         <thead className="bg-secondary/50">
           <tr>
