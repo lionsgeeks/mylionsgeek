@@ -118,4 +118,47 @@ class StudentProjectController extends Controller
 
         return back()->with('success', 'Project rejected!');
     }
+
+    public function update(Request $request, StudentProject $studentProject)
+    {
+        if ($studentProject->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        if (!in_array($studentProject->status, ['pending', 'rejected'])) {
+            return back()->withErrors(['message' => 'You can only update pending or rejected projects.']);
+        }
+
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'project' => 'nullable|url',
+            'image' => 'nullable|image|max:2048',
+        ]);
+
+        $hasImage = $request->hasFile('image');
+        $hasProject = !empty($validated['project']);
+        $isValid = ($hasProject || $hasImage);
+
+        if (!$isValid) {
+            return back()->withErrors(['message' => 'Khassek t3emer chi haja.']);
+        }
+
+        $imagePath = $studentProject->image;
+        if ($hasImage) {
+            $imagePath = $request->file('image')->store('projects', 'public');
+        }
+
+        $studentProject->update([
+            'title' => $validated['title'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'project' => $validated['project'] ?? null,
+            'image' => $imagePath,
+            'status' => 'pending',
+            'rejection_reason' => null,
+        ]);
+
+        return back()->with('success', 'Project updated!');
+    }
+
 }
