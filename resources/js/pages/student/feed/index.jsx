@@ -17,7 +17,7 @@ export default function ({ user, posts }) {
                         <div className="max-w-7xl mx-auto px-4">
                             <div className="grid relative grid-cols-1 lg:grid-cols-12 gap-6">
                                 <LeftSideBar user={user} />
-                                <CenterFeed user={user} posts={posts} />
+                                <CenterFeed user={user} posts={posts.posts} />
                                 <RightSideBar />
                             </div>
                         </div>
