@@ -216,9 +216,13 @@ const PostCard = ({ user, posts, onPostsChange }) => {
                             </div>
 
                             {/* Media Container (Image/Video) */}
-                            <div className="relative bg-black aspect-video mt-3">
-                                <img src={`/storage/img/posts/${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
-                            </div>
+                            {
+                                p?.image &&
+                                <div className="relative bg-black aspect-video mt-3">
+                                    
+                                    <img src={`/storage/img/posts/${p?.image}`} alt="Post media" className="w-full h-full object-cover" />
+                                </div>
+                            }
 
                             {/* Engagement Stats */}
                             <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray">

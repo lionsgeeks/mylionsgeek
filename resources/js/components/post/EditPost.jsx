@@ -48,11 +48,13 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                         placeholder="What do you want to talk about?"
                         className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
-                    <img
-                        src={preview}
-                        alt="Preview"
-                        className="w-full object-cover rounded-xl"
-                    />
+                    {
+                        preview && <img
+                            src={preview}
+                            alt="Preview"
+                            className="w-full object-cover rounded-xl"
+                        />
+                    }
                 </div>
 
                 {/* Footer */}
@@ -66,7 +68,7 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                             <input
                                 id="imageUpload"
                                 type="file"
-                                accept="image/*"
+                                accept="image"
                                 // onChange={(e) => onPostImageChange(e.target.files[0])} // your handler
                                 onChange={(e) => handleImagePreview(e)}
                                 className="hidden"

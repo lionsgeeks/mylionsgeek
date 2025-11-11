@@ -3,7 +3,7 @@ import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
 
-const CreatePostModal = ({ onOpenChange, user }) => {
+const CreatePostModal = ({ onOpenChange, user , onPostsChange }) => {
     const [postText, setPostText] = useState('');
     const [postImage, setPostImage] = useState(null);
     const [preview, setPreview] = useState(null);
@@ -21,12 +21,14 @@ const CreatePostModal = ({ onOpenChange, user }) => {
         newFormData.append('image', postImage)
 
         router.post('/posts/store/post', newFormData, {
-            onSuccess: () => {
+            onSuccess: (page) => {
                 console.log('create post success');
+                const newPosts = page.props.posts?.posts;
+                onPostsChange(newPosts);
                 onOpenChange(false)
             },
             onError: (error) => {
-                console.log('failed Create : ' + error);
+                console.log(error);
             }
         })
     }
@@ -46,7 +48,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                         />
                         <div>
                             <h3 className="font-semibold text-base text-dark dark:text-light">{user?.name}</h3>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Editing post</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Create post</span>
                         </div>
                     </div>
 

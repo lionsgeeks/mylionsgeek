@@ -193,7 +193,7 @@ export default function CenterFeed({ user, posts }) {
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
                     <p>More posts would appear here...</p>
                 </div> */}
-                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} />}
+                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} onPostsChange={setAllPosts} />}
             </div >
         </>
     );
