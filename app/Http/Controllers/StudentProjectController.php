@@ -48,39 +48,12 @@ class StudentProjectController extends Controller
 
         $hasImage = $request->hasFile('image');
         $hasProject = !empty($validated['project']);
-        $hasTitle = !empty($validated['title']);
-        $hasDescription = !empty($validated['description']);
 
-        $isValid = (
-            //title + img + desc + project
-            ($hasTitle && $hasImage && $hasDescription && $hasProject) ||
-            //title + img + desc
-            ($hasTitle && $hasImage && $hasDescription && !$hasProject) ||
-            //title + img + project
-            ($hasTitle && $hasImage && !$hasDescription && $hasProject) ||
-            //title + desc + project
-            ($hasTitle && !$hasImage && $hasDescription && $hasProject) ||
-            //img + desc + project
-            (!$hasTitle && $hasImage && $hasDescription && $hasProject) ||
-            //title + img 
-            ($hasTitle && $hasImage && !$hasDescription && !$hasProject) ||
-            //img
-            (!$hasTitle && $hasImage && !$hasDescription && !$hasProject) ||
-            //img + desc
-            (!$hasTitle && $hasImage && $hasDescription && !$hasProject) ||
-            //img + project
-            (!$hasTitle && $hasImage && !$hasDescription && $hasProject) ||
-            //title + project        
-            ($hasTitle && !$hasImage && !$hasDescription && $hasProject) ||
-            //project        
-            (!$hasTitle && !$hasImage && !$hasDescription && $hasProject) ||
-            //desc + project        
-            (!$hasTitle && !$hasImage && $hasDescription && $hasProject)
-        );
+        $isValid = ($hasProject || $hasImage);
 
         if (!$isValid) {
-            throw ValidationException::withMessages([
-                'message' => 'add url or image',
+            return back()->withErrors([
+                'message' => 'khassek t3emer chi haja.',
             ]);
         }
 
