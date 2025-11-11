@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -96,10 +96,17 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
                                 className="flex items-center justify-between p-2 rounded-md hover:bg-zinc-700 cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
-                                    <Avatar className="h-7 w-7">
+                                    {/* <Avatar className="h-7 w-7">
                                         <AvatarImage src={member.image ? `/storage/${member.image}` : null} alt={member.name} />
                                         <AvatarFallback className="text-xs bg-zinc-600 text-white">{member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
+                                    </Avatar> */}
+                                    <Avatar
+                                        className="h-7 w-7 overflow-hidden relative z-50"
+                                        image={member.image}
+                                        name={member.name}
+                                        lastActivity={member.last_online || null}
+                                        onlineCircleClass="hidden"
+                                    />
                                     <span className="text-sm text-white">{member.name}</span>
                                 </div>
                                 {isSelected && <CheckCircle className="h-4 w-4 text-alpha" />}
@@ -1068,10 +1075,17 @@ const TaskModal = ({
                                     <h3 className="text-sm font-semibold text-dark dark:text-light mb-3">Members</h3>
                                     <div className="flex items-center gap-2 flex-wrap">
                                         {selectedTask.assignees?.map(assignee => (
-                                            <Avatar key={assignee.id} className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(assignee)}>
-                                                <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
-                                                <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{assignee.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar>
+                                            // <Avatar key={assignee.id} className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(assignee)}>
+                                            //     <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
+                                            //     <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{assignee.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                            // </Avatar>
+                                            <Avatar
+                                                className="h-8 w-8 overflow-hidden relative z-50"
+                                                image={assignee.image}
+                                                name={assignee.name}
+                                                lastActivity={assignee.last_online || null}
+                                                onlineCircleClass="hidden"
+                                            />
                                         ))}
                                         <Button
                                             variant="ghost"
@@ -1138,10 +1152,17 @@ const TaskModal = ({
                                 <div className="space-y-4">
                                     {(taskData.comments || []).map(comment => (
                                         <div key={comment.id} className="flex gap-4 p-4 bg-light/80 dark:bg-neutral-800 rounded-xl border border-alpha/20 shadow-sm">
-                                            <Avatar className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(comment.user)}>
+                                            {/* <Avatar className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(comment.user)}>
                                                 <AvatarImage src={comment.user?.image ? `/storage/${comment.user.image}` : null} alt={comment.user?.name} />
                                                 <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{comment.user?.name?.slice(0, 2).toUpperCase() || '??'}</AvatarFallback>
-                                            </Avatar>
+                                            </Avatar> */}
+                                            <Avatar
+                                                className="h-8 w-8 overflow-hidden relative z-50"
+                                                image={comment.user?.image}
+                                                name={comment.user?.name}
+                                                lastActivity={comment.user?.last_online || null}
+                                                onlineCircleClass="hidden"
+                                            />
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <div className="flex items-baseline gap-2">
@@ -1200,12 +1221,19 @@ const TaskModal = ({
 
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
-                                <Avatar className="h-16 w-16">
+                                {/* <Avatar className="h-16 w-16">
                                     <AvatarImage src={selectedUser.image ? `/storage/${selectedUser.image}` : null} alt={selectedUser.name} />
                                     <AvatarFallback className="text-lg bg-alpha/20 text-dark dark:text-light">
                                         {selectedUser.name?.slice(0, 2).toUpperCase() || '??'}
                                     </AvatarFallback>
-                                </Avatar>
+                                </Avatar> */}
+                                <Avatar
+                                    className="h-16 w-16 overflow-hidden relative z-50"
+                                    image={selectedUser.image}
+                                    name={selectedUser.name}
+                                    lastActivity={selectedUser.last_online || null}
+                                    onlineCircleClass="hidden"
+                                />
                                 <div>
                                     <h3 className="text-lg font-semibold text-dark dark:text-light">{selectedUser.name}</h3>
                                     <p className="text-sm text-dark/60 dark:text-light/60">{selectedUser.email}</p>

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -11,13 +11,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { 
-    Search, 
-    Plus, 
-    MoreHorizontal, 
-    Edit, 
-    Trash, 
-    Mail, 
+import {
+    Search,
+    Plus,
+    MoreHorizontal,
+    Edit,
+    Trash,
+    Mail,
     CheckCircle,
     Clock,
     AlertCircle,
@@ -68,10 +68,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [taskToDelete, setTaskToDelete] = useState(null);
     const [sortCriteria, setSortCriteria] = useState('due_date'); // 'due_date', 'priority', 'status'
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
-    
+
     // Get flash messages from Inertia
     const { flash } = usePage().props;
-    
+
     // Handle flash messages
     useEffect(() => {
         if (flash?.success) {
@@ -80,7 +80,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             setFlashMessage({ message: flash.error, type: 'error' });
         }
     }, [flash]);
-    
+
     // Form for creating tasks
     const { data: taskData, setData: setTaskData, post: createTask, processing: isCreating } = useForm({
         title: '',
@@ -96,7 +96,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
 
     const filteredTasks = useMemo(() => {
         let filtered = safeTasks.filter((task) => {
-            if (searchTerm && !(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) && 
+            if (searchTerm && !(task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) &&
                 !(task.description || '').toLowerCase().includes(searchTerm.toLowerCase())) {
                 return false;
             }
@@ -135,13 +135,13 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
 
     const handleCreateTask = (e) => {
         e.preventDefault();
-        
+
         // Ensure project_id is included in the data
         const taskDataWithProject = {
             ...taskData,
             project_id: projectId
         };
-        
+
         //(taskDataWithProject);
         createTask('/admin/tasks', taskDataWithProject, {
             data: taskDataWithProject,
@@ -160,9 +160,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             },
             onError: (errors) => {
                 console.error('Task creation errors:', errors);
-                setFlashMessage({ 
-                    message: 'Failed to create task: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to create task: ' + Object.values(errors).flat().join(', '),
+                    type: 'error'
                 });
             }
         });
@@ -186,9 +186,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 setFlashMessage({ message: 'Task updated successfully!', type: 'success' });
             },
             onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to update task: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to update task: ' + Object.values(errors).flat().join(', '),
+                    type: 'error'
                 });
             }
         });
@@ -203,15 +203,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const handleTogglePin = (task) => {
         router.post(`/admin/tasks/${task.id}/pin`, {}, {
             onSuccess: () => {
-                setFlashMessage({ 
-                    message: task.is_pinned ? 'Task unpinned successfully!' : 'Task pinned successfully!', 
-                    type: 'success' 
+                setFlashMessage({
+                    message: task.is_pinned ? 'Task unpinned successfully!' : 'Task pinned successfully!',
+                    type: 'success'
                 });
             },
             onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to toggle pin: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to toggle pin: ' + Object.values(errors).flat().join(', '),
+                    type: 'error'
                 });
             }
         });
@@ -231,9 +231,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     setTaskToDelete(null);
                 },
                 onError: (errors) => {
-                    setFlashMessage({ 
-                        message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '), 
-                        type: 'error' 
+                    setFlashMessage({
+                        message: 'Failed to delete task: ' + Object.values(errors).flat().join(', '),
+                        type: 'error'
                     });
                     setIsConfirmDeleteModalOpen(false);
                     setTaskToDelete(null);
@@ -248,9 +248,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 setFlashMessage({ message: 'Task status updated successfully!', type: 'success' });
             },
             onError: (errors) => {
-                setFlashMessage({ 
-                    message: 'Failed to update status: ' + Object.values(errors).flat().join(', '), 
-                    type: 'error' 
+                setFlashMessage({
+                    message: 'Failed to update status: ' + Object.values(errors).flat().join(', '),
+                    type: 'error'
                 });
             }
         });
@@ -262,11 +262,11 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             "in-progress": { color: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300", icon: Clock },
             todo: { color: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", icon: AlertCircle }
         };
-        
+
         const safeStatus = status || 'todo';
         const config = statusConfig[safeStatus] || statusConfig.todo;
         const Icon = config.icon;
-        
+
         return (
             <Badge variant="outline" className={`${config.color} border-none flex items-center gap-1`}>
                 <Icon className="h-3 w-3" />
@@ -281,10 +281,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             medium: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
             low: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
         };
-        
+
         const safePriority = priority || 'medium';
         const colorClass = priorityConfig[safePriority] || priorityConfig.medium;
-        
+
         return (
             <Badge variant="outline" className={`${colorClass} border-none`}>
                 {safePriority.charAt(0).toUpperCase() + safePriority.slice(1)}
@@ -302,15 +302,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     onClose={() => setFlashMessage(null)}
                 />
             )}
-            
+
             {/* Header and Filters */}
             <div className="flex flex-col md:flex-row justify-between  items-center gap-2">
                 <div className="flex items-center rounded-lg bg-neutral-200 dark:bg-neutral-800 gap-2">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search tasks..." 
+                        <Input
+                            type="search"
+                            placeholder="Search tasks..."
                             className="pl-8 w-[200px] md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -393,10 +393,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     </Select> */}
 
                 </div>
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Task
-                    </Button>
+                <Button onClick={() => setIsCreateModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                </Button>
             </div>
 
             {/* Tasks Table */}
@@ -422,8 +422,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             </TableRow>
                         ) : (
                             filteredTasks.map((task) => (
-                                <TableRow 
-                                    key={task.id} 
+                                <TableRow
+                                    key={task.id}
                                     className={`cursor-pointer hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
                                     onClick={() => handleTaskClick(task)}
                                 >
@@ -458,12 +458,19 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                 <>
                                                     <div className="flex -space-x-1">
                                                         {task.assignees.slice(0, 3).map((assignee) => (
-                                                            <Avatar key={assignee.id} className="h-6 w-6 border border-white dark:border-gray-800">
-                                                                <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
-                                                                <AvatarFallback className="text-xs">
-                                                                    {assignee.name.charAt(0).toUpperCase()}
-                                                                </AvatarFallback>
-                                                            </Avatar>
+                                                            // <Avatar key={assignee.id} className="h-6 w-6 border border-white dark:border-gray-800">
+                                                            //     <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
+                                                            //     <AvatarFallback className="text-xs">
+                                                            //         {assignee.name.charAt(0).toUpperCase()}
+                                                            //     </AvatarFallback>
+                                                            // </Avatar>
+                                                            <Avatar
+                                                                className="w-12 h-12 overflow-hidden relative z-50"
+                                                                image={assignee.image}
+                                                                name={assignee.name}
+                                                                lastActivity={assignee.last_online || null}
+                                                                onlineCircleClass="hidden"
+                                                            />
                                                         ))}
                                                     </div>
                                                     {task.assignees.length > 3 && (
@@ -490,9 +497,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                         <div className="flex justify-end gap-2">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         className="h-8 w-8 p-0"
                                                         onClick={(e) => e.stopPropagation()} // Prevent row click
                                                     >
@@ -527,7 +534,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className="text-destructive"
                                                         onClick={() => handleDeleteTask(task)}
                                                     >
@@ -557,8 +564,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     <form onSubmit={handleCreateTask} className="space-y-4">
                         <div>
                             <Label htmlFor="title">Task Title *</Label>
-                            <Input 
-                                id="title" 
+                            <Input
+                                id="title"
                                 value={taskData.title}
                                 onChange={(e) => setTaskData('title', e.target.value)}
                                 placeholder="Enter task title..."
@@ -567,8 +574,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Textarea 
-                                id="description" 
+                            <Textarea
+                                id="description"
                                 value={taskData.description}
                                 onChange={(e) => setTaskData('description', e.target.value)}
                                 placeholder="Enter task description..."
@@ -578,8 +585,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="priority">Priority</Label>
-                                <Select 
-                                    value={taskData.priority} 
+                                <Select
+                                    value={taskData.priority}
                                     onValueChange={(value) => setTaskData('priority', value)}
                                 >
                                     <SelectTrigger>
@@ -595,8 +602,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             </div>
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select 
-                                    value={taskData.status} 
+                                <Select
+                                    value={taskData.status}
                                     onValueChange={(value) => setTaskData('status', value)}
                                 >
                                     <SelectTrigger>
@@ -613,8 +620,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="assignees">Assignees</Label>
-                            <Select 
-                                value="" 
+                            <Select
+                                value=""
                                 onValueChange={(value) => {
                                     if (value && !taskData.assignees.includes(value)) {
                                         setTaskData('assignees', [...taskData.assignees, value]);
@@ -654,8 +661,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="due_date">Due Date</Label>
-                            <Input 
-                                id="due_date" 
+                            <Input
+                                id="due_date"
                                 type="date"
                                 value={taskData.due_date}
                                 onChange={(e) => setTaskData('due_date', e.target.value)}
@@ -663,8 +670,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </div>
                         <div>
                             <Label htmlFor="notes">Notes</Label>
-                            <Textarea 
-                                id="notes" 
+                            <Textarea
+                                id="notes"
                                 value={taskData.notes}
                                 onChange={(e) => setTaskData('notes', e.target.value)}
                                 placeholder="Add any additional notes..."

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MessageSquare, Send, AtSign } from 'lucide-react';
@@ -16,9 +16,9 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
         if (newComment.trim()) {
             const newCommentObj = {
                 id: comments.length + 1,
-                user: { 
-                    name: "You", 
-                    avatar: "/placeholder.svg?height=32&width=32" 
+                user: {
+                    name: "You",
+                    avatar: "/placeholder.svg?height=32&width=32"
                 },
                 content: newComment,
                 timestamp: new Date().toISOString()
@@ -42,12 +42,12 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
     const handleInputChange = (e) => {
         const value = e.target.value;
         setNewComment(value);
-        
+
         // Check for @ mentions
         const cursorPos = e.target.selectionStart;
         const textBeforeCursor = value.substring(0, cursorPos);
         const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-        
+
         if (lastAtIndex !== -1) {
             const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
             if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n')) {
@@ -81,10 +81,17 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
                 {comments.map((comment, index) => (
                     <div key={comment.id}>
                         <div className="flex gap-3">
-                            <Avatar className="h-8 w-8">
+                            {/* <Avatar className="h-8 w-8">
                                 <AvatarImage src={comment.user.avatar} />
                                 <AvatarFallback>{comment.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                            </Avatar> */}
+                            <Avatar
+                                className="h-8 w-8 overflow-hidden relative z-50"
+                                image={comment.user.image}
+                                name={comment.user.name}
+                                lastActivity={comment.user.last_online || null}
+                                onlineCircleClass="hidden"
+                            />
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-medium text-sm">{comment.user.name}</span>
@@ -119,7 +126,7 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
                             <Send className="h-4 w-4" />
                         </Button>
                     </div>
-                    
+
                     {/* Mention dropdown */}
                     {showMentions && (
                         <div className="border rounded-lg bg-background shadow-lg p-2 max-h-32 overflow-y-auto">
