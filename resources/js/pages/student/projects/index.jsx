@@ -267,11 +267,11 @@ export default function ProjectsIndex({ projects }) {
 
 
                                         {/* Content */}
-                                        <div className="flex-1">
+                                        <div className="flex flex-col gap-3">
                                             <div className="flex justify-between items-start">
-                                                <div className='my-3'>
-                                                    <h3 className="text-lg font-semibold mb-1">{project.title}</h3>
-                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
+                                                <div className=''>
+                                                    <h3 className="text-lg font-semibold">{project.title}</h3>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
                                                         {project.description}
                                                     </p>
                                                     <p className="text-sm text-neutral-500">
@@ -305,6 +305,11 @@ export default function ProjectsIndex({ projects }) {
                                                 <span>Your project is rejected : </span>
                                                 <span>{project.rejection_reason}</span>
                                             </div>
+                                            )}
+                                            {(project.status === "pending" || project.status === "rejected") && (
+                                            <Button className="w-full cursor-pointer text-dark hover:text-light dark:hover:text-dark" onClick={() => handleEdit(project)}>
+                                                Edit project
+                                            </Button>
                                             )}
                                         </div>
                                     </div>
