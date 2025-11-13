@@ -77,12 +77,16 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     formation_id: null,
                     roles: [],
                 })
-            },
-            onError: (errors) => {
-                //(errors);
             }
         });
     };
+
+    const [copy, setCopy] = useState(true);
+    const emailsToCopy = useMemo(() => {
+        return filteredUsers?.map(u => u?.email)
+            .filter(Boolean)
+            .join(", ");
+    }, [filteredUsers]);
 
     const handleCopyEmails = () => {
         if (!emailsToCopy) return;
@@ -91,14 +95,6 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
             setTimeout(() => setCopy(true), 1500);
         });
     };
-
-    const [copy, setCopy] = useState(true);
-
-    const emailsToCopy = useMemo(() => {
-        return filteredUsers?.map(u => u?.email)
-            .filter(Boolean)
-            .join(", ");
-    }, [filteredUsers]);
 
     const availableRoles = [
         'admin',
@@ -110,7 +106,6 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         'moderator',
         'recruiter',
     ];
-
 
     const currentRoles = data.roles;
     const filteredRoles = availableRoles.filter(role => !currentRoles.includes(role));
@@ -140,6 +135,10 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         };
     }, [dropdownOpen]);
 
+    // Shared input classes for consistent styling
+    const inputClass =
+        "bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder:text-[#0a0a0a]/50 dark:placeholder:text-white focus:ring-2 focus:ring-alpha";
+
     return (
         <>
             <div className="flex justify-between items-center">
@@ -147,10 +146,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     <h1 className="text-5xl">All Members</h1>
                     <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p>
                 </div>
+
                 <div className="flex items-center gap-3">
                     <Button
                         onClick={handleCopyEmails}
-                        className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                        className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#d9d9d9]"
                         disabled={!emailsToCopy}
                     >
                         {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
@@ -197,10 +197,10 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button className="bg-alpha dark:hover:bg-alpha dark:hover:text-black hover:text-white text-black dark:text-black">Cancel</Button>
+                                    <Button className="bg-alpha dark:hover:bg-alpha hover:text-white text-black">Cancel</Button>
                                 </DialogClose>
-                                <Button onClick={triggerExport} className="bg-alpha dark:hover:bg-alpha dark:hover:text-black hover:text-white text-black dark:text-black">Export</Button>
-                                <Button onClick={() => { window.open('/admin/users/export', '_blank'); }} className="bg-alpha dark:hover:bg-alpha hover:text-white dark:hover:text-black text-black dark:text-black">Export All</Button>
+                                <Button onClick={triggerExport} className="bg-alpha hover:text-white text-black">Export</Button>
+                                <Button onClick={() => { window.open('/admin/users/export', '_blank'); }} className="bg-alpha hover:text-white text-black">Export All</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -212,6 +212,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                 Add User
                             </Button>
                         </DialogTrigger>
+
                         <DialogContent className="w-[80%] max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Add User</DialogTitle>
@@ -219,34 +220,20 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                     Fill in the information to create a new user profile.
                                 </DialogDescription>
                             </DialogHeader>
+
                             <form onSubmit={handleSubmit} className="mt-6 space-y-6">
                                 <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+
                                     {/* Name Field */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="name">Name</Label>
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            value={data.name}
-                                            onChange={handleChange('name')}
-                                            placeholder="Enter full name"
-                                        />
-                                        {errors.name && <span className="text-red-500 text-xs">{errors.name}</span>}
+                                        <Input id="name" name="name" value={data.name} onChange={handleChange('name')} placeholder="Enter full name" className={inputClass} />
                                     </div>
 
                                     {/* Email Field */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="email">Email</Label>
-                                        <Input
-                                            id="email"
-                                            name="email"
-                                            type="email"
-                                            value={data.email}
-                                            onChange={handleChange('email')}
-                                            placeholder="Enter email address"
-                                        />
-                                        {errors.email && <span className="text-red-500 text-xs">{errors.email}</span>}
-                                        {message && <span className="text-yellow-500 text-xs">{message}</span>}
+                                        <Input id="email" name="email" type="email" value={data.email} onChange={handleChange('email')} placeholder="Enter email address" className={inputClass} />
                                     </div>
 
                                     {/* Formation Field */}
@@ -257,37 +244,47 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             value={data.formation_id?.toString() || ''}
                                             onValueChange={(selectedId) => setData('formation_id', Number(selectedId))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className={inputClass}>
                                                 <SelectValue placeholder="Select Formation" />
                                             </SelectTrigger>
-                                            <SelectContent>
-                                                {trainings?.map((t, index) => (
-                                                    <SelectItem key={index} value={t.id.toString()}>
+                                            <SelectContent className={inputClass}>
+                                                {trainings?.map((t) => (
+                                                    <SelectItem key={t.id} value={t.id.toString()}>
                                                         {t.name}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {errors.formation_id && <span className="text-red-500 text-xs">{errors.formation_id}</span>}
                                     </div>
 
-                                    {/* Roles Field - Multi-Select with Same Style as Other Selects */}
+                                    {/* Roles Field */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="roles">Roles</Label>
+                                        {currentRoles.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {currentRoles.map((role) => (
+                                                    <span key={role} className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium">
+                                                        {role}
+                                                        <button type="button" onClick={() => removeRole(role)} className="hover:bg-primary/20 rounded-full p-0.5">
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         <div ref={rolesInputRef} className="relative">
-                                            {/* Trigger button styled like SelectTrigger */}
                                             <button
                                                 type="button"
                                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className={`${inputClass} flex h-10 w-full items-center justify-between rounded-md border border-input px-3 py-2 text-sm`}
                                             >
-                                                <span className={currentRoles.length === 0 ? "text-muted-foreground" : ""}>
+                                                <span className={currentRoles.length === 0 ? "text-muted-foreground text-white" : ""}>
                                                     {currentRoles.length === 0 ? 'Select Roles' : `${currentRoles.length} role(s) selected`}
                                                 </span>
                                                 <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                                             </button>
 
-                                            {/* Dropdown menu */}
                                             {dropdownOpen && (
                                                 <div className="absolute z-50 mt-2 w-full rounded-md border border-input bg-popover text-popover-foreground shadow-md">
                                                     <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
@@ -302,7 +299,6 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                                     className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
                                                                     onClick={() => addRole(role)}
                                                                 >
-                                                                    {/* <Checkbox checked={false} className="pointer-events-none" /> */}
                                                                     <span className="text-sm">{role}</span>
                                                                 </div>
                                                             ))
@@ -311,31 +307,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 </div>
                                             )}
                                         </div>
-
-                                        {/* Selected Roles Tags */}
-                                        {currentRoles.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {currentRoles.map((role) => (
-                                                    <span
-                                                        key={role}
-                                                        className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium"
-                                                    >
-                                                        {role}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeRole(role)}
-                                                            className="hover:bg-primary/20 rounded-full p-0.5"
-                                                        >
-                                                            <X className="h-3 w-3" />
-                                                        </button>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {errors.roles && <span className="text-red-500 text-xs">{errors.roles}</span>}
                                     </div>
 
-                                    {/* Access Studio Field */}
+                                    {/* Access Studio */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="access-studio">Access Studio</Label>
                                         <Select
@@ -343,18 +317,17 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             value={data.access_studio?.toString() || ''}
                                             onValueChange={(selectedId) => setData('access_studio', Number(selectedId))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className={inputClass}>
                                                 <SelectValue placeholder="Select Access Studio" />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className={inputClass}>
                                                 <SelectItem value={'1'}>Yes</SelectItem>
                                                 <SelectItem value={'0'}>No</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        {errors.access_studio && <span className="text-red-500 text-xs">{errors.access_studio}</span>}
                                     </div>
 
-                                    {/* Access Cowork Field */}
+                                    {/* Access Cowork */}
                                     <div className='flex flex-col gap-2'>
                                         <Label htmlFor="access-cowork">Access Cowork</Label>
                                         <Select
@@ -362,15 +335,14 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             value={data.access_cowork?.toString() || ''}
                                             onValueChange={(selectedId) => setData('access_cowork', Number(selectedId))}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className={inputClass}>
                                                 <SelectValue placeholder="Select Access Cowork" />
                                             </SelectTrigger>
-                                            <SelectContent>
+                                            <SelectContent className={inputClass}>
                                                 <SelectItem value={'1'}>Yes</SelectItem>
                                                 <SelectItem value={'0'}>No</SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        {errors.access_cowork && <span className="text-red-500 text-xs">{errors.access_cowork}</span>}
                                     </div>
                                 </div>
 

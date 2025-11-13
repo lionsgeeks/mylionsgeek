@@ -31,14 +31,12 @@ const Users = ({ users, trainings }) => {
         const promotionTitles = alltrainingPromotion.map(p => {
             return p.name.slice(
                 p.name.toLowerCase().indexOf('promo'),
-                p.name.search(/\d/)+1
+                p.name.search(/\d/) + 1
             ).trim();
         });
         const allPromotion = [...new Set(promotionTitles)]
         setAllPromo(allPromotion)
     }, []);
-
-    console.log(allPromo);
     const filteredUsers = useMemo(() => {
         const promoTrainingIds = filters.promo === null
             ? null
