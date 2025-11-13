@@ -27,16 +27,18 @@ const Users = ({ users, trainings }) => {
     useEffect(() => {
         const alltrainingPromotion = trainings.filter(t => t.name.toLowerCase().includes('promo'));
 
+
         const promotionTitles = alltrainingPromotion.map(p => {
             return p.name.slice(
                 p.name.toLowerCase().indexOf('promo'),
-                p.name.toLowerCase().indexOf('(')
+                p.name.search(/\d/)+1
             ).trim();
         });
         const allPromotion = [...new Set(promotionTitles)]
         setAllPromo(allPromotion)
     }, []);
 
+    console.log(allPromo);
     const filteredUsers = useMemo(() => {
         const promoTrainingIds = filters.promo === null
             ? null
