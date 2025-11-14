@@ -143,7 +143,9 @@ class LeaderboardController extends Controller
                     $endDate   = now()->endOfWeek()->toDateString();   // e.g. 2025-09-28
 
                     $response = Http::timeout(15)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get('https://wakatime.com/api/v1/users/current/summaries', [
@@ -153,7 +155,9 @@ class LeaderboardController extends Controller
                 } else {
                     // Default endpoints
                     $response = Http::timeout(15)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/{$endpoint}");
@@ -177,7 +181,7 @@ class LeaderboardController extends Controller
                         foreach ($data['data'] ?? [] as $day) {
                             $dayDate = $day['range']['date'] ?? null;
                             $daySeconds = $day['grand_total']['total_seconds'] ?? 0;
-                            
+
                             if ($dayDate && $daySeconds > 0) {
                                 $dailyBreakdown[] = [
                                     'date' => $dayDate,
@@ -418,7 +422,9 @@ class LeaderboardController extends Controller
             foreach ($users as $user) {
                 try {
                     $response = Http::timeout(15)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get('https://wakatime.com/api/v1/users/current/summaries', [
@@ -486,7 +492,9 @@ class LeaderboardController extends Controller
             foreach ($users as $user) {
                 try {
                     $response = Http::timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/stats/last_7_days");
@@ -537,37 +545,49 @@ class LeaderboardController extends Controller
             $responses = Http::pool(function ($pool) use ($user, $wakatimeRange) {
                 return [
                     'best_day' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/best_day?range={$wakatimeRange}"),
 
                     'daily_average' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/daily_average?range={$wakatimeRange}"),
 
                     'languages' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/languages?range={$wakatimeRange}"),
 
                     'projects' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/projects?range={$wakatimeRange}"),
 
                     'editors' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/editors?range={$wakatimeRange}"),
 
                     'machines' => $pool->timeout(10)
-                        ->withoutVerifying()
+                        ->withOptions([
+                            'verify' => storage_path('certs/cacert.pem'),
+                        ])
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/machines?range={$wakatimeRange}"),
