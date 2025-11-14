@@ -18,7 +18,7 @@ class StudentController extends Controller
         $posts = $userController->getPosts();
         $user = Auth::user();
         // dd($posts);
-        return Inertia::render('student/feed/index', [
+        return Inertia::render('students/user/index', [
             'posts' => $posts,
             'user' => $user
         ]);

@@ -279,7 +279,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 onClick={() => setDropdownOpen(!dropdownOpen)}
                                                 className={`${inputClass} flex h-10 w-full items-center justify-between rounded-md border border-input px-3 py-2 text-sm`}
                                             >
-                                                <span className={currentRoles.length === 0 ? "text-muted-foreground text-white" : ""}>
+                                                <span className={currentRoles.length === 0 ? "text-white" : ""}>
                                                     {currentRoles.length === 0 ? 'Select Roles' : `${currentRoles.length} role(s) selected`}
                                                 </span>
                                                 <ChevronDown className={`h-4 w-4 opacity-50 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />

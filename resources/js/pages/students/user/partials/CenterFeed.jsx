@@ -27,7 +27,7 @@ export default function CenterFeed({ user, posts }) {
                         </button>
                     </div>
                     <div className="flex justify-around">
-                        <button className="flex items-center gap-2 hover:bg-dark/5 dark:hover:bg-light/5 px-4 py-2 rounded-full">
+                        <button onClick={() => setOpenAddPost(true)} className="flex items-center gap-2 hover:bg-dark/5 dark:hover:bg-light/5 px-4 py-2 rounded-full">
                             <Image className="w-5 h-5 text-beta dark:text-alpha" />
                             <span className="text-sm text-beta dark:text-alpha">Media</span>
                         </button>
