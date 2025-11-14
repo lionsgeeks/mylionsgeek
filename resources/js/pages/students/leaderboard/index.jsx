@@ -43,12 +43,22 @@ export default function Leaderboard() {
         insights: 'true'
       });
 
-
-      const res = await fetch(`/leaderboard/data?${params}`);
+      const url = `/leaderboard/data?${params}`;
+      console.log('Fetching leaderboard data from:', url);
+      
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
-
-      //(data);
-
+      console.log('Leaderboard data received:', data);
+      console.log('Number of users:', data.data?.length || 0);
+      
+      if (data.data && data.data.length > 0) {
+        console.log('First user data sample:', data.data[0]);
+      }
 
       // Store all data for client-side filtering
       setAllLeaderboardData(data.data || []);
@@ -63,6 +73,10 @@ export default function Leaderboard() {
       showNotification('Leaderboard updated successfully!', 'success');
     } catch (err) {
       console.error('Failed to fetch leaderboard data', err);
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack
+      });
       showNotification('Failed to update leaderboard data', 'error');
     } finally {
       setIsRefreshing(false);
@@ -123,9 +137,19 @@ export default function Leaderboard() {
   }, [filteredData]);
 
   useEffect(() => {
+    console.log('Leaderboard component mounted, fetching data...');
     fetchLeaderboardData();
     fetchTopWinners();
   }, [fetchLeaderboardData, fetchTopWinners]);
+
+  // Debug: Log when leaderboardData changes
+  useEffect(() => {
+    console.log('Leaderboard data updated:', {
+      count: leaderboardData.length,
+      firstUser: leaderboardData[0] || null,
+      allData: leaderboardData
+    });
+  }, [leaderboardData]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -305,6 +329,7 @@ export default function Leaderboard() {
             leaderboardData={leaderboardData}
             NoResults={NoResults}
             searchText={searchText}
+            setSearchText={setSearchText}
             fetchLeaderboardData={fetchLeaderboardData}
             showSidePanel={showSidePanel}
             getRankIcon={getRankIcon}
@@ -317,7 +342,6 @@ export default function Leaderboard() {
             userInsights={userInsights}
             handleUserClick={handleUserClick}
             getRankColor={getRankColor}
-
           />
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-dark/70 dark:text-light/70">

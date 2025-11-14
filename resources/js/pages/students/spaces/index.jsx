@@ -259,19 +259,21 @@ export default function SpacesPage() {
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
                 </div>
 
-                <div className="inline-flex items-center rounded-xl border border-gray-200 dark:border-sidebar-border/70 p-1 bg-white dark:bg-card shadow-sm mb-6">
-                    {TABS.map(tab => (
+                <div className="inline-flex items-center rounded-xl border border-gray-200 dark:border-sidebar-border/70 p-1 bg-alpha/30 backdrop-blur-sm text-black shadow-sm mb-6">
+                    {TABS.map((tab) => (
                         <button
                             key={tab.key}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === tab.key
-                                ? 'bg-black text-white dark:bg-white dark:text-black shadow'
-                                : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10'}`}
+                                    ? 'bg-alpha text-white shadow'
+                                    : 'text-gray-700 dark:text-gray-200 hover:bg-alpha/20 dark:hover:bg-alpha/10'
+                                }`}
                             onClick={() => setType(tab.key)}
                         >
                             {tab.label}
                         </button>
                     ))}
                 </div>
+
 
                 {type === 'all' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
@@ -396,11 +398,10 @@ export default function SpacesPage() {
                                             <button
                                                 key={studio.id}
                                                 onClick={() => setTempSelectedId(studio.id)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${
-                                                    tempSelectedId === studio.id
-                                                        ? 'border-[#FFC801] bg-[#FFC801]/10'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                }`}
+                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${tempSelectedId === studio.id
+                                                    && 'border-[#FFC801] bg-[#FFC801]/10'
+
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     {studio.image && (
@@ -414,11 +415,10 @@ export default function SpacesPage() {
                                                         <div className="font-medium">{studio.name}</div>
                                                         <div className="text-xs text-muted-foreground capitalize">{studio.type}</div>
                                                     </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                                        studio.state
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${studio.state
                                                             ? 'bg-green-100 text-green-700'
                                                             : 'bg-red-100 text-red-700'
-                                                    }`}>
+                                                        }`}>
                                                         {studio.state ? 'Available' : 'Busy'}
                                                     </span>
                                                 </div>
@@ -429,11 +429,10 @@ export default function SpacesPage() {
                                             <button
                                                 key={cowork.id}
                                                 onClick={() => setTempSelectedId(cowork.id)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${
-                                                    tempSelectedId === cowork.id
+                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${tempSelectedId === cowork.id
                                                         ? 'border-[#FFC801] bg-[#FFC801]/10'
                                                         : 'border-gray-200 hover:border-gray-300'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">

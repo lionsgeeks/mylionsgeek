@@ -30,6 +30,7 @@ Route::get('/places', [PlacesController::class, 'getPlacesJson'])
 Route::post('/reservations/store', [ReservationController::class, 'storemobile'])
     ->name('reservations.store');
 
+Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile']);
 
 Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/profile.php';
