@@ -164,13 +164,15 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                         <div className="p-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
-                                    <Avatar
-                                        className="w-12 h-12 overflow-hidden relative z-50"
-                                        image={p?.user_image}
-                                        name={p?.user_name}
-                                        lastActivity={p?.user_last_online || null}
-                                        onlineCircleClass="hidden"
-                                    />
+                                    <Link href={takeToUserProfile(p)} className="font-semibold text-sm text-gray-900 dark:text-light">
+                                        <Avatar
+                                            className="w-12 h-12 overflow-hidden relative z-50"
+                                            image={p?.user_image}
+                                            name={p?.user_name}
+                                            lastActivity={p?.user_last_online || null}
+                                            onlineCircleClass="hidden"
+                                        />
+                                    </Link>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <Link href={takeToUserProfile(p)} className="font-semibold text-sm text-gray-900 dark:text-light">

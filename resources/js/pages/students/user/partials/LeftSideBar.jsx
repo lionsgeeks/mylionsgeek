@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Users, BookOpen, Hash } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
+import { Link } from '@inertiajs/react';
 
 
 const LeftSideBar = ({ user }) => {
@@ -23,17 +24,21 @@ const LeftSideBar = ({ user }) => {
                     </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">
-                            <Avatar
-                                className="w-20 h-20 rounded-full overflow-hidden border-2 dark:border-light border-dark"
-                                image={user?.image}
-                                name={user?.name}
-                                lastActivity={user?.last_online || null}
-                                onlineCircleClass="hidden"
-                            />
+                            <Link href={'/user/' + user.id}>
+                                <Avatar
+                                    className="w-20 h-20 rounded-full overflow-hidden"
+                                    image={user?.image}
+                                    name={user?.name}
+                                    lastActivity={user?.last_online || null}
+                                    onlineCircleClass="hidden"
+                                />
+                            </Link>
                         </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
-                            {user?.name}
-                        </h3>
+                        <Link href={'/user/' + user.id}>
+                            <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
+                                {user?.name}
+                            </h3>
+                        </Link>
                         <p className="text-xs text-dark dark:text-light mt-1">
                             {getField(user)}
                         </p>
