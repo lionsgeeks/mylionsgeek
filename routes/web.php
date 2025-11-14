@@ -27,13 +27,6 @@ Route::middleware(['auth', 'verified', 'role:admin,coach'])->prefix('admin')->gr
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
 
-Route::middleware(['auth', 'verified', 'role:student'])->group(function () {
-    Route::get('/feed', function () {
-        return Inertia::render('student/dashboard');
-    })->name('student.dashboard');
-});
-
-
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
@@ -48,7 +41,7 @@ require __DIR__ . '/admin/reservations.php';
 require __DIR__ . '/admin/projects.php';
 require __DIR__ . '/admin/recuiter.php';
 require __DIR__ . '/admin/games.php';
-require __DIR__ . '/student/feed.php';
+require __DIR__ . '/student/student.php';
 require __DIR__ . '/studentProjects.php';
 require __DIR__ . '/admin/project-approvals.php';
 require __DIR__ . '/student/posts.php';

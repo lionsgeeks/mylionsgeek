@@ -6,7 +6,7 @@ import { timeAgo } from '../../lib/utils'
 import DeleteModal from "../DeleteModal";
 import { CheckIcon, Pencil, Trash } from "lucide-react";
 
-function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved }) {
+function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved, takeToUserProfile }) {
   //(postId);
 
 
@@ -20,7 +20,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [submitting, setSubmitting] = useState(false);
   const commentsEndRef = useRef(null);
   const { auth } = usePage().props;
-  
+
 
   // ✅ Prevent body scroll when modal is open
   useEffect(() => {
@@ -193,7 +193,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
               comments.map((c) => (
                 <div key={c.id} className="flex gap-3 animate-in fade-in slide-in-from-left-2">
-                  <Link href={`/admin/users/${c.user_id}`}>
+                  <Link href={takeToUserProfile(c)}>
                     <Avatar
                       className="w-11 h-11 flex-shrink-0"
                       image={c.user_image}
@@ -209,7 +209,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                     <div className="flex justify-between mb-1">
                       <div className="flex flex-col pb-2">
                         <Link
-                          href={`/admin/users/${c.user_id}`}
+                          href={takeToUserProfile(c)}
                           className="font-bold text-white dark:text-yellow-300 text-sm truncate"
                         >
                           {c.user_name || "User"}

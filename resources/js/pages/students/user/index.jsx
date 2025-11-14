@@ -24,7 +24,6 @@ export default function ({ user, posts }) {
                     </div>
                 </div>
             </AppLayout>
-
         </>
     );
 }

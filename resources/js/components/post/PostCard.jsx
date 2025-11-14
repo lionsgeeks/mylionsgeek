@@ -7,9 +7,10 @@ import CommentsModal from './CommentsModal';
 import LikesModal from './LikesModal';
 import PostMenuDropDown from './PostMenuDropDown';
 import UndoRemove from '../UndoRemove';
-import { router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 
 const PostCard = ({ user, posts = [], onPostsChange }) => {
+    const { auth } = usePage().props
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -145,7 +146,12 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
         }
     };
 
-    // 🩵 UI Render
+    const takeToUserProfile = (post) => {
+        if (auth.user.role.includes('admin')) {
+            return '/admin/users/' + post?.user_id
+        }
+        return '/users/' + post?.user_id
+    }
     return (
         <>
             {posts?.map((p, index) => {
@@ -167,9 +173,9 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                                     />
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-sm text-gray-900 dark:text-light">
+                                            <Link href={takeToUserProfile(p)} className="font-semibold text-sm text-gray-900 dark:text-light">
                                                 {p?.user_name}
-                                            </h3>
+                                            </Link>
                                             <span className="text-gray-500 dark:text-alpha text-xs">
                                                 • Following
                                             </span>
@@ -313,6 +319,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                     currentUser={user}
                     onCommentAdded={() => handleCommentAdded(commentsOpenFor)}
                     onCommentRemoved={() => handleCommentRemoved(commentsOpenFor)}
+                    takeToUserProfile={takeToUserProfile}
                 />
             )}
 
@@ -321,6 +328,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                 postId={likesOpenFor}
                 open={!!likesOpenFor}
                 onClose={() => setLikesOpenFor(null)}
+                takeToUserProfile={takeToUserProfile}
             />
         </>
     );

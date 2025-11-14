@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import axios from "axios";
 import { useInitials } from "@/hooks/use-initials";
-import { Avatar,  } from "@/components/ui/avatar";
+import { Avatar, } from "@/components/ui/avatar";
 import { Link } from '@inertiajs/react';
 import { timeAgo } from '../../lib/utils'
 
-const LikesModal = ({ postId, open, onClose }) => {
+const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
     const [likes, setLikes] = useState([]);
     const [loading, setLoading] = useState(false);
     const getInitials = useInitials();
@@ -89,25 +89,36 @@ const LikesModal = ({ postId, open, onClose }) => {
                                 className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-beta border border-alpha/10 hover:border-alpha/30 transition duration-200 hover:shadow-md"
                             >
                                 {/* Avatar */}
-                                <Link href={'/admin/users/' + like.user_id}>
-                                    <Avatar className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30" image={like.user_image} name={like.user_name} width="w-11" height="h-11" />
-                                </Link>
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <Link className="font-semibold text-beta dark:text-light text-sm truncate" href={'/admin/users/' + like.user_id}>
+                                <Link
+                                    href={takeToUserProfile(like)}
+                                    className="flex items-center w-full gap-3 p-2 rounded-lg hover:bg-light_gray transition-colors"
+                                >
+                                    {/* Avatar */}
+                                    <Avatar
+                                        className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30"
+                                        image={like.user_image}
+                                        name={like.user_name}
+                                        width="w-11"
+                                        height="h-11"
+                                    />
 
-                                        {like.user_name}
-                                    </Link>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        {like.user_status}
+                                    {/* User info */}
+                                    <div className="flex justify-between items-start flex-1">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-dark dark:text-light truncate max-w-[150px]">
+                                                {like.user_name}
+                                            </span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                {like.user_status}
+                                            </span>
+                                        </div>
+
+                                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                                            {timeAgo(like.created_at)}
+                                        </span>
                                     </div>
+                                </Link>
 
-                                </div>
-
-                                {/* Heart Icon */}
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    {timeAgo(like.created_at)}
-                                </div>
                             </div>
                         ))
                     )}

@@ -22,15 +22,15 @@ const CreatePostModal = ({ onOpenChange, user, onPostsChange }) => {
 
         router.post('/posts/store/post', newFormData, {
             onSuccess: (page) => {
-                //console.log('create post success');
-                const newPosts = page.props.post;
+                // console.log('create post success');
+                const newPosts = page.props.posts;
                 console.log(newPosts);
 
                 onPostsChange(newPosts);
                 onOpenChange(false)
             },
             onError: (error) => {
-                //console.log(error);
+                console.log(error);
             }
         })
     }

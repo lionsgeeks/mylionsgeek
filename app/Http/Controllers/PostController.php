@@ -161,7 +161,7 @@ class PostController extends Controller
     {
         $request->validate([
             'description' => 'nullable|string',
-            // 'image' => 'nullable|image'
+            'image' => 'nullable|image|mimes:png,jpg'
         ]);
         // dd($request->all());
         if ($request->hasFile('image')) {
