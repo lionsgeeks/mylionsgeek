@@ -339,6 +339,110 @@ class ReservationsController extends Controller
         return back()->with('success', 'Reservation canceled');
     }
 
+    public function update(Request $request, int $reservation)
+    {
+        if (!Schema::hasTable('reservations')) {
+            return back()->with('error', 'Reservations table missing');
+        }
+
+        // Get the reservation
+        $reservationData = DB::table('reservations')->where('id', $reservation)->first();
+        if (!$reservationData) {
+            return back()->with('error', 'Reservation not found');
+        }
+
+        // Check if reservation is pending (not approved and not canceled)
+        if ($reservationData->approved || $reservationData->canceled) {
+            return back()->with('error', 'Only pending reservations can be updated');
+        }
+
+        // Check authorization: user must be the owner OR admin
+        $user = auth()->user();
+        $isOwner = (int) $reservationData->user_id === (int) $user->id;
+        
+        // Handle roles - ensure it's always an array
+        $userRoles = is_array($user->role) ? $user->role : (is_string($user->role) ? json_decode($user->role, true) ?? [$user->role] : [$user->role]);
+        $isAdmin = in_array('admin', $userRoles) || in_array('super_admin', $userRoles);
+
+        if (!$isOwner && !$isAdmin) {
+            return back()->with('error', 'You do not have permission to update this reservation');
+        }
+
+        // Validate request
+        $validated = $request->validate([
+            'studio_id' => 'required|integer|exists:studios,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+            'team_members' => 'nullable|array',
+            'team_members.*' => 'integer|exists:users,id',
+            'equipment' => 'nullable|array',
+            'equipment.*' => 'integer|exists:equipment,id',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $reservation) {
+                // Update the reservation
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'studio_id' => $validated['studio_id'],
+                    'title' => $validated['title'],
+                    'description' => $validated['description'] ?? '',
+                    'day' => $validated['day'],
+                    'start' => $validated['start'],
+                    'end' => $validated['end'],
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+
+                // Delete existing team members
+                if (Schema::hasTable('reservation_teams')) {
+                    DB::table('reservation_teams')->where('reservation_id', $reservation)->delete();
+                }
+
+                // Insert new team members
+                if (!empty($validated['team_members'])) {
+                    $teamData = array_map(function ($userId) use ($reservation) {
+                        return [
+                            'reservation_id' => $reservation,
+                            'user_id' => $userId,
+                            'created_at' => now()->toDateTimeString(),
+                            'updated_at' => now()->toDateTimeString(),
+                        ];
+                    }, $validated['team_members']);
+
+                    DB::table('reservation_teams')->insert($teamData);
+                }
+
+                // Delete existing equipment
+                if (Schema::hasTable('reservation_equipment')) {
+                    DB::table('reservation_equipment')->where('reservation_id', $reservation)->delete();
+                }
+
+                // Insert new equipment
+                if (!empty($validated['equipment'])) {
+                    $equipmentData = array_map(function ($equipmentId) use ($validated, $reservation) {
+                        return [
+                            'reservation_id' => $reservation,
+                            'equipment_id' => $equipmentId,
+                            'day' => $validated['day'],
+                            'start' => $validated['start'],
+                            'end' => $validated['end'],
+                            'created_at' => now()->toDateTimeString(),
+                            'updated_at' => now()->toDateTimeString(),
+                        ];
+                    }, $validated['equipment']);
+
+                    DB::table('reservation_equipment')->insert($equipmentData);
+                }
+            });
+
+            return back()->with('success', 'Reservation updated successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to update reservation: ' . $e->getMessage());
+        }
+    }
+
     public function info(int $reservation)
     {
         // Get reservation verification notes
@@ -2101,7 +2205,7 @@ class ReservationsController extends Controller
             $members = DB::table('reservation_teams as rt')
                 ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
                 ->where('rt.reservation_id', $reservation)
-                ->select('u.name', 'u.email', 'u.image as avatar', 'u.phone')
+                ->select('u.id as user_id', 'u.name', 'u.email', 'u.image as avatar', 'u.phone')
                 ->get()
                 ->map(function ($member) {
                     $img = $member->avatar ?? null;
@@ -2109,6 +2213,8 @@ class ReservationsController extends Controller
                         $img = 'img/profile/' . ltrim($img, '/');
                     }
                     return [
+                        'id' => $member->user_id,
+                        'user_id' => $member->user_id,
                         'name' => $member->name,
                         'email' => $member->email,
                         'phone' => $member->phone,
@@ -2137,6 +2243,8 @@ class ReservationsController extends Controller
             'notes' => $reservationData->description,
             'created_at' => $reservationData->created_at,
             'updated_at' => $reservationData->updated_at,
+            'user_id' => $reservationData->user_id,
+            'studio_id' => $reservationData->studio_id,
             'user_name' => $reservationData->user_name,
             'user_email' => $reservationData->user_email,
             'user_phone' => $reservationData->user_phone,

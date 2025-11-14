@@ -370,4 +370,47 @@ class ReservationController extends Controller
 
         return response()->json($users);
     }
+
+    public function storeReservationCoworkMobile(Request $request)
+    {
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult; // Must return JSON
+        }
+
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        $request->validate([
+            'table' => 'required|integer',
+            'seats' => 'required|integer|min:1',
+            'day' => 'required|date',
+            'start' => 'required',
+            'end' => 'required',
+        ]);
+
+
+
+        $reservation = ReservationCowork::create([
+            'table' => $request->table,
+            'seats' => $request->seats,
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'user_id' => $user->id,
+            'approved' => 1,
+            'canceled' => 0,
+            'passed' => 0,
+        ]);
+
+
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cowork reservation created and approved automatically',
+            'reservation' => $reservation,
+        ], 201);
+    }
 }

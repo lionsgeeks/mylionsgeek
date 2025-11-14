@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Avatar,  } from '@/components/ui/avatar';
-
+import * as AvatarPrimitive from '@radix-ui/react-avatar';
+import { AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 const TeamMemberSelector = ({ selected, onSelect }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [users, setUsers] = useState([]);
@@ -60,7 +60,10 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
     const handleRemove = (userId) => {
         onSelect(selected.filter((m) => m.id !== userId));
     };
-
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    };
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -84,8 +87,12 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                             key={member.id}
                             className="flex items-center gap-2 p-2 border rounded-lg"
                         >
-                            <Avatar className="h-8 w-8" image={member.image} name={member.name} onlineCircleClass="w-4 h-4" />
-                            <span className="flex-1 text-sm">{member.name}</span>
+                            <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
+                                <AvatarImage src={member.image} />
+                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
+                                    {getInitials(member.name)}
+                                </AvatarFallback>
+                            </AvatarPrimitive.Root>                               <span className="flex-1 text-sm">{member.name}</span>
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -132,8 +139,12 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
-                                            <Avatar className="h-10 w-10" image={user.image} name={user.name} onlineCircleClass="w-5 h-5" />
-                                            <span className="flex-1 text-sm">{user.name}</span>
+                                            <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
+                                                <AvatarImage src={user.image} />
+                                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
+                                                    {getInitials(user.name)}
+                                                </AvatarFallback>
+                                            </AvatarPrimitive.Root>                                            <span className="flex-1 text-sm">{user.name}</span>
                                         </div>
                                     );
                                 })}
