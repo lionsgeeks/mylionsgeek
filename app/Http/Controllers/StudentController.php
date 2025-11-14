@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
@@ -27,6 +28,9 @@ class StudentController extends Controller
     public function userProfile($id)
     {
         $user = User::find($id);
+        $userFollowers = Follower::where('followed_id', $id)->count();
+        $userFollowing = Follower::where('follower_id', $id)->count();
+        $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
         return Inertia::render('students/user/partials/StudentProfile', [
             'user' => [
                 'id' => $user->id,
@@ -43,49 +47,61 @@ class StudentController extends Controller
                 'name' => $user->name,
                 'status' => $user->status,
                 'created_at' => $user->created_at->format('Y-m-d'),
-                'formation' => $user->formation_id != Null ? $user->formation->name : 'jfdsl',
+                'formation' => $user->formation_id != Null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,
                 'cin' => $user->cin,
                 'access_studio' => $user->access_studio,
                 'access_cowork' => $user->access_cowork,
                 'role' => $user->role,
+                'followers' => $userFollowers,
+                'following' => $userFollowing,
+                'is_Following' => $isFollowing,
             ],
         ]);
     }
     public function changeProfileImage(Request $request, $id)
     {
         $user = User::find($id);
-        $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
-        if ($request->hasFile('image') && $request->file('image')->isValid()) {
-            $file = $request->file('image');
-            $path = $file->store('img/profile', 'public');
-            $request->image = basename($path);
-            $user->update([
-                'image' => $request->image,
+        if (Auth::user()->id == $user->id) {
+            # code...
+            $request->validate([
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
+            if ($request->hasFile('image') && $request->file('image')->isValid()) {
+                $file = $request->file('image');
+                $path = $file->store('img/profile', 'public');
+                $request->image = basename($path);
+                $user->update([
+                    'image' => $request->image,
+                ]);
 
-            return redirect()->back()->with('success', 'image changed successfully');
-        }
+                return redirect()->back()->with('success', 'image changed successfully');
+            }
 
-        return redirect()->back()->with('error', 'There was an error changing the image.');
+            return redirect()->back()->with('error', 'There was an error changing the image.');
+        };
     }
     public function changeCover(Request $request, $id)
     {
         $user = User::find($id);
-        $request->validate([
-            'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
-        if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
-            $path = $request->file('cover')->store('img/cover', 'public');
-            $user->update([
-                'cover' => $path,
+        if (Auth::user()->id == $user->id) {
+            $request->validate([
+                'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
+            if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
+                $path = $request->file('cover')->store('img/cover', 'public');
+                $user->update([
+                    'cover' => $path,
+                ]);
 
-            return redirect()->back()->with('success', 'Cover changed successfully');
-        }
+                return redirect()->back()->with('success', 'Cover changed successfully');
+            }
 
-        return redirect()->back()->with('error', 'There was an error changing the cover.');
+            return redirect()->back()->with('error', 'There was an error changing the cover.');
+        };
+    }
+    public function addToFollow($id)
+    {
+        dd('hello following');
     }
 }

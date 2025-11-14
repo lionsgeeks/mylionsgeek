@@ -31,7 +31,7 @@ function Avatar({
   const online = isUserOnline(lastActivity);
 
   return (
-    <div className="relative group w-fit">
+    <div className="relative group w-fit z-0">
       <AvatarPrimitive.Root
         className={cn("relative flex shrink-0 overflow-hidden rounded-full", className)}
         {...props}

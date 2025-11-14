@@ -5,9 +5,6 @@ import LeftColumn from './components/LeftColumn';
 import RightColumn from './components/RightColumn';
 
 const StudentProfile = ({ user }) => {
-    console.log(user);
-    
-    console.log(user);
     const userFunctionality = (user) => {
         if (user.formation.toLowerCase().includes('developpement') ||
             user.formation.toLowerCase().includes('coding')) {
