@@ -4,10 +4,13 @@ import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal } from 'luci
 import { router, usePage } from '@inertiajs/react';
 import { createEmitAndSemanticDiagnosticsBuilderProgram } from 'typescript';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
+import { helpers } from '../../../../../components/utils/helpers';
+
 
 const Header = ({ user, userFunctionality }) => {
     const [openEdit, setOpenEdit] = useState(false)
     const { auth } = usePage().props
+    const { addFollow } = helpers();
     const changeCover = (event, userId) => {
         const file = event.target.files[0]; // Get the first file
         if (!file) return; // If no file is selected, don't proceed
@@ -167,7 +170,7 @@ const Header = ({ user, userFunctionality }) => {
                                 </button>
                             }
                             {auth.user.id != user.id &&
-                                <button className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
+                                <button onClick={() => addFollow(user.id)} className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
                                     <span className="text-sm font-medium">{user.is_Following ? 'Following' : 'Follow'}</span>
                                 </button>
                             }

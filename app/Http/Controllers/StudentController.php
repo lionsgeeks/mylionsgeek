@@ -102,6 +102,12 @@ class StudentController extends Controller
     }
     public function addToFollow($id)
     {
-        dd('hello following');
+        $follower = Auth::user();
+        $followed = User::find($id);
+        Follower::create([
+            'follower_id' => $follower->id,
+            'followed_id' => $followed->id,
+        ]);
+        return back()->with('success', 'Your now follow something');
     }
 }

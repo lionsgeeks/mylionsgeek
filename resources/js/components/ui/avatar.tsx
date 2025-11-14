@@ -41,7 +41,7 @@ function Avatar({
             <AvatarPrimitive.Image
               src={`/storage/img/profile/${image}`}
               alt={name}
-              className="w-full h-full object-cover border-2 border-dark object-[50%_30%] rounded-full"
+              className="object-cover border-2 border-dark rounded-full"
             />
             {/* Dark overlay when edit */}
             {edit && (

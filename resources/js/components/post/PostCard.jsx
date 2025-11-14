@@ -71,7 +71,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
             router.delete(`/posts/post/${postId}`, {
                 onSuccess: () => {
                     const newPosts = posts?.filter((p) => p?.id !== postId);
-                    onPostsChange(newPosts.posts);
+                    onPostsChange(newPosts);
                 },
             });
         } catch (error) {
@@ -132,7 +132,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                         setOpenDetails(null);
 
                         // Find updated post from Inertia props
-                        const editedPost = page.props.posts?.find((p) => p?.id === post?.id);
+                        const editedPost = page.props.posts?.posts?.find((p) => p?.id === post?.id);
                         if (editedPost) {
                             onPostsChange((prevPosts) =>
                                 prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
