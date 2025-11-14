@@ -110,4 +110,13 @@ class StudentController extends Controller
         ]);
         return back()->with('success', 'Your now follow something');
     }
+    public function unFollow($id)
+    {
+        $follower = Auth::user();
+        $followed = User::findOrFail($id);
+        $followeRecord = Follower::where('follower_id', $follower->id)->where('followed_id', $followed->id)->first();
+        // dd($followeRecord);
+        $followeRecord->delete();
+        return back()->with('success', 'Your now unfollow something');
+    }
 }
