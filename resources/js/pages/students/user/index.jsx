@@ -5,7 +5,7 @@ import CenterFeed from './partials/CenterFeed';
 import RightSideBar from './partials/RightSideBar';
 
 
-export default function ({ user, posts }) {
+export default function StudentFeed({ user, posts }) {
     //console.log(posts);
 
     return (

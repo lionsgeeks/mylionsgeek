@@ -8,6 +8,8 @@ import { helpers } from '../../../../../components/utils/helpers';
 
 
 const Header = ({ user, userFunctionality }) => {
+    console.log(user);
+    
     const [openEdit, setOpenEdit] = useState(false)
     const { auth } = usePage().props
     const { addOrRemoveFollow } = helpers();
@@ -60,7 +62,7 @@ const Header = ({ user, userFunctionality }) => {
                 {/* Cover Photo */}
                 <div className="relative h-64 md:h-80 overflow-hidden">
                     <img
-                        src={`/storage/${user.cover}`}
+                        src={`/storage/${user?.cover}`}
                         alt="Cover"
                         className="object-cover w-full h-full"
                     />
@@ -77,7 +79,7 @@ const Header = ({ user, userFunctionality }) => {
                             type="file"
                             accept="image/*"
                             className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={(e) => changeCover(e, user.id)}
+                            onChange={(e) => changeCover(e, user?.id)}
                         />
                     </label>
                 </div>
@@ -112,7 +114,7 @@ const Header = ({ user, userFunctionality }) => {
                                 type="file"
                                 accept="image/*"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={(e) => changeProfileImage(e, user.id)}
+                                onChange={(e) => changeProfileImage(e, user?.id)}
                             />
                         </button>
                     </div>
@@ -121,41 +123,41 @@ const Header = ({ user, userFunctionality }) => {
                     {/* Name and Title */}
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                         <div className="flex-1">
-                            <h1 className="text-2xl font-bold text-beta dark:text-light">{user.name}</h1>
+                            <h1 className="text-2xl font-bold text-beta dark:text-light">{user?.name}</h1>
                             <p className="text-base text-beta/80 dark:text-light/80 mt-1">
                                 {userFunctionality(user)}
                             </p>
 
                             {/* Location and Details */}
                             <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-beta/70 dark:text-light/70">
-                                {user.adress &&
+                                {user?.adress &&
                                     //! until we add adress col in user table
                                     <div className="flex items-center gap-1">
                                         <MapPin className="w-4 h-4" />
-                                        <span>{user.adress}</span>
+                                        <span>{user?.adress}</span>
                                     </div>
                                 }
                                 {
-                                    user.status &&
+                                    user?.status &&
                                     <div className="flex items-center gap-1">
                                         <Briefcase className="w-4 h-4" />
-                                        <span>{user.status}</span>
+                                        <span>{user?.status}</span>
                                     </div>
                                 }
                                 <div className="flex items-center gap-1">
                                     <Calendar className="w-4 h-4" />
-                                    <span>{user.created_at}</span>
+                                    <span>{user?.created_at}</span>
                                 </div>
                             </div>
 
                             {/* Stats */}
                             <div className="flex gap-4 mt-4 text-sm">
                                 <div>
-                                    <span className="font-semibold text-beta dark:text-light">{user.followers}</span>
+                                    <span className="font-semibold text-beta dark:text-light">{user?.followers}</span>
                                     <span className="text-beta/70 dark:text-light/70 ml-1">Followers</span>
                                 </div>
                                 <div>
-                                    <span className="font-semibold text-beta dark:text-light">{user.following}</span>
+                                    <span className="font-semibold text-beta dark:text-light">{user?.following}</span>
                                     <span className="text-beta/70 dark:text-light/70 ml-1">Following</span>
                                 </div>
                             </div>
@@ -163,15 +165,15 @@ const Header = ({ user, userFunctionality }) => {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2">
-                            {auth.user.id == user.id &&
+                            {auth.user?.id == user?.id &&
                                 <button onClick={() => setOpenEdit(true)} className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-alpha text-beta rounded-lg hover:bg-alpha/90 transition-colors">
                                     <Edit2 className="w-4 h-4" />
                                     <span className="text-sm font-medium">Edit Profile</span>
                                 </button>
                             }
-                            {auth.user.id != user.id &&
-                                <button onClick={() => addOrRemoveFollow(user)} className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
-                                    <span className="text-sm font-medium">{user.is_Following ? 'Unfollow' : 'Follow'}</span>
+                            {auth.user?.id != user?.id &&
+                                <button onClick={() => addOrRemoveFollow(user)} className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
+                                    <span className="text-sm font-medium">{user?.is_Following ? 'Unfollow' : 'Follow'}</span>
                                 </button>
                             }
 
