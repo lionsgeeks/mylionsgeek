@@ -71,7 +71,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
             router.delete(`/posts/post/${postId}`, {
                 onSuccess: () => {
                     const newPosts = posts?.filter((p) => p?.id !== postId);
-                    onPostsChange(newPosts);
+                    onPostsChange(newPosts.posts);
                 },
             });
         } catch (error) {
@@ -150,7 +150,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
         if (auth.user.role.includes('admin')) {
             return '/admin/users/' + post?.user_id
         }
-        return '/users/' + post?.user_id
+        return '/student/' + post?.user_id
     }
     return (
         <>

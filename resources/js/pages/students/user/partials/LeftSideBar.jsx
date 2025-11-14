@@ -24,7 +24,7 @@ const LeftSideBar = ({ user }) => {
                     </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">
-                            <Link href={'/user/' + user.id}>
+                            <Link href={'/student/' + user.id}>
                                 <Avatar
                                     className="w-20 h-20 rounded-full overflow-hidden"
                                     image={user?.image}
@@ -34,7 +34,7 @@ const LeftSideBar = ({ user }) => {
                                 />
                             </Link>
                         </div>
-                        <Link href={'/user/' + user.id}>
+                        <Link href={'/student/' + user.id}>
                             <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
                                 {user?.name}
                             </h3>
