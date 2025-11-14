@@ -26,7 +26,7 @@ const CreatePostModal = ({ onOpenChange, user, onPostsChange }) => {
                 const newPosts = page.props.posts;
                 console.log(newPosts);
 
-                onPostsChange(newPosts);
+                onPostsChange(newPosts?.posts);
                 onOpenChange(false)
             },
             onError: (error) => {

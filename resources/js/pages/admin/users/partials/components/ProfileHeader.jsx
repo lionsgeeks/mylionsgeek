@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Github, Linkedin, Twitter, Globe, Edit3, Calendar, ImagePlus } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import EditUserModal from '../EditModal';
 import { Camera } from 'lucide-react'; // Icon for changing the cover image
 import { router } from '@inertiajs/react';
@@ -11,8 +11,6 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
   const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
   const lastOnline = user?.last_online ? new Date(user.last_online).toLocaleString() : 'No last activity available';
   const socials = user?.socials || {};
-  const getInitials = useInitials();
-  const [data, setData] = useState({ cover: '' });
 
 
   const changeCover = (event, userId) => {
@@ -23,7 +21,7 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
     formData.append('cover', file); // Append the selected file to FormData
 
     // Send the POST request with the form data
-    router.post(`/admin/users/changeCover/${userId}`, formData, {
+    router.post(`/users/changeCover/${userId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
       },

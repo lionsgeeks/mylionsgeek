@@ -1,29 +1,30 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ImagePlus } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 
-const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) => {
+const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     const getInitials = useInitials();
+    const { auth } = usePage().props
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        roles: [],
-        status: '',
-        formation_id: null,
-        phone: '',
-        cin: '',
-        image: null,
-        access_studio: '', // Add default value for access_studio
-        access_cowork: '', // Add default value for access_cowork
+        name: editedUser.name,
+        email: editedUser.status,
+        roles: editedUser.role,
+        status: editedUser.status,
+        formation_id: editedUser.formation_id,
+        phone: editedUser.phone,
+        cin: editedUser.cin,
+        image: editedUser.image,
+        access_studio: editedUser.access_studio, // Add default value for access_studio
+        access_cowork: editedUser.access_cowork, // Add default value for access_cowork
     });
 
     // Load user data into form when modal opens or user changes
@@ -43,17 +44,18 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
             }
             rolesArray = rolesArray.map(r => String(r).toLowerCase());
             setFormData({
-                name: editedUser.name || '',
-                email: editedUser.email || '',
+                name: editedUser.name,
+                email: editedUser.email,
                 roles: rolesArray,
-                status: editedUser.status || '',
-                formation_id: editedUser.formation_id || null,
-                phone: editedUser.phone || '',
-                cin: editedUser.cin || '',
+                status: editedUser.status,
+                formation_id: editedUser.formation_id,
+                phone: editedUser.phone,
+                cin: editedUser.cin,
                 image: editedUser?.image || null, // User's image from DB (if exists)
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
             });
+            console.log(formData);
         }
     }, [editedUser]);
 
@@ -83,10 +85,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
         }
 
         // Sending data to backend
-        router.post(`/admin/users/update/${editedUser.id}`, form, {
+        router.post(`/users/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
                 onClose();
+                console.log('success');
+
             },
             onError: (err) => {
                 setErrors(err);
@@ -174,14 +178,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         />
                     </div>
-                    <div className="col-span-1">
-                        <Label htmlFor="cin">CIN</Label>
-                        <Input
-                            id="cin"
-                            value={formData.cin}
-                            onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
-                        />
-                    </div>
+                    { }
 
                     {/* Roles - multi-select dropdown with chips */}
                     <div className="col-span-1">
@@ -202,64 +199,68 @@ const EditUserModal = ({ open, editedUser, onClose, roles, status, trainings }) 
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="col-span-1">
-                        <Label htmlFor="roles">Roles</Label>
-                        <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
-                    </div>
+                    {auth.user?.roles?.includes('admin') &&
+                        <>
+                            <div className="col-span-1">
+                                <Label htmlFor="roles">Roles</Label>
+                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                            </div>
+                            {/* Access Studio Field */}
+                            <div className='flex flex-col gap-2'>
+                                <Label htmlFor="access-studio">Access Studio</Label>
+                                <Select
+                                    id="access-studio"
+                                    value={formData.access_studio}
+                                    onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Access Studio" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={'Yes'}>Yes</SelectItem>
+                                        <SelectItem value={'No'}>No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {/* Access Cowork Field */}
+                            <div className='flex flex-col gap-2'>
+                                <Label htmlFor="access-cowork">Access Cowork</Label>
+                                <Select
+                                    id="access-cowork"
+                                    value={formData.access_cowork}
+                                    onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Access Cowork" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={'Yes'}>Yes</SelectItem>
+                                        <SelectItem value={'No'}>No</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="col-span-1 md:col-span-2">
+                                <Label>Training</Label>
+                                <Select
+                                    value={formData.formation_id ? String(formData.formation_id) : ''}
+                                    onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select training" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {trainings.map((t) => (
+                                            <SelectItem key={t.id} value={String(t.id)}>
+                                                {t.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </>
+                    }
 
-                    {/* Access Studio Field */}
-                    <div className='flex flex-col gap-2'>
-                        <Label htmlFor="access-studio">Access Studio</Label>
-                        <Select
-                            id="access-studio"
-                            value={formData.access_studio}
-                            onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Access Studio" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={'Yes'}>Yes</SelectItem>
-                                <SelectItem value={'No'}>No</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
 
-                    {/* Access Cowork Field */}
-                    <div className='flex flex-col gap-2'>
-                        <Label htmlFor="access-cowork">Access Cowork</Label>
-                        <Select
-                            id="access-cowork"
-                            value={formData.access_cowork}
-                            onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Access Cowork" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={'Yes'}>Yes</SelectItem>
-                                <SelectItem value={'No'}>No</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="col-span-1 md:col-span-2">
-                        <Label>Training</Label>
-                        <Select
-                            value={formData.formation_id ? String(formData.formation_id) : ''}
-                            onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select training" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {trainings.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>
-                                        {t.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
 
                     {/* Footer */}
                     <div className="col-span-1 md:col-span-2 mt-6">
