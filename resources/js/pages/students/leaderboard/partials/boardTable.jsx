@@ -1,12 +1,11 @@
 import { Activity, Award, Calendar, Clock, Code, Laptop, Medal, Monitor, RefreshCw, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import React from 'react';
 import { TableRowSkeleton } from '@/components/LoadingSkeleton';
-import { Avatar, AvatarImage, AvatarFallback  } from "@/components/ui/avatar";
-import { useInitials } from "@/hooks/use-initials";
+// import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from '@/components/ui/avatar';
 
 
 const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetchLeaderboardData, showSidePanel, getRankIcon, highlightText, selectedUser, formatTime, userInsights, loadingInsights, closeSidePanel, getRankBadge, handleUserClick, getRankColor, setSearchText }) => {
-    const getInitials = useInitials();
 
     return (
         <>
@@ -55,7 +54,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                                 rank: user.metrics?.rank
                                             });
                                         }
-                                        
+
                                         return (
                                             <tr
                                                 key={user.user?.id || index}
@@ -73,7 +72,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
 
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <Avatar className="h-14 w-14 overflow-hidden rounded-full">
+                                                        {/* <Avatar className="h-14 w-14 overflow-hidden rounded-full">
                                                             <AvatarImage
                                                                 src={user?.user?.image}
                                                                 alt={user?.user?.name}
@@ -81,7 +80,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                                             <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                                 {getInitials(user?.user?.name)}
                                                             </AvatarFallback>
-                                                        </Avatar>
+                                                        </Avatar> */}
+                                                        <Avatar
+                                                            className="h-14 w-14"
+                                                            image={user?.image}
+                                                            name={user?.name}
+                                                            lastActivity={user?.last_online || null}
+                                                            onlineCircleClass="hidden"
+                                                            edit={false}
+                                                        />
                                                         <div>
                                                             <div
                                                                 className="font-semibold text-dark dark:text-light text-lg"
@@ -187,7 +194,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                             <div className="text-center mb-6">
                                 <div className="relative">
                                     <div className="w-20 h-20 bg-gradient-to-r from-alpha to-alpha/80 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-                                        <Avatar className="h-full w-full overflow-hidden rounded-full">
+                                        {/* <Avatar className="h-full w-full overflow-hidden rounded-full">
                                             <AvatarImage
                                                 src={selectedUser?.user?.image}
                                                 alt={selectedUser?.user?.name}
@@ -195,7 +202,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                             <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                 {getInitials(selectedUser?.user?.name)}
                                             </AvatarFallback>
-                                        </Avatar>
+                                        </Avatar> */}
+                                        <Avatar
+                                            className="h-full w-full"
+                                            image={selectedUser?.image}
+                                            name={selectedUser?.name}
+                                            lastActivity={selectedUser?.last_online || null}
+                                            onlineCircleClass="hidden"
+                                            edit={false}
+                                        />
                                     </div>
                                     {selectedUser.metrics?.rank <= 3 && (
                                         <div className="absolute -top-2 -right-2">
@@ -214,7 +229,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                 <div className="mt-2 flex items-center justify-center gap-2">
                                     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRankColor(selectedUser.metrics?.rank || 1)}`}>
                                         <Star className="w-4 h-4" />
-                                        {getRankBadge(selectedUser.data?.total_seconds  || 1)}
+                                        {getRankBadge(selectedUser.data?.total_seconds || 1)}
                                     </span>
                                     <span className="text-xs text-dark/50 dark:text-light/50">
                                         #{selectedUser.metrics?.rank || 1}

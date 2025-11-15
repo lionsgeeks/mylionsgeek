@@ -18,8 +18,8 @@ class StudentController extends Controller
     {
         $userController = new UsersController();
         $posts = $userController->getPosts();
-        $user = Auth::user();
-        // dd($posts);
+        $userId = Auth::user()->id;
+        $user = $this->getUserInfo($userId);
         return Inertia::render('students/user/index', [
             'posts' => $posts,
             'user' => $user
@@ -27,11 +27,18 @@ class StudentController extends Controller
     }
     public function userProfile($id)
     {
+        $user = $this->getUserInfo($id);
+        return Inertia::render('students/user/partials/StudentProfile', [
+            'user' => $user
+        ]);
+    }
+    public function getUserInfo($id)
+    {
         $user = User::find($id);
         $userFollowers = Follower::where('followed_id', $id)->count();
         $userFollowing = Follower::where('follower_id', $id)->count();
         $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
-        return Inertia::render('students/user/partials/StudentProfile', [
+        return  [
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
@@ -57,7 +64,7 @@ class StudentController extends Controller
                 'following' => $userFollowing,
                 'is_Following' => $isFollowing,
             ],
-        ]);
+        ];
     }
     public function changeProfileImage(Request $request, $id)
     {
@@ -102,6 +109,20 @@ class StudentController extends Controller
     }
     public function addToFollow($id)
     {
-        dd('hello following');
+        $follower = Auth::user();
+        $followed = User::find($id);
+        Follower::create([
+            'follower_id' => $follower->id,
+            'followed_id' => $followed->id,
+        ]);
+        return back()->with('success', 'Your now follow something');
+    }
+    public function unFollow($id)
+    {
+        $follower = Auth::user();
+        $followed = User::findOrFail($id);
+        $followeRecord = Follower::where('follower_id', $follower->id)->where('followed_id', $followed->id)->first();
+        $followeRecord->delete();
+        return back()->with('success', 'Your now unfollow something');
     }
 }

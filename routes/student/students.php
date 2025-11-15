@@ -12,5 +12,6 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student'])->group(funct
     Route::post('/users/changeCover/{id}', [StudentController::class, 'changeCover']);
     Route::post('/users/changeProfileImage/{id}', [StudentController::class, 'changeProfileImage']);
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
-    Route::put('/users/follow/{user}', [UsersController::class, 'addToFollow']);
+    Route::post('/users/follow/{user}', [StudentController::class, 'addToFollow']);
+    Route::delete('/users/unfollow/{user}', [StudentController::class, 'unFollow']);
 });
