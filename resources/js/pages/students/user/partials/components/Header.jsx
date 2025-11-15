@@ -70,18 +70,19 @@ const Header = ({ user, userFunctionality }) => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
                     {/* Change Cover Icon */}
-                    <label
-                        className="absolute top-5 right-5 flex items-center justify-center w-12 h-12 bg-dark_gray rounded-full"
-                        aria-label="Change cover image"
-                    >
-                        <Camera size={24} className="text-white cursor-pointer" />
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={(e) => changeCover(e, user?.id)}
-                        />
-                    </label>
+                    {auth.user.id == user.id &&
+                        <label
+                            className="absolute top-5 right-5 flex items-center justify-center w-12 h-12 bg-dark_gray rounded-full"
+                            aria-label="Change cover image"
+                        >
+                            <Camera size={24} className="text-white cursor-pointer" />
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                onChange={(e) => changeCover(e, user?.id)}
+                            />
+                        </label>}
                 </div>
 
                 {/* Profile Info */}
@@ -99,8 +100,9 @@ const Header = ({ user, userFunctionality }) => {
                         />
 
                         {/* CAMERA ICON */}
-                        <button
-                            className="
+                        {auth.user.id == user.id &&
+                            <button
+                                className="
                 opacity-0 group-hover:opacity-100
                 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                 bg-white dark:bg-dark_gray
@@ -108,15 +110,15 @@ const Header = ({ user, userFunctionality }) => {
                 transition-opacity duration-200
                 hover:bg-light dark:hover:bg-beta
             "
-                        >
-                            <Camera className="w-5 h-5 text-beta dark:text-light" />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={(e) => changeProfileImage(e, user?.id)}
-                            />
-                        </button>
+                            >
+                                <Camera className="w-5 h-5 text-beta dark:text-light" />
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={(e) => changeProfileImage(e, user?.id)}
+                                />
+                            </button>}
                     </div>
 
 
@@ -172,7 +174,7 @@ const Header = ({ user, userFunctionality }) => {
                                 </button>
                             }
                             {auth.user?.id != user?.id &&
-                                <button onClick={() => addOrRemoveFollow(user?.id , user?.is_Following)} className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
+                                <button onClick={() => addOrRemoveFollow(user?.id, user?.is_Following)} className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'}`}>
                                     <span className="text-sm font-medium">{user?.is_Following ? 'Unfollow' : 'Follow'}</span>
                                 </button>
                             }
