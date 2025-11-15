@@ -20,7 +20,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     const isAdmin = userRoles.includes('admin');
 
     // Show header only for students/coworkers without admin
-    const isStudentOrCoworker = userRoles.some(role => ["student", "coworker"].includes(role));
+    const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));
 
     const Layout = isStudentOrCoworker || window.location.href.includes('/feed') ? AppHeaderLayout : isAdmin ? AppSidebarLayout : AppHeaderLayout;
 

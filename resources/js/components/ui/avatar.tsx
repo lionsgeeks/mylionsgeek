@@ -37,11 +37,11 @@ function Avatar({
         {...props}
       >
         {image ? (
-          <div className="relative w-32 h-32 rounded-full overflow-hidden">
+          <div className=" w-full h-full rounded-full overflow-hidden">
             <AvatarPrimitive.Image
               src={`/storage/img/profile/${image}`}
               alt={name}
-              className="object-cover border-2 border-dark rounded-full"
+              className="w-full h-full object-cover  border-2 border-dark  rounded-full"
             />
             {/* Dark overlay when edit */}
             {edit && (

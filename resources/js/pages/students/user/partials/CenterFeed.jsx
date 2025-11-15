@@ -13,7 +13,7 @@ export default function CenterFeed({ user, posts }) {
             {/* Center Feed - Scrollable */}
             <div className="lg:col-span-6 space-y-4">
                 {/* Create Post Box */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-dark shadow-alpha/10 rounded-lg shadow  p-4">
                     <div className="flex items-center gap-3 mb-4">
                         <Link href={'/student/' + user.id}>
                             <Avatar
@@ -24,8 +24,8 @@ export default function CenterFeed({ user, posts }) {
                                 onlineCircleClass="hidden"
                             />
                         </Link>
-                        <button onClick={() => setOpenAddPost(true)} className='cursor-pointer border-2 border-beta dark:border-light flex-1 px-4 py-2 bg-transparent text-left rounded-full hover:bg-beta/5 dark:hover:bg-light/5 transition-all duration-300'>
-                            Add Post
+                        <button onClick={() => setOpenAddPost(true)} className='cursor-pointer opacity-80 border-2 text-foreground/70 border-beta dark:border-alpha/80 flex-1 px-4 py-2 bg-transparent text-left rounded-lg hover:bg-beta/5 dark:hover:bg-light/5 transition-all duration-300'>
+                            Whats on your mind today ....
                         </button>
                     </div>
                     <div className="flex justify-around">

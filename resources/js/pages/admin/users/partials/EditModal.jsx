@@ -15,16 +15,16 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const { auth } = usePage().props
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
-        name: editedUser.name,
-        email: editedUser.status,
-        roles: editedUser.role,
-        status: editedUser.status,
-        formation_id: editedUser.formation_id,
-        phone: editedUser.phone,
-        cin: editedUser.cin,
-        image: editedUser.image,
-        access_studio: editedUser.access_studio, // Add default value for access_studio
-        access_cowork: editedUser.access_cowork, // Add default value for access_cowork
+        name: editedUser?.name,
+        email: editedUser?.status,
+        roles: editedUser?.role,
+        status: editedUser?.status,
+        formation_id: editedUser?.formation_id,
+        phone: editedUser?.phone,
+        cin: editedUser?.cin,
+        image: editedUser?.image,
+        access_studio: editedUser?.access_studio, // Add default value for access_studio
+        access_cowork: editedUser?.access_cowork, // Add default value for access_cowork
     });
 
     // Load user data into form when modal opens or user changes
