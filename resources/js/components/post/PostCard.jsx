@@ -8,9 +8,13 @@ import LikesModal from './LikesModal';
 import PostMenuDropDown from './PostMenuDropDown';
 import UndoRemove from '../UndoRemove';
 import { Link, router, usePage } from '@inertiajs/react';
+import { helpers } from '../utils/helpers';
 
-const PostCard = ({ user, posts = [], onPostsChange }) => {
+const PostCard = ({ user, posts }) => {
     const { auth } = usePage().props
+    const { addOrRemoveFollow } = helpers();
+
+
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -70,8 +74,8 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
         try {
             router.delete(`/posts/post/${postId}`, {
                 onSuccess: () => {
-                    const newPosts = posts?.filter((p) => p?.id !== postId);
-                    onPostsChange(newPosts);
+                    // const newPosts = posts?.filter((p) => p?.id !== postId);
+                    // onPostsChange(newPosts);
                 },
             });
         } catch (error) {
@@ -87,8 +91,8 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
     }, [undoTimer]);
 
     const handlePostRemoved = (postId) => {
-        const newPosts = posts?.filter((p) => p?.id !== postId);
-        onPostsChange(newPosts);
+        // const newPosts = posts?.filter((p) => p?.id !== postId);
+        // onPostsChange(newPosts);
     };
 
     const handleRemoveClick = (postId) => {
@@ -127,17 +131,17 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                     image: postImage,
                 },
                 {
-                    onSuccess: (page) => {
+                    onSuccess: () => {
                         setOpenEditPost(false);
                         setOpenDetails(null);
 
                         // Find updated post from Inertia props
-                        const editedPost = page.props.posts?.posts?.find((p) => p?.id === post?.id);
-                        if (editedPost) {
-                            onPostsChange((prevPosts) =>
-                                prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
-                            );
-                        }
+                        // const editedPost = page.props.posts?.posts?.find((p) => p?.id === post?.id);
+                        // if (editedPost) {
+                        //     onPostsChange((prevPosts) =>
+                        //         prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
+                        //     );
+                        // }
                     },
                 }
             );
@@ -152,6 +156,7 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
         }
         return '/student/' + post?.user_id
     }
+
     return (
         <>
             {posts?.map((p, index) => {
@@ -178,9 +183,11 @@ const PostCard = ({ user, posts = [], onPostsChange }) => {
                                             <Link href={takeToUserProfile(p)} className="font-semibold text-sm text-gray-900 dark:text-light">
                                                 {p?.user_name}
                                             </Link>
-                                            <span className="text-gray-500 dark:text-alpha text-xs">
-                                                • Following
-                                            </span>
+                                            {auth.user?.id != p.user_id &&
+                                                <span onClick={() => addOrRemoveFollow(p?.user_id, p?.is_following)} className="text-gray-500 dark:text-alpha text-xs cursor-pointer">
+                                                    • {p?.is_following ? 'Unfollow' : 'Follow'}
+                                                </span>
+                                            }
                                         </div>
                                         <p className="text-xs text-gray-600 dark:text-gray-400">
                                             {p?.user_status}

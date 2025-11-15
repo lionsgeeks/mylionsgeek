@@ -6,7 +6,8 @@ import RightSideBar from './partials/RightSideBar';
 
 
 export default function StudentFeed({ user, posts }) {
-    //console.log(posts);
+    const currentUser = user.user
+    const currentPosts = posts.posts
 
     return (
         <>
@@ -16,8 +17,8 @@ export default function StudentFeed({ user, posts }) {
                         {/* Main Container */}
                         <div className="max-w-7xl mx-auto px-4">
                             <div className="grid relative grid-cols-1 lg:grid-cols-12 gap-6">
-                                <LeftSideBar user={user} />
-                                <CenterFeed user={user} posts={posts.posts} />
+                                <LeftSideBar user={currentUser} />
+                                <CenterFeed user={currentUser} posts={currentPosts} />
                                 <RightSideBar />
                             </div>
                         </div>

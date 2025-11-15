@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
+use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Medical;
 use App\Models\Note;
@@ -228,6 +229,8 @@ class UsersController extends Controller
         // Get the posts
         $dataPosts = $dataPosts->get();
 
+
+
         // Map and format response
         $posts = $dataPosts->map(function ($post) {
             return [
@@ -243,6 +246,7 @@ class UsersController extends Controller
                 'likes_count' => $post->likes_count,      // use eager count
                 'comments_count' => $post->comments_count, // use eager count
                 'created_at' => $post->created_at,
+                'is_following' => Follower::where('followed_id', $post->user_id)->where('follower_id', Auth::user()->id)->exists(),
             ];
         });
 

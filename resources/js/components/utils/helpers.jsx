@@ -1,10 +1,9 @@
-import { router, usePage } from "@inertiajs/react";
+import { router } from "@inertiajs/react";
 export const helpers = () => {
-    const { auth } = usePage().props
-    const addOrRemoveFollow = (user) => {
-        if (user.is_Following) {
+    const addOrRemoveFollow = (userId, isFollowing) => {
+        if (isFollowing) {
             try {
-                router.delete(`/users/unfollow/${user?.id}`, {}, {
+                router.delete(`/users/unfollow/${userId}`, {}, {
                     onSuccess: () => {
                         console.log('you are now unfollow');
                     }
@@ -14,7 +13,7 @@ export const helpers = () => {
             }
         } else {
             try {
-                router.post(`/users/follow/${user?.id}`, {}, {
+                router.post(`/users/follow/${userId}`, {}, {
                     onSuccess: () => {
                         // console.log('you are now follow');
                     }

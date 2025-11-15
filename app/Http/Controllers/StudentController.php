@@ -111,7 +111,6 @@ class StudentController extends Controller
     {
         $follower = Auth::user();
         $followed = User::find($id);
-        // dd($follower->id, $followed->id);
         Follower::create([
             'follower_id' => $follower->id,
             'followed_id' => $followed->id,
@@ -122,7 +121,6 @@ class StudentController extends Controller
     {
         $follower = Auth::user();
         $followed = User::findOrFail($id);
-        // dd($follower->id, $followed->id);
         $followeRecord = Follower::where('follower_id', $follower->id)->where('followed_id', $followed->id)->first();
         $followeRecord->delete();
         return back()->with('success', 'Your now unfollow something');
