@@ -46,14 +46,18 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                         value={postText}
                         onChange={(e) => onPostTextChange(e.target.value)}
                         placeholder="What do you want to talk about?"
-                        className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
+                        className="w-full min-h-fit resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
                     {
-                        preview && <img
-                            src={preview}
-                            alt="Preview"
-                            className="w-full object-cover rounded-xl"
-                        />
+                        preview.length !== 0 &&
+                        <div className='h-fit  rounded-lg'>
+                            <img
+                                src={preview}
+                                alt="Preview"
+                                className="w-full object-cover rounded-lg"
+                            />
+                        </div>
+
                     }
                 </div>
 

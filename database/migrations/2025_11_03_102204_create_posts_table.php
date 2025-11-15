@@ -19,7 +19,7 @@ return new class extends Migration
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
             $table->string('description');
-            $table->string('image')->nullable();
+            $table->json('images')->nullable();
             $table->string('hashTags')->nullable();
             $table->integer('status')->nullable();
             $table->timestamps();

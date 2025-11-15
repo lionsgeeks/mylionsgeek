@@ -157,8 +157,10 @@ class PostController extends Controller
             return back()->with('success', 'Post Updated SuccesFully');
         }
     }
+    //! create post
     public function storePost(Request $request)
     {
+        dd($request->all());
         $request->validate([
             'description' => 'nullable|string',
             'image' => 'nullable|image|mimes:png,jpg'

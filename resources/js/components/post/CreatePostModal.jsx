@@ -1,24 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
+import PostImagePreviewEditor from './PostImagePreviewEditor';
 
 const CreatePostModal = ({ onOpenChange, user }) => {
     const [postText, setPostText] = useState('');
-    const [postImage, setPostImage] = useState(null);
-    const [preview, setPreview] = useState(null);
-    const handleImagePreview = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const newPreview = URL.createObjectURL(file);
-        setPreview(newPreview);
-        setPostImage(file);
+    const [postImages, setPostImages] = useState([]);
+    const [previews, setPreviews] = useState([]);
+    const [openImagesEditor, setOpenImagesEditor] = useState(false)
+    useEffect(() => {
+        setOpenImagesEditor(true)
+    }, [previews])
+    const handleImagePreviews = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setPreviews(newPreviews);
+        console.log(newPreviews.map(prev => prev));
+        setPostImages(files);
     }
     //! create post
     const handelCreatePost = () => {
         const newFormData = new FormData()
         newFormData.append('description', postText)
-        newFormData.append('image', postImage)
+        newFormData.append('image', postImages)
 
         router.post('/posts/store/post', newFormData, {
             onSuccess: () => {
@@ -71,11 +77,17 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                         placeholder="What do you want to talk about?"
                         className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
-                    {preview && <img
-                        src={preview}
-                        alt="Preview"
-                        className="w-full object-cover rounded-xl"
-                    />}
+                    {previews.length !== 0 && (
+                        <div className='h-fit rounded-lg'>
+                            {openImagesEditor && (
+                                <PostImagePreviewEditor
+                                    images={previews}
+                                    onOpenEditorChange={setOpenImagesEditor}
+                                />
+                            )}
+                        </div>
+                    )}
+
                 </div>
 
                 {/* Footer */}
@@ -90,7 +102,8 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                                 id="imageUpload"
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => handleImagePreview(e)}
+                                multiple
+                                onChange={handleImagePreviews}
                                 className="hidden"
                             />
                         </label>
