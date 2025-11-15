@@ -5,10 +5,19 @@ const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArray
     const [selectedImage, setSelectedImage] = useState(0)
     //! remove image from array
     const removeImage = () => {
-        const newImageArray = imagesArray.filter((arr , index) => index !== selectedImage)
+        const newImageArray = imagesArray.filter((arr, index) => index !== selectedImage)
+        setSelectedImage(newImageArray.length-1)
         onImagesArrayChange(newImageArray)
         console.log(imagesArray.length);
-
+    }
+    //! add image to array 
+    const addImage = (e) => {
+        const files = Array.from(e?.target?.files);
+        if (!files.length) return;
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        onImagesArrayChange(prev => [...prev, ...newPreviews]);
+        // setPostImages(files);
+        console.log(imagesArray.length);
     }
     return (
         <>
@@ -51,7 +60,7 @@ const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArray
                                 <div className="flex-1 overflow-y-auto p-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         {imagesArray.map((image, index) => (
-                                            <div key={image.id} className="relative">
+                                            <div key={index} className="relative">
                                                 <button
                                                     onClick={() => setSelectedImage(index)}
                                                     className={`w-full aspect-square rounded-lg overflow-hidden transition-all ${selectedImage === index
@@ -90,7 +99,20 @@ const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArray
                                                 <Trash2 size={20} />
                                             </button>
                                             <button className="cursor-pointer rounded-lg  transition-colors">
-                                                <Plus size={20} />
+                                                <label
+                                                    htmlFor="imageUpload"
+                                                    className="p-2 rounded-full hover:bg-gray-100 cursor-pointer dark:hover:bg-dark_gray text-gray-600 dark:text-gray-400 transition flex items-center justify-center"
+                                                >
+                                                    <Plus size={20} />
+                                                    <input
+                                                        id="imageUpload"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        multiple
+                                                        onChange={addImage}
+                                                        className="hidden"
+                                                    />
+                                                </label>
                                             </button>
                                         </div>
                                         <button className="cursor-pointer py-2 px-4 rounded-lg bg-alpha hover:bg-alpha/90 text-beta font-medium transition-colors">

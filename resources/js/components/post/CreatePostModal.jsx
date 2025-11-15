@@ -17,7 +17,6 @@ const CreatePostModal = ({ onOpenChange, user }) => {
         if (!files.length) return;
         const newPreviews = files.map(file => URL.createObjectURL(file));
         setPreviews(newPreviews);
-        console.log(newPreviews.map(prev => prev));
         setPostImages(files);
     }
     //! create post
