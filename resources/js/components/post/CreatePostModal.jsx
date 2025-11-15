@@ -81,8 +81,10 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                         <div className='h-fit rounded-lg'>
                             {openImagesEditor && (
                                 <PostImagePreviewEditor
-                                    images={previews}
+                                    imagesArray={previews}
                                     onOpenEditorChange={setOpenImagesEditor}
+                                    onImagesArrayChange={setPreviews}
+
                                 />
                             )}
                         </div>

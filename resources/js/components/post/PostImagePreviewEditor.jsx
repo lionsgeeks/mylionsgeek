@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { X, Edit, Info, Plus, Copy, Trash2 } from 'lucide-react';
 
-const PostImagePreviewEditor = ({ images, onOpenEditorChange }) => {
+const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArrayChange }) => {
     const [selectedImage, setSelectedImage] = useState(0)
+    //! remove image from array
+    const removeImage = () => {
+        const newImageArray = imagesArray.filter((arr , index) => index !== selectedImage)
+        onImagesArrayChange(newImageArray)
+        console.log(imagesArray.length);
+
+    }
     return (
         <>
             <div>
@@ -13,7 +20,7 @@ const PostImagePreviewEditor = ({ images, onOpenEditorChange }) => {
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-beta/10 dark:border-beta/20">
                             <h2 className="text-xl font-semibold text-beta dark:text-light">Editor</h2>
-                            <button className="cursor-pointer text-beta dark:text-light hover:text-alpha transition-colors">
+                            <button onClick={() => onOpenEditorChange(false)} className="cursor-pointer text-beta dark:text-light hover:text-alpha transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
@@ -24,8 +31,8 @@ const PostImagePreviewEditor = ({ images, onOpenEditorChange }) => {
                             <div className="flex-1 bg-beta dark:bg-dark p-4 lg:p-8 flex items-center justify-center">
                                 <div className="relative max-w-2xl w-full aspect-[4/3]">
                                     <img
-                                        src={images[selectedImage]}
-                                        alt={images[selectedImage]}
+                                        src={imagesArray[selectedImage]}
+                                        alt={imagesArray[selectedImage]}
                                         className="w-full h-full object-cover rounded-lg"
                                     />
                                 </div>
@@ -36,14 +43,14 @@ const PostImagePreviewEditor = ({ images, onOpenEditorChange }) => {
                                 {/* Image Counter */}
                                 <div className="px-6 py-4 border-b border-beta/10 dark:border-beta/20">
                                     <p className="text-sm text-beta dark:text-light">
-                                        {selectedImage + 1} of {images.length}
+                                        {selectedImage + 1} of {imagesArray.length}
                                     </p>
                                 </div>
 
                                 {/* Thumbnail Grid */}
                                 <div className="flex-1 overflow-y-auto p-4">
                                     <div className="grid grid-cols-2 gap-3">
-                                        {images.map((image, index) => (
+                                        {imagesArray.map((image, index) => (
                                             <div key={image.id} className="relative">
                                                 <button
                                                     onClick={() => setSelectedImage(index)}
@@ -79,7 +86,7 @@ const PostImagePreviewEditor = ({ images, onOpenEditorChange }) => {
                                             {/* <button className="cursor-pointer p-3 rounded-lg bg-beta/5 dark:bg-beta/10 hover:bg-beta/10 dark:hover:bg-beta/20 text-beta dark:text-light transition-colors">
                                             <Copy size={20} />
                                         </button> */}
-                                            <button className="cursor-pointer rounded-lg bg-beta/5 dark:bg-beta/10 hover:bg-beta/10 dark:hover:bg-beta/20 text-beta dark:text-light transition-colors">
+                                            <button onClick={() => removeImage()} className="cursor-pointer rounded-lg bg-beta/5 dark:bg-beta/10 hover:bg-beta/10 dark:hover:bg-beta/20 text-beta dark:text-light transition-colors">
                                                 <Trash2 size={20} />
                                             </button>
                                             <button className="cursor-pointer rounded-lg  transition-colors">
