@@ -135,27 +135,27 @@ class PostController extends Controller
     //! edit post function
     public function editPost(Request $request, $id)
     {
-        $request->validate([
-            'description' => 'nullable|string',
-            'image' => 'nullable|mimes:png,jpg,gif,jpeg'
-        ]);
         $post = Post::find($id);
-        // dd($post);
-        if ($request->hasFile('image')) {
+        if (Auth::user()->id == $post->user_id) {
             # code...
-            $file = $request->file('image');
-            $fileName = $file->hashName();
-            $file->move(public_path('/storage/img/posts'), $fileName);
-            $request->image = $fileName;
-        };
-        $post->update([
-            'description' => $request->description,
-            'image' => $request->image
-        ]);
-        return back()->with([
-            'success' => 'Post Updated SuccesFully',
-            'post' => $post
-        ]);
+            $request->validate([
+                'description' => 'nullable|string',
+                'image' => 'nullable'
+            ]);
+            // dd($post);
+            if ($request->hasFile('image')) {
+                # code...
+                $file = $request->file('image');
+                $fileName = $file->hashName();
+                $file->move(public_path('/storage/img/posts'), $fileName);
+                $request->image = $fileName;
+            };
+            $post->update([
+                'description' => $request->description,
+                'image' => $request->image
+            ]);
+            return back()->with('success', 'Post Updated SuccesFully');
+        }
     }
     public function storePost(Request $request)
     {
@@ -179,7 +179,7 @@ class PostController extends Controller
         $posts = Post::withCount(['likes', 'comments'])
             ->latest()
             ->get();
-            
+
         return back()->with([
             'success' => 'Post Updated SuccesFully',
             'posts' => $posts
