@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { X, Edit, Info, Plus, Copy, Trash2 } from 'lucide-react';
 
-const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArrayChange }) => {
+const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArrayChange, onPostImagesChange }) => {
     const [selectedImage, setSelectedImage] = useState(0)
     //! remove image from array
     const removeImage = () => {
         const newImageArray = imagesArray.filter((arr, index) => index !== selectedImage)
-        setSelectedImage(newImageArray.length-1)
+        setSelectedImage(newImageArray.length - 1)
         onImagesArrayChange(newImageArray)
         console.log(imagesArray.length);
     }
@@ -16,8 +16,7 @@ const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArray
         if (!files.length) return;
         const newPreviews = files.map(file => URL.createObjectURL(file));
         onImagesArrayChange(prev => [...prev, ...newPreviews]);
-        // setPostImages(files);
-        console.log(imagesArray.length);
+        onPostImagesChange(files);
     }
     return (
         <>
@@ -115,7 +114,7 @@ const PostImagePreviewEditor = ({ imagesArray, onOpenEditorChange, onImagesArray
                                                 </label>
                                             </button>
                                         </div>
-                                        <button className="cursor-pointer py-2 px-4 rounded-lg bg-alpha hover:bg-alpha/90 text-beta font-medium transition-colors">
+                                        <button onClick={() => onOpenEditorChange(false)} className="cursor-pointer py-2 px-4 rounded-lg bg-alpha hover:bg-alpha/90 text-beta font-medium transition-colors">
                                             Next
                                         </button>
                                     </div>
