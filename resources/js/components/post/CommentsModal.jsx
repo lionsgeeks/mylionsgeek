@@ -150,8 +150,8 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
           </button>
 
           {/* Header */}
-          <div className="px-6 pt-6 pb-3 border-b border-alpha/30 dark:border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/20 text-center">
-            <h2 className="text-lg sm:text-xl font-bold text-alpha tracking-wide uppercase">
+          <div className="px-6 pt-6 pb-3 border-b border-alpha/30 dark:border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/20 ">
+            <h2 className="text-lg sm:text-base font-bold text-alpha tracking-wide uppercase">
               Comments
             </h2>
           </div>
@@ -192,7 +192,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
             ) : (
 
               comments.map((c) => (
-                <div key={c.id} className="flex gap-3 animate-in fade-in slide-in-from-left-2">
+                <div key={c.id} className="flex gap-3 rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark px-4 py-2 group animate-in fade-in slide-in-from-left-2">
                   <Link href={takeToUserProfile(c)}>
                     <Avatar
                       className="w-11 h-11 flex-shrink-0"
@@ -205,7 +205,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                     />
                   </Link>
 
-                  <div className="flex-1 px-3 py-2.5 w-[70%] rounded-2xl border border-alpha/20 bg-neutral-50 dark:bg-dark shadow-sm hover:shadow-md transition duration-200">
+                  <div className="flex-1 px-3 py-2.5 w-[70%]  shadow-sm hover:shadow-md transition duration-200">
                     <div className="flex justify-between mb-1">
                       <div className="flex flex-col pb-2">
                         <Link
@@ -222,7 +222,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                         <>
                           {openUpdatedComment !== c.id && (
                             <>
-                              <div className="flex gap-3 items-start pt-1">
+                              <div className=" gap-3 hidden  group-hover:flex items-start pt-1">
                                 <button
                                   onClick={() => {
                                     setOpenUpdatedComment(c.id);
@@ -302,12 +302,12 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                 onChange={(e) => setNewComment(e.target.value)}
                 disabled={submitting}
                 maxLength={2000}
-                className="flex-1 px-4 py-2.5 rounded-full border border-alpha/40 focus:ring-2 focus:ring-alpha focus:border-alpha transition bg-white dark:bg-dark text-neutral-800 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm"
+                className="flex-1 px-4 py-2.5 rounded-lg border border-alpha/40 focus:ring-2 focus:ring-alpha focus:border-alpha/40 transition bg-white dark:bg-dark text-neutral-800 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm focus:outline-0"
               />
               <button
                 type="submit"
                 disabled={submitting || !newComment.trim()}
-                className="bg-alpha text-black hover:bg-yellow-300 transition-all duration-200 px-5 font-semibold rounded-full shadow-md hover:shadow-lg py-2.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-alpha/50 active:scale-95"
+                className="bg-alpha text-black hover:bg-yellow-300 transition-all duration-200 px-5 font-semibold rounded-lg shadow-md hover:shadow-lg py-2.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-alpha/50 active:scale-95"
               >
                 {submitting ? (
                   <div className="flex items-center justify-center">

@@ -155,9 +155,9 @@ const PostCard = ({ user, posts }) => {
     };
 
     const takeToUserProfile = (post) => {
-        if (auth.user.role.includes('admin')) {
-            return '/admin/users/' + post?.user_id
-        }
+        // if (auth.user.role.includes('admin')) {
+        //     return '/admin/users/' + post?.user_id
+        // }
         return '/student/' + post?.user_id
     }
 
@@ -169,7 +169,7 @@ const PostCard = ({ user, posts }) => {
                 const commentCount = commentsCountMap[p?.id] ?? p?.comments_count;
 
                 return (
-                    <div key={index} className="bg-white dark:bg-beta rounded-lg shadow mb-4">
+                    <div key={index} className="bg-white dark:bg-dark rounded-lg shadow mb-4">
                         <div className="p-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
@@ -193,9 +193,9 @@ const PostCard = ({ user, posts }) => {
                                                 </span>
                                             }
                                         </div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                                        {/* <p className="text-xs text-gray-600 dark:text-gray-400">
                                             {p?.user_status}
-                                        </p>
+                                        </p> */}
                                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             <span>{timeAgo(p?.created_at)}</span>
                                         </div>
@@ -240,7 +240,7 @@ const PostCard = ({ user, posts }) => {
 
                         {/* Post Image */}
                         {p?.image && (
-                            <div className="relative bg-black aspect-video mt-3">
+                            <div className="relative mx-1 aspect-video mt-3">
                                 <img
                                     src={`/storage/img/posts/${p?.image}`}
                                     alt="Post media"
@@ -250,7 +250,7 @@ const PostCard = ({ user, posts }) => {
                         )}
 
                         {/* Stats */}
-                        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray">
+                        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray/70 dark:bg-dark">
                             <div
                                 className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
                                 onClick={() => setLikesOpenFor(p?.id)}
@@ -267,7 +267,7 @@ const PostCard = ({ user, posts }) => {
                         </div>
 
                         {/* Buttons */}
-                        <div className="px-2 py-2 flex justify-around items-center rounded-lg shadow-sm bg-light dark:bg-dark_gray dark:border-dark">
+                        <div className="px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm bg-light dark:bg-dark ">
                             {/* Like Button */}
                             <button
                                 onClick={() => toggleLike(p?.id)}

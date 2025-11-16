@@ -59,8 +59,8 @@ export const NoResults = ({
         <div className="w-24 h-24 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-full flex items-center justify-center">
           {content.icon}
         </div>
-        <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-          <span className="text-white text-sm font-bold">!</span>
+        <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-alpha/80 to-alpha rounded-full flex items-center justify-center">
+          <span className="text-black text-sm font-bold">?</span>
         </div>
       </div>
       
@@ -79,7 +79,7 @@ export const NoResults = ({
               onClick={action.onClick}
               className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
                 action.variant === 'primary'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                  ? 'bg-gradient-to-r from-alpha/90 to-alpha hover:from-alpha hover:to-amber-500 text-black shadow-lg hover:shadow-xl transform hover:scale-105'
                   : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
               }`}
             >
