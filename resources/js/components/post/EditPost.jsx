@@ -49,7 +49,7 @@ const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, 
                         className="w-full min-h-fit resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
                     />
                     {
-                        preview.length !== 0 &&
+                        preview?.length !== 0 &&
                         <div className='h-fit  rounded-lg'>
                             <img
                                 src={preview}
