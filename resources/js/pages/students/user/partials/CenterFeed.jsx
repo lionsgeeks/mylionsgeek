@@ -13,7 +13,7 @@ export default function CenterFeed({ user, posts }) {
             {/* Center Feed - Scrollable */}
             <div className="lg:col-span-6 space-y-4">
                 {/* Create Post Box */}
-                <div className="bg-white dark:bg-dark shadow-alpha/10 rounded-lg shadow  p-4">
+                <div className="bg-white dark:bg-dark_gray shadow-alpha/10 rounded-lg shadow  p-4">
                     <div className="flex items-center gap-3 mb-4">
                         <Link href={'/student/' + user.id}>
                             <Avatar

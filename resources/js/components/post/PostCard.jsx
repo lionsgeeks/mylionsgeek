@@ -169,7 +169,7 @@ const PostCard = ({ user, posts }) => {
                 const commentCount = commentsCountMap[p?.id] ?? p?.comments_count;
 
                 return (
-                    <div key={index} className="bg-white dark:bg-dark rounded-lg shadow mb-4">
+                    <div key={index} className="bg-white dark:bg-dark_gray rounded-lg shadow mb-4">
                         <div className="p-4">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
@@ -250,7 +250,7 @@ const PostCard = ({ user, posts }) => {
                         )}
 
                         {/* Stats */}
-                        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray/70 dark:bg-dark">
+                        <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray/70 dark:bg-dark_gray">
                             <div
                                 className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
                                 onClick={() => setLikesOpenFor(p?.id)}
@@ -267,7 +267,7 @@ const PostCard = ({ user, posts }) => {
                         </div>
 
                         {/* Buttons */}
-                        <div className="px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm bg-light dark:bg-dark ">
+                        <div className="px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm bg-light dark:bg-dark_gray ">
                             {/* Like Button */}
                             <button
                                 onClick={() => toggleLike(p?.id)}
