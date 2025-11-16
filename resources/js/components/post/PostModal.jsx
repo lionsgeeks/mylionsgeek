@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, Heart, MessageCircle, Repeat2, Send, BarChart2, Smile, Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
+import PostCardFooter from './PostCardFooter';
+import PostImageCarousel from './PostImageCarousel';
 
-const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expandedDescriptions, hasMore, displayText, timeAgo, user, addOrRemovFollow }) => {
+const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expandedDescriptions, isExpanded, hasMore, displayText, timeAgo, user, addOrRemovFollow, toggleDescription , takeToUserProfile}) => {
 
     if (!isOpen) return null;
 
@@ -23,11 +25,7 @@ const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expand
                 {/* Left Side - Image/Content Preview */}
                 <div className="w-full lg:w-3/5 bg-dark_gray dark:bg-dark flex items-center justify-center p-4 lg:p-8">
                     <div className="w-full h-full flex items-center justify-center">
-                        <img
-                            src={post?.image || "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800"}
-                            alt="Post content"
-                            className="max-w-full max-h-full object-contain rounded"
-                        />
+                        <PostImageCarousel images={post?.images} />
                     </div>
                 </div>
 
@@ -69,17 +67,19 @@ const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expand
 
                     {/* Description */}
                     <div className="flex-1 overflow-y-auto p-4">
-                        <div className="text-sm text-beta dark:text-light whitespace-pre-wrap break-words">
-                            {displayText}
+                        <>
+                            <p className="text-gray-800 dark:text-light w-full text-sm whitespace-pre-wrap break-words overflow-hidden">
+                                {displayText}
+                            </p>
                             {hasMore && (
                                 <button
-                                    onClick={() => onExpandedDescriptionsChange(!expandedDescriptions)}
-                                    className="text-beta/70 dark:text-light/70 hover:text-beta dark:hover:text-light ml-2 font-medium"
+                                    onClick={() => toggleDescription(post?.id)}
+                                    className="dark:text-light/50 text-dark/50  text-sm mt-1 hover:underline"
                                 >
-                                    {expandedDescriptions ? '...see less' : '...more'}
+                                    {isExpanded ? 'See less' : 'See more'}
                                 </button>
                             )}
-                        </div>
+                        </>
 
                         {/* Hashtags */}
                         {/* <div className="mt-3 flex flex-wrap gap-2">
@@ -90,73 +90,7 @@ const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expand
                             ))}
                         </div> */}
 
-                        {/* Engagement Stats */}
-                        <div className="mt-4 pt-3 border-t border-beta/10 dark:border-light/10">
-                            <div className="flex items-center gap-2 text-xs text-beta/70 dark:text-light/70">
-                                <div className="flex items-center gap-1">
-                                    <div className="flex -space-x-1">
-                                        <div className="w-5 h-5 rounded-full bg-alpha flex items-center justify-center text-xs">👍</div>
-                                        <div className="w-5 h-5 rounded-full bg-error flex items-center justify-center text-xs">❤️</div>
-                                    </div>
-                                    <span>{post?.likes || '15'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="border-t border-beta/10 dark:border-light/10 p-3">
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                            <button className="flex flex-col items-center gap-1 p-2 rounded hover:bg-beta/5 dark:hover:bg-light/5 transition-colors">
-                                <Heart className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                <span className="text-xs text-beta/70 dark:text-light/70">Love</span>
-                            </button>
-                            <button className="flex flex-col items-center gap-1 p-2 rounded hover:bg-beta/5 dark:hover:bg-light/5 transition-colors">
-                                <MessageCircle className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                <span className="text-xs text-beta/70 dark:text-light/70">Comment</span>
-                            </button>
-                            <button className="flex flex-col items-center gap-1 p-2 rounded hover:bg-beta/5 dark:hover:bg-light/5 transition-colors">
-                                <Repeat2 className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                <span className="text-xs text-beta/70 dark:text-light/70">Repost</span>
-                            </button>
-                            <button className="flex flex-col items-center gap-1 p-2 rounded hover:bg-beta/5 dark:hover:bg-light/5 transition-colors">
-                                <Send className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                <span className="text-xs text-beta/70 dark:text-light/70">Send</span>
-                            </button>
-                        </div>
-
-                        {/* Analytics */}
-                        <div className="flex items-center justify-between p-2 bg-beta/5 dark:bg-light/5 rounded">
-                            <div className="flex items-center gap-2 text-xs text-beta/70 dark:text-light/70">
-                                <BarChart2 className="w-4 h-4" />
-                                <span>{post?.impressions || '695'} impressions</span>
-                            </div>
-                            <button className="text-xs text-alpha hover:underline">
-                                View analytics
-                            </button>
-                        </div>
-
-                        {/* Comment Input */}
-                        <div className="mt-3 flex items-center gap-2">
-                            <img
-                                src={post?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"}
-                                alt="Your profile"
-                                className="w-8 h-8 rounded-full"
-                            />
-                            <div className="flex-1 flex items-center gap-2 bg-beta/5 dark:bg-light/5 rounded-full px-4 py-2">
-                                <input
-                                    type="text"
-                                    placeholder="Tell them what you loved..."
-                                    className="flex-1 bg-transparent text-sm text-beta dark:text-light outline-none placeholder:text-beta/50 dark:placeholder:text-light/50"
-                                />
-                                <button className="p-1 hover:bg-beta/10 dark:hover:bg-light/10 rounded-full">
-                                    <Smile className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                </button>
-                                <button className="p-1 hover:bg-beta/10 dark:hover:bg-light/10 rounded-full">
-                                    <Image className="w-5 h-5 text-beta/70 dark:text-light/70" />
-                                </button>
-                            </div>
-                        </div>
+                        <PostCardFooter post={post} user={user} takeToUserProfile={takeToUserProfile} PostModal={true} />
                     </div>
                 </div>
             </div>
