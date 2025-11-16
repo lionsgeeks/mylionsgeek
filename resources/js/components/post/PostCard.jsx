@@ -143,6 +143,10 @@ const PostCard = ({ user, posts }) => {
                         //     );
                         // }
                     },
+                    onError: (error) => {
+                        console.log(error);
+
+                    }
                 }
             );
         } catch (error) {
