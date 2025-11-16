@@ -18,7 +18,7 @@ return new class extends Migration
                 ->on('users')
                 ->onDelete('cascade')
                 ->onUpdate('cascade');
-            $table->string('description');
+            $table->text('description');
             $table->json('images')->nullable();
             $table->string('hashTags')->nullable();
             $table->integer('status')->nullable();

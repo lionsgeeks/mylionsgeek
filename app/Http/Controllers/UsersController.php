@@ -242,7 +242,7 @@ class UsersController extends Controller
                 'user_formation' => $post->user->formation?->name,
                 'id' => $post->id,
                 'description' => $post->description,
-                'image' => $post->image,
+                'images' => $post->images,
                 'likes_count' => $post->likes_count,      // use eager count
                 'comments_count' => $post->comments_count, // use eager count
                 'created_at' => $post->created_at,
