@@ -233,7 +233,7 @@ const PostCard = ({ user, posts }) => {
 
                         {/* Post Content */}
                         <div className="mt-3 px-4">
-                            <p className="text-gray-800 dark:text-light text-sm leading-relaxed">
+                            <p className="text-gray-800 dark:text-light text-sm whitespace-pre-wrap">
                                 {p?.description}
                             </p>
                         </div>
