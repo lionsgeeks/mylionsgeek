@@ -475,7 +475,9 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             <ExportModal
                 open={showExportModal}
                 onClose={() => setShowExportModal(false)}
-                reservations={allReservations}
+                reservations={rangeActive ? baseAll : allReservations}
+                fromDate={fromDate}
+                toDate={toDate}
             />
         </AppLayout>
     );

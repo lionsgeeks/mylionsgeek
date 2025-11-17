@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 
-const ExportModal = ({ open, onClose, reservations }) => {
+const ExportModal = ({ open, onClose, reservations, fromDate, toDate }) => {
     const [exportFilters, setExportFilters] = useState({});
 
     // Reset checkboxes
@@ -27,8 +27,25 @@ const ExportModal = ({ open, onClose, reservations }) => {
         const sampleReservation = reservations[0];
         const fields = {};
 
+        // Fields to exclude from export
+        const excludedFields = [
+            'created_at',
+            'updated_at',
+            'user_id',
+            'place_type',
+            'table',
+            'date',
+            'id',
+            'seats'
+        ];
+
         Object.keys(sampleReservation).forEach(key => {
             const value = sampleReservation[key];
+
+            // Skip excluded fields
+            if (excludedFields.includes(key.toLowerCase())) {
+                return;
+            }
 
             if (value !== null && typeof value === 'object') {
                 return;
@@ -64,6 +81,15 @@ const ExportModal = ({ open, onClose, reservations }) => {
         const params = new URLSearchParams();
         params.append('export', 'true');
         params.append('fields', selectedFields.join(','));
+        
+        // Add date filters if they exist
+        if (fromDate) {
+            params.append('from_date', fromDate);
+        }
+        if (toDate) {
+            params.append('to_date', toDate);
+        }
+        
         try {
             const ids = Array.isArray(reservations) ? reservations.map(r => r.id).filter(Boolean) : [];
             if (ids.length > 0) {

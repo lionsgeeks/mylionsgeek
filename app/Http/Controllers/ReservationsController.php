@@ -1309,22 +1309,35 @@ class ReservationsController extends Controller
 
     private function exportData(Request $request)
     {
-        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
+        try {
+            $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
 
-        if (empty($requestedFields)) {
-            $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
-        }
+            if (empty($requestedFields)) {
+                $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
+            }
 
-        $query = DB::table('reservations as r')
-            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-            ->select('r.*', 'u.name as user_name')
-            ->orderByDesc('r.created_at');
+            // Get date filters
+            $fromDate = $request->query('from_date');
+            $toDate = $request->query('to_date');
 
-        $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
-        $placeByReservation = [];
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('r.*', 'u.name as user_name')
+                ->orderByDesc('r.created_at');
 
-        if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
-            DB::table('reservation_places as rp')
+            // Apply date filters if provided
+            if ($fromDate) {
+                $query->where('r.day', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $query->where('r.day', '<=', $toDate);
+            }
+
+            $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
+            $placeByReservation = [];
+
+            if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
+                DB::table('reservation_places as rp')
                 ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
                 ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
                 ->get()
@@ -1336,55 +1349,114 @@ class ReservationsController extends Controller
                 });
         }
 
-        $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+            // Also get cowork reservations (always include them, but apply date filters if provided)
+            $coworkQuery = null;
+            if (Schema::hasTable('reservation_coworks')) {
+                $coworkQuery = DB::table('reservation_coworks as rc')
+                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+                ->select('rc.*', 'u.name as user_name')
+                ->orderByDesc('rc.created_at');
 
-        $response = new StreamedResponse(function () use ($query, $requestedFields, $placeByReservation) {
-            $handle = fopen('php://output', 'w');
+            // Apply date filters to cowork reservations if provided
+            if ($fromDate) {
+                $coworkQuery->where('rc.day', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $coworkQuery->where('rc.day', '<=', $toDate);
+            }
+        }
 
-            // Add BOM for Excel UTF-8 compatibility
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
 
-            // Use semicolon delimiter for Excel
-            fputcsv($handle, $requestedFields, ';');
+            $response = new StreamedResponse(function () use ($query, $coworkQuery, $requestedFields, $placeByReservation) {
+                $handle = fopen('php://output', 'w');
 
-            $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
-                foreach ($reservations as $reservation) {
-                    $row = [];
+                // Add BOM for Excel UTF-8 compatibility
+                fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-                    foreach ($requestedFields as $field) {
-                        $value = null;
+                // Use semicolon delimiter for Excel
+                fputcsv($handle, $requestedFields, ';');
 
-                        if ($field === 'place_name' || $field === 'place_type') {
-                            $value = $placeByReservation[$reservation->id][$field] ?? '';
-                        } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
-                            $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
-                        } elseif ($field === 'created_at' || $field === 'updated_at') {
-                            $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
-                        } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
-                            $value = $reservation->day;
-                        } else {
-                            $value = $reservation->$field ?? '';
+                // Process regular reservations
+                $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
+                    foreach ($reservations as $reservation) {
+                        $row = [];
+
+                        foreach ($requestedFields as $field) {
+                            $value = null;
+
+                            if ($field === 'place_name' || $field === 'place_type') {
+                                $value = $placeByReservation[$reservation->id][$field] ?? '';
+                            } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
+                                $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
+                            } elseif ($field === 'created_at' || $field === 'updated_at') {
+                                $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
+                            } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                                $value = $reservation->day;
+                            } else {
+                                $value = $reservation->$field ?? '';
+                            }
+
+                            if (is_string($value)) {
+                                $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
+                            }
+
+                            $row[] = $value;
                         }
 
-                        if (is_string($value)) {
-                            $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
-                        }
-
-                        $row[] = $value;
+                        // Use semicolon delimiter
+                        fputcsv($handle, $row, ';');
                     }
+                });
 
-                    // Use semicolon delimiter
-                    fputcsv($handle, $row, ';');
+                // Process cowork reservations if they exist
+                if ($coworkQuery) {
+                    $coworkQuery->chunk(500, function ($coworkReservations) use ($handle, $requestedFields) {
+                        foreach ($coworkReservations as $reservation) {
+                            $row = [];
+
+                            foreach ($requestedFields as $field) {
+                                $value = null;
+
+                                if ($field === 'approved' || $field === 'canceled') {
+                                    $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
+                                } elseif ($field === 'created_at' || $field === 'updated_at') {
+                                    $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
+                                } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                                    $value = $reservation->day;
+                                } elseif ($field === 'type') {
+                                    $value = 'cowork';
+                                } elseif ($field === 'table') {
+                                    $value = $reservation->table ?? '';
+                                } else {
+                                    $value = $reservation->$field ?? '';
+                                }
+
+                                if (is_string($value)) {
+                                    $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
+                                }
+
+                                $row[] = $value;
+                            }
+
+                            // Use semicolon delimiter
+                            fputcsv($handle, $row, ';');
+                        }
+                    });
                 }
+
+                fclose($handle);
             });
 
-            fclose($handle);
-        });
+            $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+            $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
 
-        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-
-        return $response;
+            return $response;
+        } catch (\Exception $e) {
+            \Log::error('Export failed: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response('Export failed: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
