@@ -436,13 +436,8 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         loadingAction={loadingAction}
                         setLoadingAction={setLoadingAction}
                         onRowClick={(r) => {
-                            // For studio reservations, navigate to details page
-                            if ((r.type === 'studio' || r.place_type === 'studio') && r.type !== 'cowork') {
-                                router.visit(`/admin/reservations/${r.id}/details`);
-                            } else {
-                                // For other types, show modal
-                                setSelected(r);
-                            }
+                            // Show modal for all reservations
+                            setSelected(r);
                         }}
                     />
                         <div className="flex gap-5 mt-6 w-full items-center justify-center">
@@ -460,7 +455,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         setInfoFor(null);
                     }}
                 >
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-light dark:bg-dark transition-colors duration-300">
+                    <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-light dark:bg-dark transition-colors duration-300 p-0">
                         {(selected || infoFor) && (
                             <ReservationDetailsModal
                                 reservation={selected || infoFor}
