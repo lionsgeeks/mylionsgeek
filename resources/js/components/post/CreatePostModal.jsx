@@ -77,8 +77,11 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                             value={postText}
                             onChange={(e) => setPostText(e.target.value)}
                             placeholder="What do you want to talk about?"
-                            className="w-full min-h-[180px] resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
+                            className="w-full min-h-fit resize-none text-lg outline-none bg-transparent 
+               text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 
+               p-3 whitespace-pre-wrap"
                         />
+
                         {previews.length !== 0 && (
                             <>
                                 {openImagesEditor && (
