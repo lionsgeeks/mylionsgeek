@@ -215,8 +215,18 @@ class UsersController extends Controller
 
     public function getPosts($user = null)
     {
-        // Initialize the query
-        $dataPosts = Post::with(['user', 'likes', 'comments'])
+        // Get the authenticated user
+        $authUser = Auth::user();
+
+        // Initialize the query with eager loading
+        $dataPosts = Post::with([
+            'user',
+            'likes',
+            'comments',
+            'likes' => function ($query) use ($authUser) {
+                $query->where('user_id', $authUser->id);
+            }
+        ])
             ->withCount(['likes', 'comments'])
             ->latest();
 
@@ -228,10 +238,8 @@ class UsersController extends Controller
         // Get the posts
         $dataPosts = $dataPosts->get();
 
-
-
         // Map and format response
-        $posts = $dataPosts->map(function ($post) {
+        $posts = $dataPosts->map(function ($post) use ($authUser) {
             return [
                 'user_id' => $post->user_id,
                 'user_name' => $post->user->name,
@@ -239,13 +247,22 @@ class UsersController extends Controller
                 'user_last_online' => $post->user->last_online,
                 'user_status' => $post->user->status,
                 'user_formation' => $post->user->formation?->name,
+
                 'id' => $post->id,
                 'description' => $post->description,
                 'images' => $post->images,
-                'likes_count' => $post->likes_count,      // use eager count
-                'comments_count' => $post->comments_count, // use eager count
+
+                'likes_count' => $post->likes_count,
+                'comments_count' => $post->comments_count,
+
+                // Check if the likes collection contains any likes from the current user
+                'is_liked_by_current_user' => $post->likes->isNotEmpty(),
+
                 'created_at' => $post->created_at,
-                'is_following' => Follower::where('followed_id', $post->user_id)->where('follower_id', Auth::user()->id)->exists(),
+
+                'is_following' => Follower::where('followed_id', $post->user_id)
+                    ->where('follower_id', $authUser->id)
+                    ->exists(),
             ];
         });
 

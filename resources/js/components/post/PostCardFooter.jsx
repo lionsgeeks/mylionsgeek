@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import CommentsModal from './CommentsModal';
 import LikesModal from './LikesModal';
@@ -9,23 +9,28 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
     const [likedPostIds, setLikedPostIds] = useState([]);
     const [commentsOpenFor, setCommentsOpenFor] = useState(null);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
-    //! toogle like
+
+    // Initialize counts and liked state on mount
+    useEffect(() => {
+        setLikesCountMap(prev => ({ ...prev, [post.id]: post.likes_count }));
+        setCommentsCountMap(prev => ({ ...prev, [post.id]: post.comments_count }));
+
+        if (post.is_liked_by_current_user) {
+            setLikedPostIds(prev => [...new Set([...prev, post.id])]);
+        }
+    }, [post.id, post.likes_count, post.comments_count, post.is_liked_by_current_user]);
+
     const toggleLike = async (postId) => {
         try {
-            // Optimistic UI update
-            setLikedPostIds((prev) =>
-                prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]
-            );
-
             const response = await axios.post(`/posts/likes/${postId}`);
             const { liked, likes_count } = response.data;
 
-            // Update like states from backend
-            setLikedPostIds((prev) =>
-                liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)
+            // Update likedPostIds based on backend response
+            setLikedPostIds(prev =>
+                liked ? [...new Set([...prev, postId])] : prev.filter(id => id !== postId)
             );
 
-            setLikesCountMap((prev) => ({
+            setLikesCountMap(prev => ({
                 ...prev,
                 [postId]: likes_count,
             }));
@@ -33,26 +38,28 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
             console.error('Error toggling like:', error);
         }
     };
+
     const handleCommentAdded = (postId) => {
-        setCommentsCountMap((prev) => ({
+        setCommentsCountMap(prev => ({
             ...prev,
             [postId]: (prev[postId] || 0) + 1,
         }));
     };
+
     const handleCommentRemoved = (postId) => {
-        setCommentsCountMap((prev) => ({
+        setCommentsCountMap(prev => ({
             ...prev,
             [postId]: Math.max((prev[postId] || 1) - 1, 0),
         }));
     };
 
     const isLiked = likedPostIds.includes(post?.id);
-    const likeCount = likesCountMap[post?.id] ?? post?.likes_count;
-    const commentCount = commentsCountMap[post?.id] ?? post?.comments_count;
-
+    const likeCount = likesCountMap[post?.id] ?? 0;
+    const commentCount = commentsCountMap[post?.id] ?? 0;
 
     return (
         <>
+            {/* Counts */}
             <div className={`px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray/70 ${!PostModal && 'dark:bg-dark'}`}>
                 <div
                     className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
@@ -60,7 +67,6 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
                 >
                     {likeCount} Likes
                 </div>
-
                 <div
                     onClick={() => setCommentsOpenFor(post?.id)}
                     className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
@@ -70,18 +76,15 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
             </div>
 
             {/* Buttons */}
-            <div className={`px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm ${!PostModal && 'dark:bg-dark bg-light'}`}>
+            <div className={`px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm ${!PostModal ? 'dark:bg-dark bg-light' : ''}`}>
                 {/* Like Button */}
                 <button
                     onClick={() => toggleLike(post?.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${isLiked
-                        ? 'text-alpha'
-                        : 'text-beta dark:text-light hover:text-alpha'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light hover:text-alpha'
                         }`}
                 >
                     <svg
-                        className={`w-5 h-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
-                            }`}
+                        className={`w-5 h-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -93,9 +96,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
                             d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
                         />
                     </svg>
-                    <span className="font-semibold text-sm">
-                        {isLiked ? 'Liked' : 'Like'}
-                    </span>
+                    <span className="font-semibold text-sm">{isLiked ? 'Liked' : 'Like'}</span>
                 </button>
 
                 {/* Comment Button */}
@@ -119,6 +120,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
                     <span className="text-sm font-semibold">Comment</span>
                 </button>
             </div>
+
             {/* Comments modal */}
             {commentsOpenFor && (
                 <CommentsModal
@@ -131,6 +133,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
                     takeToUserProfile={takeToUserProfile}
                 />
             )}
+
             {/* Likes modal */}
             <LikesModal
                 postId={likesOpenFor}
