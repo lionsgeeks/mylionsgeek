@@ -1316,9 +1316,12 @@ class ReservationsController extends Controller
                 $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
             }
 
-            // Get date filters
+            // Get filters
             $fromDate = $request->query('from_date');
             $toDate = $request->query('to_date');
+            $searchTerm = $request->query('search');
+            $filterType = $request->query('type');
+            $filterStatus = $request->query('status');
 
             $query = DB::table('reservations as r')
                 ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
@@ -1331,6 +1334,42 @@ class ReservationsController extends Controller
             }
             if ($toDate) {
                 $query->where('r.day', '<=', $toDate);
+            }
+
+            // Apply type filter
+            if ($filterType) {
+                if ($filterType === 'exterior') {
+                    // Exterior detection logic
+                    $query->where(function($q) {
+                        $q->where('r.type', 'exterior')
+                          ->orWhere('r.type', 'outside');
+                    });
+                } else {
+                    $query->where('r.type', $filterType);
+                }
+            }
+
+            // Apply status filter
+            if ($filterStatus) {
+                if ($filterStatus === 'approved') {
+                    $query->where('r.approved', 1)->where('r.canceled', 0);
+                } elseif ($filterStatus === 'canceled') {
+                    $query->where('r.canceled', 1);
+                } elseif ($filterStatus === 'pending') {
+                    $query->where('r.approved', 0)->where('r.canceled', 0);
+                }
+            }
+
+            // Apply search filter
+            if ($searchTerm) {
+                $searchTermLower = strtolower($searchTerm);
+                $query->where(function($q) use ($searchTermLower) {
+                    $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.title) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.description) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.type) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('r.day LIKE ?', ['%' . $searchTerm . '%']);
+                });
             }
 
             $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
@@ -1349,7 +1388,7 @@ class ReservationsController extends Controller
                 });
         }
 
-            // Also get cowork reservations (always include them, but apply date filters if provided)
+            // Also get cowork reservations (always include them, but apply filters if provided)
             $coworkQuery = null;
             if (Schema::hasTable('reservation_coworks')) {
                 $coworkQuery = DB::table('reservation_coworks as rc')
@@ -1357,14 +1396,41 @@ class ReservationsController extends Controller
                 ->select('rc.*', 'u.name as user_name')
                 ->orderByDesc('rc.created_at');
 
-            // Apply date filters to cowork reservations if provided
-            if ($fromDate) {
-                $coworkQuery->where('rc.day', '>=', $fromDate);
+                // Apply date filters to cowork reservations if provided
+                if ($fromDate) {
+                    $coworkQuery->where('rc.day', '>=', $fromDate);
+                }
+                if ($toDate) {
+                    $coworkQuery->where('rc.day', '<=', $toDate);
+                }
+
+                // Apply type filter (only include cowork if type is 'cowork' or empty)
+                if ($filterType && $filterType !== 'cowork') {
+                    // If filtering by a specific type that's not cowork, exclude cowork reservations
+                    $coworkQuery = null;
+                } elseif ($filterType === 'cowork' || !$filterType) {
+                    // Apply status filter to cowork reservations
+                    if ($filterStatus) {
+                        if ($filterStatus === 'approved') {
+                            $coworkQuery->where('rc.approved', 1)->where('rc.canceled', 0);
+                        } elseif ($filterStatus === 'canceled') {
+                            $coworkQuery->where('rc.canceled', 1);
+                        } elseif ($filterStatus === 'pending') {
+                            $coworkQuery->where('rc.approved', 0)->where('rc.canceled', 0);
+                        }
+                    }
+
+                    // Apply search filter to cowork reservations
+                    if ($searchTerm && $coworkQuery) {
+                        $searchTermLower = strtolower($searchTerm);
+                        $coworkQuery->where(function($q) use ($searchTermLower, $searchTerm) {
+                            $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
+                              ->orWhereRaw('rc.day LIKE ?', ['%' . $searchTerm . '%'])
+                              ->orWhere('rc.table', 'LIKE', '%' . $searchTerm . '%');
+                        });
+                    }
+                }
             }
-            if ($toDate) {
-                $coworkQuery->where('rc.day', '<=', $toDate);
-            }
-        }
 
             $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
 
