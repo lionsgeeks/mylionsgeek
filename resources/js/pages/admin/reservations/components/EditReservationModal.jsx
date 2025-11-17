@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import TeamMemberSelector from '../../admin/places/studios/components/TeamMemberSelector';
-import EquipmentSelector from '../../admin/places/studios/components/EquipmentSelector';
+import TeamMemberSelector from '../../places/studios/components/TeamMemberSelector';
+import EquipmentSelector from '../../places/studios/components/EquipmentSelector';
 
 const EditReservationModal = ({
     isOpen,

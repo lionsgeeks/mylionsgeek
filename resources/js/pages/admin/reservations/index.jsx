@@ -445,10 +445,10 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             }
                         }}
                     />
-                    <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                        <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                        <span>Page {pageAll} of {totalPagesAll}</span>
-                        <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
+                        <div className="flex gap-5 mt-6 w-full items-center justify-center">
+                            <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
+                            <span>Page {pageAll} of {totalPagesAll}</span>
+                            <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
                     </div>
                 </div>
 
@@ -475,9 +475,12 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             <ExportModal
                 open={showExportModal}
                 onClose={() => setShowExportModal(false)}
-                reservations={rangeActive ? baseAll : allReservations}
+                reservations={filteredReservations}
                 fromDate={fromDate}
                 toDate={toDate}
+                searchTerm={searchTerm}
+                filterType={filterType}
+                filterStatus={filterStatus}
             />
         </AppLayout>
     );
