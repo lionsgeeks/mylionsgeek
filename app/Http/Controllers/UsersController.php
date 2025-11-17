@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
+use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Medical;
 use App\Models\Note;
@@ -228,6 +229,8 @@ class UsersController extends Controller
         // Get the posts
         $dataPosts = $dataPosts->get();
 
+
+
         // Map and format response
         $posts = $dataPosts->map(function ($post) {
             return [
@@ -239,10 +242,11 @@ class UsersController extends Controller
                 'user_formation' => $post->user->formation?->name,
                 'id' => $post->id,
                 'description' => $post->description,
-                'image' => $post->image,
+                'images' => $post->images,
                 'likes_count' => $post->likes_count,      // use eager count
                 'comments_count' => $post->comments_count, // use eager count
                 'created_at' => $post->created_at,
+                'is_following' => Follower::where('followed_id', $post->user_id)->where('follower_id', Auth::user()->id)->exists(),
             ];
         });
 
@@ -792,29 +796,5 @@ class UsersController extends Controller
             ->values(); // reset keys
 
         return response()->json($monthlyAbsences);
-    }
-    public function changeCover(Request $request, $id)
-    {
-        $user = User::find($id);  // Use find() to get the user by ID
-
-        // Validate the uploaded file
-        $request->validate([
-            'cover' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-        ]);
-
-        // Handle the uploaded file
-        if ($request->hasFile('cover') && $request->file('cover')->isValid()) {
-            // Store the cover image in the public disk (storage/app/public)
-            $path = $request->file('cover')->store('img/cover', 'public'); // Store file in 'covers' folder
-
-            // Update the user's cover image in the database
-            $user->update([
-                'cover' => $path, // Store the file path in the database
-            ]);
-
-            return redirect()->back()->with('success', 'Cover changed successfully');
-        }
-
-        return redirect()->back()->with('error', 'There was an error changing the cover.');
     }
 }

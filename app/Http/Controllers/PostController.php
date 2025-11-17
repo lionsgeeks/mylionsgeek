@@ -135,53 +135,65 @@ class PostController extends Controller
     //! edit post function
     public function editPost(Request $request, $id)
     {
-        $request->validate([
-            'description' => 'nullable|string',
-            'image' => 'nullable|mimes:png,jpg,gif,jpeg'
-        ]);
         $post = Post::find($id);
-        // dd($post);
-        if ($request->hasFile('image')) {
+        if (Auth::user()->id == $post->user_id) {
             # code...
-            $file = $request->file('image');
-            $fileName = $file->hashName();
-            $file->move(public_path('/storage/img/posts'), $fileName);
-            $request->image = $fileName;
-        };
-        $post->update([
-            'description' => $request->description,
-            'image' => $request->image
-        ]);
-        return back()->with([
-            'success' => 'Post Updated SuccesFully',
-            'post' => $post
-        ]);
+            $request->validate([
+                'description' => 'nullable|string',
+                'image' => 'nullable'
+            ]);
+            // dd($post);
+            if ($request->hasFile('image')) {
+                # code...
+                $file = $request->file('image');
+                $fileName = $file->hashName();
+                $file->move(public_path('/storage/img/posts'), $fileName);
+                $request->image = $fileName;
+            };
+            $post->update([
+                'description' => $request->description,
+                'image' => $request->image
+            ]);
+            return back()->with('success', 'Post Updated SuccesFully');
+        }
     }
+    //! create post
     public function storePost(Request $request)
     {
+        // Validate
+        // dd($request->all());
         $request->validate([
             'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:png,jpg'
+            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp', // validate each file
         ]);
-        // dd($request->all());
-        if ($request->hasFile('image')) {
-            # code...
-            $file = $request->file('image');
-            $fileName = $file->hashName();
-            $file->move(public_path('/storage/img/posts'), $fileName);
-            $request->image = $fileName;
-        };
+
+        $imagesArray = [];
+
+        // Handle multiple images
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+
+                $fileName = $image->hashName();
+                $image->move(public_path('/storage/img/posts'), $fileName);
+
+                $imagesArray[] = $fileName; // push filename to array
+            }
+        }
+        
+        // Create post
+        // dd($imagesArray);
         Post::create([
-            'user_id' => Auth::user()->id,
+            'user_id' => Auth::id(),
             'description' => $request->description,
-            'image' => $request->image != "null" ? $request->image : Null
+            'images' => $imagesArray, // save JSON array
         ]);
+
         $posts = Post::withCount(['likes', 'comments'])
             ->latest()
             ->get();
-            
+
         return back()->with([
-            'success' => 'Post Updated SuccesFully',
+            'success' => 'Post Updated Successfully',
             'posts' => $posts
         ]);
     }

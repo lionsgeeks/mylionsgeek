@@ -28,3 +28,4 @@ class ForgotPasswordLinkMail extends Mailable
 
 
 
+

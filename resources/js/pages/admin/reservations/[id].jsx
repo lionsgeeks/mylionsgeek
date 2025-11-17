@@ -3,8 +3,9 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import * as AvatarPrimitive from '@radix-ui/react-avatar';
-import { AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+// import * as AvatarPrimitive from '@radix-ui/react-avatar';
+// import { AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -546,12 +547,20 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="text-center">
-                                    <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-16 h-16 mx-auto mb-4">
+                                    {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-16 h-16 mx-auto mb-4">
                                         <AvatarImage src={normalizeImageUrl(reservation.user_avatar)} />
                                         <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
                                             {getInitials(reservation.user_name)}
                                         </AvatarFallback>
-                                    </AvatarPrimitive.Root>
+                                    </AvatarPrimitive.Root> */}
+                                    <Avatar
+                                        className="w-16 h-16"
+                                        image={reservation?.user_avatar}
+                                        name={reservation?.name}
+                                        lastActivity={reservation?.online || null}
+                                        onlineCircleClass="hidden"
+                                        edit={false}
+                                    />
                                     <h3 className="text-lg font-semibold text-foreground mb-2">
                                         {reservation.user_name || 'Unknown User'}
                                     </h3>
@@ -588,12 +597,20 @@ export default function AdminReservationDetails({ reservation }) {
                                     <div className="space-y-3">
                                         {reservation.members.map((member, index) => (
                                             <div key={index} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                                                <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
+                                                {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
                                                     <AvatarImage src={normalizeImageUrl(member.avatar)} />
                                                     <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
                                                         {getInitials(member.name)}
                                                     </AvatarFallback>
-                                                </AvatarPrimitive.Root>
+                                                </AvatarPrimitive.Root> */}
+                                                <Avatar
+                                                    className="w-10 h-10"
+                                                    image={member?.image}
+                                                    name={member?.name}
+                                                    lastActivity={member?.last_online || null}
+                                                    onlineCircleClass="hidden"
+                                                    edit={false}
+                                                />
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-sm font-medium text-foreground truncate">

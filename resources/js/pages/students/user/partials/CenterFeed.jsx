@@ -3,9 +3,9 @@ import { Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import PostCard from '../../../../components/post/PostCard';
 import CreatePostModal from '../../../../components/post/CreatePostModal';
+import { Link } from '@inertiajs/react';
 
 export default function CenterFeed({ user, posts }) {
-    const [allPosts, setAllPosts] = useState(posts)
 
     const [openAddPost, setOpenAddPost] = useState(false)
     return (
@@ -13,17 +13,19 @@ export default function CenterFeed({ user, posts }) {
             {/* Center Feed - Scrollable */}
             <div className="lg:col-span-6 space-y-4">
                 {/* Create Post Box */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-dark_gray shadow-alpha/10 rounded-lg shadow  p-4">
                     <div className="flex items-center gap-3 mb-4">
-                        <Avatar
-                            className="w-12 h-12 rounded-full overflow-hidden border-2 dark:border-light border-dark"
-                            image={user?.image}
-                            name={user?.name}
-                            lastActivity={user?.last_online || null}
-                            onlineCircleClass="hidden"
-                        />
-                        <button onClick={() => setOpenAddPost(true)} className='cursor-pointer border-2 border-beta dark:border-light flex-1 px-4 py-2 bg-transparent text-left rounded-full hover:bg-beta/5 dark:hover:bg-light/5 transition-all duration-300'>
-                            Add Post
+                        <Link href={'/student/' + user.id}>
+                            <Avatar
+                                className="w-12 h-12 rounded-full overflow-hidden"
+                                image={user?.image}
+                                name={user?.name}
+                                lastActivity={user?.last_online || null}
+                                onlineCircleClass="hidden"
+                            />
+                        </Link>
+                        <button onClick={() => setOpenAddPost(true)} className='cursor-pointer opacity-80 border-2 text-foreground/70 border-beta dark:border-alpha/80 flex-1 px-4 py-2 bg-transparent text-left rounded-lg hover:bg-beta/5 dark:hover:bg-light/5 transition-all duration-300'>
+                            Whats on your mind today ....
                         </button>
                     </div>
                     <div className="flex justify-around">
@@ -46,8 +48,7 @@ export default function CenterFeed({ user, posts }) {
 
                 <PostCard
                     user={user}
-                    posts={allPosts}
-                    onPostsChange={setAllPosts}
+                    posts={posts}
                 />
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow"> */}
                 {/* Post Header */}
@@ -193,7 +194,7 @@ export default function CenterFeed({ user, posts }) {
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
                     <p>More posts would appear here...</p>
                 </div> */}
-                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} onPostsChange={setAllPosts} />}
+                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} />}
             </div >
         </>
     );

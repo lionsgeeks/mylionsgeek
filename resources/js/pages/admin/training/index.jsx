@@ -3,8 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { BookOpen, Timer, Trash2, TrendingUp, User, Sparkles, Award, Clock, Target, GraduationCap, X, CheckCircle2, Building2, Calendar } from 'lucide-react';
 import { useState } from 'react';
 import CreatTraining from './partials/CreatTraining';
-import { Avatar, } from '@/components/ui/avatar';
-import { useInitials } from '@/hooks/use-initials';
+import { Avatar } from '@/components/ui/avatar';
 import UpdateTraining from './partials/UpdateTraining';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Lesson-bro.png"
@@ -15,7 +14,6 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
     const [selectedTrack, setSelectedTrack] = useState(filters.track || '');
     const [selectedPromo, setSelectedPromo] = useState(filters.promo || '');
     const [hoveredCard, setHoveredCard] = useState(null);
-    const getInitials = useInitials();
     const openModal = () => setModalOpen(true);
     const closeModal = () => setModalOpen(false);
     const [modalOpen, setModalOpen] = useState(false);
@@ -130,7 +128,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                 {/* Stats Cards - Premium Design */}
                 {trainings && trainings.length > 0 && (
 
-                        <StatCard items={items} />
+                    <StatCard items={items} />
 
 
                 )}
@@ -449,7 +447,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     {/* Avatar & Basic Info */}
                                     <div className="flex items-start gap-6 p-6 bg-gradient-to-br from-yellow-50 to-amber-50/50 dark:from-yellow-950/20 dark:to-amber-950/10 rounded-2xl border border-yellow-200/50 dark:border-yellow-600/20">
                                         <div className="relative">
-                                            <Avatar className="w-24 h-24 ring-4 ring-yellow-200/50 dark:ring-yellow-600/30 shadow-xl">
+                                            {/* <Avatar className="w-24 h-24 ring-4 ring-yellow-200/50 dark:ring-yellow-600/30 shadow-xl">
                                                 {filteredCoach.image ? (
                                                     <AvatarImage
                                                         src={`/storage/img/profile/${filteredCoach.image}`}
@@ -463,7 +461,15 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                         </div>
                                                     </AvatarFallback>
                                                 )}
-                                            </Avatar>
+                                            </Avatar> */}
+                                            <Avatar
+                                                className="w-24 h-24"
+                                                image={filteredCoach?.image}
+                                                name={filteredCoach?.name}
+                                                lastActivity={filteredCoach?.last_online || null}
+                                                onlineCircleClass="hidden"
+                                                edit={true}
+                                            />
                                             <div className="absolute -bottom-2 -right-2 p-1.5 bg-green-500 rounded-lg shadow-lg">
                                                 <CheckCircle2 size={16} className="text-white" />
                                             </div>

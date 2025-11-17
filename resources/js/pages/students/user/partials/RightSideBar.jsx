@@ -8,7 +8,7 @@ const RightSideBar = () => {
             {/* Right Sidebar - Fixed */}
             <div className="lg:col-span-3 space-y-4 sticky top-0 h-fit">
                 {/* News Section */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-[#101112]  rounded-lg shadow p-4">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold text-gray-900 dark:text-white text-sm">LinkedIn News</h3>
                         <TrendingUp className="w-4 h-4 text-gray-500" />
@@ -36,7 +36,7 @@ const RightSideBar = () => {
                 </div>
 
                 {/* Suggestions */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hidden lg:block">
+                <div className="bg-white dark:bg-[#101112] rounded-lg shadow p-4 hidden lg:block">
                     <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-4">
                         Add to your feed
                     </h3>

@@ -1,12 +1,11 @@
 import { Activity, Award, Calendar, Clock, Code, Laptop, Medal, Monitor, RefreshCw, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import React from 'react';
 import { TableRowSkeleton } from '@/components/LoadingSkeleton';
-import { Avatar,  } from "@/components/ui/avatar";
-import { useInitials } from "@/hooks/use-initials";
+// import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from '@/components/ui/avatar';
 
 
-const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetchLeaderboardData, showSidePanel, getRankIcon, highlightText, selectedUser, formatTime, userInsights, loadingInsights, closeSidePanel, getRankBadge, handleUserClick, getRankColor }) => {
-    const getInitials = useInitials();
+const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetchLeaderboardData, showSidePanel, getRankIcon, highlightText, selectedUser, formatTime, userInsights, loadingInsights, closeSidePanel, getRankBadge, handleUserClick, getRankColor, setSearchText }) => {
 
     return (
         <>
@@ -44,89 +43,110 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                         ))}
                                     </>
                                 ) : leaderboardData.length > 0 ? (
-                                    leaderboardData.map((user, index) => (
-                                        <tr
-                                            key={user.user?.id || index}
-                                            className={`hover:bg-alpha/5 ${index == 0 && "bg-alpha/5"} dark:hover:bg-alpha/5 transition-all duration-200 cursor-pointer group table-row`}
-                                            onClick={() => handleUserClick(user)}
-                                        >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    {getRankIcon(user.metrics?.rank || index + 1)}
-                                                    {/* <span className="text-lg font-bold text-dark dark:text-light">
-                                                        {user.metrics?.rank || index + 1}
-                                                    </span> */}
-                                                </div>
-                                            </td>
+                                    leaderboardData.map((user, index) => {
+                                        // Debug logging for first user
+                                        if (index === 0) {
+                                            console.log('Rendering first user:', {
+                                                user,
+                                                total_seconds: user.data?.total_seconds,
+                                                daily_average: user.data?.daily_average,
+                                                top_language: user.data?.languages?.[0]?.name,
+                                                rank: user.metrics?.rank
+                                            });
+                                        }
 
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-4">
-                                                    <Avatar className="h-14 w-14 overflow-hidden rounded-full">
-                                                        <AvatarImage
-                                                            src={user?.user?.image}
-                                                            alt={user?.user?.name}
+                                        return (
+                                            <tr
+                                                key={user.user?.id || index}
+                                                className={`hover:bg-alpha/5 ${index == 0 && "bg-alpha/5"} dark:hover:bg-alpha/5 transition-all duration-200 cursor-pointer group table-row`}
+                                                onClick={() => handleUserClick(user)}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        {getRankIcon(user.metrics?.rank || index + 1)}
+                                                        {/* <span className="text-lg font-bold text-dark dark:text-light">
+                                                            {user.metrics?.rank || index + 1}
+                                                        </span> */}
+                                                    </div>
+                                                </td>
+
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-4">
+                                                        {/* <Avatar className="h-14 w-14 overflow-hidden rounded-full">
+                                                            <AvatarImage
+                                                                src={user?.user?.image}
+                                                                alt={user?.user?.name}
+                                                            />
+                                                            <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                                {getInitials(user?.user?.name)}
+                                                            </AvatarFallback>
+                                                        </Avatar> */}
+                                                        <Avatar
+                                                            className="h-14 w-14"
+                                                            image={user?.image}
+                                                            name={user?.name}
+                                                            lastActivity={user?.last_online || null}
+                                                            onlineCircleClass="hidden"
+                                                            edit={false}
                                                         />
-                                                        <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                                            {getInitials(user?.user?.name)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <div
-                                                            className="font-semibold text-dark dark:text-light text-lg"
-                                                            dangerouslySetInnerHTML={{
-                                                                __html: highlightText(user.user?.name || 'Unknown', searchText)
-                                                            }}
-                                                        />
-                                                        <div className="text-sm text-dark/70 dark:text-light/70">
-                                                            {user.user?.promo ? `Promo ${user.user.promo}` : 'No Promo'}
+                                                        <div>
+                                                            <div
+                                                                className="font-semibold text-dark dark:text-light text-lg"
+                                                                dangerouslySetInnerHTML={{
+                                                                    __html: highlightText(user.user?.name || 'Unknown', searchText)
+                                                                }}
+                                                            />
+                                                            <div className="text-sm text-dark/70 dark:text-light/70">
+                                                                {user.user?.promo ? `Promo ${user.user.promo}` : 'No Promo'}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
+                                                </td>
 
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-yellow-800 dark:text-yellow-200 shadow-sm">
-                                                    <Clock className="w-4 h-4" />
-                                                    {formatTime(user.data?.total_seconds || 0)}
-                                                </span>
-                                            </td>
-
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-800 dark:text-blue-200 shadow-sm">
-                                                    <TrendingUp className="w-4 h-4" />
-                                                    {formatTime(user.data?.daily_average || 0)}
-                                                </span>
-                                            </td>
-
-                                            {/* <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-20 progress-container bg-light/50 dark:bg-dark/50 h-3 shadow-inner">
-                                                        <div
-                                                            className="h-3 progress-fill bg-gradient-to-r from-alpha to-alpha/80"
-                                                            style={{ width: `${Math.min(100, user.metrics?.win_rate || 0)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="text-sm font-bold text-dark dark:text-light min-w-[3rem]">
-                                                        {user.metrics?.win_rate || 0}%
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 text-yellow-800 dark:text-yellow-200 shadow-sm">
+                                                        <Clock className="w-4 h-4" />
+                                                        {formatTime(user.data?.total_seconds || 0)}
                                                     </span>
-                                                </div>
-                                            </td> */}
+                                                </td>
 
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-alpha/20 text-alpha shadow-sm">
-                                                    <Code className="w-4 h-4" />
-                                                    {user.data?.languages?.[0]?.name || 'N/A'}
-                                                </span>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-800 dark:text-blue-200 shadow-sm">
+                                                        <TrendingUp className="w-4 h-4" />
+                                                        {formatTime(user.data?.daily_average || 0)}
+                                                    </span>
+                                                </td>
 
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm rank-badge ${getRankColor(user.metrics?.rank || index + 1)}`}>
-                                                    <Star className="w-4 h-4" />
-                                                    {getRankBadge(user.data?.total_seconds)}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                {/* <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-20 progress-container bg-light/50 dark:bg-dark/50 h-3 shadow-inner">
+                                                            <div
+                                                                className="h-3 progress-fill bg-gradient-to-r from-alpha to-alpha/80"
+                                                                style={{ width: `${Math.min(100, user.metrics?.win_rate || 0)}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-sm font-bold text-dark dark:text-light min-w-[3rem]">
+                                                            {user.metrics?.win_rate || 0}%
+                                                        </span>
+                                                    </div>
+                                                </td> */}
+
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-alpha/20 text-alpha shadow-sm">
+                                                        <Code className="w-4 h-4" />
+                                                        {user.data?.languages?.[0]?.name || 'N/A'}
+                                                    </span>
+                                                </td>
+
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm rank-badge ${getRankColor(user.metrics?.rank || index + 1)}`}>
+                                                        <Star className="w-4 h-4" />
+                                                        {getRankBadge(user.data?.total_seconds || 0)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan={7} className="p-0">
@@ -174,7 +194,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                             <div className="text-center mb-6">
                                 <div className="relative">
                                     <div className="w-20 h-20 bg-gradient-to-r from-alpha to-alpha/80 rounded-full flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-                                        <Avatar className="h-full w-full overflow-hidden rounded-full">
+                                        {/* <Avatar className="h-full w-full overflow-hidden rounded-full">
                                             <AvatarImage
                                                 src={selectedUser?.user?.image}
                                                 alt={selectedUser?.user?.name}
@@ -182,7 +202,15 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                             <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                                 {getInitials(selectedUser?.user?.name)}
                                             </AvatarFallback>
-                                        </Avatar>
+                                        </Avatar> */}
+                                        <Avatar
+                                            className="h-full w-full"
+                                            image={selectedUser?.image}
+                                            name={selectedUser?.name}
+                                            lastActivity={selectedUser?.last_online || null}
+                                            onlineCircleClass="hidden"
+                                            edit={false}
+                                        />
                                     </div>
                                     {selectedUser.metrics?.rank <= 3 && (
                                         <div className="absolute -top-2 -right-2">
@@ -201,7 +229,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                 <div className="mt-2 flex items-center justify-center gap-2">
                                     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${getRankColor(selectedUser.metrics?.rank || 1)}`}>
                                         <Star className="w-4 h-4" />
-                                        {getRankBadge(selectedUser.data?.total_seconds  || 1)}
+                                        {getRankBadge(selectedUser.data?.total_seconds || 1)}
                                     </span>
                                     <span className="text-xs text-dark/50 dark:text-light/50">
                                         #{selectedUser.metrics?.rank || 1}
