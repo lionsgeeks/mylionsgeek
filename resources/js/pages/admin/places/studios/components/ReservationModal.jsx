@@ -8,14 +8,17 @@ import { Label } from '@/components/ui/label';
 import TeamMemberSelector from './TeamMemberSelector';
 import EquipmentSelector from './EquipmentSelector';
 
-const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess }) => {
-    const [currentStep, setCurrentStep] = useState(1);
+const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, studios = [] }) => {
+    // If studio is already provided, skip step 0. Otherwise, show studio selection if studios array is provided
+    const shouldShowStudioSelection = studios.length > 0 && !studio?.id;
+    const [currentStep, setCurrentStep] = useState(shouldShowStudioSelection ? 0 : 1);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
     const [timeError, setTimeError] = useState('');
+    const [selectedStudio, setSelectedStudio] = useState(studio);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        studio_id: studio.id,
+        studio_id: selectedStudio?.id || studio?.id || '',
         title: '',
         description: '',
         day: selectedRange?.day || '',
@@ -24,6 +27,12 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
         team_members: [],
         equipment: [],
     });
+
+    useEffect(() => {
+        if (selectedStudio) {
+            setData('studio_id', selectedStudio.id);
+        }
+    }, [selectedStudio]);
 
     // Update form when selectedRange changes
     useEffect(() => {
@@ -39,9 +48,10 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     const handleClose = () => {
         reset();
-        setCurrentStep(1);
+        setCurrentStep(shouldShowStudioSelection ? 0 : 1);
         setSelectedMembers([]);
         setSelectedEquipment([]);
+        setSelectedStudio(studio);
         setTimeError('');
         onClose();
     };
@@ -66,14 +76,16 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
         }
 
         setTimeError('');
-        if (currentStep < 3) {
+        // Total steps: if studio selection shown (step 0), then steps 0,1,2,3. Otherwise steps 1,2,3
+        const maxStep = shouldShowStudioSelection ? 3 : 3;
+        if (currentStep < maxStep) {
             setCurrentStep(currentStep + 1);
         }
     };
 
 
     const handlePrevious = () => {
-        if (currentStep > 1) {
+        if (currentStep > (shouldShowStudioSelection ? 0 : 1)) {
             setCurrentStep(currentStep - 1);
         }
     };
@@ -106,14 +118,72 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess })
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw] bg-light dark:bg-dark">
-                <DialogHeader>
-                    <DialogTitle>
-                        Reservation — Step {currentStep}/3
+            <DialogContent className="max-w-3xl max-h-[85vh] max-md:w-[95vw] bg-light dark:bg-dark border border-gray-300 dark:border-gray-600 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                    <DialogTitle className="text-xl font-bold text-foreground">
+                        Reservation — Step {currentStep + 1}/{shouldShowStudioSelection ? 4 : 3}
                     </DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6 px-6 py-4 overflow-y-auto max-h-[calc(85vh-100px)]">
+                    {/* Step 0: Studio Selection */}
+                    {currentStep === 0 && shouldShowStudioSelection && (
+                        <div className="space-y-4">
+                            <Label className="text-base font-semibold mb-4 block text-foreground">Select Studio</Label>
+                            <div className="flex gap-4 overflow-x-auto pb-4 px-1 custom-scrollbar" style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}>
+                                {studios.filter(s => s.state).map(s => {
+                                    const isSelected = selectedStudio?.id === s.id;
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setSelectedStudio(s)}
+                                            className={`flex-shrink-0 w-[160px] rounded-lg border-2 p-3 transition-all hover:shadow-md bg-white dark:bg-gray-800 ${
+                                                isSelected
+                                                    ? 'border-[#FFC801] bg-[#FFC801]/20 dark:bg-[#FFC801]/10 shadow-md scale-105'
+                                                    : 'border-gray-200 dark:border-gray-700 hover:border-[#FFC801]/50 dark:hover:border-[#FFC801]/50'
+                                            }`}
+                                        >
+                                            {s.image ? (
+                                                <img
+                                                    src={s.image}
+                                                    alt={s.name}
+                                                    className="w-full h-24 object-cover rounded-md mb-2 border border-gray-200 dark:border-gray-700"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-24 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center mb-2">
+                                                    <span className="text-gray-400 dark:text-gray-500 text-xs">No Image</span>
+                                                </div>
+                                            )}
+                                            <div className="text-center">
+                                                <div className="font-semibold text-foreground text-sm">{s.name}</div>
+                                                {isSelected && (
+                                                    <div className="text-xs text-[#FFC801] mt-1 font-medium">
+                                                        Selected
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedStudio) {
+                                            setCurrentStep(1);
+                                        }
+                                    }}
+                                    disabled={!selectedStudio}
+                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700] px-6"
+                                >
+                                    Next →
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Step 1: Basic Info */}
                     {currentStep === 1 && (
                         <div className="space-y-4">

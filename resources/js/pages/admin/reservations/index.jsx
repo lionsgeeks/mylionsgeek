@@ -611,7 +611,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         </Card>
                     </div>
                 )} */}
-                <StatCard items={items} />
+                {/* <StatCard items={items} /> */}
 
 
 
@@ -634,7 +634,19 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             </thead>
                             <tbody className="divide-y divide-sidebar-border/70">
                                 {pagedAll.map((r) => (
-                                    <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
+                                    <tr 
+                                        key={r.id} 
+                                        className="hover:bg-accent/30 cursor-pointer" 
+                                        onClick={() => {
+                                            // For studio reservations, navigate to details page
+                                            if ((r.type === 'studio' || r.place_type === 'studio') && r.type !== 'cowork') {
+                                                router.visit(`/admin/reservations/${r.id}/details`);
+                                            } else {
+                                                // For other types, show modal
+                                                setSelected(r);
+                                            }
+                                        }}
+                                    >
                                         <td className="px-4 py-3 text-sm truncate">{r.user_name ?? '—'}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
                                         <td className="px-4 py-3 text-sm whitespace-nowrap">{r.start} - {r.end}</td>

@@ -3,7 +3,7 @@ import { usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import ReservationModalCowork from '@/pages/admin/places/coworks/components/ReservationModalCowork';
 import ReservationModal from '@/pages/admin/places/studios/components/ReservationModal';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -30,10 +30,9 @@ export default function SpacesPage() {
     const [selectedStudioId, setSelectedStudioId] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventExtras, setEventExtras] = useState({ team_members: [], equipments: [] });
+    const [excludedTableId, setExcludedTableId] = useState(null);
+    const [showStudioSelectModal, setShowStudioSelectModal] = useState(false);
 
-    // New state for selection modal
-    const [showSelectionModal, setShowSelectionModal] = useState(false);
-    const [tempSelectedId, setTempSelectedId] = useState(null);
 
     const breadcrumbs = [
         { title: 'Spaces', href: '/spaces' }
@@ -47,9 +46,10 @@ export default function SpacesPage() {
         studios.forEach(place => cards.push({ ...place, cardType: 'studio' }));
     }
     if (showCowork) {
+        // Show just one "Cowork" card in all tab
         cards.push({
             id: 'cowork-zone',
-            name: 'Cowork Zone',
+            name: 'Cowork',
             type: 'cowork',
             image: coworks[0]?.image || '',
             cardType: 'cowork',
@@ -64,10 +64,8 @@ export default function SpacesPage() {
             setLoadingEvents(true);
         }
         if (card.cardType === 'cowork') {
-
-            const firstAvailable = coworks.find(c => c.state) || coworks[0];
-            setSelectedCoworkId(firstAvailable ? firstAvailable.id : null);
-            setCalendarFor({ place_type: 'cowork', id: firstAvailable ? firstAvailable.id : null, name: 'Cowork' });
+            setSelectedCoworkId(null);
+            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
             setSelectedRange(null);
             setLoadingEvents(true);
         }
@@ -83,38 +81,6 @@ export default function SpacesPage() {
         router.reload();
     }
 
-    function handleOpenSelectionModal() {
-        if (type === 'studio') {
-            setTempSelectedId(selectedStudioId);
-        } else if (type === 'cowork') {
-            setTempSelectedId(selectedCoworkId);
-        }
-        setShowSelectionModal(true);
-    }
-
-    function handleConfirmSelection() {
-        setShowSelectionModal(false);
-
-        // Update the selected ID
-        if (type === 'studio' || calendarFor?.place_type === 'studio') {
-            setSelectedStudioId(tempSelectedId);
-            const studio = studios.find(s => s.id === tempSelectedId);
-            if (studio) {
-                setCalendarFor({ place_type: 'studio', id: tempSelectedId, name: studio.name });
-            }
-            // Open reservation modal after selection
-            if (selectedRange) {
-                setModalStudio({ id: tempSelectedId, name: studio?.name || 'Studio', cardType: 'studio' });
-            }
-        } else if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
-            setSelectedCoworkId(tempSelectedId);
-            setCalendarFor({ place_type: 'cowork', id: tempSelectedId, name: 'Cowork' });
-            // Open reservation modal after selection
-            if (selectedRange) {
-                setModalCowork(true);
-            }
-        }
-    }
 
     useEffect(() => {
         let typeToLoad = null;
@@ -141,14 +107,21 @@ export default function SpacesPage() {
                         .then(data => {
                             return (Array.isArray(data) ? data : []).map(event => ({
                                 ...event,
-                                title: `${event.title} — ${studio.name}`
+                                title: `${event.title} — ${studio.name}`,
+                                created_at: event.created_at || new Date().toISOString()
                             }));
                         })
                         .catch(() => [])
                 )
             )
                 .then(allEvents => {
-                    setEvents(allEvents.flat());
+                    // Sort by created_at descending
+                    const sorted = allEvents.flat().sort((a, b) => {
+                        const dateA = new Date(a.created_at || 0);
+                        const dateB = new Date(b.created_at || 0);
+                        return dateB - dateA;
+                    });
+                    setEvents(sorted);
                 })
                 .finally(() => setLoadingEvents(false));
             return;
@@ -163,14 +136,22 @@ export default function SpacesPage() {
                         .then(data => {
                             return (Array.isArray(data) ? data : []).map(event => ({
                                 ...event,
-                                title: `${event.title} — ${cowork.table || `Table ${cowork.id}`}`
+                                title: `${event.title} — ${cowork.table || `Table ${cowork.id}`}`,
+                                created_at: event.created_at || new Date().toISOString(),
+                                resourceId: cowork.id, // Add resourceId for grouping
                             }));
                         })
                         .catch(() => [])
                 )
             )
                 .then(allEvents => {
-                    setEvents(allEvents.flat());
+                    // Sort by created_at descending
+                    const sorted = allEvents.flat().sort((a, b) => {
+                        const dateA = new Date(a.created_at || 0);
+                        const dateB = new Date(b.created_at || 0);
+                        return dateB - dateA;
+                    });
+                    setEvents(sorted);
                 })
                 .finally(() => setLoadingEvents(false));
             return;
@@ -180,7 +161,16 @@ export default function SpacesPage() {
         setLoadingEvents(true);
         fetch(`/reservations/public-place/${typeToLoad}/${idToLoad}`, { headers: { 'Accept': 'application/json' } })
             .then(r => r.json())
-            .then(data => setEvents(Array.isArray(data) ? data : []))
+            .then(data => {
+                const events = Array.isArray(data) ? data : [];
+                // Sort by created_at descending
+                const sorted = events.sort((a, b) => {
+                    const dateA = new Date(a.created_at || 0);
+                    const dateB = new Date(b.created_at || 0);
+                    return dateB - dateA;
+                });
+                setEvents(sorted);
+            })
             .catch(() => setEvents([]))
             .finally(() => setLoadingEvents(false));
     }, [type, calendarFor, selectedCoworkId, selectedStudioId, studios, coworks]);
@@ -193,10 +183,11 @@ export default function SpacesPage() {
     }, [selectedStudioId]);
 
     useEffect(() => {
-        if (type === 'cowork' && selectedCoworkId) {
-            setCalendarFor({ place_type: 'cowork', id: selectedCoworkId, name: 'Cowork' });
+        if (type === 'cowork') {
+            // For cowork, we show all tables in one calendar, so no need to set calendarFor to a specific table
+            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
         }
-    }, [selectedCoworkId]);
+    }, [type]);
 
     const onCalendarDateSelect = (selectInfo) => {
         const start = selectInfo.start;
@@ -205,9 +196,12 @@ export default function SpacesPage() {
         const startTime = start.toTimeString().slice(0, 5);
         const endTime = end.toTimeString().slice(0, 5);
         setSelectedRange({ day, start: startTime, end: endTime });
+        // Clear excluded table when selecting empty time slot
+        setExcludedTableId(null);
 
         if (type === 'all' && calendarFor) {
             if (calendarFor.place_type === 'studio') {
+                // For all tab, directly open reservation modal
                 setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                 return;
             }
@@ -217,18 +211,16 @@ export default function SpacesPage() {
             }
         }
 
-        // Only show selection modal if NOT in 'all' tab
-        if (type !== 'all') {
-            if (type === 'studio' || calendarFor?.place_type === 'studio') {
-                setTempSelectedId(selectedStudioId);
-                setShowSelectionModal(true);
-                return;
-            }
-            if (type === 'cowork' || calendarFor?.place_type === 'cowork') {
-                setTempSelectedId(selectedCoworkId);
-                setShowSelectionModal(true);
-                return;
-            }
+        // For studio and cowork tabs, directly open modal if selection exists
+        if (type === 'studio' && selectedStudioId) {
+            // In Studios tab, directly open reservation modal if studio is selected
+            setModalStudio({ id: selectedStudioId, name: studios.find(s => s.id === selectedStudioId)?.name || 'Studio', cardType: 'studio' });
+            return;
+        }
+        if (type === 'cowork') {
+            // For cowork, always open modal - table selection is inside the modal
+            setModalCowork(true);
+            return;
         }
     };
 
@@ -237,16 +229,18 @@ export default function SpacesPage() {
             const first = studios[0];
             setSelectedStudioId(first.id);
             setCalendarFor({ place_type: 'studio', id: first.id, name: first.name });
-        } else if (type === 'cowork' && coworks.length) {
-            const firstAvailable = coworks.find(c => c.state) || coworks[0];
-            setSelectedCoworkId(firstAvailable?.id || null);
-            setCalendarFor({ place_type: 'cowork', id: firstAvailable?.id || null, name: 'Cowork' });
+        } else if (type === 'cowork') {
+            // For cowork, show all tables in one calendar - no need to select a specific table
+            setSelectedCoworkId(null);
+            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
         } else if (type === 'all') {
             setCalendarFor(null);
             setSelectedRange(null);
+            setSelectedStudioId(null);
         }
         setModalStudio(null);
         setModalCowork(false);
+        setShowStudioSelectModal(false);
     }, [type]);
 
 
@@ -259,17 +253,20 @@ export default function SpacesPage() {
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
                 </div>
 
-                <div className="inline-flex items-center rounded-xl border border-gray-200 dark:border-sidebar-border/70 p-1 bg-alpha/30 backdrop-blur-sm text-black shadow-sm mb-6">
+                <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
                     {TABS.map((tab) => (
                         <button
                             key={tab.key}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === tab.key
-                                    ? 'bg-alpha text-white shadow'
-                                    : 'text-gray-700 dark:text-gray-200 hover:bg-alpha/20 dark:hover:bg-alpha/10'
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${type === tab.key
+                                    ? 'text-alpha dark:text-alpha'
+                                    : 'text-neutral-600 dark:text-neutral-400 hover:text-alpha dark:hover:text-alpha'
                                 }`}
                             onClick={() => setType(tab.key)}
                         >
                             {tab.label}
+                            {type === tab.key && (
+                                <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-alpha dark:bg-white"></div>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -302,7 +299,7 @@ export default function SpacesPage() {
                                     </span>
                                 </div>
                                 <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
-                                    <div className="text-white font-semibold text-base drop-shadow-sm line-clamp-1">{place.name}</div>
+                                    <div className="text-white font-semibold text-start drop-shadow-sm line-clamp-1">{place.name}</div>
                                 </div>
                             </div>
                         ))}
@@ -310,20 +307,26 @@ export default function SpacesPage() {
                 ) : (
                     <div className="bg-light dark:bg-dark rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
                         <div className="flex items-center justify-between mb-3 gap-3">
-                            <div className="text-lg font-semibold">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
+                            <div className="text-lg font-semibold">
+                                {type === 'studio'
+                                    ? 'Studio Calendar'
+                                    : 'Cowork Calendar'
+                                }
+                            </div>
+
 
                             <button
-                                className={`ml-auto px-4 py-2 rounded-md text-sm font-semibold border ${selectedRange ? 'bg-[#FFC801] text-black border-[#FFC801]' : 'bg-white border-gray-300 text-gray-700'}`}
+                                className="ml-auto px-4 py-2 rounded-md text-sm font-semibold border bg-alpha text-black border-alpha hover:bg-alpha/90"
                                 onClick={() => {
                                     if (type === 'studio') {
-                                        setTempSelectedId(selectedStudioId);
+                                        // In Studios tab, open reservation modal (will show studio selection in step 1)
+                                        setModalStudio({ id: null, name: '', cardType: 'studio' });
                                     } else if (type === 'cowork') {
-                                        setTempSelectedId(selectedCoworkId);
+                                        setModalCowork(true);
                                     }
-                                    setShowSelectionModal(true);
                                 }}
                             >
-                                {selectedRange ? 'Add Reservation' : 'Add Reservation'}
+                                Add Reservation
                             </button>
                         </div>
                         {loadingEvents ? (
@@ -341,31 +344,43 @@ export default function SpacesPage() {
                                     eventClick={(info) => {
                                         const e = info.event;
 
-                                        if (e.extendedProps?.user_id !== auth?.user?.id) {
-                                            return;
-                                        }
-                                        setSelectedEvent({
-                                            id: e.id,
-                                            title: e.title,
-                                            start: e.start?.toISOString?.() || e.start,
-                                            end: e.end?.toISOString?.() || e.end,
-                                            backgroundColor: e.backgroundColor,
-                                        });
-                                        setEventExtras({ team_members: [], equipments: [] });
-                                        if ((type === 'studio' || (type === 'all' && calendarFor?.place_type === 'studio')) && e.id) {
-                                            fetch(`/admin/reservations/${e.id}/info`, { headers: { 'Accept': 'application/json' } })
-                                                .then(r => r.ok ? r.json() : null)
-                                                .then(data => {
-                                                    if (!data) return;
-                                                    setEventExtras({
-                                                        team_members: Array.isArray(data.team_members) ? data.team_members : [],
-                                                        equipments: Array.isArray(data.equipments) ? data.equipments : [],
-                                                    });
-                                                })
-                                                .catch(() => { });
+                                        // Extract time slot from event
+                                        const start = e.start;
+                                        const end = e.end;
+                                        if (start && end) {
+                                            const day = start.toISOString().split('T')[0];
+                                            const startTime = start.toTimeString().slice(0, 5);
+                                            const endTime = end.toTimeString().slice(0, 5);
+                                            setSelectedRange({ day, start: startTime, end: endTime });
+
+                                            // For cowork, extract table ID from event title or extendedProps
+                                            if (type === 'cowork') {
+                                                // Try to extract table ID from the event
+                                                // Event title format: "Table X — User Name" or "Table X — User Name — Table Y"
+                                                const titleMatch = e.title?.match(/Table\s+(\d+)/);
+                                                if (titleMatch) {
+                                                    const tableNumber = parseInt(titleMatch[1]);
+                                                    // Try to find table by table number or ID
+                                                    const reservedTable = coworks.find(c =>
+                                                        String(c.table) === String(tableNumber) ||
+                                                        c.id === tableNumber ||
+                                                        String(c.id) === String(tableNumber)
+                                                    );
+                                                    if (reservedTable) {
+                                                        setExcludedTableId(reservedTable.id);
+                                                    }
+                                                }
+                                                // Open modal to reserve another table
+                                                setModalCowork(true);
+                                            } else {
+                                                // For studio, navigate to details page only if user owns the reservation
+                                                if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
+                                                    router.visit(`/reservations/${e.id}/details`);
+                                                }
+                                            }
                                         }
                                     }}
-                                    selectOverlap={false}
+                                    selectOverlap={true}
                                     editable={false}
                                     height="100%"
                                     eventColor="#FFC801"
@@ -378,100 +393,6 @@ export default function SpacesPage() {
                     </div>
                 )}
 
-                {/* Selection Modal - Only show when NOT in 'all' tab */}
-                {showSelectionModal && type !== 'all' && (
-                    <Dialog open={showSelectionModal} onOpenChange={setShowSelectionModal}>
-                        <DialogContent className="max-w-md bg-light dark:bg-dark">
-                            <div className="space-y-4">
-                                <div>
-                                    <h2 className="text-xl font-semibold mb-1">
-                                        {type === 'studio' ? 'Select Studio' : 'Select Cowork Table'}
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        Choose {type === 'studio' ? 'a studio' : 'a table'} to view its calendar and make a reservation
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                                    {type === 'studio' ? (
-                                        studios.map(studio => (
-                                            <button
-                                                key={studio.id}
-                                                onClick={() => setTempSelectedId(studio.id)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${tempSelectedId === studio.id
-                                                    && 'border-[#FFC801] bg-[#FFC801]/10'
-
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    {studio.image && (
-                                                        <img
-                                                            src={studio.image}
-                                                            alt={studio.name}
-                                                            className="w-12 h-12 rounded object-cover"
-                                                        />
-                                                    )}
-                                                    <div className="flex-1">
-                                                        <div className="font-medium">{studio.name}</div>
-                                                        <div className="text-xs text-muted-foreground capitalize">{studio.type}</div>
-                                                    </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${studio.state
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-red-100 text-red-700'
-                                                        }`}>
-                                                        {studio.state ? 'Available' : 'Busy'}
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        ))
-                                    ) : (
-                                        coworks.filter(cowork => cowork.state == 1).map(cowork => (
-                                            <button
-                                                key={cowork.id}
-                                                onClick={() => setTempSelectedId(cowork.id)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition ${tempSelectedId === cowork.id
-                                                        ? 'border-[#FFC801] bg-[#FFC801]/10'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        {cowork.image && (
-                                                            <img
-                                                                src={cowork.image}
-                                                                alt={cowork.table || `Table ${cowork.id}`}
-                                                                className="w-12 h-12 rounded object-cover"
-                                                            />
-                                                        )}
-                                                        <div className="font-medium">
-                                                            {cowork.table || `Table ${cowork.id}`}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        onClick={() => setShowSelectionModal(false)}
-                                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md font-medium hover:bg-gray-50"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handleConfirmSelection}
-                                        disabled={!tempSelectedId}
-                                        className="flex-1 px-4 py-2 bg-[#FFC801] text-black rounded-md font-medium hover:bg-[#FFD633] disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Confirm Selection
-                                    </button>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                )}
 
                 {/* Calendar Modal - For 'all' tab */}
                 {type === 'all' && calendarFor && (
@@ -482,24 +403,7 @@ export default function SpacesPage() {
                                     <div className="shrink-0 px-5 pr-14 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
                                         <h2 className="text-base font-medium">Calendar - {calendarFor.name}</h2>
                                         <div className="flex items-center gap-3">
-                                            {calendarFor.place_type === 'cowork' && (
-                                                <div className="min-w-[220px]">
-                                                    <Select value={selectedCoworkId ? String(selectedCoworkId) : ''} onValueChange={(v) => {
-                                                        const newId = Number(v);
-                                                        setSelectedCoworkId(newId);
-                                                        setCalendarFor({ place_type: 'cowork', id: newId, name: 'Cowork' });
-                                                    }}>
-                                                        <SelectTrigger className="h-9">
-                                                            <SelectValue placeholder="Select table" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {coworks.filter(c => c.state).map(t => (
-                                                                <SelectItem key={t.id} value={String(t.id)}>{t.table || `Table ${t.id}`}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            )}
+                                     
                                             <button
                                                 onClick={() => {
                                                     const now = new Date();
@@ -510,13 +414,12 @@ export default function SpacesPage() {
                                                     setSelectedRange({ day, start: startTime, end: endTime });
 
                                                     if (calendarFor.place_type === 'studio') {
-                                                        setTempSelectedId(calendarFor.id);
+                                                        setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                                                     } else if (calendarFor.place_type === 'cowork') {
-                                                        setTempSelectedId(selectedCoworkId);
+                                                        setModalCowork(true);
                                                     }
-                                                    setShowSelectionModal(true);
                                                 }}
-                                                className="px-4 py-2 bg-[#FFC801] text-black rounded-md font-medium"
+                                                className="px-4 py-2 bg-alpha text-black rounded-md font-medium"
                                             >
                                                 + Add Reservation
                                             </button>
@@ -538,6 +441,13 @@ export default function SpacesPage() {
                                                 eventClick={(info) => {
                                                     const e = info.event;
 
+                                                    // For studio reservations, navigate to details page only if user owns it
+                                                    if (calendarFor?.place_type === 'studio' && e.extendedProps?.user_id === auth?.user?.id && e.id) {
+                                                        router.visit(`/reservations/${e.id}/details`);
+                                                        return;
+                                                    }
+                                                    
+                                                    // For other cases, show event details only if user owns it
                                                     if (e.extendedProps?.user_id !== auth?.user?.id) {
                                                         return;
                                                     }
@@ -568,7 +478,7 @@ export default function SpacesPage() {
                                                         })();
                                                     }
                                                 }}
-                                                selectOverlap={false}
+                                                selectOverlap={true}
                                                 editable={false}
                                                 height="100%"
                                                 eventColor="#FFC801"
@@ -587,14 +497,73 @@ export default function SpacesPage() {
                 {/* Cowork Reservation Modal */}
                 {modalCowork && (
                     <ReservationModalCowork
-                        key={selectedCoworkId || calendarFor?.id || 'cowork-modal'}
+                        key="cowork-modal"
                         isOpen={modalCowork}
-                        onClose={() => setModalCowork(false)}
-                        cowork={coworks.find(c => c.id === (selectedCoworkId || calendarFor?.id))}
+                        onClose={() => {
+                            setModalCowork(false);
+                            setExcludedTableId(null);
+                        }}
+                        cowork={selectedRange && selectedCoworkId ? coworks.find(c => c.id === selectedCoworkId) : null}
                         selectedRange={selectedRange}
-                        coworks={coworks.filter(t => t.state)}
-                        onSuccess={handleCoworkSuccess}
+                        coworks={coworks.filter(t => t.state).map(c => ({
+                            id: c.id,
+                            table: c.name?.replace('Table ', '') || c.id,
+                            state: c.state,
+                            image: c.image
+                        }))}
+                        onSuccess={() => {
+                            handleCoworkSuccess();
+                            setExcludedTableId(null);
+                        }}
+                        allowMultiple={true}
+                        excludedTableId={excludedTableId}
                     />
+                )}
+
+                {/* Studio Selection Modal - Only for Studios tab */}
+                {showStudioSelectModal && type === 'studio' && (
+                    <Dialog open={showStudioSelectModal} onOpenChange={setShowStudioSelectModal}>
+                        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-light dark:bg-dark">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-semibold">Select a Studio</DialogTitle>
+                                <p className="text-sm text-muted-foreground mt-1">Choose a studio to make a reservation</p>
+                            </DialogHeader>
+                            <div className="py-6">
+                                <div className="flex gap-6 overflow-x-auto pb-4 px-1 custom-scrollbar" style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}>
+                                    {studios.map(studio => (
+                                        <button
+                                            key={studio.id}
+                                            onClick={() => {
+                                                setSelectedStudioId(studio.id);
+                                                setCalendarFor({ place_type: 'studio', id: studio.id, name: studio.name });
+                                                setShowStudioSelectModal(false);
+                                                setModalStudio({ id: studio.id, name: studio.name, cardType: 'studio' });
+                                            }}
+                                            className="flex-shrink-0 w-[240px] rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-alpha dark:hover:border-alpha p-5 transition-all hover:shadow-lg hover:scale-105 bg-card dark:bg-neutral-800/90 backdrop-blur-sm"
+                                        >
+                                            {studio.image ? (
+                                                <img
+                                                    src={studio.image}
+                                                    alt={studio.name}
+                                                    className="w-full h-40 object-cover rounded-lg mb-4 border border-gray-200 dark:border-gray-700"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-40 rounded-lg mb-4 bg-muted flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                                                    <span className="text-muted-foreground text-sm">No Image</span>
+                                                </div>
+                                            )}
+                                            <div className="text-center">
+                                                <div className="font-semibold text-foreground text-base mb-1">{studio.name}</div>
+                                                <div className="text-xs text-muted-foreground capitalize px-2 py-1 rounded-full bg-muted/50 inline-block">
+                                                    {studio.type}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 )}
 
                 {/* Studio Reservation Modal */}
@@ -602,9 +571,10 @@ export default function SpacesPage() {
                     <ReservationModal
                         isOpen={!!modalStudio}
                         onClose={() => setModalStudio(null)}
-                        studio={{ id: modalStudio.id || calendarFor?.id, name: modalStudio.name || calendarFor?.name }}
+                        studio={type === 'studio' ? null : { id: modalStudio.id || calendarFor?.id, name: modalStudio.name || calendarFor?.name }}
                         selectedRange={selectedRange}
                         onSuccess={handleStudioSuccess}
+                        studios={type === 'studio' ? studios : []}
                         userRouteMode
                     />
                 )}

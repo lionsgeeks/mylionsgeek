@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Equipment;
+use App\Models\Formation;
 use App\Models\Reservation;
 use App\Models\ReservationCowork;
 use App\Models\User;
@@ -12,9 +13,25 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Inertia\Response;
 
 class ReservationController extends Controller
 {
+
+
+    public function users()
+    {
+        $allUsers = User::where('role', '!=', 'admin')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $allFormation = Formation::orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            "users" => $allUsers,
+            "formations" => $allFormation
+        ]);
+    }
     public function index(Request $request)
     {
         // Check authentication

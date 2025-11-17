@@ -130,7 +130,7 @@ export default function AdminReservationDetails({ reservation }) {
     };
 
     const isPending = !reservation.canceled && !reservation.approved;
-    
+
     // Check if user can edit: must be pending AND (user is owner OR admin)
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin');
@@ -243,7 +243,7 @@ export default function AdminReservationDetails({ reservation }) {
             equipment: selectedEquipment.map(e => e.id),
         };
 
-        const route = isAdmin 
+        const route = isAdmin
             ? `/admin/reservations/${reservation.id}/update`
             : `/reservations/${reservation.id}/update`;
 
@@ -262,15 +262,12 @@ export default function AdminReservationDetails({ reservation }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
-
-                        <Rolegard authorized={["admin", "super_admin"]}>
-                            <Link href="/admin/reservations">
-                                <Button variant="outline" size="sm">
-                                    <ArrowLeft className="w-4 h-4 mr-2" />
-                                    Back to reservations
-                                </Button>
-                            </Link>
-                        </Rolegard>
+                        <Link href={isAdmin ? "/admin/reservations" : "/reservations"}>
+                            <Button variant="outline" size="sm">
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                Back to reservations
+                            </Button>
+                        </Link>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>
                             <Rolegard authorized={["admin", "super_admin"]}>
@@ -323,8 +320,8 @@ export default function AdminReservationDetails({ reservation }) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <FileText className="w-5 h-5" />
                                     Reservation Information
@@ -387,8 +384,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <Package className="w-5 h-5" />
                                     Equipment Information ({reservation.equipments?.length || 0} items)
@@ -446,8 +443,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <Clock className="w-5 h-5" />
                                     Timing Information
@@ -540,8 +537,8 @@ export default function AdminReservationDetails({ reservation }) {
                     </div>
 
                     <div className="space-y-6">
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <User className="w-5 h-5" />
                                     Reserved By
@@ -577,8 +574,8 @@ export default function AdminReservationDetails({ reservation }) {
                         </Card>
 
                         {reservation.members && reservation.members.length > 0 && (
-                            <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10">
+                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10 px-6 py-2">
                                     <CardTitle className="flex items-center gap-2">
                                         <Users className="w-5 h-5" />
                                         Team Members
@@ -622,8 +619,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </Card>
                         )}
                         <Rolegard authorized={["admin", "super_admin"]}>
-                            <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                                <CardHeader>
+                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                                <CardHeader className="px-6 py-4">
                                     <CardTitle className="text-lg">Quick Actions</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6">

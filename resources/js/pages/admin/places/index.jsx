@@ -858,10 +858,22 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         onClose={() => setIsReservationModalOpen(false)}
                         cowork={selectedPlace}
                         selectedRange={selectedRange}
+                        coworks={places.filter(p => p.place_type === 'cowork').map(p => {
+                            // Extract table number from name (format: "Table X") or use id
+                            const tableMatch = p.name?.match(/Table\s+(\d+)/);
+                            const tableNumber = tableMatch ? tableMatch[1] : (p.name?.replace('Table ', '') || p.id);
+                            return {
+                                id: p.id,
+                                table: tableNumber,
+                                state: p.state,
+                                image: p.image
+                            };
+                        })}
                         onSuccess={() => {
                             setIsReservationModalOpen(false);
                             loadCalendarEvents(selectedPlace);
                         }}
+                        allowMultiple={true}
                     />
                 )}
 

@@ -578,8 +578,10 @@ class ReservationsController extends Controller
                     'r.approved',
                     'r.canceled',
                     'r.user_id as user_id',
+                    'r.created_at',
                     'u.name as user_name'
                 )
+                ->orderByDesc('r.created_at')
                 ->get()
                 ->map(function ($r) {
                     return [
@@ -590,6 +592,7 @@ class ReservationsController extends Controller
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                         'user_id' => $r->user_id,
                         'canceled' => (bool) $r->canceled,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
                     ];
                 });
         }
@@ -607,9 +610,11 @@ class ReservationsController extends Controller
                     'rc.approved',
                     'rc.canceled',
                     'rc.user_id as user_id',
+                    'rc.created_at',
                     'u.name as user_name',
                     'c.table as table_number'
                 )
+                ->orderByDesc('rc.created_at')
                 ->get()
                 ->map(function ($r) {
                     return [
@@ -620,6 +625,7 @@ class ReservationsController extends Controller
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                         'user_id' => $r->user_id,
                         'canceled' => (bool) $r->canceled,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
                     ];
                 });
         }
