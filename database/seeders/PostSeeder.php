@@ -44,6 +44,15 @@ class PostSeeder extends Seeder
                 'status' => $faker->boolean(80),
             ]);
         }
+        foreach (range(1, 10) as $i) {
+            Post::create([
+                'user_id' => 6,
+                'description' => $faker->paragraph(2),
+                'images' => Null,
+                'hashTags' => '#' . implode(' #', $faker->words(3)),
+                'status' => $faker->boolean(80),
+            ]);
+        }
 
         $this->command->info('✅ 50 posts created!');
     }

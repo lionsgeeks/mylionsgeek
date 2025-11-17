@@ -197,7 +197,7 @@ const [processingId, setProcessingId] = useState(null);
                                         >
                                             {user.account_state ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button onClick={() => router.visit(`/admin/users/${user.id}`)}>View Full Profile</Button>
+                                        <Button className='hover:bg-alpha/50 cursor-pointer' onClick={() => router.get(`/admin/users/${user.id}`)}>View Full Profile</Button>
                                     </div>
                                 </div>
                             </div>

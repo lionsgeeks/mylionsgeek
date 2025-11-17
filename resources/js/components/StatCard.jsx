@@ -1,43 +1,37 @@
 import React from "react";
 
-export default function StatCard({ items = [] }) {
+export default function StatsGrid({ statsData }) {
     return (
-        <div className={`grid gap-4 grid-cols-1 sm:grid-cols-2 ${items.length % 2 == 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
-            {items.map((item, index) => {
-                const { title, number, icon: Icon } = item;
-                return (
-                    <div
-                        key={index}
-                        className="group relative overflow-hidden rounded-2xl
-                      bg-gradient-to-br from-yellow-50 to-yellow-100
-                      dark:from-yellow-900/20 dark:to-yellow-800/20
-                      p-6 border-2 border-yellow-200 dark:border-yellow-600/30
-                      hover:border-yellow-400 dark:hover:border-yellow-400
-                      transition-all duration-300 hover:scale-105 cursor-pointer
-                      shadow-lg hover:shadow-2xl"
-                    >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 dark:bg-yellow-600 rounded-full
-                            filter blur-3xl opacity-20 group-hover:opacity-30 transition-opacity"
-                        />
-                        <div className="relative z-10 flex items-center justify-between">
-                            <div>
-                                <div className={`text-5xl font-black text-yellow-600 dark:text-yellow-400 mb-2`}>
-                                    {number}
-                                </div>
-                                <div className="text-sm font-bold text-yellow-700 dark:text-yellow-300 uppercase tracking-wider">
-                                    {title}
-                                </div>
-                            </div>
-
-                            <div className="w-16 h-16 rounded-2xl bg-yellow-400 dark:bg-yellow-500
-                              flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform"
+        <div className="bg-light dark:bg-dark py-0 sm:py-0">
+            <div className="w-full mx-auto">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${statsData?.length > 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}  gap-4`}>
+                    {statsData.map((stat, index) => {
+                        const Icon = stat.icon;
+                        return (
+                            <div
+                                key={index}
+                                className="relative rounded-2xl p-6 overflow-hidden bg-light dark:bg-dark_gray shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] transition-shadow duration-300"
                             >
-                                <Icon className="w-8 h-8 text-white" />
+                                {/* Background Icon */}
+                                <Icon
+                                    size={70}
+                                    className="absolute text-alpha dark:text-alpha right-4 bottom-0 opacity-70"
+                                />
+
+                                {/* Title */}
+                                <h3 className="text-sm font-semibold text-beta dark:text-white/80 uppercase tracking-wide mb-2 relative z-10">
+                                    {stat.title}
+                                </h3>
+
+                                {/* Value */}
+                                <p className="text-3xl sm:text-4xl font-bold text-beta dark:text-white mb-1 relative z-10">
+                                    {stat.value}
+                                </p>
                             </div>
-                        </div>
-                    </div>
-                );
-            })}
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
