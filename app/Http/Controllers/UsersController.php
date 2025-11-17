@@ -127,7 +127,6 @@ class UsersController extends Controller
     //! edit sunction
     public function show(Request $request, User $user)
     {
-        // Load relationships
         $user->load(['formation']);
 
         if (Schema::hasTable('accesses')) {
@@ -223,7 +222,7 @@ class UsersController extends Controller
 
         // If $user is truthy, filter by authenticated user
         if ($user) {
-            $dataPosts = $dataPosts->where('user_id', Auth::id());
+            $dataPosts = $dataPosts->where('user_id', $user->id);
         }
 
         // Get the posts

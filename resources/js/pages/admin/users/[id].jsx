@@ -23,6 +23,8 @@ export default function AdminUserProfile({
   stats,
   roles,
 }) {
+  console.log(posts);
+  
   return (
     <AppLayout>
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">

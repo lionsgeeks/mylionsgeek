@@ -9,7 +9,7 @@ import PostCardHeader from './PostCardHeader';
 import PostCardMainContent from './PostCardMainContent';
 import PostCardFooter from './PostCardFooter';
 
-const PostCard = ({ user, posts, }) => {
+const PostCard = ({ user, posts }) => {
     const { auth } = usePage().props
     const { addOrRemoveFollow } = helpers();
     const [undoState, setUndoState] = useState(false);
