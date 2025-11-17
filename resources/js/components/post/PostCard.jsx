@@ -62,7 +62,7 @@ const PostCard = ({ user, posts }) => {
         <>
             {posts?.map((p, index) => {
                 return (
-                    <div key={index} className="bg-white dark:bg-dark rounded-lg shadow mb-4">
+                    <div key={index} className="bg-white dark:bg-dark_gray rounded-lg shadow mb-4">
                         {/* Post Header */}
                         <PostCardHeader post={p} user={auth.user} postText={postText} postImage={postImage} onPostTextChange={setPostText} onPostImageChange={setPostImage} takeUserProfile={takeToUserProfile} timeAgo={timeAgo} />
 

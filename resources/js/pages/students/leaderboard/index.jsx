@@ -286,8 +286,7 @@ export default function Leaderboard() {
       <Head title="Wakatime Leaderboard" />
 
       {/* Main Container with Enhanced Design */}
-      <div className="min-h-screen bg-gradient-to-br from-light to-light/80 dark:from-dark dark:to-dark">
-        <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className=" mx-auto p-4 md:p-6 ">
 
           <Banner
             illustration={illustration}
@@ -351,7 +350,6 @@ export default function Leaderboard() {
             </div>
           </div>
         </div>
-      </div>
 
 
       {/* Floating Action Button */}

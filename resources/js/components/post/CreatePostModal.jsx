@@ -44,7 +44,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="w-full max-w-[70%] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-beta overflow-hidden transition-all duration-300">
+                <div className="w-full max-w-[70%] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-dark_gray overflow-hidden transition-all duration-300">
 
                     {/* Header */}
                     <div className="p-5 border-b border-gray-200 dark:border-dark_gray flex items-center justify-between">
@@ -109,7 +109,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-5 border-t border-gray-200 dark:border-dark_gray bg-white/50 dark:bg-beta/70 backdrop-blur-sm">
+                    <div className="p-5 border-t border-gray-200 dark:border-dark_gray bg-white/50 dark:bg-dark_gray/80 backdrop-blur-sm">
                         <div className="flex w-full items-center justify-between mb-3">
                             <label
                                 htmlFor="imageUpload"
@@ -128,7 +128,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                             <button
                                 disabled={!postText.trim()}
                                 onClick={() => handelCreatePost()}
-                                className={`px-6 py-2.5 rounded-full font-semibold transition-all duration-200 shadow-sm
+                                className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-sm
                    ${postText.trim()
                                         ? 'bg-alpha text-dark hover:opacity-90'
                                         : 'bg-gray-200 dark:bg-dark_gray text-gray-400 cursor-not-allowed'}
