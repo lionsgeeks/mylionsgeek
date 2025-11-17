@@ -84,7 +84,7 @@ export default function ReservationsPage() {
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-6xl mx-auto px-6 pb-6 bg-light dark:bg-dark">
+      <div className="max-w-6xl min-h-screen mx-auto px-6 pb-6 bg-light dark:bg-dark">
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight">My Reservations</h1>
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
@@ -96,7 +96,13 @@ export default function ReservationsPage() {
             <ReservationTable
               columns={columns}
               data={filteredReservations}
-              onRowClick={row => router.visit(`/reservations/${row.id}/details`)}
+              onRowClick={row => {
+                // Don't navigate to details for cowork reservations
+                if (row.type === 'cowork' || row.place_type === 'cowork') {
+                  return;
+                }
+                router.visit(`/reservations/${row.id}/details`);
+              }}
               renderActions={(row) => (
                 !row.canceled && (
                   <Button
