@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clipboard, Copy, Plus, X, ChevronDown } from 'lucide-react';
+import { Clipboard, Copy, Plus, X, ChevronDown, Users, PlayCircle, Laptop, Code, Camera } from 'lucide-react';
+import { Users2 } from "lucide-react";
+import StatsCard from '../../../../components/StatCard';
 
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -139,12 +141,35 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const inputClass =
         "bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white placeholder:text-[#0a0a0a]/50 dark:placeholder:text-white focus:ring-2 focus:ring-alpha";
 
+    const mediaTraining = trainings.filter(t => t.name.toLowerCase().includes('création') || t.name.toLowerCase().includes('media') || t.name.toLowerCase().includes('creator'))
+    const codingTraining = trainings.filter(t => t.name.toLowerCase().includes('coding') || t.name.toLowerCase().includes('developpement') || t.name.toLowerCase().includes('developement'))
+    const mediaStidents = filteredUsers.filter(users => mediaTraining.map(t => t.id).includes(users.formation_id))
+    const codingStudents = filteredUsers.filter(users => codingTraining.map(t => t.id).includes(users.formation_id))
+    const staticCardData = [
+        {
+            title: 'Total Users',
+            value: filteredUsers.length,
+            icon: Users2,
+        },
+        {
+            title: 'Total Media Students',
+            value: mediaStidents.length,
+            icon: Camera,
+        },
+        {
+            title: 'Total Coding Students',
+            value: codingStudents.length,
+            icon: Code,
+        },
+    ]
+
     return (
         <>
+            <StatsCard statsData={staticCardData} />
             <div className="flex justify-between items-center">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-5xl">All Members</h1>
-                    <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p>
+                    {/* <h1 className="text-5xl">All Members</h1>
+                    <p className="text-beta dark:text-light text-sm">{filteredUsers?.length} membres disponibles</p> */}
                 </div>
 
                 <div className="flex items-center gap-3">
