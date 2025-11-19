@@ -48,7 +48,7 @@ const CalendarModal = ({
                         {loadingEvents && (
                             <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading events…</div>
                         )}
-                        <div className="absolute inset-0 px-4 pb-4 bg-light dark:bg-dark">
+                        <div className={`absolute inset-0 px-4 pb-4 bg-light dark:bg-dark transition-opacity duration-200 ${loadingEvents ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                             <FullCalendar
                                 plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
                                 initialView={isMobile ? "timeGridDay" : "timeGridWeek"}

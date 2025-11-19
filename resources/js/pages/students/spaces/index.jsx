@@ -67,6 +67,9 @@ export default function SpacesPage() {
 
     const requestEvents = useCallback((params) => {
         setLoadingEvents(true);
+        setEvents([]);
+        setEventExtras({ team_members: [], equipments: [] });
+        setSelectedEvent(null);
         router.get('/spaces', params, {
             preserveState: true,
             preserveScroll: true,
@@ -200,7 +203,25 @@ export default function SpacesPage() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="relative max-w-7xl mx-auto px-6 py-8">
+                {loadingEvents && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-neutral-900 text-center px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3">
+                            <svg className="h-10 w-10 animate-spin text-[#FFC801]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                            </svg>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Loading calendar…
+                            </p>
+                        </div>
+                    </div>
+                )}
+                {!events.length && (
+                    <div className="text-center text-sm text-muted-foreground mb-4">
+                        {loadingEvents ? 'Loading the latest availability…' : 'Select a space to view its calendar.'}
+                    </div>
+                )}
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
