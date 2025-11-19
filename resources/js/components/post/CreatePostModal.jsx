@@ -65,9 +65,9 @@ const CreatePostModal = ({ onOpenChange, user, onOpen }) => {
     }
     return (
         <>
-            <div onClick={() => onOpenChange(false)} className="fixed inset-0 z-40 bg-black/70">
+            <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/70">
             </div>
-            <div className="w-full fixed inset-0 z-50 mx-auto top-1/2 transform -translate-y-1/2 max-w-[70%] max-h-[60vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-dark_gray overflow-auto transition-all duration-300">
+            <div className="w-full fixed inset-0 z-40 mx-auto top-1/2 transform -translate-y-1/2 max-w-[70%] h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-dark_gray overflow-auto transition-all duration-300">
 
                 {/* Header */}
                 <div className="p-5 border-b border-gray-200 dark:border-dark_gray flex items-center justify-between">
@@ -104,7 +104,14 @@ const CreatePostModal = ({ onOpenChange, user, onOpen }) => {
                text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 
                p-3 whitespace-pre-wrap"
                     />
-
+                    {previews.length > 1 &&
+                        <div className='w-full  p-2 flex justify-end'>
+                            <X onClick={() => {
+                                setPreviews([])
+                                setPostImages([])
+                            }} className='text-dark cursor-pointer dark:text-white' size={25} />
+                        </div>
+                    }
                     {previews.length !== 0 && (
                         <>
                             {openImagesEditor && (
@@ -119,12 +126,11 @@ const CreatePostModal = ({ onOpenChange, user, onOpen }) => {
                             {
                                 previews.length < 5 ? (
                                     // -------------------- 2 IMAGES --------------------
-                                    <div className="flex flex-col w-full gap-3 overflow-auto">
-                                        <img
-                                            src={previews[0]}
-                                            alt=""
-                                            className={`w-full h-[50vh] rounded-lg object-cover`}
-                                        />
+                                    <div className="flex flex-col w-full gap-3 overflow-auto">                                        <img
+                                        src={previews[0]}
+                                        alt=""
+                                        className={`w-full h-[50vh] rounded-lg object-cover`}
+                                    />
                                         {previews.length > 1 && (
                                             <div className="w-full h-[30vh] flex gap-3">
                                                 {previews.slice(1).map((preview, index) => (
