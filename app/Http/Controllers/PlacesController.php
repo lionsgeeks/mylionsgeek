@@ -234,6 +234,27 @@ class PlacesController extends Controller
                 ];
             });
 
+        $meetingRooms = DB::table('meeting_rooms')
+            ->select('id', 'name', 'state', 'image')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($room) {
+                $img = $room->image ? (
+                    str_starts_with($room->image, 'http') || str_starts_with($room->image, 'storage/')
+                    ? $room->image
+                    : ('storage/img/meeting_room/' . ltrim($room->image, '/'))
+                ) : null;
+
+                return [
+                    'id' => $room->id,
+                    'name' => $room->name,
+                    'state' => (bool) $room->state,
+                    'image' => $img ? asset($img) : null,
+                    'type' => 'Meeting Room',
+                    'cardType' => 'meeting_room',
+                ];
+            });
+
         $equipmentOptions = $this->getEquipmentOptions();
         $teamMemberOptions = $this->getTeamMemberOptions();
 
@@ -248,13 +269,14 @@ class PlacesController extends Controller
         } elseif ($eventsMode === 'cowork_all') {
             $events = $this->getAllCoworkEvents($coworks);
         } elseif ($eventsMode === 'place' && $eventType && $eventId) {
-            $calendarContext = $this->resolveCalendarContext($eventType, (int) $eventId, $studios, $coworks);
+            $calendarContext = $this->resolveCalendarContext($eventType, (int) $eventId, $studios, $coworks, $meetingRooms);
             $events = $this->getPlaceReservations($eventType, (int) $eventId);
         }
 
         return Inertia::render('students/spaces/index', [
             'studios' => $studios,
             'coworks' => $coworks,
+            'meetingRooms' => $meetingRooms,
             'equipmentOptions' => $equipmentOptions,
             'teamMemberOptions' => $teamMemberOptions,
             'events' => $events,
@@ -658,7 +680,7 @@ class PlacesController extends Controller
             ->toArray();
     }
 
-    private function resolveCalendarContext(?string $type, int $id, Collection $studios, Collection $coworks): ?array
+    private function resolveCalendarContext(?string $type, int $id, Collection $studios, Collection $coworks, Collection $meetingRooms = null): ?array
     {
         if (!$type || !$id) {
             return null;
@@ -682,6 +704,17 @@ class PlacesController extends Controller
                     'place_type' => 'cowork',
                     'id' => $cowork['id'],
                     'name' => $cowork['name'],
+                ];
+            }
+        }
+
+        if ($type === 'meeting_room' && $meetingRooms) {
+            $room = $meetingRooms->firstWhere('id', $id);
+            if ($room) {
+                return [
+                    'place_type' => 'meeting_room',
+                    'id' => $room['id'],
+                    'name' => $room['name'],
                 ];
             }
         }

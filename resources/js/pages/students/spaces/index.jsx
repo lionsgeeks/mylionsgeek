@@ -20,6 +20,7 @@ export default function SpacesPage() {
     const {
         studios = [],
         coworks = [],
+        meetingRooms = [],
         auth,
         equipmentOptions = [],
         teamMemberOptions = [],
@@ -48,6 +49,7 @@ export default function SpacesPage() {
 
     const showStudios = type === 'all' || type === 'studio';
     const showCowork = type === 'all' || type === 'cowork';
+    const showMeetingRooms = type === 'all';
     const isCoworkMultiCalendar = type === 'cowork' || (type === 'all' && calendarFor?.place_type === 'cowork');
 
     const cards = [];
@@ -65,6 +67,31 @@ export default function SpacesPage() {
             state: coworks.some(c => c.state),
         });
     }
+    if (showMeetingRooms && Array.isArray(meetingRooms)) {
+        meetingRooms.forEach((room) => {
+            cards.push({
+                ...room,
+                cardType: 'meeting_room',
+                type: 'meeting room',
+            });
+        });
+    }
+
+    const priorityOrder = ['Studio Image', 'Studio Podcast'];
+    const orderedCards = (() => {
+        if (!cards.length) return [];
+        const priority = [];
+        const rest = [];
+        cards.forEach((card) => {
+            if (card.cardType === 'studio' && priorityOrder.includes(card.name)) {
+                const priorityIndex = priorityOrder.indexOf(card.name);
+                priority[priorityIndex] = card;
+            } else {
+                rest.push(card);
+            }
+        });
+        return [...priority.filter(Boolean), ...rest];
+    })();
 
     const requestEvents = useCallback((params) => {
         setLoadingEvents(true);
@@ -164,6 +191,16 @@ export default function SpacesPage() {
             requestEvents({
                 events_mode: 'cowork_all',
             });
+        } else if (card.cardType === 'meeting_room') {
+            const context = { place_type: 'meeting_room', id: card.id, name: card.name };
+            setSelectedRange(null);
+            setCalendarFor(context);
+            setBlockedTableIds([]);
+            requestEvents({
+                events_mode: 'place',
+                event_type: 'meeting_room',
+                event_id: card.id,
+            });
         }
     }
 
@@ -215,7 +252,7 @@ export default function SpacesPage() {
 
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768); 
+            setIsMobile(window.innerWidth < 768);
         };
 
         checkMobile();
@@ -281,7 +318,7 @@ export default function SpacesPage() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <div className="relative max-w-7xl mx-auto px-6 py-8">
+            <div className="relative max-w-7xl mx-auto px-6 py-4">
                 {loadingEvents && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                         <div className="bg-white dark:bg-neutral-900 text-center px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3">
@@ -295,11 +332,7 @@ export default function SpacesPage() {
                         </div>
                     </div>
                 )}
-                {!events.length && (
-                    <div className="text-center text-sm text-muted-foreground mb-4">
-                        {loadingEvents ? 'Loading the latest availability…' : 'Select a space to view its calendar.'}
-                    </div>
-                )}
+
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
@@ -325,15 +358,15 @@ export default function SpacesPage() {
 
 
                 {type === 'all' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
                         {cards.length === 0 && (
                             <div className="col-span-full text-center text-md text-gray-500 py-8">No locations to reserve found for this type.</div>
                         )}
-                        {cards.map((place) => (
+                        {orderedCards.map((place) => (
                             <div
                                 key={place.id}
                                 onClick={() => handleCardClick(place)}
-                                className="relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/3] bg-gray-100"
+                                className="relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/2] bg-gray-100"
                             >
                                 {place.image ? (
                                     <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
