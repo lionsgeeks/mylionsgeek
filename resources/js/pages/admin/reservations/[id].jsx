@@ -7,10 +7,6 @@ import { Button } from '@/components/ui/button';
 // import { AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import {
     ArrowLeft,
     Calendar,
@@ -35,8 +31,7 @@ import {
     Edit
 } from 'lucide-react';
 import Rolegard from '../../../components/rolegard';
-import TeamMemberSelector from '../../admin/places/studios/components/TeamMemberSelector';
-import EquipmentSelector from '../../admin/places/studios/components/EquipmentSelector';
+import EditReservationModal from './components/EditReservationModal';
 
 export default function AdminReservationDetails({ reservation }) {
     if (!reservation) {
@@ -263,15 +258,12 @@ export default function AdminReservationDetails({ reservation }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
-
-                        <Rolegard authorized={["admin", "super_admin"]}>
-                            <Link href="/admin/reservations">
-                                <Button variant="outline" size="sm">
-                                    <ArrowLeft className="w-4 h-4 mr-2" />
-                                    Back to reservations
-                                </Button>
-                            </Link>
-                        </Rolegard>
+                        <Link href={isAdmin ? "/admin/reservations" : "/reservations"}>
+                            <Button variant="outline" size="sm">
+                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                Back to reservations
+                            </Button>
+                        </Link>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>
                             <Rolegard authorized={["admin", "super_admin"]}>
@@ -324,8 +316,8 @@ export default function AdminReservationDetails({ reservation }) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <FileText className="w-5 h-5" />
                                     Reservation Information
@@ -388,8 +380,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <Package className="w-5 h-5" />
                                     Equipment Information ({reservation.equipments?.length || 0} items)
@@ -447,8 +439,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <Clock className="w-5 h-5" />
                                     Timing Information
@@ -523,26 +515,12 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                        {/* {reservation.notes && (
-                            <Card className="shadow-sm">
-                                <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50">
-                                    <CardTitle className="flex items-center gap-2">
-                                        <FileText className="w-5 h-5" />
-                                        Notes & Comments
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <div className="bg-gray-50 rounded-lg p-4">
-                                        <p className="text-gray-700 whitespace-pre-wrap">{reservation.notes}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )} */}
+                  
                     </div>
 
                     <div className="space-y-6">
-                        <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10">
+                        <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
                                     <User className="w-5 h-5" />
                                     Reserved By
@@ -586,8 +564,8 @@ export default function AdminReservationDetails({ reservation }) {
                         </Card>
 
                         {reservation.members && reservation.members.length > 0 && (
-                            <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10">
+                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                                <CardHeader className="bg-gradient-to-r from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/10 px-6 py-2">
                                     <CardTitle className="flex items-center gap-2">
                                         <Users className="w-5 h-5" />
                                         Team Members
@@ -639,8 +617,8 @@ export default function AdminReservationDetails({ reservation }) {
                             </Card>
                         )}
                         <Rolegard authorized={["admin", "super_admin"]}>
-                            <Card className="shadow-sm bg-card border border-sidebar-border/70">
-                                <CardHeader>
+                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
+                                <CardHeader className="px-6 py-4">
                                     <CardTitle className="text-lg">Quick Actions</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6">
@@ -671,144 +649,21 @@ export default function AdminReservationDetails({ reservation }) {
                 </div>
             </div>
 
-            {/* Edit Reservation Modal */}
-            <Dialog open={isEditModalOpen} onOpenChange={handleCloseEdit}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw] bg-light dark:bg-dark">
-                    <DialogHeader>
-                        <DialogTitle>Edit Reservation</DialogTitle>
-                    </DialogHeader>
-
-                    <form onSubmit={handleUpdate} className="space-y-6">
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="edit-title">Reservation Name</Label>
-                                <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
-                                    id="edit-title"
-                                    value={data.title}
-                                    onChange={(e) => setData('title', e.target.value)}
-                                    placeholder="Enter reservation name"
-                                    required
-                                />
-                                {errors.title && (
-                                    <p className="text-sm text-destructive mt-1">{errors.title}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <Label htmlFor="edit-description">Description</Label>
-                                <Textarea
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] bg-light dark:bg-dark"
-                                    id="edit-description"
-                                    value={data.description}
-                                    onChange={(e) => setData('description', e.target.value)}
-                                    placeholder="Enter description (optional)"
-                                    rows={3}
-                                />
-                            </div>
-
-                            <div>
-                                <Label htmlFor="edit-studio">Studio</Label>
-                                <select
-                                    id="edit-studio"
-                                    className="mt-1 block w-full rounded-md border border-[#FFC801] bg-light dark:bg-dark px-3 py-2 focus:border-[#FFC801] focus:ring-[#FFC801] focus:ring-[1.5px]"
-                                    value={data.studio_id}
-                                    onChange={(e) => setData('studio_id', parseInt(e.target.value))}
-                                    required
-                                >
-                                    <option value="">Select a studio</option>
-                                    {studios.map((studio) => (
-                                        <option key={studio.id} value={studio.id}>
-                                            {studio.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.studio_id && (
-                                    <p className="text-sm text-destructive mt-1">{errors.studio_id}</p>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
-                                <div>
-                                    <Label htmlFor="edit-day">Date</Label>
-                                    <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
-                                        id="edit-day"
-                                        type="date"
-                                        value={data.day}
-                                        onChange={(e) => setData('day', e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="edit-start">Start Time</Label>
-                                    <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
-                                        id="edit-start"
-                                        type="time"
-                                        value={data.start}
-                                        onChange={(e) => setData('start', e.target.value)}
-                                        required
-                                        min="08:00"
-                                        max="18:00"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="edit-end">End Time</Label>
-                                    <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
-                                        id="edit-end"
-                                        type="time"
-                                        value={data.end}
-                                        onChange={(e) => setData('end', e.target.value)}
-                                        required
-                                        min="08:00"
-                                        max="18:00"
-                                    />
-                                </div>
-                            </div>
-
-                            {timeError && (
-                                <p className="text-sm text-red-500 font-medium">{timeError}</p>
-                            )}
-
-                            <div>
-                                <Label>Team Members</Label>
-                                <TeamMemberSelector
-                                    selected={selectedMembers}
-                                    onSelect={setSelectedMembers}
-                                />
-                            </div>
-
-                            <div>
-                                <Label>Equipment</Label>
-                                <EquipmentSelector
-                                    selected={selectedEquipment}
-                                    onSelect={setSelectedEquipment}
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleCloseEdit}
-                                    className="cursor-pointer dark:hover:bg-accent"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
-                                >
-                                    {processing ? 'Updating...' : 'Update Reservation'}
-                                </Button>
-                            </div>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
+            <EditReservationModal
+                isOpen={isEditModalOpen}
+                onClose={handleCloseEdit}
+                data={data}
+                setData={setData}
+                errors={errors}
+                processing={processing}
+                timeError={timeError}
+                studios={studios}
+                selectedMembers={selectedMembers}
+                setSelectedMembers={setSelectedMembers}
+                selectedEquipment={selectedEquipment}
+                setSelectedEquipment={setSelectedEquipment}
+                onSubmit={handleUpdate}
+            />
         </AppLayout>
     );
 }

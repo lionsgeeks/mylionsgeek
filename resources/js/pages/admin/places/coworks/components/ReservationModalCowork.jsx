@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
-const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess, coworks = [] }) => {
+const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess, coworks = [], allowMultiple = false, excludedTableId = null }) => {
     const { data, setData, post, processing, errors, reset } = useForm({
         table: cowork?.id || '',
         seats: 1,
@@ -90,9 +90,9 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="bg-black border border-white/10 text-white max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-light dark:bg-dark text-black dark:text-white border border-white/10   max-w-xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="text-white">
+                    <DialogTitle className="text-black dark:text-white ">
                         {(() => {
                             const current = coworks.find(t => String(t.id) === String(data.table)) || cowork;
                             return current
@@ -103,9 +103,33 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Table Selection */}
+                    <div>
+                        <Label htmlFor="table" className="text-black dark:text-white">Table</Label>
+                        <Select
+                            value={String(data.table)}
+                            onValueChange={(v) => setData('table', parseInt(v))}
+                        >
+                            <SelectTrigger className=" border-[var(--color-alpha)] bg-light dark:bg-dark text-black dark:text-white ">
+                                <SelectValue placeholder="Select a table" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {coworks.filter(c => c.state && c.id !== excludedTableId).map(c => (
+                                    <SelectItem key={c.id} value={String(c.id)}>
+                                        {c.table ? `Table ${c.table}` : `Table ${c.id}`}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.table && <p className="text-red-500 text-sm mt-1">{errors.table}</p>}
+                        {coworks.filter(c => c.state && c.id !== excludedTableId).length === 0 && (
+                            <p className="text-red-500 text-sm mt-1">No available tables for this time slot</p>
+                        )}
+                    </div>
+
                     {/* Number of Seats */}
                     <div>
-                        <Label htmlFor="seats" className="text-white/80">Number of Seats</Label>
+                        <Label htmlFor="seats" className="text-black dark:text-white ">Number of Seats</Label>
                         <Input
                             id="seats"
                             type="number"
@@ -113,7 +137,7 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                             max="20"
                             value={data.seats}
                             onChange={(e) => setData('seats', parseInt(e.target.value) || 1)}
-                            className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
+                            className="text-black dark:text-white bg-light dark:bg-dark border-[var(--color-alpha)]  focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                             required
                         />
                         {errors.seats && <p className="text-red-500 text-sm mt-1">{errors.seats}</p>}
@@ -123,13 +147,13 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                     <div className="grid grid-cols-3 gap-3">
                         {/* DATE INPUT */}
                         <div>
-                            <Label htmlFor="day" className="text-white/80">Date</Label>
+                            <Label htmlFor="day" className="text-black dark:text-white ">Date</Label>
                             <Input
                                 id="day"
                                 type="date"
                                 value={data.day}
                                 onChange={(e) => setData('day', e.target.value)}
-                                className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
+                                className="bg-light dark:bg-dark text-black dark:text-white  border-[var(--color-alpha)]  focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
                             />
                             {errors.day && <p className="text-red-500 text-sm mt-1">{errors.day}</p>}
@@ -137,13 +161,13 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
                         {/* START TIME */}
                         <div>
-                            <Label htmlFor="start" className="text-white/80">Start Time</Label>
+                            <Label htmlFor="start" className="text-black dark:text-white ">Start Time</Label>
                             <Input
                                 id="start"
                                 type="time"
                                 value={data.start}
                                 onChange={(e) => setData('start', e.target.value)}
-                                className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
+                                className="bg-light dark:bg-dark border-[var(--color-alpha)] text-black dark:text-white  focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
                                 min="08:00"
                                 max="18:00"
@@ -153,13 +177,13 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
                         {/* END TIME */}
                         <div>
-                            <Label htmlFor="end" className="text-white/80">End Time</Label>
+                            <Label htmlFor="end" className="text-black dark:text-white ">End Time</Label>
                             <Input
                                 id="end"
                                 type="time"
                                 value={data.end}
                                 onChange={(e) => setData('end', e.target.value)}
-                                className="bg-black border-[var(--color-alpha)] text-white focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
+                                className="bg-light dark:bg-dark border-[var(--color-alpha)] text-black dark:text-white  focus:border-[var(--color-alpha)] focus:ring-[var(--color-alpha)]"
                                 required
                                 min="08:00"
                                 max="18:00"
@@ -177,14 +201,14 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                             type="button"
                             onClick={handleClose}
                             variant="outline"
-                            className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                            className="bg-white/5 border-white/10 text-black dark:text-white  hover:bg-white/10"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             disabled={processing || !data.table}
-                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/80 text-black font-semibold"
+                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/80 text-black dark:text-white  font-semibold"
                         >
                             {processing ? 'Saving...' : 'Save'}
                         </Button>

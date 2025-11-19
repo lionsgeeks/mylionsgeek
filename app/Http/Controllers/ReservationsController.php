@@ -578,8 +578,10 @@ class ReservationsController extends Controller
                     'r.approved',
                     'r.canceled',
                     'r.user_id as user_id',
+                    'r.created_at',
                     'u.name as user_name'
                 )
+                ->orderByDesc('r.created_at')
                 ->get()
                 ->map(function ($r) {
                     return [
@@ -590,6 +592,7 @@ class ReservationsController extends Controller
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                         'user_id' => $r->user_id,
                         'canceled' => (bool) $r->canceled,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
                     ];
                 });
         }
@@ -607,9 +610,11 @@ class ReservationsController extends Controller
                     'rc.approved',
                     'rc.canceled',
                     'rc.user_id as user_id',
+                    'rc.created_at',
                     'u.name as user_name',
                     'c.table as table_number'
                 )
+                ->orderByDesc('rc.created_at')
                 ->get()
                 ->map(function ($r) {
                     return [
@@ -620,6 +625,7 @@ class ReservationsController extends Controller
                         'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
                         'user_id' => $r->user_id,
                         'canceled' => (bool) $r->canceled,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
                     ];
                 });
         }
@@ -1303,22 +1309,74 @@ class ReservationsController extends Controller
 
     private function exportData(Request $request)
     {
-        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
+        try {
+            $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'user_name,date,start,end,type'))));
 
-        if (empty($requestedFields)) {
-            $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
-        }
+            if (empty($requestedFields)) {
+                $requestedFields = ['user_name', 'date', 'start', 'end', 'type'];
+            }
 
-        $query = DB::table('reservations as r')
-            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-            ->select('r.*', 'u.name as user_name')
-            ->orderByDesc('r.created_at');
+            // Get filters
+            $fromDate = $request->query('from_date');
+            $toDate = $request->query('to_date');
+            $searchTerm = $request->query('search');
+            $filterType = $request->query('type');
+            $filterStatus = $request->query('status');
 
-        $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
-        $placeByReservation = [];
+            $query = DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->select('r.*', 'u.name as user_name')
+                ->orderByDesc('r.created_at');
 
-        if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
-            DB::table('reservation_places as rp')
+            // Apply date filters if provided
+            if ($fromDate) {
+                $query->where('r.day', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $query->where('r.day', '<=', $toDate);
+            }
+
+            // Apply type filter
+            if ($filterType) {
+                if ($filterType === 'exterior') {
+                    // Exterior detection logic
+                    $query->where(function($q) {
+                        $q->where('r.type', 'exterior')
+                          ->orWhere('r.type', 'outside');
+                    });
+                } else {
+                    $query->where('r.type', $filterType);
+                }
+            }
+
+            // Apply status filter
+            if ($filterStatus) {
+                if ($filterStatus === 'approved') {
+                    $query->where('r.approved', 1)->where('r.canceled', 0);
+                } elseif ($filterStatus === 'canceled') {
+                    $query->where('r.canceled', 1);
+                } elseif ($filterStatus === 'pending') {
+                    $query->where('r.approved', 0)->where('r.canceled', 0);
+                }
+            }
+
+            // Apply search filter
+            if ($searchTerm) {
+                $searchTermLower = strtolower($searchTerm);
+                $query->where(function($q) use ($searchTermLower) {
+                    $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.title) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.description) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(r.type) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('r.day LIKE ?', ['%' . $searchTerm . '%']);
+                });
+            }
+
+            $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
+            $placeByReservation = [];
+
+            if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
+                DB::table('reservation_places as rp')
                 ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
                 ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
                 ->get()
@@ -1330,55 +1388,141 @@ class ReservationsController extends Controller
                 });
         }
 
-        $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+            // Also get cowork reservations (always include them, but apply filters if provided)
+            $coworkQuery = null;
+            if (Schema::hasTable('reservation_coworks')) {
+                $coworkQuery = DB::table('reservation_coworks as rc')
+                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+                ->select('rc.*', 'u.name as user_name')
+                ->orderByDesc('rc.created_at');
 
-        $response = new StreamedResponse(function () use ($query, $requestedFields, $placeByReservation) {
-            $handle = fopen('php://output', 'w');
+                // Apply date filters to cowork reservations if provided
+                if ($fromDate) {
+                    $coworkQuery->where('rc.day', '>=', $fromDate);
+                }
+                if ($toDate) {
+                    $coworkQuery->where('rc.day', '<=', $toDate);
+                }
 
-            // Add BOM for Excel UTF-8 compatibility
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-            // Use semicolon delimiter for Excel
-            fputcsv($handle, $requestedFields, ';');
-
-            $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
-                foreach ($reservations as $reservation) {
-                    $row = [];
-
-                    foreach ($requestedFields as $field) {
-                        $value = null;
-
-                        if ($field === 'place_name' || $field === 'place_type') {
-                            $value = $placeByReservation[$reservation->id][$field] ?? '';
-                        } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
-                            $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
-                        } elseif ($field === 'created_at' || $field === 'updated_at') {
-                            $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
-                        } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
-                            $value = $reservation->day;
-                        } else {
-                            $value = $reservation->$field ?? '';
+                // Apply type filter (only include cowork if type is 'cowork' or empty)
+                if ($filterType && $filterType !== 'cowork') {
+                    // If filtering by a specific type that's not cowork, exclude cowork reservations
+                    $coworkQuery = null;
+                } elseif ($filterType === 'cowork' || !$filterType) {
+                    // Apply status filter to cowork reservations
+                    if ($filterStatus) {
+                        if ($filterStatus === 'approved') {
+                            $coworkQuery->where('rc.approved', 1)->where('rc.canceled', 0);
+                        } elseif ($filterStatus === 'canceled') {
+                            $coworkQuery->where('rc.canceled', 1);
+                        } elseif ($filterStatus === 'pending') {
+                            $coworkQuery->where('rc.approved', 0)->where('rc.canceled', 0);
                         }
-
-                        if (is_string($value)) {
-                            $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
-                        }
-
-                        $row[] = $value;
                     }
 
-                    // Use semicolon delimiter
-                    fputcsv($handle, $row, ';');
+                    // Apply search filter to cowork reservations
+                    if ($searchTerm && $coworkQuery) {
+                        $searchTermLower = strtolower($searchTerm);
+                        $coworkQuery->where(function($q) use ($searchTermLower, $searchTerm) {
+                            $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
+                              ->orWhereRaw('rc.day LIKE ?', ['%' . $searchTerm . '%'])
+                              ->orWhere('rc.table', 'LIKE', '%' . $searchTerm . '%');
+                        });
+                    }
                 }
+            }
+
+            $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+            $response = new StreamedResponse(function () use ($query, $coworkQuery, $requestedFields, $placeByReservation) {
+                $handle = fopen('php://output', 'w');
+
+                // Add BOM for Excel UTF-8 compatibility
+                fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+                // Use semicolon delimiter for Excel
+                fputcsv($handle, $requestedFields, ';');
+
+                // Process regular reservations
+                $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
+                    foreach ($reservations as $reservation) {
+                        $row = [];
+
+                        foreach ($requestedFields as $field) {
+                            $value = null;
+
+                            if ($field === 'place_name' || $field === 'place_type') {
+                                $value = $placeByReservation[$reservation->id][$field] ?? '';
+                            } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
+                                $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
+                            } elseif ($field === 'created_at' || $field === 'updated_at') {
+                                $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
+                            } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                                $value = $reservation->day;
+                            } else {
+                                $value = $reservation->$field ?? '';
+                            }
+
+                            if (is_string($value)) {
+                                $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
+                            }
+
+                            $row[] = $value;
+                        }
+
+                        // Use semicolon delimiter
+                        fputcsv($handle, $row, ';');
+                    }
+                });
+
+                // Process cowork reservations if they exist
+                if ($coworkQuery) {
+                    $coworkQuery->chunk(500, function ($coworkReservations) use ($handle, $requestedFields) {
+                        foreach ($coworkReservations as $reservation) {
+                            $row = [];
+
+                            foreach ($requestedFields as $field) {
+                                $value = null;
+
+                                if ($field === 'approved' || $field === 'canceled') {
+                                    $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
+                                } elseif ($field === 'created_at' || $field === 'updated_at') {
+                                    $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
+                                } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
+                                    $value = $reservation->day;
+                                } elseif ($field === 'type') {
+                                    $value = 'cowork';
+                                } elseif ($field === 'table') {
+                                    $value = $reservation->table ?? '';
+                                } else {
+                                    $value = $reservation->$field ?? '';
+                                }
+
+                                if (is_string($value)) {
+                                    $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
+                                }
+
+                                $row[] = $value;
+                            }
+
+                            // Use semicolon delimiter
+                            fputcsv($handle, $row, ';');
+                        }
+                    });
+                }
+
+                fclose($handle);
             });
 
-            fclose($handle);
-        });
+            $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+            $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
 
-        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-
-        return $response;
+            return $response;
+        } catch (\Exception $e) {
+            \Log::error('Export failed: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response('Export failed: ' . $e->getMessage(), 500);
+        }
     }
 
     /**

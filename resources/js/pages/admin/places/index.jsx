@@ -1,19 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
 import ReservationModal from './studios/components/ReservationModal';
 import ReservationModalCowork from './coworks/components/ReservationModalCowork';
 import ReservationModalMeetingRoom from './meeting_room/components/ReservationModalMeetingRoom';
+import CalendarModal from './components/CalendarModal';
+import ImagePreviewModal from './components/ImagePreviewModal';
+import EventDetailsModal from './components/EventDetailsModal';
+import AddPlaceModal from './components/AddPlaceModal';
+import EditPlaceModal from './components/EditPlaceModal';
+import DeletePlaceModal from './components/DeletePlaceModal';
 import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
 import StatCard from '../../../components/StatCard';
@@ -458,13 +459,11 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     )}
                 </div>
 
-                <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>
-                    <DialogContent className="max-w-3xl p-0">
-                        {previewSrc && (
-                            <img src={previewSrc} alt="Place" className="max-h-[80vh] w-full object-contain" />
-                        )}
-                    </DialogContent>
-                </Dialog>
+                <ImagePreviewModal
+                    isOpen={!!previewSrc}
+                    onClose={() => setPreviewSrc(null)}
+                    imageSrc={previewSrc}
+                />
 
                 {/* Calendar modal */}
                 {/* <Dialog open={!!calendarFor} onOpenChange={() => setCalendarFor(null)}>
@@ -524,319 +523,76 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                     </DialogContent>
                 </Dialog> */}
 
-                {/* Event details modal */}
-                <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-                    <DialogContent className="max-w-2xl">
-                        {selectedEvent && (
-                            <div className="space-y-4">
-                                <DialogHeader>
-                                    <DialogTitle className="text-lg">Reservation details</DialogTitle>
-                                </DialogHeader>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <div className="text-muted-foreground">Title</div>
-                                        <div className="font-medium break-words">{selectedEvent.title || '—'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-muted-foreground">Type</div>
-                                        <div className="font-medium capitalize">{String(selectedEvent.type || '').replace('_', ' ') || '—'}</div>
-                                    </div>
-                                    {selectedEvent.type === 'studio' && (
-                                        <div>
-                                            <div className="text-muted-foreground">Studio</div>
-                                            <div className="font-medium">{selectedEvent.studio_name || '—'}</div>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <div className="text-muted-foreground">Date</div>
-                                        <div className="font-medium">{selectedEvent.date || '—'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-muted-foreground">Time</div>
-                                        <div className="font-medium">{selectedEvent.start || '—'}{selectedEvent.end ? ` - ${selectedEvent.end}` : ''}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-muted-foreground">User</div>
-                                        <div className="font-medium">{selectedEvent.user_name || '—'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-muted-foreground">Status</div>
-                                        <div className="font-medium">
-                                            {selectedEvent.canceled ? 'Canceled' : selectedEvent.approved ? 'Approved' : 'Pending'}
-                                        </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <div className="text-muted-foreground">Description</div>
-                                        <div className="font-medium whitespace-pre-wrap break-words">{selectedEvent.description || '—'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
+                <EventDetailsModal
+                    isOpen={!!selectedEvent}
+                    onClose={() => setSelectedEvent(null)}
+                    event={selectedEvent}
+                />
 
-                {/* Add place modal */}
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                    <DialogContent className="max-w-lg">
-                        <div className="space-y-6">
-                            <h2 className="text-xl font-medium">Add a Place</h2>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="name">Place Name</Label>
-                                    <Input id="name" name="name" placeholder="name" value={data.name} onChange={(e) => setData('name', e.target.value)} />
-                                    {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label>Place Type</Label>
-                                    <Select value={data.place_type} onValueChange={(v) => setData('place_type', v)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Choose place type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {data.place_type !== 'cowork' && (
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="image">Upload Image</Label>
-                                        <Input id="image" name="image" type="file" accept="image/*" onChange={(e) => setData('image', e.target.files?.[0] ?? null)} />
-                                        {errors.image && <p className="text-xs text-destructive">{errors.image}</p>}
-                                    </div>
-                                )}
-                                <div className="grid gap-2">
-                                    <Label>State</Label>
-                                    <Select value={data.state === '' ? '' : String(data.state)} onValueChange={(v) => setData('state', v)}>
-                                        <SelectTrigger className={data.state === '' ? 'text-muted-foreground' : ''}>
-                                            <SelectValue placeholder="Choose an option" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="1">Available</SelectItem>
-                                            <SelectItem value="0">Unavailable</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.state && <p className="text-xs text-destructive">{errors.state}</p>}
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                                <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
-                                    disabled={processing}
-                                    onClick={() => {
-                                        post('/admin/places', {
-                                            forceFormData: true,
-                                            onSuccess: () => { reset(); setIsAddOpen(false); },
-                                        });
-                                    }}
-                                >
-                                    Add Place
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <AddPlaceModal
+                    isOpen={isAddOpen}
+                    onClose={() => setIsAddOpen(false)}
+                    data={data}
+                    setData={setData}
+                    errors={errors}
+                    processing={processing}
+                    types={types}
+                    onSubmit={() => {
+                        post('/admin/places', {
+                            forceFormData: true,
+                            onSuccess: () => { reset(); setIsAddOpen(false); },
+                        });
+                    }}
+                />
 
-                {/* Edit place modal */}
-                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                    <DialogContent className="max-w-lg">
-                        <div className="space-y-6">
-                            <h2 className="text-xl font-medium">Edit Place</h2>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="edit-name">Place Name</Label>
-                                    <Input
-                                        id="edit-name"
-                                        name="name"
-                                        placeholder="name"
-                                        value={editData.name}
-                                        onChange={(e) => setEditData('name', e.target.value)}
-                                    />
-                                    {editErrors.name && <p className="text-xs text-destructive">{editErrors.name}</p>}
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label>Place Type</Label>
-                                    <Select value={editData.place_type} onValueChange={(v) => setEditData('place_type', v)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Choose place type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {types.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {editData.place_type !== 'cowork' && (
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="edit-image">Upload New Image (optional)</Label>
-                                        <Input
-                                            id="edit-image"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => setEditData('image', e.target.files?.[0] ?? null)}
-                                            name="image"
-                                        />
-                                        {editErrors.image && <p className="text-xs text-destructive">{editErrors.image}</p>}
-                                    </div>
-                                )}
-                                <div className="grid gap-2">
-                                    <Label>State</Label>
-                                    <Select value={editData.state === '' ? '' : String(editData.state)} onValueChange={(v) => setEditData('state', v)}>
-                                        <SelectTrigger className={editData.state === '' ? 'text-muted-foreground' : ''}>
-                                            <SelectValue placeholder="Choose an option" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="1">Available</SelectItem>
-                                            <SelectItem value="0">Unavailable</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    {editErrors.state && <p className="text-xs text-destructive">{editErrors.state}</p>}
-                                </div>
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                                <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
-                                    disabled={editProcessing}
-                                    onClick={() => {
-                                        router.post(`/admin/places/${editingPlace.id}`, {
-                                            ...editData,
-                                            _method: 'put',
-                                        }, {
-                                            forceFormData: true,
-                                            onSuccess: () => { resetEdit(); setIsEditOpen(false); setEditingPlace(null); },
-                                        });
-                                    }}
-                                >
-                                    Update Place
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <EditPlaceModal
+                    isOpen={isEditOpen}
+                    onClose={() => setIsEditOpen(false)}
+                    editData={editData}
+                    setEditData={setEditData}
+                    editErrors={editErrors}
+                    editProcessing={editProcessing}
+                    types={types}
+                    editingPlace={editingPlace}
+                    onSubmit={() => {
+                        router.post(`/admin/places/${editingPlace.id}`, {
+                            ...editData,
+                            _method: 'put',
+                        }, {
+                            forceFormData: true,
+                            onSuccess: () => { resetEdit(); setIsEditOpen(false); setEditingPlace(null); },
+                        });
+                    }}
+                />
 
-                {/* Delete confirmation modal */}
-                <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                    <DialogContent className="max-w-md">
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                                    <Trash className="h-6 w-6 text-red-600 dark:text-red-400" />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-semibold">Delete Place</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        This action cannot be undone.
-                                    </p>
-                                </div>
-                            </div>
+                <DeletePlaceModal
+                    isOpen={isDeleteOpen}
+                    onClose={() => {
+                        setIsDeleteOpen(false);
+                        setDeletingPlace(null);
+                    }}
+                    deletingPlace={deletingPlace}
+                    onConfirm={confirmDelete}
+                />
 
-                            {deletingPlace && (
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    <div className="flex items-center gap-3">
-                                        {deletingPlace.image && (
-                                            <img
-                                                src={deletingPlace.image}
-                                                alt={deletingPlace.name}
-                                                className="h-10 w-10 rounded object-cover"
-                                            />
-                                        )}
-                                        <div>
-                                            <p className="font-medium">{deletingPlace.name}</p>
-                                            <p className="text-sm text-muted-foreground">{deletingPlace.place_type.replace('_', ' ')}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                <CalendarModal
+                    isOpen={isCalendarOpen}
+                    onClose={setIsCalendarOpen}
+                    place={selectedPlace}
+                    events={events}
+                    loadingEvents={loadingEvents}
+                    onDateSelect={handleDateSelect}
+                    onAddReservationClick={() => {
+                        const now = new Date();
+                        const day = now.toISOString().split('T')[0];
+                        const startTime = now.toTimeString().slice(0, 5);
+                        const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+                        const endTime = endDate.toTimeString().slice(0, 5);
 
-                            <div className="flex justify-end gap-3">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        setIsDeleteOpen(false);
-                                        setDeletingPlace(null);
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDelete}
-                                >
-                                    Delete Place
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Calendar Modal */}
-                <Dialog open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <DialogContent className="p-6 overflow-hidden"
-                        style={{
-                            maxWidth: '95vw',
-                            width: '95vw',
-                            height: '85vh',
-                            maxHeight: '85vh'
-                        }}>
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">
-                                Calendar - {selectedPlace?.name}
-                            </DialogTitle>
-                            <div className="flex justify-end max-md:justify-center">
-                                <button
-                                    onClick={() => {
-                                        const now = new Date();
-                                        const day = now.toISOString().split('T')[0];
-                                        const startTime = now.toTimeString().slice(0, 5);
-                                        const endDate = new Date(now.getTime() + 60 * 60 * 1000);
-                                        const endTime = endDate.toTimeString().slice(0, 5);
-
-                                        setSelectedRange({ day, start: startTime, end: endTime });
-                                        setIsReservationModalOpen(true);
-                                    }}
-                                    className="mt-3 w-fit px-4 py-2 bg-[#FFC801] text-black rounded-md dark:hover:bg-gray-200 hover:bg-gray-950 hover:text-white dark:hover:text-black cursor-pointer transition-colors duration-200 font-medium"
-                                >
-                                    + Add Reservation
-                                </button>
-                            </div>
-
-                        </DialogHeader>
-
-                        {loadingEvents ? (
-                            <div className="flex justify-center items-center h-96">
-                                <p>Loading events...</p>
-                            </div>
-                        ) : (
-                            <div className="h-[calc(95vh-100px)]">
-                                <FullCalendar
-                                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                                    initialView="timeGridWeek"
-                                    headerToolbar={{
-                                        left: 'prev,next today',
-                                        center: 'title',
-                                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                                    }}
-                                    events={events}
-                                    selectable={true}
-                                    selectMirror={true}
-                                    select={handleDateSelect}
-                                    selectOverlap={false}
-                                    editable={false}
-                                    height="88%"
-                                    eventColor="#FFC801"
-                                    eventTextColor="#000000"
-                                    slotMinTime="08:00:00"   // ⏰ Start time
-                                    slotMaxTime="18:30:00"   // ⏰ End time
-                                />
-
-                            </div>
-                        )}
-                    </DialogContent>
-                </Dialog>
+                        setSelectedRange({ day, start: startTime, end: endTime });
+                        setIsReservationModalOpen(true);
+                    }}
+                />
 
                 {/* Reservation Modals */}
                 {selectedPlace?.place_type === 'studio' && (
@@ -858,10 +614,22 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         onClose={() => setIsReservationModalOpen(false)}
                         cowork={selectedPlace}
                         selectedRange={selectedRange}
+                        coworks={places.filter(p => p.place_type === 'cowork').map(p => {
+                            // Extract table number from name (format: "Table X") or use id
+                            const tableMatch = p.name?.match(/Table\s+(\d+)/);
+                            const tableNumber = tableMatch ? tableMatch[1] : (p.name?.replace('Table ', '') || p.id);
+                            return {
+                                id: p.id,
+                                table: tableNumber,
+                                state: p.state,
+                                image: p.image
+                            };
+                        })}
                         onSuccess={() => {
                             setIsReservationModalOpen(false);
                             loadCalendarEvents(selectedPlace);
                         }}
+                        allowMultiple={true}
                     />
                 )}
 
