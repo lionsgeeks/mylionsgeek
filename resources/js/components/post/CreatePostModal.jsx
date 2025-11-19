@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
+import { X, Image, Calendar, Award, Plus, Smile, Clock, PlusCircle, PlusIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
 import PostImagePreviewEditor from './PostImagePreviewEditor';
+import imageCompression from "browser-image-compression";
 
 const CreatePostModal = ({ onOpenChange, user }) => {
     const [postText, setPostText] = useState('');
@@ -12,13 +13,29 @@ const CreatePostModal = ({ onOpenChange, user }) => {
     useEffect(() => {
         setOpenImagesEditor(true)
     }, [previews])
-    const handleImagePreviews = (e) => {
+    const handleImagePreviews = async (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
-        const newPreviews = files.map(file => URL.createObjectURL(file));
-        setPreviews(prev => [...prev, ...newPreviews]);
-        setPostImages(files);
-    }
+
+        const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1500,
+            useWebWorker: true,
+        };
+
+        // Compress all files correctly
+        const compressedFiles = await Promise.all(
+            files.map(file => imageCompression(file, options))
+        );
+
+        // Previews using compressed files (recommended)
+        const previewsArray = compressedFiles.map(file =>
+            URL.createObjectURL(file)
+        );
+
+        setPreviews(prev => [...prev, ...previewsArray]);
+        setPostImages(prev => [...prev, ...compressedFiles]);
+    };
     //! create post
     const handelCreatePost = () => {
         const newFormData = new FormData()
@@ -28,6 +45,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
         )
 
         router.post('/posts/store/post', newFormData, {
+            forceFormData: true,
             onSuccess: () => {
                 // console.log('create post success');
                 // const newPosts = page.props.posts;
@@ -93,15 +111,40 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                                     />
                                 )}
 
-                                {previews.map((preview, index) => (
-                                    <div key={index} className="h-fit rounded-lg">
-                                        <img
-                                            src={preview}
-                                            alt="Preview"
-                                            className="w-full object-cover rounded-lg"
-                                        />
-                                    </div>
-                                ))}
+                                {
+                                    previews?.length > 5 ? (
+                                        <div className="flex flex-col gap-0 rounded-t-lg overflow-auto">
+                                            <img
+                                                src={previews[0]}
+                                                alt="Preview"
+                                                className="w-full h-[50vh] object-cover"
+                                            />
+
+                                            <div className="grid grid-cols-4 items-center relative">
+                                                {previews.slice(1, 5).map((preview, index) => (
+                                                    <div key={index} className="relative">
+                                                        <img
+                                                            src={preview}
+                                                            alt={`Preview ${index + 1}`}
+                                                            className={`object-cover w-full h-[30vh] ${index === 3 ? 'opacity-20' : ''}`}
+                                                        />
+
+                                                        {index === 3 && (
+                                                            <div className="flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1">
+                                                                <PlusIcon size={20} className="text-white" />
+                                                                <p className="text-white font-semibold text-3xl">
+                                                                    {previews.length - 5}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <h1>Hello Yahya</h1>
+                                    )
+                                }
                             </>
                         )}
 

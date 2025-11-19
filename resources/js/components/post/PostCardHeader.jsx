@@ -4,7 +4,7 @@ import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
 import { X, MoreHorizontal } from 'lucide-react';
 
-const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, onPostTextChange, takeUserProfile , timeAgo }) => {
+const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, onPostTextChange, takeUserProfile, timeAgo }) => {
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
@@ -53,6 +53,12 @@ const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, on
             //console.log('Failed to update:', error);
         }
     };
+    //! open dropdonw  
+    const handleOpenDetails = (post) => {
+        setOpenDetails(post?.id);
+        setPostText(post?.description);
+        setPostImage(post?.image);
+    };
     return (
         <>
             <div className="p-4">
@@ -92,7 +98,7 @@ const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, on
                         {user?.id === post?.user_id && (
                             <button
                                 className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded"
-                                onClick={() => handleOpenDetails(p)}
+                                onClick={() => handleOpenDetails(post)}
                             >
                                 <MoreHorizontal className="w-5 h-5" />
                                 {openDetails === post?.id && (

@@ -43,11 +43,6 @@ const PostCard = ({ user, posts }) => {
     };
 
     // 🩵 Open/close post details dropdown
-    const handleOpenDetails = (post) => {
-        setOpenDetails(post?.id);
-        setPostText(post?.description);
-        setPostImage(post?.image);
-    };
 
 
 
