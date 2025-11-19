@@ -3,8 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-// import * as AvatarPrimitive from '@radix-ui/react-avatar';
-import { Avatar } from '@/components/ui/avatar';
 const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -73,36 +71,37 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                     {selected.map((member) => {
                         const image = normalizeImage(member?.image);
                         return (
-                        <div
-                            key={member.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                        >
-                            {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full mx-auto">
-                                <AvatarImage src={member.image} />
-                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
-                                    {getInitials(member.name)}
-                                </AvatarFallback>
-                            </AvatarPrimitive.Root> */}
-                            <Avatar
-                                className=" w-10 h-10"
-                                image={image}
-                                name={member?.name}
-                                lastActivity={member?.last_online || null}
-                                onlineCircleClass="hidden"
-                                edit={false}
-                            />
-                            <span className="flex-1 text-sm">{member.name}</span>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemove(member.id)}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            <div
+                                key={member.id}
+                                className="flex items-center gap-2 p-2 border border-border rounded-lg bg-white/80 dark:bg-[#111]"
                             >
-                                ×
-                            </Button>
-                        </div>
-                    );})}
+                                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                                    {image ? (
+                                        <img
+                                            src={image}
+                                            alt={member?.name || 'Member'}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => e.currentTarget.remove()}
+                                        />
+                                    ) : (
+                                        getInitials(member?.name)
+                                    )}
+                                </div>
+                                <span className="flex-1 text-sm">{member.name}</span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemove(member.id)}
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                >
+                                    ×
+                                </Button>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -112,7 +111,7 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-light dark:bg-dark text-foreground border border-border">
                     <DialogHeader>
                         <DialogTitle>Select Team Members</DialogTitle>
                     </DialogHeader>
@@ -123,6 +122,7 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                             placeholder="Search members..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-white dark:bg-[#0f0f0f]"
                         />
 
                         {users.length === 0 ? (
@@ -131,27 +131,32 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                             <div className="space-y-2">
                                 {filteredUsers.map((user) => {
                                     const isSelected = selected.some((m) => m.id === user.id);
+                                    const avatar = (
+                                        <div className="team-avatar relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                                            {user?.image ? (
+                                                <img
+                                                    src={user.image}
+                                                    alt={user?.name || 'Team member'}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.remove();
+                                                    }}
+                                                />
+                                            ) : (
+                                                getInitials(user?.name)
+                                            )}
+                                        </div>
+                                    );
                                     return (
                                         <div
                                             key={user.id}
-                                            className="flex items-center gap-3 p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                            className="flex items-center gap-3 p-3 border border-border rounded-lg bg-white/80 dark:bg-[#111] hover:bg-muted/60 cursor-pointer transition-colors"
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
-                                            {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
-                                                <AvatarImage src={user.image} />
-                                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
-                                                    {getInitials(user.name)}
-                                                </AvatarFallback>
-                                            </AvatarPrimitive.Root> */}
-                                            <Avatar
-                                                className="w-10 h-10"
-                                                image={user?.image}
-                                                name={user?.name}
-                                                lastActivity={user?.last_online || null}
-                                                onlineCircleClass="hidden"
-                                                edit={false}
-                                            />
+                                            {avatar}
                                             <span className="flex-1 text-sm">{user.name}</span>
                                         </div>
                                     );
@@ -163,7 +168,7 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t">
+                    <div className="pt-4 border-t border-border">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}

@@ -74,32 +74,36 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                     {selected.map((item) => {
                         const image = normalizeImage(item.image);
                         return (
-                        <div
-                            key={item.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                        >
-                            {image && (
-                                <img
-                                    src={image}
-                                    alt={item.mark}
-                                    className="h-10 w-10 object-cover rounded"
-                                />
-                            )}
-                            <div className="flex-1">
-                                <p className="text-sm font-medium">{item.mark}</p>
-                                <p className="text-xs text-muted-foreground">{item.reference}</p>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemove(item.id)}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive cursor-pointer"
+                            <div
+                                key={item.id}
+                                className="flex items-center gap-2 p-2 border border-border rounded-lg bg-white/80 dark:bg-[#111]"
                             >
-                                ×
-                            </Button>
-                        </div>
-                    );})}
+                                {image && (
+                                    <img
+                                        src={image}
+                                        alt={item.mark}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="h-10 w-10 object-cover rounded"
+                                        onError={(e) => e.currentTarget.remove()}
+                                    />
+                                )}
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">{item.mark}</p>
+                                    <p className="text-xs text-muted-foreground">{item.reference}</p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemove(item.id)}
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive cursor-pointer"
+                                >
+                                    ×
+                                </Button>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -109,7 +113,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-light dark:bg-dark text-foreground border border-border">
                     <DialogHeader>
                         <DialogTitle>Select Equipment</DialogTitle>
                     </DialogHeader>
@@ -117,10 +121,10 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                     {/* Scrollable Area */}
                     <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                         <Input
-                            // className="block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
                             placeholder="Search equipment..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-white dark:bg-[#0f0f0f]"
                         />
 
                         {equipmentList.length === 0 ? (
@@ -132,7 +136,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                                     return (
                                         <div
                                             key={item.id}
-                                            className="flex items-center gap-3 p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                            className="flex items-center gap-3 p-3 border border-border rounded-lg bg-white/80 dark:bg-[#111] hover:bg-muted/60 cursor-pointer transition-colors"
                                             onClick={() => handleToggle(item)}
                                         >
                                             <Checkbox checked={isSelected} />
@@ -140,7 +144,10 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                                                 <img
                                                     src={item.image}
                                                     alt={item.mark}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     className="h-12 w-12 object-cover rounded"
+                                                    onError={(e) => e.currentTarget.remove()}
                                                 />
                                             )}
                                             <div className="flex-1">
@@ -159,7 +166,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t">
+                    <div className="pt-4 border-t border-border">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}

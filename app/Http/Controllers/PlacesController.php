@@ -503,11 +503,15 @@ class PlacesController extends Controller
             ->get()
             ->map(function ($equipment) {
                 $image = $equipment->image ?? null;
+                $basePath = 'storage/img/equipment/';
                 if ($image) {
                     if (Str::startsWith($image, ['http://', 'https://'])) {
                         $imageUrl = $image;
                     } else {
-                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                        $normalized = Str::startsWith($image, ['storage/', '/storage/', 'img/'])
+                            ? ltrim($image, '/')
+                            : $basePath . ltrim($image, '/');
+                        $imageUrl = asset(Str::startsWith($normalized, 'storage/') ? $normalized : 'storage/' . ltrim($normalized, '/'));
                     }
                 } else {
                     $imageUrl = null;
@@ -537,11 +541,15 @@ class PlacesController extends Controller
             ->get()
             ->map(function ($user) {
                 $image = $user->image ?? null;
+                $basePath = 'storage/img/profile/';
                 if ($image) {
                     if (Str::startsWith($image, ['http://', 'https://'])) {
                         $imageUrl = $image;
                     } else {
-                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                        $normalized = Str::startsWith($image, ['storage/', '/storage/', 'img/'])
+                            ? ltrim($image, '/')
+                            : $basePath . ltrim($image, '/');
+                        $imageUrl = asset(Str::startsWith($normalized, 'storage/') ? $normalized : 'storage/' . ltrim($normalized, '/'));
                     }
                 } else {
                     $imageUrl = null;

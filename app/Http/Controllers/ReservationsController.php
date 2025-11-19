@@ -895,10 +895,19 @@ class ReservationsController extends Controller
                 // Get admin users
                 $adminUsers = DB::table('users')
                     ->whereIn('role', ['admin', 'super_admin'])
-                    ->select('email', 'name')
-                    ->get();
+                    ->whereNotNull('email')
+                    ->pluck('email')
+                    ->filter()
+                    ->unique()
+                    ->values();
 
-                \Log::info('Admin users found: ' . $adminUsers->count());
+                \Log::info('Admin emails found: ' . $adminUsers->count());
+
+                if ($adminUsers->isEmpty()) {
+                    $fallbackRecipients = collect(array_filter(array_map('trim', explode(',', env('ADMIN_NOTIFICATION_EMAILS', 'boujjarr@gmail.com')))));
+                    \Log::warning('No admin users found for reservation notification. Falling back to configured recipients: ' . $fallbackRecipients->implode(', '));
+                    $adminUsers = $fallbackRecipients->unique()->values();
+                }
 
                 // Get the created reservation data for the email
                 $createdReservation = DB::table('reservations')
@@ -914,12 +923,14 @@ class ReservationsController extends Controller
 
                 \Log::info('User data: ' . json_encode($reservationUser));
 
-                // Send email to all admin users
-                foreach ($adminUsers as $admin) {
-                    \Log::info('Sending email to: boujjarr@gmail.com');
-                    // Mail::to($admin->email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    Mail::to("boujjarr@gmail.com")->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    \Log::info('Email sent successfully to: boujjarr@gmail.com');
+                if ($adminUsers->isEmpty()) {
+                    \Log::warning('No admin notification recipients configured. Skipping email dispatch.');
+                } else {
+                    foreach ($adminUsers as $email) {
+                        \Log::info('Sending reservation notification to: ' . $email);
+                        Mail::to($email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                        \Log::info('Email sent successfully to: ' . $email);
+                    }
                 }
             } catch (\Exception $e) {
                 // Log the error but don't fail the reservation creation
