@@ -38,24 +38,24 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
                 )}
             </div>
             {post?.images?.length > 0 && (
-                <div className="relative w-full px-1 aspect-video mt-3 flex flex-col">
+                <div onClick={() => setOpenPostModal(true)} className="relative w-full cursor-pointer px-1 aspect-video mt-3 flex flex-col gap-3">
 
                     {/* Top big image */}
                     <img
                         src={`/storage/img/posts/${post?.images[0]}`}
                         alt=""
-                        className="w-full h-[70%] object-cover"
+                        className={`w-full object-cover rounded-lg ${post?.images.length == 1 ? 'h-full' : 'h-[70%]'}`}
                     />
 
                     {/* Bottom small images */}
                     {post?.images.length > 1 && (
-                        <div className="h-[30%] w-full flex">
+                        <div className="h-[30%] w-full flex gap-3">
                             {post?.images.slice(1, 5).map((img, i) => (
-                                <div key={i} className="relative w-1/4 h-full">
+                                <div key={i} className={`relative w-1/${post?.images.slice(1, 5).length} h-full`}>
                                     <img
                                         src={`/storage/img/posts/${img}`}
                                         alt=""
-                                        className="w-full h-full object-cover"
+                                        className="w-full h-full object-cover rounded-lg"
                                     />
 
                                     {/* If more than 5 images → show +X overlay */}
@@ -68,7 +68,7 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
                             ))}
                         </div>
                     )}
-                    {openPostModal && <PostModal isOpen={openPostModal} onClose={() => setOpenPostModal(false)} post={post} displayText={displayText} hasMore={hasMore} expandedDescriptions={expandedDescriptions} onExpandedDescriptionsChange={setExpandedDescriptions} isExpanded={isExpanded} toggleDescription={toggleDescription} timeAgo={timeAgo} user={user} addOrRemovFollow={addOrRemoveFollow} takeToUserProfile={takeToUserProfile} />}
+                    {openPostModal && <PostModal isOpen={openPostModal} onOpenChange={setOpenPostModal} post={post} displayText={displayText} hasMore={hasMore} isExpanded={isExpanded} toggleDescription={toggleDescription} timeAgo={timeAgo} user={user} addOrRemovFollow={addOrRemoveFollow} takeToUserProfile={takeToUserProfile} />}
 
                 </div>
             )}

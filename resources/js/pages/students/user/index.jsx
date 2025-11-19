@@ -19,7 +19,7 @@ export default function StudentFeed({ user, posts }) {
                             <div className="grid relative grid-cols-1 lg:grid-cols-12 gap-6">
                                 <LeftSideBar user={currentUser} />
                                 <CenterFeed user={currentUser} posts={currentPosts} />
-                                <RightSideBar />
+                                {/* <RightSideBar /> */}
                             </div>
                         </div>
                     </div>
