@@ -47,11 +47,6 @@ const CreatePostModal = ({ onOpenChange, user }) => {
         router.post('/posts/store/post', newFormData, {
             forceFormData: true,
             onSuccess: () => {
-                // console.log('create post success');
-                // const newPosts = page.props.posts;
-                // console.log(newPosts);
-
-                // onPostsChange(newPosts?.posts);
                 onOpenChange(false)
             },
             onError: (error) => {
@@ -142,7 +137,25 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <h1>Hello Yahya</h1>
+                                        <div className="flex flex-col gap-0 rounded-t-lg overflow-auto">
+                                            <img
+                                                src={previews[0]}
+                                                alt="Preview"
+                                                className="w-full h-[50vh] object-cover"
+                                            />
+
+                                            <div className={`grid grid-cols-${previews.length - 1} items-center relative`}>
+                                                {previews.slice(1, 5).map((preview, index) => (
+                                                    <div key={index} className="relative">
+                                                        <img
+                                                            src={preview}
+                                                            alt={`Preview ${index + 1}`}
+                                                            className={`object-cover w-full h-[30vh]`}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     )
                                 }
                             </>
