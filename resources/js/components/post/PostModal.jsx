@@ -1,23 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Heart, MessageCircle, Repeat2, Send, BarChart2, Smile, Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import PostCardFooter from './PostCardFooter';
 import PostImageCarousel from './PostImageCarousel';
+import { helpers } from '../utils/helpers';
 
-const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expandedDescriptions, isExpanded, hasMore, displayText, timeAgo, user, addOrRemovFollow, toggleDescription , takeToUserProfile}) => {
-
-    if (!isOpen) return null;
-
+const PostModal = ({ isOpen, onOpenChange, post, isExpanded, hasMore, displayText, timeAgo, user, addOrRemovFollow, toggleDescription, takeToUserProfile }) => {
+    const { stopScrolling } = helpers()
+    useEffect(() => {
+        stopScrolling(true)
+        return () => {
+            stopScrolling(false);
+        }
+    })
+    const changeOpen = (e) => {
+        e.stopPropagation()
+        onOpenChange(false)
+    }
     return (
         <>
-            <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/70">
+            <div onClick={(e) => changeOpen(e)} className="fixed inset-0 z-40 bg-black/70">
             </div>
-            <div className="fixed inset-0 z-50 mx-auto top-[5vh] w-full max-w-[80%] h-[90vh] bg-beta dark:bg-dark_gray rounded-lg overflow-hidden flex flex-col lg:flex-row">
+            <div className="fixed inset-0 top-[5vh] z-50 mx-auto w-full max-w-[80%] h-[90vh] bg-beta dark:bg-dark_gray rounded-lg overflow-hidden flex flex-col lg:flex-row">
 
                 {/* Close Button */}
                 <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 z-10 p-2 rounded-full bg-beta/80 dark:bg-dark/80 hover:bg-beta dark:hover:bg-dark transition-colors"
+                    onClick={(e) => changeOpen(e)}
+                    className="absolute top-4 right-4 z-50 cursor-pointer p-2 rounded-full bg-beta/80 dark:bg-dark/80 hover:bg-beta dark:hover:bg-dark transition-colors"
                 >
                     <X className="w-6 h-6 text-light" />
                 </button>
@@ -99,47 +108,3 @@ const PostModal = ({ isOpen, onClose, post, onExpandedDescriptionsChange, expand
 };
 
 export default PostModal;
-
-// Demo Component
-// export default function App() {
-//     const [isModalOpen, setIsModalOpen] = useState(true);
-
-//     const mockPost = {
-//         author: "Yahya Moussair",
-//         subtitle: "Web Developer | Technicien spécialisé in Web...",
-//         visibility: "5mo",
-//         avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100",
-//         image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800",
-//         description: `🚀 I'm excited to share my brand-new developer portfolio—built from scratch with React.js, Vite, Tailwind CSS, and Framer Motion!
-
-// This fully responsive site reflects who I am as a developer: focused on clean UI, smooth animations, and optimized performance across all devices.
-
-// 🧠 Tech Stack:
-// React.js | Vite | Tailwind CSS | Framer Motion
-
-// 🎯 It's not just a portfolio — it's a step forward in my journey as an aspiring Software Engineer. I'd love your feedback, and I'm open to opportunities to grow and contribute to great teams.
-
-// 🔗 [https://lnkd.in/eE6SqC-F ✅]
-// Let's connect!`,
-//         hashtags: ['#ReactJS', '#TailwindCSS', '#FramerMotion'],
-//         likes: '15',
-//         impressions: '695'
-//     };
-
-//     return (
-//         <div className="min-h-screen bg-light dark:bg-dark p-8">
-//             <button
-//                 onClick={() => setIsModalOpen(true)}
-//                 className="px-6 py-3 bg-alpha text-beta rounded-lg font-medium hover:bg-alpha/90 transition-colors"
-//             >
-//                 Open Post Modal
-//             </button>
-
-//             <PostModal
-//                 isOpen={isModalOpen}
-//                 onClose={() => setIsModalOpen(false)}
-//                 post={mockPost}
-//             />
-//         </div>
-//     );
-// }

@@ -11,7 +11,7 @@ export default function CenterFeed({ user, posts }) {
     return (
         <>
             {/* Center Feed - Scrollable */}
-            <div className="lg:col-span-6 space-y-4">
+            <div className="lg:col-span-9 space-y-4">
                 {/* Create Post Box */}
                 <div className="bg-white dark:bg-dark_gray shadow-alpha/10 rounded-lg shadow  p-4">
                     <div className="flex items-center gap-3 mb-4">
@@ -194,7 +194,7 @@ export default function CenterFeed({ user, posts }) {
                 {/* <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center text-gray-500 dark:text-gray-400">
                     <p>More posts would appear here...</p>
                 </div> */}
-                {openAddPost && <CreatePostModal user={user} onOpenChange={setOpenAddPost} />}
+                {openAddPost && <CreatePostModal user={user} onOpen={openAddPost} onOpenChange={setOpenAddPost} />}
             </div >
         </>
     );
