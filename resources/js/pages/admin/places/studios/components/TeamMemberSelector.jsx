@@ -1,52 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 // import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import { Avatar } from '@/components/ui/avatar';
-const TeamMemberSelector = ({ selected, onSelect }) => {
+const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [users, setUsers] = useState([]);
-    const [filteredUsers, setFilteredUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (isModalOpen && users.length === 0) {
-            loadUsers();
-        }
-    }, [isModalOpen]);
-
-    useEffect(() => {
-        if (searchQuery) {
-            setFilteredUsers(
-                users.filter((u) =>
-                    u.name.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-            );
-        } else {
-            setFilteredUsers(users);
-        }
-    }, [searchQuery, users]);
-
-    const loadUsers = () => {
-        setLoading(true);
-        fetch('/admin/api/users', {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                setUsers(Array.isArray(data) ? data : []);
-                setFilteredUsers(Array.isArray(data) ? data : []);
-            })
-            .catch(() => {
-                setUsers([]);
-                setFilteredUsers([]);
-            })
-            .finally(() => setLoading(false));
+    const normalizeImage = (image) => {
+        if (!image) return null;
+        if (image.startsWith('http://') || image.startsWith('https://')) return image;
+        if (image.startsWith('/')) return image;
+        if (image.startsWith('storage/')) return `/${image}`;
+        if (image.startsWith('public/')) return `/${image.replace(/^public\//, 'storage/')}`;
+        if (image.startsWith('img/')) return `/storage/${image}`;
+        return `/storage/${image.replace(/^\/?/, '')}`;
     };
+
+    const users = useMemo(
+        () =>
+            (Array.isArray(teamMemberOptions)
+                ? teamMemberOptions.map((user) => ({
+                      ...user,
+                      image: normalizeImage(user.image),
+                  }))
+                : []),
+        [teamMemberOptions]
+    );
+
+    const filteredUsers = useMemo(() => {
+        if (!searchQuery) return users;
+        const query = searchQuery.toLowerCase();
+        return users.filter((u) => (u.name || '').toLowerCase().includes(query));
+    }, [users, searchQuery]);
 
     const handleToggle = (user) => {
         const isSelected = selected.some((m) => m.id === user.id);
@@ -82,7 +70,9 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
             {/* Selected Members */}
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                    {selected.map((member) => (
+                    {selected.map((member) => {
+                        const image = normalizeImage(member?.image);
+                        return (
                         <div
                             key={member.id}
                             className="flex items-center gap-2 p-2 border rounded-lg"
@@ -95,7 +85,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                             </AvatarPrimitive.Root> */}
                             <Avatar
                                 className=" w-10 h-10"
-                                image={member?.image}
+                                image={image}
                                 name={member?.name}
                                 lastActivity={member?.last_online || null}
                                 onlineCircleClass="hidden"
@@ -112,7 +102,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                                 ×
                             </Button>
                         </div>
-                    ))}
+                    );})}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -135,8 +125,8 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
 
-                        {loading ? (
-                            <p className="text-sm text-center py-4">Loading...</p>
+                        {users.length === 0 ? (
+                            <p className="text-sm text-center py-4">No team members available</p>
                         ) : filteredUsers.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredUsers.map((user) => {

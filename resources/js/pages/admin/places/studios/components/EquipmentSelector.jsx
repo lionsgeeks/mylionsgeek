@@ -1,53 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const EquipmentSelector = ({ selected, onSelect }) => {
+const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [equipment, setEquipment] = useState([]);
-    const [filteredEquipment, setFilteredEquipment] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (isModalOpen && equipment.length === 0) {
-            loadEquipment();
-        }
-    }, [isModalOpen]);
-
-    useEffect(() => {
-        if (searchQuery) {
-            setFilteredEquipment(
-                equipment.filter(
-                    (e) =>
-                        e.mark.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        e.reference.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-            );
-        } else {
-            setFilteredEquipment(equipment);
-        }
-    }, [searchQuery, equipment]);
-
-    const loadEquipment = () => {
-        setLoading(true);
-        fetch('/admin/api/equipment', {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                setEquipment(Array.isArray(data) ? data : []);
-                setFilteredEquipment(Array.isArray(data) ? data : []);
-            })
-            .catch(() => {
-                setEquipment([]);
-                setFilteredEquipment([]);
-            })
-            .finally(() => setLoading(false));
+    const normalizeImage = (image) => {
+        if (!image) return null;
+        if (image.startsWith('http://') || image.startsWith('https://')) return image;
+        if (image.startsWith('/')) return image;
+        if (image.startsWith('storage/')) return `/${image}`;
+        if (image.startsWith('public/')) return `/${image.replace(/^public\//, 'storage/')}`;
+        if (image.startsWith('img/')) return `/storage/${image}`;
+        return `/storage/${image.replace(/^\/?/, '')}`;
     };
+
+    const equipmentList = useMemo(
+        () =>
+            (Array.isArray(equipmentOptions)
+                ? equipmentOptions.map((item) => ({
+                      ...item,
+                      image: normalizeImage(item.image),
+                  }))
+                : []),
+        [equipmentOptions]
+    );
+
+    const filteredEquipment = useMemo(() => {
+        if (!searchQuery) {
+            return equipmentList;
+        }
+        const query = searchQuery.toLowerCase();
+        return equipmentList.filter(
+            (item) =>
+                (item.mark || '').toLowerCase().includes(query) ||
+                (item.reference || '').toLowerCase().includes(query)
+        );
+    }, [equipmentList, searchQuery]);
 
     const handleToggle = (item) => {
         const isSelected = selected.some((e) => e.id === item.id);
@@ -80,14 +71,16 @@ const EquipmentSelector = ({ selected, onSelect }) => {
             {/* Selected Equipment */}
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                    {selected.map((item) => (
+                    {selected.map((item) => {
+                        const image = normalizeImage(item.image);
+                        return (
                         <div
                             key={item.id}
                             className="flex items-center gap-2 p-2 border rounded-lg"
                         >
-                            {item.image && (
+                            {image && (
                                 <img
-                                    src={item.image}
+                                    src={image}
                                     alt={item.mark}
                                     className="h-10 w-10 object-cover rounded"
                                 />
@@ -106,7 +99,7 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                                 ×
                             </Button>
                         </div>
-                    ))}
+                    );})}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -130,8 +123,8 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
 
-                        {loading ? (
-                            <p className="text-sm text-center py-4">Loading...</p>
+                        {equipmentList.length === 0 ? (
+                            <p className="text-sm text-center py-4">No equipment available</p>
                         ) : filteredEquipment.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredEquipment.map((item) => {
@@ -161,7 +154,7 @@ const EquipmentSelector = ({ selected, onSelect }) => {
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-center py-4">No equipment available</p>
+                            <p className="text-sm text-center py-4">No equipment matches your search</p>
                         )}
                     </div>
 

@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ReservationModalMeetingRoom from './ReservationModalMeetingRoom';
 
-export default function MeetingRoomCalendar({ meetingRoom }) {
-    const [events, setEvents] = useState([]);
+export default function MeetingRoomCalendar({ meetingRoom, reservations = [] }) {
+    const [events, setEvents] = useState(Array.isArray(reservations) ? reservations : []);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     useEffect(() => {
-        loadReservations();
-    }, []);
+        setEvents(Array.isArray(reservations) ? reservations : []);
+    }, [reservations]);
 
-    const loadReservations = async () => {
-        try {
-            const response = await fetch(`/admin/places/meeting_room/${meetingRoom.id}/reservations`);
-            const data = await response.json();
-            setEvents(data);
-        } catch (error) {
-            console.error('Failed to load reservations:', error);
-        }
+    const refreshReservations = () => {
+        setIsRefreshing(true);
+        router.reload({
+            only: ['reservations'],
+            onFinish: () => setIsRefreshing(false),
+        });
     };
 
     const handleDateSelect = (selectInfo) => {
@@ -44,7 +43,8 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
     };
 
     const handleReservationSuccess = () => {
-        loadReservations();
+        setIsModalOpen(false);
+        refreshReservations();
     };
 
     return (
@@ -60,6 +60,9 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
                 </div>
 
                 <div className="bg-black/40 border border-white/10 rounded-lg p-6">
+                    {isRefreshing && (
+                        <div className="text-sm text-white/70 mb-2">Refreshing calendar…</div>
+                    )}
                     <FullCalendar
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                         initialView="timeGridWeek"

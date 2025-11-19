@@ -545,4 +545,14 @@
         gap: 0.5rem !important;
         /* display: none !important; */
     }
+
+    .fc .fc-toolbar-chunk:last-child {
+        display: none !important;
+    }
+
+    .fc .fc-button-primary {
+        background-color: transparent !important;
+        color: inherit !important;
+        border: 1px solid currentColor !important;
+    }
 }

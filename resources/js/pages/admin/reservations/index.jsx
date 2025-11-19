@@ -14,6 +14,7 @@ import ExportModal from './partials/ExportModal';
 import StatCard from '../../../components/StatCard';
 import ReservationDetailsModal from './components/ReservationDetailsModal';
 import ReservationsTable from './components/ReservationsTable';
+import TablePagination from '@/components/TablePagination';
 
 // Helpers to normalize and compare dates
 function parseYmd(dateStr) {
@@ -268,7 +269,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     const [pageStudio, setPageStudio] = useState(1);
     const [showAllCowork, setShowAllCowork] = useState(false);
     const [showAllStudio, setShowAllStudio] = useState(false);
-    const perPage = 10;
+    const perPage = 9;
     const pagedAll = filteredReservations.slice((pageAll - 1) * perPage, (pageAll - 1) * perPage + perPage);
     const pagedCowork = showAllCowork ? filteredCoworkReservations : filteredCoworkReservations.slice((pageCowork - 1) * perPage, (pageCowork - 1) * perPage + perPage);
     const pagedStudio = showAllStudio ? filteredStudioReservations : filteredStudioReservations.slice((pageStudio - 1) * perPage, (pageStudio - 1) * perPage + perPage);
@@ -440,11 +441,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             setSelected(r);
                         }}
                     />
-                        <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                            <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                            <span>Page {pageAll} of {totalPagesAll}</span>
-                            <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
-                    </div>
+                    <TablePagination
+                        currentPage={pageAll}
+                        lastPage={totalPagesAll}
+                        onPageChange={(page) => setPageAll(page)}
+                    />
                 </div>
 
                 {/* Combined Details & Info Modal with Tabs */}

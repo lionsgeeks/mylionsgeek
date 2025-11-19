@@ -54,11 +54,11 @@ export default function AdminReservationDetails({ reservation }) {
         );
     }
 
-    const { auth } = usePage().props;
+    const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
-    const [studios, setStudios] = useState([]);
+    const [studios, setStudios] = useState(studioOptions);
     const [timeError, setTimeError] = useState('');
 
     const getStatusBadge = () => {
@@ -145,21 +145,9 @@ export default function AdminReservationDetails({ reservation }) {
         equipment: [],
     });
 
-    // Load studios when modal opens
     useEffect(() => {
-        if (isEditModalOpen && studios.length === 0) {
-            fetch('/api/places', {
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            })
-                .then((r) => r.json())
-                .then((data) => {
-                    const studioList = Array.isArray(data?.studios) ? data.studios : [];
-                    setStudios(studioList);
-                })
-                .catch(() => setStudios([]));
-        }
-    }, [isEditModalOpen]);
+        setStudios(studioOptions);
+    }, [studioOptions]);
 
     // Initialize selected members and equipment from reservation
     useEffect(() => {
@@ -662,6 +650,8 @@ export default function AdminReservationDetails({ reservation }) {
                 setSelectedMembers={setSelectedMembers}
                 selectedEquipment={selectedEquipment}
                 setSelectedEquipment={setSelectedEquipment}
+                equipmentOptions={equipmentOptions}
+                teamMemberOptions={teamMemberOptions}
                 onSubmit={handleUpdate}
             />
         </AppLayout>

@@ -1,20 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
-const CalendarModal = ({ 
-    isOpen, 
-    onClose, 
-    calendarFor, 
-    events, 
-    loadingEvents, 
-    onDateSelect, 
+const CalendarModal = ({
+    isOpen,
+    onClose,
+    calendarFor,
+    events,
+    loadingEvents,
+    onDateSelect,
     onEventClick,
     onAddReservationClick
 }) => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     if (!calendarFor) return null;
 
     return (
@@ -39,8 +51,9 @@ const CalendarModal = ({
                         <div className="absolute inset-0 px-4 pb-4 bg-light dark:bg-dark">
                             <FullCalendar
                                 plugins={[timeGridPlugin, interactionPlugin, dayGridPlugin]}
-                                initialView="timeGridWeek"
-                                headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                                initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+                                initialDate={isMobile ? new Date() : undefined}
+                                headerToolbar={{ left: 'prev,next today', center: 'title', right: isMobile ? '' : 'dayGridMonth,timeGridWeek,timeGridDay' }}
                                 events={events}
                                 selectable={true}
                                 selectMirror={true}

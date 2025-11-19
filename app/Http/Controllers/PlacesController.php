@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 
 class PlacesController extends Controller
 {
@@ -79,8 +81,13 @@ class PlacesController extends Controller
     }
 
 
-    public function index()
+    public function index(Request $request)
     {
+        $calendarPlaceType = $request->input('calendar_place_type');
+        $calendarPlaceId = $request->input('calendar_place_id');
+        $calendarPlace = null;
+        $calendarEvents = [];
+
         $places = collect();
 
         if (Schema::hasTable('coworks')) {
@@ -155,6 +162,19 @@ class PlacesController extends Controller
         $coworkImages = $this->listPublicImages('img/cowork');
         $equipmentImages = $this->listPublicImages('img/equipment');
 
+        if ($calendarPlaceType && $calendarPlaceId) {
+            $calendarPlace = $places->first(function ($place) use ($calendarPlaceType, $calendarPlaceId) {
+                return $place['place_type'] === $calendarPlaceType && (int)$place['id'] === (int)$calendarPlaceId;
+            });
+
+            if ($calendarPlace) {
+                $calendarEvents = $this->getPlaceReservations($calendarPlaceType, (int)$calendarPlaceId);
+            }
+        }
+
+        $equipmentOptions = $this->getEquipmentOptions();
+        $teamMemberOptions = $this->getTeamMemberOptions();
+
         return Inertia::render('admin/places/index', [
             'places' => $places->map(function ($p) {
                 unset($p['created_at']);
@@ -165,10 +185,14 @@ class PlacesController extends Controller
             'meetingRoomImages' => $meetingRoomImages,
             'coworkImages' => $coworkImages,
             'equipmentImages' => $equipmentImages,
+            'calendarPlace' => $calendarPlace,
+            'calendarEvents' => $calendarEvents,
+            'equipmentOptions' => $equipmentOptions,
+            'teamMemberOptions' => $teamMemberOptions,
         ]);
     }
 
-    public function index2()
+    public function index2(Request $request)
     {
         $studios = DB::table('studios')
             ->select('id', 'name', 'state', 'image')
@@ -210,9 +234,31 @@ class PlacesController extends Controller
                 ];
             });
 
+        $equipmentOptions = $this->getEquipmentOptions();
+        $teamMemberOptions = $this->getTeamMemberOptions();
+
+        $events = [];
+        $calendarContext = null;
+        $eventsMode = $request->input('events_mode');
+        $eventType = $request->input('event_type');
+        $eventId = $request->input('event_id');
+
+        if ($eventsMode === 'studio_all') {
+            $events = $this->getAllStudioEvents($studios);
+        } elseif ($eventsMode === 'cowork_all') {
+            $events = $this->getAllCoworkEvents($coworks);
+        } elseif ($eventsMode === 'place' && $eventType && $eventId) {
+            $calendarContext = $this->resolveCalendarContext($eventType, (int) $eventId, $studios, $coworks);
+            $events = $this->getPlaceReservations($eventType, (int) $eventId);
+        }
+
         return Inertia::render('students/spaces/index', [
             'studios' => $studios,
             'coworks' => $coworks,
+            'equipmentOptions' => $equipmentOptions,
+            'teamMemberOptions' => $teamMemberOptions,
+            'events' => $events,
+            'calendarContext' => $calendarContext,
         ]);
     }
 
@@ -319,6 +365,121 @@ class PlacesController extends Controller
         return back()->with('success', 'Place deleted');
     }
 
+    private function getPlaceReservations(string $type, int $id): array
+    {
+        if ($type === 'studio') {
+            return DB::table('reservations as r')
+                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                ->where('r.studio_id', $id)
+                ->select(
+                    'r.id',
+                    'r.day as start',
+                    'r.start as startTime',
+                    'r.end as endTime',
+                    'r.title',
+                    'r.approved',
+                    'r.canceled',
+                    'r.user_id as user_id',
+                    'r.created_at',
+                    'u.name as user_name'
+                )
+                ->orderByDesc('r.created_at')
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'reservation_id' => $r->id,
+                        'title' => trim(($r->title ?? 'Reservation') . ' — ' . ($r->user_name ?? '')),
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
+                        'approved' => (bool) $r->approved,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        if ($type === 'cowork') {
+            return DB::table('reservation_coworks as rc')
+                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+                ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
+                ->where('rc.table', $id)
+                ->select(
+                    'rc.id',
+                    'rc.day as start',
+                    'rc.start as startTime',
+                    'rc.end as endTime',
+                    'rc.approved',
+                    'rc.canceled',
+                    'rc.user_id as user_id',
+                    'rc.created_at',
+                    'u.name as user_name',
+                    'c.table as table_number',
+                    'rc.table as table_id'
+                )
+                ->orderByDesc('rc.created_at')
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'reservation_id' => $r->id,
+                        'title' => 'Table ' . $r->table_number . ' — ' . ($r->user_name ?? ''),
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
+                        'approved' => (bool) $r->approved,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
+                        'table_id' => $r->table_id,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        if ($type === 'meeting_room') {
+            return DB::table('reservation_meeting_rooms as rmr')
+                ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
+                ->where('rmr.meeting_room_id', $id)
+                ->select(
+                    'rmr.id',
+                    'rmr.day as start',
+                    'rmr.start as startTime',
+                    'rmr.end as endTime',
+                    'rmr.approved',
+                    'rmr.canceled',
+                    'rmr.user_id as user_id',
+                    'rmr.created_at',
+                    'u.name as user_name'
+                )
+                ->orderByDesc('rmr.created_at')
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'reservation_id' => $r->id,
+                        'title' => 'Meeting Room — ' . ($r->user_name ?? ''),
+                        'start' => $r->start . 'T' . $r->startTime,
+                        'end' => $r->start . 'T' . $r->endTime,
+                        'backgroundColor' => $r->canceled ? '#6b7280' : ($r->approved ? '#FFC801' : '#f59e0b'),
+                        'user_id' => $r->user_id,
+                        'canceled' => (bool) $r->canceled,
+                        'approved' => (bool) $r->approved,
+                        'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
+        return [];
+    }
+
     private function resolveTableFromType(?string $type): ?string
     {
         return match ($type) {
@@ -327,6 +488,197 @@ class PlacesController extends Controller
             'meeting_room' => 'meeting_rooms',
             default => null,
         };
+    }
+
+    private function getEquipmentOptions(): array
+    {
+        if (!Schema::hasTable('equipment')) {
+            return [];
+        }
+
+        return DB::table('equipment as e')
+            ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+            ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
+            ->orderBy('e.mark')
+            ->get()
+            ->map(function ($equipment) {
+                $image = $equipment->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference,
+                    'mark' => $equipment->mark,
+                    'image' => $imageUrl,
+                    'type_name' => $equipment->type_name,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function getTeamMemberOptions(): array
+    {
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return DB::table('users')
+            ->select('id', 'name', 'email', 'image', 'last_online')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                $image = $user->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'image' => $imageUrl,
+                    'last_online' => $user->last_online,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function getAllStudioEvents(Collection $studios): array
+    {
+        if ($studios->isEmpty() || !Schema::hasTable('reservations')) {
+            return [];
+        }
+
+        $studioIds = $studios->pluck('id')->all();
+
+        return DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
+            ->whereIn('r.studio_id', $studioIds)
+            ->select(
+                'r.id',
+                'r.day as start',
+                'r.start as startTime',
+                'r.end as endTime',
+                'r.title',
+                'r.approved',
+                'r.canceled',
+                'r.user_id as user_id',
+                'r.created_at',
+                'u.name as user_name',
+                's.name as studio_name'
+            )
+            ->orderByDesc('r.created_at')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'id' => $row->id,
+                    'reservation_id' => $row->id,
+                    'title' => trim(($row->title ?? 'Reservation') . ' — ' . ($row->studio_name ?? '') . ' — ' . ($row->user_name ?? '')),
+                    'start' => $row->start . 'T' . $row->startTime,
+                    'end' => $row->start . 'T' . $row->endTime,
+                    'backgroundColor' => $row->canceled ? '#6b7280' : ($row->approved ? '#FFC801' : '#f59e0b'),
+                    'user_id' => $row->user_id,
+                    'canceled' => (bool) $row->canceled,
+                    'approved' => (bool) $row->approved,
+                    'created_at' => $row->created_at ? (is_string($row->created_at) ? $row->created_at : $row->created_at->toDateTimeString()) : null,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function getAllCoworkEvents(Collection $coworks): array
+    {
+        if ($coworks->isEmpty() || !Schema::hasTable('reservation_coworks')) {
+            return [];
+        }
+
+        $coworkIds = $coworks->pluck('id')->all();
+
+        return DB::table('reservation_coworks as rc')
+            ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
+            ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
+            ->whereIn('rc.table', $coworkIds)
+            ->select(
+                'rc.id',
+                'rc.day as start',
+                'rc.start as startTime',
+                'rc.end as endTime',
+                'rc.approved',
+                'rc.canceled',
+                'rc.user_id as user_id',
+                'rc.created_at',
+                'u.name as user_name',
+                'c.table as table_number',
+                'rc.table as table_id'
+            )
+            ->orderByDesc('rc.created_at')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'id' => $row->id,
+                    'reservation_id' => $row->id,
+                    'title' => 'Table ' . ($row->table_number ?? '') . ' — ' . ($row->user_name ?? ''),
+                    'start' => $row->start . 'T' . $row->startTime,
+                    'end' => $row->start . 'T' . $row->endTime,
+                    'backgroundColor' => $row->canceled ? '#6b7280' : ($row->approved ? '#FFC801' : '#f59e0b'),
+                    'user_id' => $row->user_id,
+                    'canceled' => (bool) $row->canceled,
+                    'approved' => (bool) $row->approved,
+                    'created_at' => $row->created_at ? (is_string($row->created_at) ? $row->created_at : $row->created_at->toDateTimeString()) : null,
+                    'table_id' => $row->table_id,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function resolveCalendarContext(?string $type, int $id, Collection $studios, Collection $coworks): ?array
+    {
+        if (!$type || !$id) {
+            return null;
+        }
+
+        if ($type === 'studio') {
+            $studio = $studios->firstWhere('id', $id);
+            if ($studio) {
+                return [
+                    'place_type' => 'studio',
+                    'id' => $studio['id'],
+                    'name' => $studio['name'],
+                ];
+            }
+        }
+
+        if ($type === 'cowork') {
+            $cowork = $coworks->firstWhere('id', $id);
+            if ($cowork) {
+                return [
+                    'place_type' => 'cowork',
+                    'id' => $cowork['id'],
+                    'name' => $cowork['name'],
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

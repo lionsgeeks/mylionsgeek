@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import ReservationModalCowork from '@/pages/admin/places/coworks/components/ReservationModalCowork';
@@ -17,12 +17,20 @@ const TABS = [
 ];
 
 export default function SpacesPage() {
-    const { studios = [], coworks = [], auth } = usePage().props;
+    const {
+        studios = [],
+        coworks = [],
+        auth,
+        equipmentOptions = [],
+        teamMemberOptions = [],
+        events: initialEvents = [],
+        calendarContext = null,
+    } = usePage().props;
     const [type, setType] = useState('all');
     const [modalStudio, setModalStudio] = useState(null);
     const [modalCowork, setModalCowork] = useState(false);
-    const [calendarFor, setCalendarFor] = useState(null);
-    const [events, setEvents] = useState([]);
+    const [calendarFor, setCalendarFor] = useState(calendarContext);
+    const [events, setEvents] = useState(Array.isArray(initialEvents) ? initialEvents : []);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
     const [selectedCoworkId, setSelectedCoworkId] = useState(null);
@@ -31,6 +39,7 @@ export default function SpacesPage() {
     const [eventExtras, setEventExtras] = useState({ team_members: [], equipments: [] });
     const [excludedTableId, setExcludedTableId] = useState(null);
     const [showStudioSelectModal, setShowStudioSelectModal] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
 
     const breadcrumbs = [
@@ -56,17 +65,34 @@ export default function SpacesPage() {
         });
     }
 
+    const requestEvents = useCallback((params) => {
+        setLoadingEvents(true);
+        router.get('/spaces', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['events', 'calendarContext'],
+            onFinish: () => setLoadingEvents(false),
+        });
+    }, [router]);
+
     function handleCardClick(card) {
         if (card.cardType === 'studio') {
-            setCalendarFor({ place_type: 'studio', id: card.id, name: card.name });
+            const context = { place_type: 'studio', id: card.id, name: card.name };
             setSelectedRange(null);
-            setLoadingEvents(true);
-        }
-        if (card.cardType === 'cowork') {
-            setSelectedCoworkId(null);
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
+            setCalendarFor(context);
+            requestEvents({
+                events_mode: 'place',
+                event_type: 'studio',
+                event_id: card.id,
+            });
+        } else if (card.cardType === 'cowork') {
+            const context = { place_type: 'cowork', id: null, name: 'Cowork' };
             setSelectedRange(null);
-            setLoadingEvents(true);
+            setCalendarFor(context);
+            requestEvents({
+                events_mode: 'cowork_all',
+            });
         }
     }
 
@@ -82,111 +108,42 @@ export default function SpacesPage() {
 
 
     useEffect(() => {
-        let typeToLoad = null;
-        let idToLoad = null;
-        let fetchAllStudios = false;
-        let fetchAllCoworks = false;
-
         if (type === 'studio') {
-            fetchAllStudios = true;
+            setCalendarFor(null);
+            if (studios.length) {
+                requestEvents({ events_mode: 'studio_all' });
+            } else {
+                setEvents([]);
+            }
         } else if (type === 'cowork') {
-
-            fetchAllCoworks = true;
-        } else if (calendarFor) {
-            typeToLoad = calendarFor.place_type;
-            idToLoad = calendarFor.id;
+            setCalendarFor(null);
+            if (coworks.length) {
+                requestEvents({ events_mode: 'cowork_all' });
+            } else {
+                setEvents([]);
+            }
+        } else if (type === 'all') {
+            setLoadingEvents(false);
+            setEvents([]);
         }
-
-        if (fetchAllStudios) {
-            setLoadingEvents(true);
-            Promise.all(
-                studios.map(studio =>
-                    fetch(`/reservations/public-place/studio/${studio.id}`, { headers: { 'Accept': 'application/json' } })
-                        .then(r => r.json())
-                        .then(data => {
-                            return (Array.isArray(data) ? data : []).map(event => ({
-                                ...event,
-                                title: `${event.title} — ${studio.name}`,
-                                created_at: event.created_at || new Date().toISOString()
-                            }));
-                        })
-                        .catch(() => [])
-                )
-            )
-                .then(allEvents => {
-                    // Sort by created_at descending
-                    const sorted = allEvents.flat().sort((a, b) => {
-                        const dateA = new Date(a.created_at || 0);
-                        const dateB = new Date(b.created_at || 0);
-                        return dateB - dateA;
-                    });
-                    setEvents(sorted);
-                })
-                .finally(() => setLoadingEvents(false));
-            return;
-        }
-
-        if (fetchAllCoworks) {
-            setLoadingEvents(true);
-            Promise.all(
-                coworks.map(cowork =>
-                    fetch(`/reservations/public-place/cowork/${cowork.id}`, { headers: { 'Accept': 'application/json' } })
-                        .then(r => r.json())
-                        .then(data => {
-                            return (Array.isArray(data) ? data : []).map(event => ({
-                                ...event,
-                                title: `${event.title} — ${cowork.table || `Table ${cowork.id}`}`,
-                                created_at: event.created_at || new Date().toISOString(),
-                                resourceId: cowork.id, // Add resourceId for grouping
-                            }));
-                        })
-                        .catch(() => [])
-                )
-            )
-                .then(allEvents => {
-                    // Sort by created_at descending
-                    const sorted = allEvents.flat().sort((a, b) => {
-                        const dateA = new Date(a.created_at || 0);
-                        const dateB = new Date(b.created_at || 0);
-                        return dateB - dateA;
-                    });
-                    setEvents(sorted);
-                })
-                .finally(() => setLoadingEvents(false));
-            return;
-        }
-
-        if (!typeToLoad || !idToLoad) return;
-        setLoadingEvents(true);
-        fetch(`/reservations/public-place/${typeToLoad}/${idToLoad}`, { headers: { 'Accept': 'application/json' } })
-            .then(r => r.json())
-            .then(data => {
-                const events = Array.isArray(data) ? data : [];
-                // Sort by created_at descending
-                const sorted = events.sort((a, b) => {
-                    const dateA = new Date(a.created_at || 0);
-                    const dateB = new Date(b.created_at || 0);
-                    return dateB - dateA;
-                });
-                setEvents(sorted);
-            })
-            .catch(() => setEvents([]))
-            .finally(() => setLoadingEvents(false));
-    }, [type, calendarFor, selectedCoworkId, selectedStudioId, studios, coworks]);
+    }, [type, studios, coworks, requestEvents]);
 
     useEffect(() => {
-        if (type === 'studio' && selectedStudioId) {
-            const s = studios.find(st => st.id === selectedStudioId);
-            setCalendarFor({ place_type: 'studio', id: selectedStudioId, name: s?.name || 'Studio' });
+        setEvents(Array.isArray(initialEvents) ? initialEvents : []);
+        if (calendarContext) {
+            setCalendarFor(calendarContext);
         }
-    }, [selectedStudioId]);
+    }, [initialEvents, calendarContext]);
 
     useEffect(() => {
-        if (type === 'cowork') {
-            // For cowork, we show all tables in one calendar, so no need to set calendarFor to a specific table
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
-        }
-    }, [type]);
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768); 
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const onCalendarDateSelect = (selectInfo) => {
         const start = selectInfo.start;
@@ -227,11 +184,8 @@ export default function SpacesPage() {
         if (type === 'studio' && studios.length) {
             const first = studios[0];
             setSelectedStudioId(first.id);
-            setCalendarFor({ place_type: 'studio', id: first.id, name: first.name });
         } else if (type === 'cowork') {
-            // For cowork, show all tables in one calendar - no need to select a specific table
             setSelectedCoworkId(null);
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
         } else if (type === 'all') {
             setCalendarFor(null);
             setSelectedRange(null);
@@ -240,7 +194,7 @@ export default function SpacesPage() {
         setModalStudio(null);
         setModalCowork(false);
         setShowStudioSelectModal(false);
-    }, [type]);
+    }, [type, studios]);
 
 
 
@@ -306,7 +260,7 @@ export default function SpacesPage() {
                 ) : (
                     <div className="bg-light dark:bg-dark rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
                         <div className="flex items-center justify-between mb-3 gap-3">
-                            <div className="text-lg font-semibold">
+                            <div className="md:text-lg text-sm font-semibold">
                                 {type === 'studio'
                                     ? 'Studio Calendar'
                                     : 'Cowork Calendar'
@@ -334,8 +288,9 @@ export default function SpacesPage() {
                             <div className="h-[70vh] bg-light dark:bg-dark">
                                 <FullCalendar
                                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                                    initialView="timeGridWeek"
-                                    headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                                    initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+                                    initialDate={isMobile ? new Date() : undefined}
+                                    headerToolbar={{ left: 'prev,next today', center: 'title', right: isMobile ? '' : 'dayGridMonth,timeGridWeek,timeGridDay' }}
                                     events={events}
                                     selectable={true}
                                     selectMirror={true}
@@ -354,19 +309,21 @@ export default function SpacesPage() {
 
                                             // For cowork, extract table ID from event title or extendedProps
                                             if (type === 'cowork') {
-                                                // Try to extract table ID from the event
-                                                // Event title format: "Table X — User Name" or "Table X — User Name — Table Y"
-                                                const titleMatch = e.title?.match(/Table\s+(\d+)/);
-                                                if (titleMatch) {
-                                                    const tableNumber = parseInt(titleMatch[1]);
-                                                    // Try to find table by table number or ID
-                                                    const reservedTable = coworks.find(c =>
-                                                        String(c.table) === String(tableNumber) ||
-                                                        c.id === tableNumber ||
-                                                        String(c.id) === String(tableNumber)
-                                                    );
-                                                    if (reservedTable) {
-                                                        setExcludedTableId(reservedTable.id);
+                                                const tableId = e.extendedProps?.table_id;
+                                                if (tableId) {
+                                                    setExcludedTableId(tableId);
+                                                } else {
+                                                    const titleMatch = e.title?.match(/Table\s+(\d+)/);
+                                                    if (titleMatch) {
+                                                        const tableNumber = parseInt(titleMatch[1]);
+                                                        const reservedTable = coworks.find(c =>
+                                                            String(c.table) === String(tableNumber) ||
+                                                            c.id === tableNumber ||
+                                                            String(c.id) === String(tableNumber)
+                                                        );
+                                                        if (reservedTable) {
+                                                            setExcludedTableId(reservedTable.id);
+                                                        }
                                                     }
                                                 }
                                                 // Open modal to reserve another table
@@ -423,37 +380,28 @@ export default function SpacesPage() {
                                 router.visit(`/reservations/${e.id}/details`);
                                 return;
                             }
-                            
+
                             // For other cases, show event details only if user owns it
                             if (e.extendedProps?.user_id !== auth?.user?.id) {
                                 return;
                             }
+                            const extras = {
+                                team_members: Array.isArray(e.extendedProps?.team_members)
+                                    ? e.extendedProps.team_members
+                                    : [],
+                                equipments: Array.isArray(e.extendedProps?.equipments)
+                                    ? e.extendedProps.equipments
+                                    : [],
+                            };
                             setSelectedEvent({
                                 id: e.id,
                                 title: e.title,
                                 start: e.start?.toISOString?.() || e.start,
                                 end: e.end?.toISOString?.() || e.end,
                                 backgroundColor: e.backgroundColor,
+                                ...extras,
                             });
-                            setEventExtras({ team_members: [], equipments: [] });
-                            if (e.id) {
-                                const tryFetch = (url) => fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
-                                    .then(async (r) => {
-                                        const ct = r.headers.get('content-type') || '';
-                                        if (!r.ok || !ct.includes('application/json')) return null;
-                                        try { return await r.json(); } catch { return null; }
-                                    });
-                                (async () => {
-                                    let data = await tryFetch(`/admin/reservations/${e.id}/info`);
-                                    if (!data) data = await tryFetch(`/reservations/${e.id}/info`);
-                                    if (data) {
-                                        setEventExtras({
-                                            team_members: Array.isArray(data.team_members) ? data.team_members : [],
-                                            equipments: Array.isArray(data.equipments) ? data.equipments : [],
-                                        });
-                                    }
-                                })();
-                            }
+                            setEventExtras(extras);
                         }}
                         onAddReservationClick={() => {
                             const now = new Date();
@@ -522,6 +470,8 @@ export default function SpacesPage() {
                         selectedRange={selectedRange}
                         onSuccess={handleStudioSuccess}
                         studios={type === 'studio' ? studios : []}
+                        equipmentOptions={equipmentOptions}
+                        teamMemberOptions={teamMemberOptions}
                         userRouteMode
                     />
                 )}

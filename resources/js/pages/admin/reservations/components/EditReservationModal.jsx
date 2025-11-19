@@ -20,7 +20,9 @@ const EditReservationModal = ({
     setSelectedMembers,
     selectedEquipment,
     setSelectedEquipment,
-    onSubmit
+    onSubmit,
+    equipmentOptions = [],
+    teamMemberOptions = []
 }) => {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -128,6 +130,7 @@ const EditReservationModal = ({
                             <TeamMemberSelector
                                 selected={selectedMembers}
                                 onSelect={setSelectedMembers}
+                                teamMemberOptions={teamMemberOptions}
                             />
                         </div>
 
@@ -136,6 +139,7 @@ const EditReservationModal = ({
                             <EquipmentSelector
                                 selected={selectedEquipment}
                                 onSelect={setSelectedEquipment}
+                                equipmentOptions={equipmentOptions}
                             />
                         </div>
 
