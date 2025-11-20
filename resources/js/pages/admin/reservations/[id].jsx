@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,17 @@ import Rolegard from '../../../components/rolegard';
 import EditReservationModal from './components/EditReservationModal';
 
 export default function AdminReservationDetails({ reservation }) {
+    const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
+    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin');
+    const handleBackNavigation = () => {
+        if (typeof window !== 'undefined' && window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+        router.visit(isAdmin ? '/admin/reservations' : '/reservations');
+    };
+
     if (!reservation) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center">
@@ -42,19 +53,15 @@ export default function AdminReservationDetails({ reservation }) {
                         <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-foreground mb-2">Reservation not found</h3>
                         <p className="text-muted-foreground mb-4">The requested reservation could not be found.</p>
-                        <Link href="/admin/reservations">
-                            <Button variant="outline">
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to reservations
-                            </Button>
-                        </Link>
+                        <Button variant="outline" onClick={handleBackNavigation}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to reservations
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
         );
     }
-
-    const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
@@ -128,8 +135,6 @@ export default function AdminReservationDetails({ reservation }) {
     const isPending = !reservation.canceled && !reservation.approved;
 
     // Check if user can edit: must be pending AND (user is owner OR admin)
-    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin');
     const isOwner = reservation.user_id && auth?.user?.id && parseInt(reservation.user_id) === parseInt(auth.user.id);
     const canEdit = isPending && (isOwner || isAdmin);
 
@@ -246,12 +251,10 @@ export default function AdminReservationDetails({ reservation }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
-                        <Link href={isAdmin ? "/admin/reservations" : "/reservations"}>
-                            <Button variant="outline" size="sm">
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back to reservations
-                            </Button>
-                        </Link>
+                        <Button variant="outline" size="sm" onClick={handleBackNavigation}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to reservations
+                        </Button>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>
                             <Rolegard authorized={["admin", "super_admin"]}>
@@ -611,12 +614,10 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardHeader>
                                 <CardContent className="p-6">
                                     <div className="space-y-3">
-                                        <Link href="/admin/reservations" className="block">
-                                            <Button variant="outline" className="w-full justify-start">
-                                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                                Back to reservations
-                                            </Button>
-                                        </Link>
+                                        <Button variant="outline" className="w-full justify-start" onClick={handleBackNavigation}>
+                                            <ArrowLeft className="w-4 h-4 mr-2" />
+                                            Back to reservations
+                                        </Button>
                                         {reservation.status === 'upcoming' && (
                                             <Button variant="destructive" className="w-full justify-start">
                                                 <XCircle className="w-4 h-4 mr-2" />
