@@ -366,10 +366,10 @@ export default function SpacesPage() {
                             <div
                                 key={place.id}
                                 onClick={() => handleCardClick(place)}
-                                className="relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/2] bg-gray-100"
+                                className="relative group  cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/2] bg-gray-100"
                             >
                                 {place.image ? (
-                                    <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
+                                    <img src={place.image} alt={place.name} className="absolute group-hover:scale-125 transition inset-0 w-full h-full object-cover" />
                                 ) : (
                                     <div className="absolute inset-0 grid place-items-center text-gray-400">No Image</div>
                                 )}

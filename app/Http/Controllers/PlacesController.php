@@ -393,6 +393,7 @@ class PlacesController extends Controller
             return DB::table('reservations as r')
                 ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
                 ->where('r.studio_id', $id)
+                ->where('r.canceled', 0)
                 ->select(
                     'r.id',
                     'r.day as start',
@@ -430,6 +431,7 @@ class PlacesController extends Controller
                 ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
                 ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
                 ->where('rc.table', $id)
+                ->where('rc.canceled', 0)
                 ->select(
                     'rc.id',
                     'rc.day as start',
@@ -468,6 +470,7 @@ class PlacesController extends Controller
             return DB::table('reservation_meeting_rooms as rmr')
                 ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
                 ->where('rmr.meeting_room_id', $id)
+                ->where('rmr.canceled', 0)
                 ->select(
                     'rmr.id',
                     'rmr.day as start',
@@ -601,6 +604,8 @@ class PlacesController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
             ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
             ->whereIn('r.studio_id', $studioIds)
+            ->where('r.approved', 1)
+            ->where('r.canceled', 0)
             ->select(
                 'r.id',
                 'r.day as start',
@@ -646,6 +651,7 @@ class PlacesController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
             ->leftJoin('coworks as c', 'c.id', '=', 'rc.table')
             ->whereIn('rc.table', $coworkIds)
+            ->where('rc.canceled', 0)
             ->select(
                 'rc.id',
                 'rc.day as start',
