@@ -403,6 +403,7 @@ class PlacesController extends Controller
                     'r.approved',
                     'r.canceled',
                     'r.user_id as user_id',
+                    'r.studio_id',
                     'r.created_at',
                     'u.name as user_name'
                 )
@@ -419,6 +420,7 @@ class PlacesController extends Controller
                         'user_id' => $r->user_id,
                         'canceled' => (bool) $r->canceled,
                         'approved' => (bool) $r->approved,
+                        'studio_id' => $r->studio_id,
                         'created_at' => $r->created_at ? (is_string($r->created_at) ? $r->created_at : $r->created_at->toDateTimeString()) : null,
                     ];
                 })
@@ -615,6 +617,7 @@ class PlacesController extends Controller
                 'r.approved',
                 'r.canceled',
                 'r.user_id as user_id',
+                'r.studio_id',
                 'r.created_at',
                 'u.name as user_name',
                 's.name as studio_name'
@@ -632,6 +635,7 @@ class PlacesController extends Controller
                     'user_id' => $row->user_id,
                     'canceled' => (bool) $row->canceled,
                     'approved' => (bool) $row->approved,
+                    'studio_id' => $row->studio_id,
                     'created_at' => $row->created_at ? (is_string($row->created_at) ? $row->created_at : $row->created_at->toDateTimeString()) : null,
                 ];
             })

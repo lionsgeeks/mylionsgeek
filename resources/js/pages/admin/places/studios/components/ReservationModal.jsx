@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,14 @@ const ReservationModal = ({
     studios = [],
     equipmentOptions = [],
     teamMemberOptions = [],
+    blockedStudioIds = [],
+    onTimeChange,
 }) => {
     // If studio is already provided, skip step 0. Otherwise, show studio selection if studios array is provided
+    const availableStudios = useMemo(
+        () => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)),
+        [studios, blockedStudioIds]
+    );
     const shouldShowStudioSelection = studios.length > 0 && !studio?.id;
     const [currentStep, setCurrentStep] = useState(shouldShowStudioSelection ? 0 : 1);
     const [selectedMembers, setSelectedMembers] = useState([]);
@@ -41,10 +47,21 @@ const ReservationModal = ({
     });
 
     useEffect(() => {
-        if (selectedStudio) {
+        if (selectedStudio?.id) {
             setData('studio_id', selectedStudio.id);
+        } else if (!studio?.id) {
+            setData('studio_id', '');
         }
-    }, [selectedStudio]);
+    }, [selectedStudio, studio]);
+
+    useEffect(() => {
+        if (studio?.id) {
+            return;
+        }
+        if (selectedStudio && blockedStudioIds.includes(selectedStudio.id)) {
+            setSelectedStudio(null);
+        }
+    }, [blockedStudioIds, selectedStudio, studio]);
 
     // Update form when selectedRange changes
     useEffect(() => {
@@ -55,8 +72,11 @@ const ReservationModal = ({
                 start: selectedRange.start,
                 end: selectedRange.end,
             });
+            if (onTimeChange) {
+                onTimeChange(selectedRange);
+            }
         }
-    }, [selectedRange]);
+    }, [selectedRange, onTimeChange]);
 
     const handleClose = () => {
         reset();
@@ -143,10 +163,22 @@ const ReservationModal = ({
         } else {
             setShowScrollIndicator(false);
         }
-    }, [currentStep, shouldShowStudioSelection, studios]);
+    }, [currentStep, shouldShowStudioSelection, availableStudios]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
+    const handleRangeFieldChange = (field, value) => {
+        setData(field, value);
+        if (onTimeChange) {
+            const nextRange = {
+                day: field === 'day' ? value : data.day,
+                start: field === 'start' ? value : data.start,
+                end: field === 'end' ? value : data.end,
+            };
+            onTimeChange(nextRange);
+        }
+    };
+
 
         const formData = {
             ...data,
@@ -182,7 +214,7 @@ const ReservationModal = ({
                                 className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0 pb-4 px-1 custom-scrollbar relative" 
                                 style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}
                             >
-                                {studios.filter(s => s.state).map(s => {
+                                {availableStudios.map(s => {
                                     const isSelected = selectedStudio?.id === s.id;
                                     return (
                                         <button
@@ -243,6 +275,11 @@ const ReservationModal = ({
                                         </button>
                                     );
                                 })}
+                                {availableStudios.length === 0 && (
+                                    <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 text-sm font-medium text-center">
+                                        All studios are busy for this time slot. Please pick another time.
+                                    </div>
+                                )}
                             </div>
                             {showScrollIndicator && (
                                 <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
@@ -307,7 +344,7 @@ const ReservationModal = ({
                                         id="day"
                                         type="date"
                                         value={data.day}
-                                        onChange={(e) => setData('day', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('day', e.target.value)}
                                         required
                                     />
                                 </div>
@@ -318,7 +355,7 @@ const ReservationModal = ({
                                         id="start"
                                         type="time"
                                         value={data.start}
-                                        onChange={(e) => setData('start', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('start', e.target.value)}
                                         required
                                         min="08:00"
                                         max="18:00"
@@ -331,7 +368,7 @@ const ReservationModal = ({
                                         id="end"
                                         type="time"
                                         value={data.end}
-                                        onChange={(e) => setData('end', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('end', e.target.value)}
                                         required
                                         min="08:00"
                                         max="18:00"
