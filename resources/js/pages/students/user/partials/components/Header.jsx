@@ -5,7 +5,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 import { helpers } from '../../../../../components/utils/helpers';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Rolegard from '@/components/Rolegard'; // Assuming this is the path for Rolegard
+import Rolegard from '../../../../../components/rolegard'; // Assuming this is the path for Rolegard
 
 const Header = ({ user, userFunctionality }) => {
     const [openEdit, setOpenEdit] = useState(false);
@@ -177,36 +177,36 @@ const Header = ({ user, userFunctionality }) => {
                                 </button>
                             )}
 
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <MoreHorizontal className="w-5 h-5 text-beta dark:text-light" />
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0 bg-light dark:bg-dark border-none shadow-lg rounded-lg">
-                                        <div className="flex flex-col text-foreground items-start p-4 gap-5">
-                                            {auth.user?.id == user?.id && (
-                                                <Rolegard authorized={['admin', "student"]}>
-                                                    <button
-                                                        onClick={() => setOpenEdit(true)}
-                                                        className="text-sm "
-                                                    >
-                                                        Edit Profile
-                                                    </button>
-                                                </Rolegard>
-                                            )}
-                                            <Rolegard authorized={['admin']}>
-                                                <Link href={"/admin/users/"+user.id} className="text-sm ">
-                                                    View as Admin
-                                                </Link>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <MoreHorizontal className="w-5 h-5 text-beta dark:text-light" />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-light dark:bg-dark border-none shadow-lg rounded-lg">
+                                    <div className="flex flex-col text-foreground items-start p-4 gap-5">
+                                        {auth.user?.id == user?.id && (
+                                            <Rolegard authorized={['admin', "student"]}>
+                                                <button
+                                                    onClick={() => setOpenEdit(true)}
+                                                    className="text-sm "
+                                                >
+                                                    Edit Profile
+                                                </button>
                                             </Rolegard>
-                                            <button className="text-sm text-error ">
-                                                Block User
-                                            </button>
-                                            <button className="text-sm text-red-500 hover:text-red-700">
-                                                Report User
-                                            </button>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                                        )}
+                                        <Rolegard authorized={['admin']}>
+                                            <Link href={"/admin/users/" + user.id} className="text-sm ">
+                                                View as Admin
+                                            </Link>
+                                        </Rolegard>
+                                        <button className="text-sm text-error ">
+                                            Block User
+                                        </button>
+                                        <button className="text-sm text-red-500 hover:text-red-700">
+                                            Report User
+                                        </button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
                 </div>
