@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { X, Image, Calendar, Award, Plus, Smile, Clock, PlusCircle, PlusIcon } from 'lucide-react';
+import { X, Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
-import PostImagePreviewEditor from './PostImagePreviewEditor';
-import imageCompression from "browser-image-compression";
 import { helpers } from '../utils/helpers';
+import { compressFiles, generateLocalId } from '@/utils/imageProcessing';
 
-const CreatePostModal = ({ onOpenChange, user, onOpen }) => {
+const CreatePostModal = ({ onOpenChange, user }) => {
     const [postText, setPostText] = useState('');
-    const [postImages, setPostImages] = useState([]);
-    const [previews, setPreviews] = useState([]);
-    const [openImagesEditor, setOpenImagesEditor] = useState(false)
+    const [selectedImages, setSelectedImages] = useState([]);
+    const [isUploading, setIsUploading] = useState(false);
     const { stopScrolling } = helpers()
     useEffect(() => {
         stopScrolling(true); // freeze scroll on open
@@ -19,203 +17,233 @@ const CreatePostModal = ({ onOpenChange, user, onOpen }) => {
             stopScrolling(false); // restore scroll on unmount
         };
     }, []);
-    useEffect(() => {
-        setOpenImagesEditor(true)
-    }, [previews])
-    const handleImagePreviews = async (e) => {
-        const files = Array.from(e.target.files);
-        if (!files.length) return;
+    const handleImagePreviews = async (event) => {
+        const files = event.target.files;
+        if (!files?.length) return;
 
-        const options = {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1500,
-            useWebWorker: true,
-        };
+        setIsUploading(true);
+        try {
+            const compressedFiles = await compressFiles(files);
+            const newEntries = compressedFiles.map((file) => ({
+                id: generateLocalId(),
+                file,
+                preview: URL.createObjectURL(file),
+                kind: 'new',
+            }));
+            setSelectedImages((prev) => [...prev, ...newEntries]);
+        } catch (error) {
+            console.error('Failed to process images', error);
+        } finally {
+            setIsUploading(false);
+            event.target.value = '';
+        }
+    };
 
-        // Compress all files correctly
-        const compressedFiles = await Promise.all(
-            files.map(file => imageCompression(file, options))
-        );
+    const removeImage = (imageId) => {
+        setSelectedImages((prev) => {
+            const imageToRemove = prev.find((img) => img.id === imageId);
+            if (imageToRemove?.preview?.startsWith('blob:')) {
+                URL.revokeObjectURL(imageToRemove.preview);
+            }
+            return prev.filter((img) => img.id !== imageId);
+        });
+    };
 
-        // Previews using compressed files (recommended)
-        const previewsArray = compressedFiles.map(file =>
-            URL.createObjectURL(file)
-        );
+    const resetForm = () => {
+        selectedImages.forEach((image) => {
+            if (image.preview?.startsWith('blob:')) {
+                URL.revokeObjectURL(image.preview);
+            }
+        });
+        setSelectedImages([]);
+        setPostText('');
+    };
 
-        setPreviews(prev => [...prev, ...previewsArray]);
-        setPostImages(prev => [...prev, ...compressedFiles]);
+    const handleClose = () => {
+        resetForm();
+        onOpenChange(false);
     };
     //! create post
     const handelCreatePost = () => {
         const newFormData = new FormData()
         newFormData.append('description', postText)
-        postImages.forEach(file =>
-            newFormData.append('images[]', file)
-        )
+        selectedImages.forEach(({ file }) => {
+            newFormData.append('new_images[]', file);
+        });
 
         router.post('/posts/store/post', newFormData, {
             forceFormData: true,
-            onSuccess: () => {
-                onOpenChange(false)
-            },
+            onSuccess: handleClose,
             onError: (error) => {
                 console.log(error);
             }
         })
     }
+    const hasImages = selectedImages.length > 0;
+    const canSubmit = !!postText.trim() || hasImages;
+
     return (
         <>
-            <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/70">
-            </div>
-            <div className="w-full fixed inset-0 z-40 mx-auto top-1/2 transform -translate-y-1/2 max-w-[70%] h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-dark_gray overflow-auto transition-all duration-300">
+            {/* Backdrop */}
+            <div
+                onClick={handleClose}
+                className="fixed inset-0 h-full z-30 bg-[var(--color-dark)]/50 dark:bg-[var(--color-beta)]/60 backdrop-blur-md transition-all duration-300"
+            />
+
+            {/* Modal Container */}
+            <div className="
+        w-full fixed inset-0 z-40 mx-auto top-1/2 -translate-y-1/2 max-w-[55%] h-[85vh]
+        flex flex-col rounded-3xl shadow-2xl 
+        border border-[var(--color-dark_gray)]/30 dark:border-[var(--color-light)]/10
+        bg-[var(--color-light)] dark:bg-[var(--color-dark)]
+        overflow-hidden transition-all duration-300
+        animate-in fade-in slide-in-from-bottom-4
+    ">
 
                 {/* Header */}
-                <div className="p-5 border-b border-gray-200 dark:border-dark_gray flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Avatar
-                            className="w-12 h-12 overflow-hidden"
-                            image={user?.image}
-                            name={user?.name}
-                            lastActivity={user?.last_online || null}
-                            onlineCircleClass="hidden"
-                        />
-                        <div>
-                            <h3 className="font-semibold text-base text-dark dark:text-light">{user?.name}</h3>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Create post</span>
-                        </div>
-                    </div>
+                <div className="
+            relative p-6 border-b border-[var(--color-dark_gray)]/20 dark:border-[var(--color-light)]/10
+            bg-gradient-to-r from-[var(--color-light)]/40 to-transparent
+            dark:from-[var(--color-dark_gray)]/40
+        ">
+                    <div className="flex items-center justify-between">
 
-                    <button
-                        onClick={() => onOpenChange(false)}
-                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark_gray text-dark dark:text-light transition"
-                        aria-label="Close modal"
-                    >
-                        <X size={22} />
-                    </button>
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <Avatar
+                                    className="w-14 h-14 overflow-hidden ring-2 ring-[var(--color-light)] dark:ring-[var(--color-dark_gray)]"
+                                    image={user?.image}
+                                    name={user?.name}
+                                    lastActivity={user?.last_online || null}
+                                    onlineCircleClass="hidden"
+                                />
+
+                                <div className="
+                            absolute -bottom-1 -right-1 w-5 h-5 bg-[var(--color-good)] rounded-full 
+                            border-2 border-[var(--color-light)] dark:border-[var(--color-dark)]
+                        " />
+                            </div>
+
+                            <div>
+                                <h3 className="font-bold text-lg text-[var(--color-beta)] dark:text-[var(--color-light)]">
+                                    {user?.name}
+                                </h3>
+                                <span className="text-sm text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/60 font-medium">
+                                    Create post
+                                </span>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleClose}
+                            className="
+                        p-2.5 rounded-full 
+                        hover:bg-[var(--color-light)]/60 dark:hover:bg-[var(--color-dark_gray)]
+                        text-[var(--color-beta)] dark:text-[var(--color-light)]
+                        transition-all duration-200 hover:scale-110 active:scale-95
+                    "
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 flex flex-col gap-4 px-5 py-4 overflow-y-auto">
+                {/* CONTENT */}
+                <div className="
+            flex-1 flex flex-col gap-5 px-6 py-5 overflow-y-auto
+            scrollbar-thin scrollbar-thumb-[var(--color-dark_gray)]/40 dark:scrollbar-thumb-[var(--color-light)]/20 
+            scrollbar-track-transparent
+        ">
                     <textarea
                         value={postText}
                         onChange={(e) => setPostText(e.target.value)}
                         placeholder="What do you want to talk about?"
-                        className="w-full min-h-fit resize-none text-lg outline-none bg-transparent 
-               text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 
-               p-3 whitespace-pre-wrap"
+                        className="
+                    w-full min-h-[120px] resize-none text-lg outline-none bg-transparent
+                    text-[var(--color-beta)] dark:text-[var(--color-light)]
+                    placeholder-[var(--color-dark_gray)] dark:placeholder-[var(--color-light)]/50
+                    p-4 rounded-xl
+                    hover:bg-[var(--color-light)]/40 dark:hover:bg-[var(--color-dark_gray)]/40
+                    focus:bg-[var(--color-light)] dark:focus:bg-[var(--color-dark_gray)]
+                    transition-all duration-200 whitespace-pre-wrap
+                "
+                        rows="4"
                     />
-                    {previews.length > 1 &&
-                        <div className='w-full  p-2 flex justify-end'>
-                            <X onClick={() => {
-                                setPreviews([])
-                                setPostImages([])
-                            }} className='text-dark cursor-pointer dark:text-white' size={25} />
-                        </div>
-                    }
-                    {previews.length !== 0 && (
-                        <>
-                            {openImagesEditor && (
-                                <PostImagePreviewEditor
-                                    imagesArray={previews}
-                                    onOpenEditorChange={setOpenImagesEditor}
-                                    onImagesArrayChange={setPreviews}
-                                    onPostImagesChange={setPostImages}
-                                />
-                            )}
 
-                            {
-                                previews.length < 5 ? (
-                                    // -------------------- 2 IMAGES --------------------
-                                    <div className="flex flex-col w-full gap-3 overflow-auto">                                        <img
-                                        src={previews[0]}
-                                        alt=""
-                                        className={`w-full h-[50vh] rounded-lg object-cover`}
+                    {/* IMAGE PREVIEWS */}
+                    {hasImages && (
+                        <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {selectedImages.map((image) => (
+                                <div key={image.id} className="relative group rounded-2xl overflow-hidden shadow">
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(image.id)}
+                                        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-error/90 hover:bg-error text-light shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                                        aria-label="Remove image"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                    <img
+                                        src={image.preview}
+                                        alt="Selected media"
+                                        className="w-full h-[45vh] object-cover"
                                     />
-                                        {previews.length > 1 && (
-                                            <div className="w-full h-[30vh] flex gap-3">
-                                                {previews.slice(1).map((preview, index) => (
-                                                    <img
-                                                        key={index}
-                                                        src={preview}
-                                                        alt=""
-                                                        className={`h-full object-cover rounded-lg w-1/${previews.length - 1}`}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                ) : (
-                                    // -------------------- MORE THAN 5 IMAGES --------------------
-                                    <div className="flex flex-col gap-3 rounded-t-lg overflow-auto">
-                                        <img
-                                            src={previews[0]}
-                                            alt=""
-                                            className="w-full h-[50vh] object-cover"
-                                        />
-
-                                        <div className="grid grid-cols-4 gap-3 items-center relative">
-                                            {previews.slice(1, 5).map((preview, index) => (
-                                                <div key={index} className="relative">
-                                                    <img
-                                                        src={preview}
-                                                        alt=""
-                                                        className={`object-cover w-full h-[30vh] ${index === 3 && previews.length > 5 ? 'opacity-20' : ''}`}
-                                                    />
-
-                                                    {index === 3 && previews.length > 5 && (
-                                                        <div className="flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1">
-                                                            <PlusIcon size={20} className="text-white" />
-                                                            <p className="text-white font-semibold text-3xl">
-                                                                {previews.length - 5}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )
-                            }
-
-                        </>
+                                </div>
+                            ))}
+                        </div>
                     )}
-
-
                 </div>
 
-                {/* Footer */}
-                <div className="p-5 border-t border-gray-200 dark:border-dark_gray bg-white/50 dark:bg-dark_gray/80 backdrop-blur-sm">
-                    <div className="flex w-full items-center justify-between mb-3">
+                {/* FOOTER */}
+                <div className="
+            p-6 border-t border-[var(--color-dark_gray)]/20 dark:border-[var(--color-light)]/10
+            bg-gradient-to-r from-[var(--color-light)]/60 to-transparent
+            dark:from-[var(--color-dark_gray)]/40 backdrop-blur-sm
+        ">
+                    <div className="flex w-full items-center justify-between">
+
                         <label
                             htmlFor="imageUpload"
-                            className="p-2 rounded-full hover:bg-gray-100 cursor-pointer dark:hover:bg-dark_gray text-gray-600 dark:text-gray-400 transition flex items-center justify-center"
+                            className="
+                        flex items-center gap-2 px-4 py-2.5 rounded-xl
+                        hover:bg-[var(--color-light)] dark:hover:bg-[var(--color-dark_gray)]
+                        cursor-pointer
+                        text-[var(--color-beta)] dark:text-[var(--color-light)]
+                        transition-all duration-200 hover:scale-105 active:scale-95 group
+                    "
                         >
-                            <Image size={20} />
+                            <Image size={22} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-medium">Add photos</span>
+
                             <input
                                 id="imageUpload"
                                 type="file"
-                                accept="image/video"
+                                accept="image/*,video/*"
                                 multiple
                                 onChange={handleImagePreviews}
                                 className="hidden"
                             />
                         </label>
+
                         <button
-                            disabled={!postText.trim()}
+                            disabled={!canSubmit || isUploading}
                             onClick={() => handelCreatePost()}
-                            className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-sm
-                   ${postText.trim()
-                                    ? 'bg-alpha text-dark hover:opacity-90'
-                                    : 'bg-gray-200 dark:bg-dark_gray text-gray-400 cursor-not-allowed'}
-                 `}
+                            className={`
+                        px-8 py-3 rounded-xl font-bold transition-all duration-200 shadow-md
+                        ${canSubmit
+                                    ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
+                                    : 'bg-[var(--color-dark_gray)]/30 dark:bg-[var(--color-light)]/10 text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/40 cursor-not-allowed opacity-60'
+                                }
+                    `}
                         >
                             Post
                         </button>
+
                     </div>
                 </div>
             </div>
         </>
+
     );
 }
 export default CreatePostModal;

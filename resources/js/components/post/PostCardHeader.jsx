@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
-import { X, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 
-const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, onPostTextChange, takeUserProfile, timeAgo }) => {
+const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
@@ -21,43 +21,9 @@ const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, on
             //console.log('Failed to delete post:', error);
         }
     };
-    // !    Edit post
-    const handleEdit = (post) => {
-        try {
-            router.post(
-                `/posts/post/${post?.id}`,
-                {
-                    description: postText,
-                    image: postImage,
-                },
-                {
-                    onSuccess: () => {
-                        setOpenEditPost(false);
-                        setOpenDetails(null);
-
-                        // Find updated post from Inertia props
-                        // const editedPost = page.props.posts?.posts?.find((p) => p?.id === post?.id);
-                        // if (editedPost) {
-                        //     onPostsChange((prevPosts) =>
-                        //         prevPosts?.map((p) => (p?.id === editedPost?.id ? editedPost : p))
-                        //     );
-                        // }
-                    },
-                    onError: (error) => {
-                        console.log(error);
-
-                    }
-                }
-            );
-        } catch (error) {
-            //console.log('Failed to update:', error);
-        }
-    };
     //! open dropdonw  
     const handleOpenDetails = (post) => {
         setOpenDetails(post?.id);
-        setPostText(post?.description);
-        setPostImage(post?.image);
     };
     return (
         <>
@@ -107,13 +73,14 @@ const PostCardHeader = ({ post, user, postText, postImage, onPostImageChange, on
                                         openDelete={openDeletePost}
                                         openChangeDelete={setOpenDeletePost}
                                         openEditPost={openEditPost}
-                                        openChangeEdit={setOpenEditPost}
+                                        openChangeEdit={(state) => {
+                                            setOpenEditPost(state);
+                                            if (!state) {
+                                                setOpenDetails(null);
+                                            }
+                                        }}
                                         post={post}
                                         handleDelete={() => handleDeletePost(post?.id)}
-                                        postText={postText}
-                                        onPostTextChange={onPostTextChange}
-                                        onPostImageChange={onPostImageChange}
-                                        handleEditePost={() => handleEdit(post)}
                                     />
                                 )}
                             </button>

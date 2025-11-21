@@ -15,8 +15,6 @@ const PostCard = ({ user, posts }) => {
     const [undoState, setUndoState] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState(null);
     const [undoTimer, setUndoTimer] = useState(null);
-    const [postText, setPostText] = useState(null);
-    const [postImage, setPostImage] = useState(null);
 
     // 🩵 Comment count handlers
 
@@ -59,7 +57,7 @@ const PostCard = ({ user, posts }) => {
                 return (
                     <div key={index} className="bg-white dark:bg-dark_gray rounded-lg shadow mb-4">
                         {/* Post Header */}
-                        <PostCardHeader post={p} user={auth.user} postText={postText} postImage={postImage} onPostTextChange={setPostText} onPostImageChange={setPostImage} takeUserProfile={takeToUserProfile} timeAgo={timeAgo} />
+                        <PostCardHeader post={p} user={auth.user} takeUserProfile={takeToUserProfile} timeAgo={timeAgo} />
 
                         {/* Post Content */}
                         <PostCardMainContent post={p} user={auth.user} addOrRemoveFollow={addOrRemoveFollow} timeAgo={timeAgo} takeToUserProfile={takeToUserProfile} />
