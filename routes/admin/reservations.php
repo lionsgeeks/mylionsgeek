@@ -28,7 +28,7 @@ Route::middleware(['auth'])->group(function () {
 // =====================
 // ADMIN RESERVATIONS (PROTECTED)
 // =====================
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
     Route::post('/reservations/{reservation}/approve', [ReservationsController::class, 'approve'])

@@ -25,6 +25,7 @@ use App\Mail\ReservationTimeSuggestedAdminMail;
 
 class ReservationsController extends Controller
 {
+    private const ACCESS_BYPASS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
     public function index(Request $request)
     {
 
@@ -233,9 +234,9 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Send approval email
+        // Send approval email to reservation owner
         try {
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
@@ -328,9 +329,9 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Send cancellation email
+        // Send cancellation email to reservation owner
         try {
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationData));
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cancellation email: ' . $e->getMessage());
@@ -362,7 +363,7 @@ class ReservationsController extends Controller
         
         // Handle roles - ensure it's always an array
         $userRoles = is_array($user->role) ? $user->role : (is_string($user->role) ? json_decode($user->role, true) ?? [$user->role] : [$user->role]);
-        $isAdmin = in_array('admin', $userRoles) || in_array('super_admin', $userRoles);
+        $isAdmin = in_array('admin', $userRoles) || in_array('super_admin', $userRoles) || in_array('studio_responsable', $userRoles);
 
         if (!$isOwner && !$isAdmin) {
             return back()->with('error', 'You do not have permission to update this reservation');
@@ -830,6 +831,11 @@ class ReservationsController extends Controller
             'equipment.*' => 'integer|exists:equipment,id',
         ]);
 
+        $currentUser = auth()->user();
+        if (!$this->userHasAccessFlag($currentUser, 'access_studio')) {
+            return back()->with('error', 'You do not have permission to reserve a studio.');
+        }
+
         try {
             $reservationId = null;
 
@@ -892,13 +898,9 @@ class ReservationsController extends Controller
             try {
                 \Log::info('Starting admin notification email process for reservation ID: ' . $reservationId);
 
-                // Get admin users
-                $adminUsers = DB::table('users')
-                    ->whereIn('role', ['admin', 'super_admin'])
-                    ->select('email', 'name')
-                    ->get();
+                $studioResponsables = collect($this->studioResponsableEmails());
 
-                \Log::info('Admin users found: ' . $adminUsers->count());
+                \Log::info('Studio responsable emails found: ' . $studioResponsables->count());
 
                 // Get the created reservation data for the email
                 $createdReservation = DB::table('reservations')
@@ -914,12 +916,14 @@ class ReservationsController extends Controller
 
                 \Log::info('User data: ' . json_encode($reservationUser));
 
-                // Send email to all admin users
-                foreach ($adminUsers as $admin) {
-                    \Log::info('Sending email to: boujjarr@gmail.com');
-                    // Mail::to($admin->email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    Mail::to("boujjarr@gmail.com")->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    \Log::info('Email sent successfully to: boujjarr@gmail.com');
+                if ($studioResponsables->isEmpty()) {
+                    \Log::warning('No studio responsable notification recipients configured. Skipping email dispatch.');
+                } else {
+                    foreach ($studioResponsables as $email) {
+                        \Log::info('Sending reservation notification to: ' . $email);
+                        Mail::to($email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                        \Log::info('Email sent successfully to: ' . $email);
+                    }
                 }
             } catch (\Exception $e) {
                 // Log the error but don't fail the reservation creation
@@ -970,6 +974,56 @@ class ReservationsController extends Controller
         ]);
     }
 
+    public function meetingRoomCalendar(int $meetingRoom)
+    {
+        $meetingRoomData = DB::table('meeting_rooms')->where('id', $meetingRoom)->first();
+
+        if (!$meetingRoomData) {
+            return redirect()->route('admin.places')->with('error', 'Meeting room not found');
+        }
+
+        $events = DB::table('reservation_meeting_rooms as rmr')
+            ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
+            ->where('rmr.meeting_room_id', $meetingRoom)
+            ->select(
+                'rmr.id',
+                'rmr.day as start',
+                'rmr.start as startTime',
+                'rmr.end as endTime',
+                'rmr.approved',
+                'rmr.canceled',
+                'rmr.user_id as user_id',
+                'rmr.created_at',
+                'u.name as user_name'
+            )
+            ->orderByDesc('rmr.created_at')
+            ->get()
+            ->map(function ($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'reservation_id' => $reservation->id,
+                    'title' => 'Meeting Room — ' . ($reservation->user_name ?? 'Unknown'),
+                    'start' => $reservation->start . 'T' . $reservation->startTime,
+                    'end' => $reservation->start . 'T' . $reservation->endTime,
+                    'backgroundColor' => $reservation->canceled ? '#6b7280' : ($reservation->approved ? '#FFC801' : '#f59e0b'),
+                    'user_id' => $reservation->user_id,
+                    'canceled' => (bool) $reservation->canceled,
+                    'approved' => (bool) $reservation->approved,
+                    'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
+                ];
+            })
+            ->values();
+
+        return Inertia::render('admin/places/meeting_room/components/MeetingRoomCalendar', [
+            'meetingRoom' => [
+                'id' => $meetingRoomData->id,
+                'name' => $meetingRoomData->name,
+                'image' => $meetingRoomData->image ?? null,
+            ],
+            'reservations' => $events,
+        ]);
+    }
+
     public function storeReservationCowork(Request $request)
     {
         $request->validate([
@@ -979,6 +1033,11 @@ class ReservationsController extends Controller
             'start' => 'required',
             'end' => 'required',
         ]);
+
+        $currentUser = auth()->user();
+        if (!$this->userHasAccessFlag($currentUser, 'access_cowork')) {
+            return back()->with('error', 'You do not have permission to reserve a cowork table.');
+        }
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
@@ -1011,7 +1070,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the reservation creation
             \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
@@ -1059,7 +1118,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
@@ -1137,19 +1196,16 @@ class ReservationsController extends Controller
                 ->select('r.id as reservation_id', 'u.name as user_name')
                 ->first();
 
-            $admins = DB::table('users')->whereIn('role', ['admin', 'super_admin'])->select('email')->get();
-            foreach ($admins as $admin) {
-                if (!empty($admin->email)) {
-                    $detailsUrl = route('admin.reservations.details', ['reservation' => (int) ($reservationRow->reservation_id ?? $data['reservation_id'])]);
-                    Mail::to("boujjarr@gmail.com")->send(new ReservationTimeAcceptedAdminMail([
-                        'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
-                        'user_name' => $reservationRow->user_name ?? 'User',
-                        'day' => $data['day'],
-                        'start' => $data['start'],
-                        'end' => $data['end'],
-                        'details_url' => $detailsUrl,
-                    ]));
-                }
+            foreach ($this->studioResponsableEmails() as $email) {
+                $detailsUrl = route('admin.reservations.details', ['reservation' => (int) ($reservationRow->reservation_id ?? $data['reservation_id'])]);
+                Mail::to($email)->send(new ReservationTimeAcceptedAdminMail([
+                    'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                    'user_name' => $reservationRow->user_name ?? 'User',
+                    'day' => $data['day'],
+                    'start' => $data['start'],
+                    'end' => $data['end'],
+                    'details_url' => $detailsUrl,
+                ]));
             }
         } catch (\Throwable $e) {
             \Log::error('Failed to notify admins about accepted reservation time: ' . $e->getMessage());
@@ -1171,14 +1227,15 @@ class ReservationsController extends Controller
                 ->select('r.id as reservation_id', 'u.name as user_name')
                 ->first();
 
-            // Follow existing convention used in repo
-            Mail::to("boujjarr@gmail.com")->send(new ReservationTimeDeclinedAdminMail([
-                'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
-                'user_name' => $reservationRow->user_name ?? 'User',
-                'day' => $data['day'],
-                'start' => $data['start'],
-                'end' => $data['end'],
-            ]));
+            foreach ($this->studioResponsableEmails() as $email) {
+                Mail::to($email)->send(new ReservationTimeDeclinedAdminMail([
+                    'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                    'user_name' => $reservationRow->user_name ?? 'User',
+                    'day' => $data['day'],
+                    'start' => $data['start'],
+                    'end' => $data['end'],
+                ]));
+            }
         } catch (\Throwable $e) {
             \Log::error('Failed to notify admins about declined reservation time: ' . $e->getMessage());
         }
@@ -1245,18 +1302,20 @@ class ReservationsController extends Controller
             ]);
             $approveUrl = route('reservations.suggest.approve', ['token' => $approveToken]);
             $detailsUrl = route('admin.reservations.details', ['reservation' => (int) ($reservationRow->reservation_id ?? $data['reservation_id'])]);
-            Mail::to("boujjarr@gmail.com")->send(new ReservationTimeSuggestedAdminMail([
-                'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
-                'user_name' => $reservationRow->user_name ?? 'User',
-                'suggested_day' => $request->day,
-                'suggested_start' => $request->start,
-                'suggested_end' => $request->end,
-                'proposed_day' => $data['day'],
-                'proposed_start' => $data['start'],
-                'proposed_end' => $data['end'],
-                'approve_url' => $approveUrl,
-                'details_url' => $detailsUrl,
-            ]));
+            foreach ($this->studioResponsableEmails() as $email) {
+                Mail::to($email)->send(new ReservationTimeSuggestedAdminMail([
+                    'reservation_id' => $reservationRow->reservation_id ?? (int) $data['reservation_id'],
+                    'user_name' => $reservationRow->user_name ?? 'User',
+                    'suggested_day' => $request->day,
+                    'suggested_start' => $request->start,
+                    'suggested_end' => $request->end,
+                    'proposed_day' => $data['day'],
+                    'proposed_start' => $data['start'],
+                    'proposed_end' => $data['end'],
+                    'approve_url' => $approveUrl,
+                    'details_url' => $detailsUrl,
+                ]));
+            }
         } catch (\Throwable $e) {
             \Log::error('Failed to notify admins about suggested reservation time: ' . $e->getMessage());
         }
@@ -2399,8 +2458,27 @@ class ReservationsController extends Controller
             'members' => $members,
         ];
 
+        $studioOptions = [];
+        if (Schema::hasTable('studios')) {
+            $studioOptions = DB::table('studios')
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($studio) {
+                    return [
+                        'id' => $studio->id,
+                        'name' => $studio->name,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
         return Inertia::render('admin/reservations/[id]', [
-            'reservation' => $reservation
+            'reservation' => $reservation,
+            'equipmentOptions' => $this->getEquipmentOptions(),
+            'teamMemberOptions' => $this->getTeamMemberOptions(),
+            'studios' => $studioOptions,
         ]);
     }
 
@@ -2452,7 +2530,7 @@ class ReservationsController extends Controller
                 'type' => 'meeting_room'
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationApprovedMail($user, $reservationData));
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
         }
@@ -2495,12 +2573,169 @@ class ReservationsController extends Controller
                 'type' => 'meeting_room'
             ];
 
-            Mail::to("boujjarr@gmail.com")->send(new ReservationCanceledMail($user, $reservationForEmail));
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
         }
 
         return back()->with('success', 'Meeting room reservation canceled');
+    }
+
+    private function studioResponsableEmails(): array
+    {
+        // Get all users and filter by role (since role is JSON array, User model handles casting)
+        $users = User::whereNotNull('email')->get();
+        
+        $emails = $users->filter(function ($user) {
+            $roles = $this->normalizeRolesList($user->role);
+            return in_array('studio_responsable', $roles);
+        })->pluck('email')
+          ->filter()
+          ->unique()
+          ->values();
+
+        \Log::info('Studio responsable emails found: ' . $emails->count() . ' - ' . $emails->implode(', '));
+
+        if ($emails->isEmpty()) {
+            \Log::warning('No studio_responsable users found, using fallback email from env');
+            $fallback = collect(array_filter(array_map('trim', explode(',', env('STUDIO_RESPONSABLE_EMAILS', env('ADMIN_NOTIFICATION_EMAILS', ''))))));
+            $emails = $fallback->filter()->unique()->values();
+            \Log::info('Fallback emails: ' . $emails->implode(', '));
+        }
+
+        return $emails->all();
+    }
+
+    private function sendMailToReservationOwner($user, $mailable): void
+    {
+        $email = data_get($user, 'email') ?? data_get($user, 'user_email');
+
+        if (!$email) {
+            $fallback = env('RESERVATION_USER_FALLBACK_EMAIL', env('MAIL_FROM_ADDRESS'));
+            $email = $fallback ?: null;
+        }
+
+        if ($email) {
+            Mail::to($email)->send($mailable);
+        }
+    }
+
+    private function normalizeRolesList($roles): array
+    {
+        if (is_array($roles)) {
+            $list = $roles;
+        } elseif (is_string($roles) && $roles !== '') {
+            $decoded = json_decode($roles, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = $decoded;
+            } else {
+                $list = array_map('trim', explode(',', $roles));
+            }
+        } else {
+            $list = [];
+        }
+
+        return array_filter(array_map(fn ($role) => strtolower((string) $role), $list));
+    }
+
+    private function userHasAccessFlag($user, string $field): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $roles = $this->normalizeRolesList(data_get($user, 'role'));
+        if (!empty(array_intersect($roles, self::ACCESS_BYPASS_ROLES))) {
+            return true;
+        }
+
+        $directValue = data_get($user, $field);
+        if ($directValue !== null) {
+            return (bool) $directValue;
+        }
+
+        if ($user instanceof User) {
+            $relationValue = optional($user->access)->{$field};
+            if ($relationValue !== null) {
+                return (bool) $relationValue;
+            }
+        } else {
+            $relationValue = data_get($user, "access.$field");
+            if ($relationValue !== null) {
+                return (bool) $relationValue;
+            }
+        }
+
+        return false;
+    }
+
+    private function getEquipmentOptions(): array
+    {
+        if (!Schema::hasTable('equipment')) {
+            return [];
+        }
+
+        return DB::table('equipment as e')
+            ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+            ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
+            ->orderBy('e.mark')
+            ->get()
+            ->map(function ($equipment) {
+                $image = $equipment->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference,
+                    'mark' => $equipment->mark,
+                    'image' => $imageUrl,
+                    'type_name' => $equipment->type_name,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function getTeamMemberOptions(): array
+    {
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return DB::table('users')
+            ->select('id', 'name', 'email', 'image', 'last_online')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                $image = $user->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'image' => $imageUrl,
+                    'last_online' => $user->last_online,
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -2636,16 +2871,15 @@ class ReservationsController extends Controller
 
                 // Send cancellation email if needed
                 try {
-                    Mail::to($coworkRow->user_email ?? auth()->user()->email)->send(
-                        new ReservationCanceledMail((object) [
-                            'user_name' => auth()->user()->name,
-                            'title' => $coworkRow->title ?? 'Cowork Reservation',
-                            'day' => $coworkRow->day,
-                            'start' => $coworkRow->start,
-                            'end' => $coworkRow->end,
-                            'type' => 'cowork'
-                        ])
-                    );
+                    $reservationForEmail = (object) [
+                        'user_name' => auth()->user()->name,
+                        'title' => $coworkRow->title ?? 'Cowork Reservation',
+                        'day' => $coworkRow->day,
+                        'start' => $coworkRow->start,
+                        'end' => $coworkRow->end,
+                        'type' => 'cowork'
+                    ];
+                    $this->sendMailToReservationOwner(auth()->user(), new ReservationCanceledMail(auth()->user(), $reservationForEmail));
                 } catch (\Exception $e) {
                     \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
                 }

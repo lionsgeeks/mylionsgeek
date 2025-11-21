@@ -1,30 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ReservationModalMeetingRoom from './ReservationModalMeetingRoom';
 
-export default function MeetingRoomCalendar({ meetingRoom }) {
-    const [events, setEvents] = useState([]);
+export default function MeetingRoomCalendar({ meetingRoom, reservations = [] }) {
+    const [events, setEvents] = useState(Array.isArray(reservations) ? reservations : []);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [selectionError, setSelectionError] = useState('');
 
     useEffect(() => {
-        loadReservations();
-    }, []);
+        setEvents(Array.isArray(reservations) ? reservations : []);
+    }, [reservations]);
 
-    const loadReservations = async () => {
-        try {
-            const response = await fetch(`/admin/places/meeting_room/${meetingRoom.id}/reservations`);
-            const data = await response.json();
-            setEvents(data);
-        } catch (error) {
-            console.error('Failed to load reservations:', error);
-        }
+    const refreshReservations = () => {
+        setIsRefreshing(true);
+        router.reload({
+            only: ['reservations'],
+            onFinish: () => setIsRefreshing(false),
+        });
     };
+
+    const preventPastSelection = useCallback((selectInfo) => {
+        if (!selectInfo) return true;
+        const now = new Date();
+        if (selectInfo.start < now || (selectInfo.end && selectInfo.end < now)) {
+            setSelectionError('You cannot select a date or time in the past.');
+            return false;
+        }
+        setSelectionError('');
+        return true;
+    }, []);
 
     const handleDateSelect = (selectInfo) => {
         const start = selectInfo.start;
@@ -44,7 +55,8 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
     };
 
     const handleReservationSuccess = () => {
-        loadReservations();
+        setIsModalOpen(false);
+        refreshReservations();
     };
 
     return (
@@ -60,6 +72,14 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
                 </div>
 
                 <div className="bg-black/40 border border-white/10 rounded-lg p-6">
+                    {isRefreshing && (
+                        <div className="text-sm text-white/70 mb-2">Refreshing calendar…</div>
+                    )}
+                    {selectionError && (
+                        <div className="mb-4 rounded-lg border border-yellow-400/60 bg-yellow-300/15 px-3 py-2 text-sm text-yellow-100">
+                            {selectionError}
+                        </div>
+                    )}
                     <FullCalendar
                         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                         initialView="timeGridWeek"
@@ -70,6 +90,7 @@ export default function MeetingRoomCalendar({ meetingRoom }) {
                         }}
                         selectable={true}
                         selectMirror={true}
+                        selectAllow={preventPastSelection}
                         select={handleDateSelect}
                         events={events}
                         slotMinTime="06:00:00"

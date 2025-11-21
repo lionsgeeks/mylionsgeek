@@ -167,7 +167,8 @@ const ReservationDetailsModal = ({ reservation, loadingAction, setLoadingAction 
                                     }}
                                 >
                                     <X className="h-4 w-4" />
-                                    {reservation.type === "cowork" ? "Cancel" : ""}
+                                    Cancel
+                                
                                 </Button>
                             )}
                         </div>

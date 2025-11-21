@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import ReservationTable from '@/components/ReservationTable';
 import AppLayout from '@/layouts/app-layout';
@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TablePagination from '@/components/TablePagination';
 
 export default function ReservationsPage() {
   const { reservations = [] } = usePage().props;
@@ -22,6 +23,9 @@ export default function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState('all'); // all | approved | pending | canceled
   const [typeFilter, setTypeFilter] = useState('all');
   const [query, setQuery] = useState('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 7;
 
   const filteredReservations = useMemo(() => {
     return sortedReservations.filter(r => {
@@ -47,6 +51,15 @@ export default function ReservationsPage() {
       return statusOk && typeOk && queryOk;
     });
   }, [sortedReservations, statusFilter, typeFilter, query]);
+
+  const startIndex = (currentPage - 1) * perPage;
+  const endIndex = startIndex + perPage;
+  const pagedReservations = filteredReservations.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(filteredReservations.length / perPage) || 1;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, typeFilter, query, filteredReservations.length]);
   const columns = [
     { key: "user_name", label: "User" },
     { key: "date", label: "Date" },
@@ -84,37 +97,45 @@ export default function ReservationsPage() {
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-6xl min-h-screen mx-auto px-6 pb-6 bg-light dark:bg-dark">
-        <div className="mb-6">
+      <div className="max-w-6xl mx-auto px-6  bg-light dark:bg-dark">
+        <div className="mb-3 flex-shrink-0">
           <h1 className="text-2xl font-bold tracking-tight">My Reservations</h1>
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
         </div>
         {/* Controls */}
-        <div className="rounded-xl border border-sidebar-border/70 shadow-sm bg-light dark:bg-dark">
-
-          <div className="p-4 sm:p-6">
-            <ReservationTable
-              columns={columns}
-              data={filteredReservations}
-              onRowClick={row => {
-                // Don't navigate to details for cowork reservations
-                if (row.type === 'cowork' || row.place_type === 'cowork') {
-                  return;
-                }
-                router.visit(`/reservations/${row.id}/details`);
-              }}
-              renderActions={(row) => (
-                !row.canceled && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={(e) => handleCancel(row.id, e)}
-                  >
-                    Cancel
-                  </Button>
-                )
-              )}
-            />
+        <div className="rounded-xl border border-sidebar-border/70 shadow-sm  bg-light dark:bg-dark flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="p-4 sm:p-6 flex-1 flex flex-col overflow-hidden min-h-0">
+            <div className="flex-1 overflow-auto min-h-0">
+              <ReservationTable
+                columns={columns}
+                data={pagedReservations}
+                onRowClick={row => {
+                  // Don't navigate to details for cowork reservations
+                  if (row.type === 'cowork' || row.place_type === 'cowork') {
+                    return;
+                  }
+                  router.visit(`/reservations/${row.id}/details`);
+                }}
+                renderActions={(row) => (
+                  !row.canceled && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(e) => handleCancel(row.id, e)}
+                    >
+                      Cancel
+                    </Button>
+                  )
+                )}
+              />
+            </div>
+            <div className="flex-shrink-0 mt-4">
+              <TablePagination
+                currentPage={currentPage}
+                lastPage={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
+            </div>
           </div>
         </div>
       </div>

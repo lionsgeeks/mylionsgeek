@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List, ArrowRight } from 'lucide-react';
@@ -19,40 +19,61 @@ import illustration from "../../../../../public/assets/images/banner/studio.png"
 import Banner from "@/components/banner"
 import StatCard from '../../../components/StatCard';
 
-const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomImages = [], coworkImages = [], equipmentImages = [] }) => {
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    const [selectedPlace, setSelectedPlace] = useState(null);
+const PlaceIndex = ({
+    places = [],
+    types = [],
+    studioImages = [],
+    meetingRoomImages = [],
+    coworkImages = [],
+    equipmentImages = [],
+    calendarPlace = null,
+    calendarEvents = [],
+    equipmentOptions = [],
+    teamMemberOptions = [],
+}) => {
+    const [isCalendarOpen, setIsCalendarOpen] = useState(!!calendarPlace);
+    const [selectedPlace, setSelectedPlace] = useState(calendarPlace);
     const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
+    const [calendarSelectionError, setCalendarSelectionError] = useState('');
+
+    const requestCalendarData = (place) => {
+        if (!place) return;
+        setLoadingEvents(true);
+        router.get('/admin/places', {
+            calendar_place_type: place.place_type,
+            calendar_place_id: place.id,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+            only: ['calendarPlace', 'calendarEvents'],
+            onFinish: () => setLoadingEvents(false),
+        });
+    };
 
     const handleViewCalendar = (place) => {
+        if (!place) return;
         setSelectedPlace(place);
         setIsCalendarOpen(true);
-        loadCalendarEvents(place);
+        requestCalendarData(place);
     };
 
-    const loadCalendarEvents = (place) => {
-        setLoadingEvents(true);
-
-        // Determine place type
-        let placeType = 'studio';
-        if (place.place_type === 'cowork') {
-            placeType = 'cowork';
-        } else if (place.place_type === 'meeting_room') {
-            placeType = 'meeting_room';
+    const preventPastCalendarSelection = useCallback((selectInfo) => {
+        if (!selectInfo) return true;
+        const now = new Date();
+        if (selectInfo.start < now || (selectInfo.end && selectInfo.end < now)) {
+            setCalendarSelectionError('You cannot select a date or time in the past.');
+            return false;
         }
-
-        fetch(`/admin/places/${placeType}/${place.id}/reservations`, {
-            headers: { 'Accept': 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((r) => r.json())
-            .then((data) => setEvents(Array.isArray(data) ? data : []))
-            .catch(() => setEvents([]))
-            .finally(() => setLoadingEvents(false));
-    };
+        setCalendarSelectionError('');
+        return true;
+    }, []);
 
     const handleDateSelect = (selectInfo) => {
+        if (!preventPastCalendarSelection(selectInfo)) {
+            return;
+        }
         const start = selectInfo.start;
         const end = selectInfo.end;
 
@@ -79,8 +100,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     const [filterType, setFilterType] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
-    const [calendarFor, setCalendarFor] = useState(null); // { id, place_type, name }
-    const [events, setEvents] = useState([]);
+    const [events, setEvents] = useState(Array.isArray(calendarEvents) ? calendarEvents : []);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const { data, setData, post, processing, reset, errors } = useForm({
@@ -145,17 +165,19 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
     }, [filterType, searchQuery, places]);
 
     useEffect(() => {
-        if (!calendarFor) return;
-        setLoadingEvents(true);
-        fetch(`/admin/places/${calendarFor.place_type}/${calendarFor.id}/reservations`, {
-            headers: { 'Accept': 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((r) => r.json())
-            .then((data) => setEvents(Array.isArray(data) ? data : []))
-            .catch(() => setEvents([]))
-            .finally(() => setLoadingEvents(false));
-    }, [calendarFor]);
+        setEvents(Array.isArray(calendarEvents) ? calendarEvents : []);
+    }, [calendarEvents]);
+
+    useEffect(() => {
+        if (calendarPlace) {
+            setSelectedPlace(calendarPlace);
+            setIsCalendarOpen(true);
+        } else {
+            setSelectedPlace(null);
+            setIsCalendarOpen(false);
+        }
+        setLoadingEvents(false);
+    }, [calendarPlace]);
     ////console.log(places);
     const studioCount = places.filter(p => p.place_type === "studio").length;
     const coworkCount = places.filter(p => p.place_type === "cowork").length;
@@ -203,7 +225,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         </button>
                     </div>
                 </div>
-                <StatCard items={items} />
+                {/* <StatCard items={items} /> */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
@@ -577,7 +599,23 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
 
                 <CalendarModal
                     isOpen={isCalendarOpen}
-                    onClose={setIsCalendarOpen}
+                    onClose={(open) => {
+                        if (!open) {
+                            setIsCalendarOpen(false);
+                            setSelectedPlace(null);
+                            setCalendarSelectionError('');
+                            setEvents([]);
+                            router.get('/admin/places', {}, {
+                                preserveState: true,
+                                preserveScroll: true,
+                                replace: true,
+                                only: ['calendarPlace', 'calendarEvents'],
+                            });
+                        } else {
+                            setIsCalendarOpen(true);
+                            setCalendarSelectionError('');
+                        }
+                    }}
                     place={selectedPlace}
                     events={events}
                     loadingEvents={loadingEvents}
@@ -592,6 +630,8 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         setSelectedRange({ day, start: startTime, end: endTime });
                         setIsReservationModalOpen(true);
                     }}
+                    selectAllow={preventPastCalendarSelection}
+                    selectionError={calendarSelectionError}
                 />
 
                 {/* Reservation Modals */}
@@ -603,8 +643,10 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         selectedRange={selectedRange}
                         onSuccess={() => {
                             setIsReservationModalOpen(false);
-                            loadCalendarEvents(selectedPlace);
+                            requestCalendarData(selectedPlace);
                         }}
+                        equipmentOptions={equipmentOptions}
+                        teamMemberOptions={teamMemberOptions}
                     />
                 )}
 
@@ -627,7 +669,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         })}
                         onSuccess={() => {
                             setIsReservationModalOpen(false);
-                            loadCalendarEvents(selectedPlace);
+                            requestCalendarData(selectedPlace);
                         }}
                         allowMultiple={true}
                     />
@@ -641,7 +683,7 @@ const PlaceIndex = ({ places = [], types = [], studioImages = [], meetingRoomIma
                         selectedRange={selectedRange}
                         onSuccess={() => {
                             setIsReservationModalOpen(false);
-                            loadCalendarEvents(selectedPlace);
+                            requestCalendarData(selectedPlace);
                         }}
                     />
                 )}

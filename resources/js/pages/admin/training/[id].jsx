@@ -39,6 +39,16 @@ export default function Show({ training, usersNull }) {
   const calendarRef = useRef(null);
   const [calendarApi, setCalendarApi] = useState(null);
   const [calendarTitle, setCalendarTitle] = useState('');
+  const [calendarError, setCalendarError] = useState('');
+  const isBeforeToday = (dateLike) => {
+    if (!dateLike) return false;
+    const target = new Date(dateLike);
+    target.setHours(0, 0, 0, 0);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    return target < startOfToday;
+  };
+
 
   // Map status to color styles for SelectTrigger
   const statusClass = (value) => {
@@ -645,6 +655,11 @@ export default function Show({ training, usersNull }) {
               className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-2 sm:p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-auto"
               style={{ height: 'calc(100svh - 260px)' }}
             >
+              {calendarError && (
+                <div className="mb-3 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/40 dark:text-yellow-100">
+                  {calendarError}
+                </div>
+              )}
               <FullCalendar
                 ref={(el) => {
                   calendarRef.current = el;
@@ -661,14 +676,25 @@ export default function Show({ training, usersNull }) {
                 events={events}
                 datesSet={(arg) => setCalendarTitle(arg.view.title)}
                 eventClick={(info) => {
+                  const eventDate = info?.event?.start;
                   const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0,10);
                   if (!dateStr) return;
+                  if (isBeforeToday(eventDate || dateStr)) {
+                    setCalendarError('You cannot manage attendance for past dates.');
+                    return;
+                  }
+                  setCalendarError('');
                   setSelectedDate(dateStr);
                   AddAttendance(dateStr);
                   setShowAttendance(false);
                   setShowAttendanceList(true);
                 }}
                 dateClick={(info) => {
+                  if (isBeforeToday(info.date)) {
+                    setCalendarError('You cannot select dates earlier than today.');
+                    return;
+                  }
+                  setCalendarError('');
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);
                   setShowAttendance(false);

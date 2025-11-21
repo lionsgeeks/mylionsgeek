@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import ReservationModalCowork from '@/pages/admin/places/coworks/components/ReservationModalCowork';
 import ReservationModal from '@/pages/admin/places/studios/components/ReservationModal';
-import StudioSelectionModal from './components/StudioSelectionModal';
 import CalendarModal from './components/CalendarModal';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+
+const PRIVILEGED_ACCESS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
 
 const TABS = [
     { key: 'all', label: 'All' },
@@ -17,21 +18,79 @@ const TABS = [
 ];
 
 export default function SpacesPage() {
-    const { studios = [], coworks = [], auth } = usePage().props;
+    const {
+        studios = [],
+        coworks = [],
+        meetingRooms = [],
+        auth,
+        equipmentOptions = [],
+        teamMemberOptions = [],
+        events: initialEvents = [],
+        calendarContext = null,
+    } = usePage().props;
     const [type, setType] = useState('all');
     const [modalStudio, setModalStudio] = useState(null);
     const [modalCowork, setModalCowork] = useState(false);
-    const [calendarFor, setCalendarFor] = useState(null);
-    const [events, setEvents] = useState([]);
+    const [calendarFor, setCalendarFor] = useState(calendarContext);
+    const [events, setEvents] = useState(Array.isArray(initialEvents) ? initialEvents : []);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
     const [selectedCoworkId, setSelectedCoworkId] = useState(null);
-    const [selectedStudioId, setSelectedStudioId] = useState(null);
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [eventExtras, setEventExtras] = useState({ team_members: [], equipments: [] });
-    const [excludedTableId, setExcludedTableId] = useState(null);
-    const [showStudioSelectModal, setShowStudioSelectModal] = useState(false);
+    const [blockedTableIds, setBlockedTableIds] = useState([]);
+    const [blockedStudioIds, setBlockedStudioIds] = useState([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [accessError, setAccessError] = useState('');
+    const [selectionError, setSelectionError] = useState('');
 
+    const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
+    const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
+
+    const resolveAccessFlag = useCallback((key) => {
+        const direct = auth?.user?.[key];
+        if (direct !== undefined && direct !== null) {
+            return Boolean(Number(direct));
+        }
+        const nested = auth?.user?.access?.[key];
+        if (nested !== undefined && nested !== null) {
+            return Boolean(Number(nested));
+        }
+        return false;
+    }, [auth?.user]);
+
+    const hasUnlimitedAccess = normalizedRoles.some((role) => PRIVILEGED_ACCESS_ROLES.includes(role));
+    const canAccessStudio = hasUnlimitedAccess || resolveAccessFlag('access_studio');
+    const canAccessCowork = hasUnlimitedAccess || resolveAccessFlag('access_cowork');
+
+    const requireAccess = useCallback((target) => {
+        if (target === 'studio' && !canAccessStudio) {
+            setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
+            return false;
+        }
+        if (target === 'cowork' && !canAccessCowork) {
+            setAccessError('You do not currently have access to reserve cowork tables. Please contact the staff for assistance.');
+            return false;
+        }
+        setAccessError('');
+        return true;
+    }, [canAccessStudio, canAccessCowork]);
+
+    const openStudioModal = useCallback((payload) => {
+        if (!requireAccess('studio')) {
+            return false;
+        }
+        setModalStudio(payload);
+        return true;
+    }, [requireAccess]);
+
+    const openCoworkModal = useCallback(() => {
+        if (!requireAccess('cowork')) {
+            return false;
+        }
+        setModalCowork(true);
+        return true;
+    }, [requireAccess]);
 
     const breadcrumbs = [
         { title: 'Spaces', href: '/spaces' }
@@ -39,6 +98,8 @@ export default function SpacesPage() {
 
     const showStudios = type === 'all' || type === 'studio';
     const showCowork = type === 'all' || type === 'cowork';
+    const showMeetingRooms = type === 'all';
+    const isCoworkMultiCalendar = type === 'cowork' || (type === 'all' && calendarFor?.place_type === 'cowork');
 
     const cards = [];
     if (showStudios) {
@@ -55,198 +116,396 @@ export default function SpacesPage() {
             state: coworks.some(c => c.state),
         });
     }
+    if (showMeetingRooms && Array.isArray(meetingRooms)) {
+        meetingRooms.forEach((room) => {
+            cards.push({
+                ...room,
+                cardType: 'meeting_room',
+                type: 'meeting room',
+            });
+        });
+    }
+
+    const priorityOrder = ['Studio Image', 'Studio Podcast'];
+    const orderedCards = (() => {
+        if (!cards.length) return [];
+        const priority = [];
+        const rest = [];
+        cards.forEach((card) => {
+            if (card.cardType === 'studio' && priorityOrder.includes(card.name)) {
+                const priorityIndex = priorityOrder.indexOf(card.name);
+                priority[priorityIndex] = card;
+            } else {
+                rest.push(card);
+            }
+        });
+        return [...priority.filter(Boolean), ...rest];
+    })();
+
+    const requestEvents = useCallback((params) => {
+        setLoadingEvents(true);
+        setEvents([]);
+        setEventExtras({ team_members: [], equipments: [] });
+        setSelectedEvent(null);
+        setBlockedTableIds([]);
+        setBlockedStudioIds([]);
+        router.get('/spaces', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only: ['events', 'calendarContext'],
+            onFinish: () => setLoadingEvents(false),
+        });
+    }, [router]);
+
+    const rangesOverlap = (startA, endA, startB, endB) => startA < endB && startB < endA;
+
+    const parseDateValue = (value) => {
+        if (!value) return null;
+        if (value instanceof Date) {
+            return value.getTime();
+        }
+        const date = new Date(value);
+        const time = date.getTime();
+        return Number.isNaN(time) ? null : time;
+    };
+
+    const computeBlockedTables = useCallback((startDate, endDate, sourceEvents = events) => {
+        const start = parseDateValue(startDate);
+        const end = parseDateValue(endDate);
+        if (start === null || end === null) return [];
+
+        const blocked = new Set();
+        sourceEvents.forEach((ev) => {
+            const tableId = ev.extendedProps?.table_id ?? ev.table_id ?? ev.tableId;
+            if (!tableId) return;
+
+            const evStart = parseDateValue(ev.start);
+            const evEnd = parseDateValue(ev.end);
+            if (evStart === null || evEnd === null) return;
+
+            if (rangesOverlap(evStart, evEnd, start, end)) {
+                blocked.add(Number(tableId));
+            }
+        });
+
+        return Array.from(blocked);
+    }, [events]);
+
+    const computeBlockedStudios = useCallback((startDate, endDate, sourceEvents = events) => {
+        const start = parseDateValue(startDate);
+        const end = parseDateValue(endDate);
+        if (start === null || end === null) return [];
+
+        const blocked = new Set();
+        sourceEvents.forEach((ev) => {
+            const studioId = ev.extendedProps?.studio_id ?? ev.studio_id ?? ev.studioId;
+            if (!studioId) return;
+
+            const evStart = parseDateValue(ev.start);
+            const evEnd = parseDateValue(ev.end);
+            if (evStart === null || evEnd === null) return;
+
+            if (rangesOverlap(evStart, evEnd, start, end)) {
+                blocked.add(Number(studioId));
+            }
+        });
+
+        return Array.from(blocked);
+    }, [events]);
+
+    const handleStudioTimeChange = useCallback((range) => {
+        if (!range?.day || !range?.start || !range?.end) {
+            setBlockedStudioIds([]);
+            return;
+        }
+        const start = new Date(`${range.day}T${range.start}`);
+        const end = new Date(`${range.day}T${range.end}`);
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            setBlockedStudioIds([]);
+            return;
+        }
+        setBlockedStudioIds(computeBlockedStudios(start, end));
+    }, [computeBlockedStudios]);
+
+    const selectionOverlapsExisting = useCallback((startDate, endDate, sourceEvents = events) => {
+        const start = parseDateValue(startDate);
+        const end = parseDateValue(endDate);
+        if (start === null || end === null) return false;
+
+        return sourceEvents.some((ev) => {
+            const evStart = parseDateValue(ev.start);
+            const evEnd = parseDateValue(ev.end);
+            if (evStart === null || evEnd === null) return false;
+            return rangesOverlap(evStart, evEnd, start, end);
+        });
+    }, [events]);
+
+    const validateSelectionWindow = useCallback((startDate, endDate) => {
+        const now = new Date();
+        if ((startDate && startDate < now) || (endDate && endDate < now)) {
+            setSelectionError('You cannot select dates or times in the past.');
+            return false;
+        }
+        setSelectionError('');
+        return true;
+    }, []);
+
+    const ensureFutureSelection = useCallback((selectInfo) => {
+        if (!selectInfo) return true;
+        return validateSelectionWindow(selectInfo.start, selectInfo.end);
+    }, [validateSelectionWindow]);
+
+    const selectAllowForMainCalendar = useCallback((selectInfo) => {
+        if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        if (type === 'studio') {
+            return canAccessStudio;
+        }
+        if (type === 'cowork') {
+            return canAccessCowork;
+        }
+        if (type === 'all' && calendarFor?.place_type === 'cowork') {
+            return canAccessCowork;
+        }
+        if (type === 'all' && calendarFor?.place_type === 'studio') {
+            return canAccessStudio;
+        }
+        return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
+
+    const selectAllowForModal = useCallback((selectInfo) => {
+        if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        if (calendarFor?.place_type === 'cowork') {
+            return canAccessCowork;
+        }
+        if (calendarFor?.place_type === 'studio') {
+            return canAccessStudio;
+        }
+        return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+    }, [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
 
     function handleCardClick(card) {
         if (card.cardType === 'studio') {
-            setCalendarFor({ place_type: 'studio', id: card.id, name: card.name });
+            if (!requireAccess('studio')) {
+                return;
+            }
+            const context = { place_type: 'studio', id: card.id, name: card.name };
             setSelectedRange(null);
-            setLoadingEvents(true);
-        }
-        if (card.cardType === 'cowork') {
-            setSelectedCoworkId(null);
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
+            setCalendarFor(context);
+            setBlockedTableIds([]);
+            setBlockedStudioIds([]);
+            requestEvents({
+                events_mode: 'place',
+                event_type: 'studio',
+                event_id: card.id,
+            });
+        } else if (card.cardType === 'cowork') {
+            if (!requireAccess('cowork')) {
+                return;
+            }
+            const context = { place_type: 'cowork', id: null, name: 'Cowork' };
             setSelectedRange(null);
-            setLoadingEvents(true);
+            setCalendarFor(context);
+            setBlockedTableIds([]);
+            setBlockedStudioIds([]);
+            requestEvents({
+                events_mode: 'cowork_all',
+            });
+        } else if (card.cardType === 'meeting_room') {
+            const context = { place_type: 'meeting_room', id: card.id, name: card.name };
+            setSelectedRange(null);
+            setCalendarFor(context);
+            setBlockedTableIds([]);
+            setBlockedStudioIds([]);
+            requestEvents({
+                events_mode: 'place',
+                event_type: 'meeting_room',
+                event_id: card.id,
+            });
         }
     }
 
     function handleStudioSuccess() {
         setModalStudio(null);
+        setBlockedStudioIds([]);
         router.reload();
     }
 
     function handleCoworkSuccess() {
         setModalCowork(false);
+        setBlockedTableIds([]);
+        setBlockedStudioIds([]);
         router.reload();
     }
 
 
     useEffect(() => {
-        let typeToLoad = null;
-        let idToLoad = null;
-        let fetchAllStudios = false;
-        let fetchAllCoworks = false;
-
         if (type === 'studio') {
-            fetchAllStudios = true;
+            setCalendarFor(null);
+            if (studios.length) {
+                requestEvents({ events_mode: 'studio_all' });
+            } else {
+                setEvents([]);
+            }
         } else if (type === 'cowork') {
-
-            fetchAllCoworks = true;
-        } else if (calendarFor) {
-            typeToLoad = calendarFor.place_type;
-            idToLoad = calendarFor.id;
+            setCalendarFor(null);
+            if (coworks.length) {
+                requestEvents({ events_mode: 'cowork_all' });
+            } else {
+                setEvents([]);
+            }
+        } else if (type === 'all') {
+            setLoadingEvents(false);
+            setEvents([]);
         }
-
-        if (fetchAllStudios) {
-            setLoadingEvents(true);
-            Promise.all(
-                studios.map(studio =>
-                    fetch(`/reservations/public-place/studio/${studio.id}`, { headers: { 'Accept': 'application/json' } })
-                        .then(r => r.json())
-                        .then(data => {
-                            return (Array.isArray(data) ? data : []).map(event => ({
-                                ...event,
-                                title: `${event.title} — ${studio.name}`,
-                                created_at: event.created_at || new Date().toISOString()
-                            }));
-                        })
-                        .catch(() => [])
-                )
-            )
-                .then(allEvents => {
-                    // Sort by created_at descending
-                    const sorted = allEvents.flat().sort((a, b) => {
-                        const dateA = new Date(a.created_at || 0);
-                        const dateB = new Date(b.created_at || 0);
-                        return dateB - dateA;
-                    });
-                    setEvents(sorted);
-                })
-                .finally(() => setLoadingEvents(false));
-            return;
-        }
-
-        if (fetchAllCoworks) {
-            setLoadingEvents(true);
-            Promise.all(
-                coworks.map(cowork =>
-                    fetch(`/reservations/public-place/cowork/${cowork.id}`, { headers: { 'Accept': 'application/json' } })
-                        .then(r => r.json())
-                        .then(data => {
-                            return (Array.isArray(data) ? data : []).map(event => ({
-                                ...event,
-                                title: `${event.title} — ${cowork.table || `Table ${cowork.id}`}`,
-                                created_at: event.created_at || new Date().toISOString(),
-                                resourceId: cowork.id, // Add resourceId for grouping
-                            }));
-                        })
-                        .catch(() => [])
-                )
-            )
-                .then(allEvents => {
-                    // Sort by created_at descending
-                    const sorted = allEvents.flat().sort((a, b) => {
-                        const dateA = new Date(a.created_at || 0);
-                        const dateB = new Date(b.created_at || 0);
-                        return dateB - dateA;
-                    });
-                    setEvents(sorted);
-                })
-                .finally(() => setLoadingEvents(false));
-            return;
-        }
-
-        if (!typeToLoad || !idToLoad) return;
-        setLoadingEvents(true);
-        fetch(`/reservations/public-place/${typeToLoad}/${idToLoad}`, { headers: { 'Accept': 'application/json' } })
-            .then(r => r.json())
-            .then(data => {
-                const events = Array.isArray(data) ? data : [];
-                // Sort by created_at descending
-                const sorted = events.sort((a, b) => {
-                    const dateA = new Date(a.created_at || 0);
-                    const dateB = new Date(b.created_at || 0);
-                    return dateB - dateA;
-                });
-                setEvents(sorted);
-            })
-            .catch(() => setEvents([]))
-            .finally(() => setLoadingEvents(false));
-    }, [type, calendarFor, selectedCoworkId, selectedStudioId, studios, coworks]);
+    }, [type, studios, coworks, requestEvents]);
 
     useEffect(() => {
-        if (type === 'studio' && selectedStudioId) {
-            const s = studios.find(st => st.id === selectedStudioId);
-            setCalendarFor({ place_type: 'studio', id: selectedStudioId, name: s?.name || 'Studio' });
+        if (!isCoworkMultiCalendar) {
+            setBlockedTableIds([]);
         }
-    }, [selectedStudioId]);
+    }, [isCoworkMultiCalendar]);
 
     useEffect(() => {
-        if (type === 'cowork') {
-            // For cowork, we show all tables in one calendar, so no need to set calendarFor to a specific table
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
+        if (type !== 'studio') {
+            setBlockedStudioIds([]);
         }
     }, [type]);
 
+    useEffect(() => {
+        setEvents(Array.isArray(initialEvents) ? initialEvents : []);
+        if (calendarContext) {
+            setCalendarFor(calendarContext);
+        }
+    }, [initialEvents, calendarContext]);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const onCalendarDateSelect = (selectInfo) => {
+        if (type === 'studio' && !canAccessStudio) {
+            requireAccess('studio');
+            return;
+        }
+        if (type === 'cowork' && !canAccessCowork) {
+            requireAccess('cowork');
+            return;
+        }
         const start = selectInfo.start;
         const end = selectInfo.end;
+        if (!validateSelectionWindow(start, end)) {
+            return;
+        }
         const day = start.toISOString().split('T')[0];
         const startTime = start.toTimeString().slice(0, 5);
         const endTime = end.toTimeString().slice(0, 5);
         setSelectedRange({ day, start: startTime, end: endTime });
-        // Clear excluded table when selecting empty time slot
-        setExcludedTableId(null);
+        if (type === 'cowork') {
+            setBlockedTableIds(computeBlockedTables(start, end));
+            setBlockedStudioIds([]);
+        } else if (type === 'studio') {
+            setBlockedStudioIds(computeBlockedStudios(start, end));
+            setBlockedTableIds([]);
+        } else {
+            setBlockedTableIds([]);
+            setBlockedStudioIds([]);
+        }
 
         if (type === 'all' && calendarFor) {
             if (calendarFor.place_type === 'studio') {
                 // For all tab, directly open reservation modal
-                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                 return;
             }
             if (calendarFor.place_type === 'cowork') {
-                setModalCowork(true);
+                openCoworkModal();
                 return;
             }
         }
 
         // For studio and cowork tabs, directly open modal if selection exists
-        if (type === 'studio' && selectedStudioId) {
-            // In Studios tab, directly open reservation modal if studio is selected
-            setModalStudio({ id: selectedStudioId, name: studios.find(s => s.id === selectedStudioId)?.name || 'Studio', cardType: 'studio' });
+        if (type === 'studio') {
+            openStudioModal({ id: null, name: '', cardType: 'studio' });
             return;
         }
         if (type === 'cowork') {
             // For cowork, always open modal - table selection is inside the modal
-            setModalCowork(true);
+            openCoworkModal();
             return;
         }
     };
 
     useEffect(() => {
-        if (type === 'studio' && studios.length) {
-            const first = studios[0];
-            setSelectedStudioId(first.id);
-            setCalendarFor({ place_type: 'studio', id: first.id, name: first.name });
-        } else if (type === 'cowork') {
-            // For cowork, show all tables in one calendar - no need to select a specific table
+        if (type === 'cowork') {
             setSelectedCoworkId(null);
-            setCalendarFor({ place_type: 'cowork', id: null, name: 'Cowork' });
         } else if (type === 'all') {
             setCalendarFor(null);
             setSelectedRange(null);
-            setSelectedStudioId(null);
         }
         setModalStudio(null);
         setModalCowork(false);
-        setShowStudioSelectModal(false);
     }, [type]);
 
 
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="relative max-w-7xl mx-auto px-6 py-4">
+                {loadingEvents && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-neutral-900 text-center px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3">
+                            <svg className="h-10 w-10 animate-spin text-[#FFC801]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                            </svg>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                Loading calendar…
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {accessError && (
+                    <div className="mb-4 flex items-start justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
+                        <span>{accessError}</span>
+                        <button
+                            type="button"
+                            onClick={() => setAccessError('')}
+                            className="ml-4 text-red-500 hover:text-red-700 dark:text-red-200 dark:hover:text-white"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                )}
+
+                {selectionError && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
+                        {selectionError}
+                    </div>
+                )}
+
+                {type === 'studio' && !canAccessStudio && (
+                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
+                        You currently do not have studio reservation access. Please contact the staff if you believe this is an error.
+                    </div>
+                )}
+                {type === 'cowork' && !canAccessCowork && (
+                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
+                        You currently do not have cowork reservation access. Please contact the staff if you need access.
+                    </div>
+                )}
+
                 <div className="mb-6">
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
@@ -272,18 +531,18 @@ export default function SpacesPage() {
 
 
                 {type === 'all' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
                         {cards.length === 0 && (
                             <div className="col-span-full text-center text-md text-gray-500 py-8">No locations to reserve found for this type.</div>
                         )}
-                        {cards.map((place) => (
+                        {orderedCards.map((place) => (
                             <div
                                 key={place.id}
                                 onClick={() => handleCardClick(place)}
-                                className="relative cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/3] bg-gray-100"
+                                className="relative group  cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/2] bg-gray-100"
                             >
                                 {place.image ? (
-                                    <img src={place.image} alt={place.name} className="absolute inset-0 w-full h-full object-cover" />
+                                    <img src={place.image} alt={place.name} className="absolute group-hover:scale-125 transition inset-0 w-full h-full object-cover" />
                                 ) : (
                                     <div className="absolute inset-0 grid place-items-center text-gray-400">No Image</div>
                                 )}
@@ -306,7 +565,7 @@ export default function SpacesPage() {
                 ) : (
                     <div className="bg-light dark:bg-dark rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
                         <div className="flex items-center justify-between mb-3 gap-3">
-                            <div className="text-lg font-semibold">
+                            <div className="md:text-lg text-sm font-semibold">
                                 {type === 'studio'
                                     ? 'Studio Calendar'
                                     : 'Cowork Calendar'
@@ -318,10 +577,15 @@ export default function SpacesPage() {
                                 className="ml-auto px-4 py-2 rounded-md text-sm font-semibold border bg-alpha text-black border-alpha hover:bg-alpha/90"
                                 onClick={() => {
                                     if (type === 'studio') {
-                                        // In Studios tab, open reservation modal (will show studio selection in step 1)
-                                        setModalStudio({ id: null, name: '', cardType: 'studio' });
+                                        if (!openStudioModal({ id: null, name: '', cardType: 'studio' })) {
+                                            return;
+                                        }
+                                        setBlockedStudioIds([]);
                                     } else if (type === 'cowork') {
-                                        setModalCowork(true);
+                                        if (!openCoworkModal()) {
+                                            return;
+                                        }
+                                        setBlockedTableIds([]);
                                     }
                                 }}
                             >
@@ -334,11 +598,13 @@ export default function SpacesPage() {
                             <div className="h-[70vh] bg-light dark:bg-dark">
                                 <FullCalendar
                                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                                    initialView="timeGridWeek"
-                                    headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                                    initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+                                    initialDate={isMobile ? new Date() : undefined}
+                                    headerToolbar={{ left: 'prev,next today', center: 'title', right: isMobile ? '' : 'dayGridMonth,timeGridWeek,timeGridDay' }}
                                     events={events}
                                     selectable={true}
                                     selectMirror={true}
+                                selectAllow={selectAllowForMainCalendar}
                                     select={onCalendarDateSelect}
                                     eventClick={(info) => {
                                         const e = info.event;
@@ -354,23 +620,22 @@ export default function SpacesPage() {
 
                                             // For cowork, extract table ID from event title or extendedProps
                                             if (type === 'cowork') {
-                                                // Try to extract table ID from the event
-                                                // Event title format: "Table X — User Name" or "Table X — User Name — Table Y"
-                                                const titleMatch = e.title?.match(/Table\s+(\d+)/);
-                                                if (titleMatch) {
-                                                    const tableNumber = parseInt(titleMatch[1]);
-                                                    // Try to find table by table number or ID
-                                                    const reservedTable = coworks.find(c =>
-                                                        String(c.table) === String(tableNumber) ||
-                                                        c.id === tableNumber ||
-                                                        String(c.id) === String(tableNumber)
-                                                    );
-                                                    if (reservedTable) {
-                                                        setExcludedTableId(reservedTable.id);
-                                                    }
-                                                }
+                                                const conflicts = computeBlockedTables(start, end);
+                                                setBlockedTableIds(conflicts);
                                                 // Open modal to reserve another table
-                                                setModalCowork(true);
+                                                if (!openCoworkModal()) {
+                                                    return;
+                                                }
+                                            } else if (type === 'studio') {
+                                                if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
+                                                    router.visit(`/reservations/${e.id}/details`);
+                                                    return;
+                                                }
+                                                const conflicts = computeBlockedStudios(start, end);
+                                                setBlockedStudioIds(conflicts);
+                                                if (!openStudioModal({ id: null, name: '', cardType: 'studio' })) {
+                                                    return;
+                                                }
                                             } else {
                                                 // For studio, navigate to details page only if user owns the reservation
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
@@ -397,10 +662,15 @@ export default function SpacesPage() {
                 {type === 'all' && calendarFor && (
                     <CalendarModal
                         isOpen={!!calendarFor}
-                        onClose={() => setCalendarFor(null)}
+                        onClose={() => {
+                            setCalendarFor(null);
+                            setBlockedTableIds([]);
+                            setBlockedStudioIds([]);
+                        }}
                         calendarFor={calendarFor}
                         events={events}
                         loadingEvents={loadingEvents}
+                        selectAllow={selectAllowForModal}
                         onDateSelect={(selectInfo) => {
                             const start = selectInfo.start;
                             const end = selectInfo.end;
@@ -410,9 +680,11 @@ export default function SpacesPage() {
                             setSelectedRange({ day, start: startTime, end: endTime });
 
                             if (calendarFor.place_type === 'studio') {
-                                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                                setBlockedTableIds([]);
+                                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                             } else if (calendarFor.place_type === 'cowork') {
-                                setModalCowork(true);
+                                setBlockedTableIds(computeBlockedTables(start, end));
+                                openCoworkModal();
                             }
                         }}
                         onEventClick={(info) => {
@@ -423,37 +695,28 @@ export default function SpacesPage() {
                                 router.visit(`/reservations/${e.id}/details`);
                                 return;
                             }
-                            
+
                             // For other cases, show event details only if user owns it
                             if (e.extendedProps?.user_id !== auth?.user?.id) {
                                 return;
                             }
+                            const extras = {
+                                team_members: Array.isArray(e.extendedProps?.team_members)
+                                    ? e.extendedProps.team_members
+                                    : [],
+                                equipments: Array.isArray(e.extendedProps?.equipments)
+                                    ? e.extendedProps.equipments
+                                    : [],
+                            };
                             setSelectedEvent({
                                 id: e.id,
                                 title: e.title,
                                 start: e.start?.toISOString?.() || e.start,
                                 end: e.end?.toISOString?.() || e.end,
                                 backgroundColor: e.backgroundColor,
+                                ...extras,
                             });
-                            setEventExtras({ team_members: [], equipments: [] });
-                            if (e.id) {
-                                const tryFetch = (url) => fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
-                                    .then(async (r) => {
-                                        const ct = r.headers.get('content-type') || '';
-                                        if (!r.ok || !ct.includes('application/json')) return null;
-                                        try { return await r.json(); } catch { return null; }
-                                    });
-                                (async () => {
-                                    let data = await tryFetch(`/admin/reservations/${e.id}/info`);
-                                    if (!data) data = await tryFetch(`/reservations/${e.id}/info`);
-                                    if (data) {
-                                        setEventExtras({
-                                            team_members: Array.isArray(data.team_members) ? data.team_members : [],
-                                            equipments: Array.isArray(data.equipments) ? data.equipments : [],
-                                        });
-                                    }
-                                })();
-                            }
+                            setEventExtras(extras);
                         }}
                         onAddReservationClick={() => {
                             const now = new Date();
@@ -464,9 +727,10 @@ export default function SpacesPage() {
                             setSelectedRange({ day, start: startTime, end: endTime });
 
                             if (calendarFor.place_type === 'studio') {
-                                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                             } else if (calendarFor.place_type === 'cowork') {
-                                setModalCowork(true);
+                                setBlockedTableIds([]);
+                                openCoworkModal();
                             }
                         }}
                     />
@@ -479,7 +743,7 @@ export default function SpacesPage() {
                         isOpen={modalCowork}
                         onClose={() => {
                             setModalCowork(false);
-                            setExcludedTableId(null);
+                            setBlockedTableIds([]);
                         }}
                         cowork={selectedRange && selectedCoworkId ? coworks.find(c => c.id === selectedCoworkId) : null}
                         selectedRange={selectedRange}
@@ -491,25 +755,10 @@ export default function SpacesPage() {
                         }))}
                         onSuccess={() => {
                             handleCoworkSuccess();
-                            setExcludedTableId(null);
+                            setBlockedTableIds([]);
                         }}
                         allowMultiple={true}
-                        excludedTableId={excludedTableId}
-                    />
-                )}
-
-                {/* Studio Selection Modal - Only for Studios tab */}
-                {showStudioSelectModal && type === 'studio' && (
-                    <StudioSelectionModal
-                        isOpen={showStudioSelectModal}
-                        onClose={setShowStudioSelectModal}
-                        studios={studios}
-                        onSelectStudio={(studio) => {
-                            setSelectedStudioId(studio.id);
-                            setCalendarFor({ place_type: 'studio', id: studio.id, name: studio.name });
-                            setShowStudioSelectModal(false);
-                            setModalStudio({ id: studio.id, name: studio.name, cardType: 'studio' });
-                        }}
+                        blockedTableIds={blockedTableIds}
                     />
                 )}
 
@@ -522,6 +771,10 @@ export default function SpacesPage() {
                         selectedRange={selectedRange}
                         onSuccess={handleStudioSuccess}
                         studios={type === 'studio' ? studios : []}
+                        equipmentOptions={equipmentOptions}
+                        teamMemberOptions={teamMemberOptions}
+                        blockedStudioIds={type === 'studio' ? blockedStudioIds : []}
+                        onTimeChange={type === 'studio' ? handleStudioTimeChange : undefined}
                         userRouteMode
                     />
                 )}

@@ -6,7 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
-const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSuccess, coworks = [], allowMultiple = false, excludedTableId = null }) => {
+const ReservationModalCowork = ({
+    isOpen,
+    onClose,
+    cowork,
+    selectedRange,
+    onSuccess,
+    coworks = [],
+    allowMultiple = false,
+    blockedTableIds = [],
+}) => {
     const { data, setData, post, processing, errors, reset } = useForm({
         table: cowork?.id || '',
         seats: 1,
@@ -34,10 +43,22 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
         }
     }, [cowork?.id]);
 
+    useEffect(() => {
+        if (blockedTableIds.length && blockedTableIds.includes(data.table)) {
+            setData('table', '');
+        }
+    }, [blockedTableIds, data.table]);
+
     const handleClose = () => {
         reset();
         setTimeError('');
         onClose();
+    };
+
+    const isDateTimeInPast = (dayValue, timeValue) => {
+        if (!dayValue || !timeValue) return false;
+        const composed = new Date(`${dayValue}T${timeValue}`);
+        return composed < new Date();
     };
 
     const handleSubmit = (e) => {
@@ -72,6 +93,11 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
 
         if (endMinutes <= startMinutes) {
             setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        if (isDateTimeInPast(data.day, data.start)) {
+            setTimeError('Reservation start time cannot be in the past.');
             return;
         }
 
@@ -114,15 +140,17 @@ const ReservationModalCowork = ({ isOpen, onClose, cowork, selectedRange, onSucc
                                 <SelectValue placeholder="Select a table" />
                             </SelectTrigger>
                             <SelectContent>
-                                {coworks.filter(c => c.state && c.id !== excludedTableId).map(c => (
+                                {coworks
+                                    .filter(c => c.state && !blockedTableIds.includes(c.id))
+                                    .map(c => (
                                     <SelectItem key={c.id} value={String(c.id)}>
                                         {c.table ? `Table ${c.table}` : `Table ${c.id}`}
                                     </SelectItem>
-                                ))}
+                                    ))}
                             </SelectContent>
                         </Select>
                         {errors.table && <p className="text-red-500 text-sm mt-1">{errors.table}</p>}
-                        {coworks.filter(c => c.state && c.id !== excludedTableId).length === 0 && (
+                        {coworks.filter(c => c.state && !blockedTableIds.includes(c.id)).length === 0 && (
                             <p className="text-red-500 text-sm mt-1">No available tables for this time slot</p>
                         )}
                     </div>
