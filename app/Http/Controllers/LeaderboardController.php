@@ -564,6 +564,7 @@ class LeaderboardController extends Controller
                         ->withOptions([
                             'verify' => storage_path('certs/cacert.pem'),
                         ])
+                        
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/languages?range={$wakatimeRange}"),
@@ -572,6 +573,7 @@ class LeaderboardController extends Controller
                         ->withOptions([
                             'verify' => storage_path('certs/cacert.pem'),
                         ])
+                        
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/projects?range={$wakatimeRange}"),
@@ -580,6 +582,7 @@ class LeaderboardController extends Controller
                         ->withOptions([
                             'verify' => storage_path('certs/cacert.pem'),
                         ])
+                    
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/editors?range={$wakatimeRange}"),
@@ -588,6 +591,7 @@ class LeaderboardController extends Controller
                         ->withOptions([
                             'verify' => storage_path('certs/cacert.pem'),
                         ])
+                        
                         ->withHeaders([
                             'Authorization' => 'Basic ' . base64_encode($user->wakatime_api_key . ':'),
                         ])->get("https://wakatime.com/api/v1/users/current/insights/machines?range={$wakatimeRange}"),
