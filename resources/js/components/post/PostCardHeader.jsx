@@ -3,8 +3,10 @@ import { Link, router } from '@inertiajs/react';
 import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
 import { MoreHorizontal } from 'lucide-react';
+import { helpers } from '../utils/helpers';
 
 const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
+    const { addOrRemoveFollow } = helpers();
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);

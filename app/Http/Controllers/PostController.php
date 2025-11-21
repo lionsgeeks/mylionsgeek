@@ -147,6 +147,7 @@ class PostController extends Controller
             'keep_images.*' => 'string',
             'removed_images' => 'array',
             'removed_images.*' => 'string',
+            'new_images' => 'array',
             'new_images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
         ]);
 
@@ -166,13 +167,18 @@ class PostController extends Controller
             $keepImages = $ownedImages->diff($removedImages)->values();
         }
 
+        $incomingFiles = $request->file('new_images', []);
+        if ($keepImages->count() + count($incomingFiles) > Post::MAX_IMAGES) {
+            return back()->withErrors([
+                'new_images' => "You can keep or upload up to " . Post::MAX_IMAGES . " images per post.",
+            ])->withInput($request->except(['new_images']));
+        }
+
         if ($removedImages->isNotEmpty()) {
             $this->deleteStoredImages($removedImages->all());
         }
 
-        $newUploads = $request->hasFile('new_images')
-            ? $this->persistUploadedImages($request->file('new_images'))
-            : [];
+        $newUploads = $this->persistUploadedImages($incomingFiles);
 
         $finalImages = array_values(array_merge($keepImages->all(), $newUploads));
 
@@ -190,18 +196,16 @@ class PostController extends Controller
         // dd($request->all());
         $request->validate([
             'description' => 'nullable|string',
-            'new_images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
+            'images' => 'array|max:' . Post::MAX_IMAGES,
             'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
         ]);
 
-        $uploadedFiles = [];
+        $uploadedFiles = $request->file('images', []);
 
-        if ($request->hasFile('new_images')) {
-            $uploadedFiles = array_merge($uploadedFiles, $request->file('new_images'));
-        }
-
-        if ($request->hasFile('images')) {
-            $uploadedFiles = array_merge($uploadedFiles, $request->file('images'));
+        if (count($uploadedFiles) > Post::MAX_IMAGES) {
+            return back()->withErrors([
+                'images' => "You can upload up to " . Post::MAX_IMAGES . " images per post.",
+            ])->withInput($request->except(['images']));
         }
 
         $imagesArray = $this->persistUploadedImages($uploadedFiles);
