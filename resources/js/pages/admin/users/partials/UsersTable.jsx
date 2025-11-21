@@ -109,9 +109,13 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
 
                                 <div className="flex flex-col">
                                     <h1 className="capitalize">{user.name}</h1>
-                                    {auth.user.role.includes('admin') &&
-                                        <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>
-                                    }
+                                    {(() => {
+                                        const userRoles = Array.isArray(auth.user.role) ? auth.user.role : [auth.user.role];
+                                        if (userRoles.includes('admin') || userRoles.includes('studio_responsable')) {
+                                            return <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>;
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">
