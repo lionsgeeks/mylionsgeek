@@ -13,6 +13,7 @@ const EditPost = ({ user, onOpenChange, post }) => {
         buildImageEntries,
         revokePreviewUrls,
         mapExistingImages,
+        createImageRemovalHandler,
     } = helpers();
 
     const [existingImages, setExistingImages] = useState(() =>
@@ -94,16 +95,18 @@ const EditPost = ({ user, onOpenChange, post }) => {
         }
     };
 
+    const removeImage = useMemo(
+        () => createImageRemovalHandler({
+            revokePreviewUrls,
+            updateExistingImages: setExistingImages,
+            updateNewImages: setNewImages,
+            trackRemovedImage: setRemovedImages,
+        }),
+        [createImageRemovalHandler, revokePreviewUrls]
+    );
+
     const handleRemoveImage = (image) => {
-        if (image.kind === 'existing') {
-            setExistingImages((prev) => prev.filter((img) => img.id !== image.id));
-            setRemovedImages((prev) =>
-                prev.includes(image.id) ? prev : [...prev, image.id]
-            );
-        } else {
-            revokePreviewUrls([image]);
-            setNewImages((prev) => prev.filter((img) => img.id !== image.id));
-        }
+        removeImage(image);
     };
 
     const resetForm = () => {

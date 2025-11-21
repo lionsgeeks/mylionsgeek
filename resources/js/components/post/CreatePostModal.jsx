@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { helpers, MAX_POST_IMAGES } from '../utils/helpers';
@@ -8,7 +8,12 @@ import PostMediaPicker from './composer/PostMediaPicker';
 import PostMediaGrid from './composer/PostMediaGrid';
 
 const CreatePostModal = ({ onOpenChange, user }) => {
-    const { stopScrolling, buildImageEntries, revokePreviewUrls } = helpers();
+    const {
+        stopScrolling,
+        buildImageEntries,
+        revokePreviewUrls,
+        createImageRemovalHandler,
+    } = helpers();
     const [selectedImages, setSelectedImages] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [limitMessage, setLimitMessage] = useState('');
@@ -51,10 +56,13 @@ const CreatePostModal = ({ onOpenChange, user }) => {
         }
     };
 
-    const removeImage = (image) => {
-        revokePreviewUrls([image]);
-        setSelectedImages((prev) => prev.filter((img) => img.id !== image.id));
-    };
+    const removeImage = useMemo(
+        () => createImageRemovalHandler({
+            revokePreviewUrls,
+            updateNewImages: setSelectedImages,
+        }),
+        [createImageRemovalHandler, revokePreviewUrls]
+    );
 
     const resetForm = () => {
         revokePreviewUrls(imagesRef.current);

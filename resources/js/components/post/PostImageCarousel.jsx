@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { helpers } from '../utils/helpers';
 
 const PostImageCarousel = ({ images = [] }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const { resolvePostImageUrl } = helpers();
 
     // Handle case where images is empty or single image
     if (!images || images.length === 0) {
@@ -18,7 +20,7 @@ const PostImageCarousel = ({ images = [] }) => {
         return (
             <div className="w-full h-full flex items-center justify-center">
                 <img
-                    src={'/storage/img/posts/' + images[0]}
+                    src={resolvePostImageUrl(images[0]) ?? ''}
                     alt="Post content"
                     className="max-w-full max-h-full object-contain rounded"
                 />
@@ -46,7 +48,7 @@ const PostImageCarousel = ({ images = [] }) => {
         <div className="relative w-full h-full flex items-center justify-center group">
             {/* Main Image */}
             <img
-                src={'/storage/img/posts/' + images[currentIndex]}
+                src={resolvePostImageUrl(images[currentIndex]) ?? ''}
                 alt={`Post content ${currentIndex + 1}`}
                 className="max-w-full max-h-full object-contain rounded transition-opacity duration-300"
             />
@@ -102,7 +104,7 @@ const PostImageCarousel = ({ images = [] }) => {
                                 }`}
                         >
                             <img
-                                src={'/storage/img/posts/' + img}
+                                src={resolvePostImageUrl(img) ?? ''}
                                 alt={`Thumbnail ${index + 1}`}
                                 className="w-full h-full object-cover"
                             />

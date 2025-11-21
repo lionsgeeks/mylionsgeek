@@ -3,7 +3,7 @@ import { Trash2, Edit } from 'lucide-react'
 import DeleteModal from '../DeleteModal';
 import EditPost from './EditPost';
 
-const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit }) => {
+const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit, isDeleting }) => {
     return (
         <>
             {/* Dropdown */}
@@ -14,16 +14,21 @@ const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDele
                             <Edit size={16} />
                             Update
                         </li>
-                        <li onClick={() => {
-                            openChangeDelete(true)
-                        }} className="flex items-center gap-2 px-4 py-2 cursor-pointer text-sm text-error">
+                        <li
+                            onClick={() => {
+                                if (!isDeleting) {
+                                    openChangeDelete(true)
+                                }
+                            }}
+                            className={`flex items-center gap-2 px-4 py-2 cursor-pointer text-sm ${isDeleting ? 'text-error/60 cursor-not-allowed' : 'text-error'}`}
+                        >
                             <Trash2 size={16} />
-                            Delete
+                            {isDeleting ? 'Deleting...' : 'Delete'}
                         </li>
                     </>
                 </ul>
             </div>
-            {openDelete && <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title='Delete Post' onConfirm={handleDelete} />}
+            {openDelete && <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title='Delete Post' onConfirm={handleDelete} loading={isDeleting} />}
             {openEditPost && (
                 <EditPost
                     user={user}

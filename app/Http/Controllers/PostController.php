@@ -6,6 +6,10 @@ use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Collection;
+use Throwable;
 
 class PostController extends Controller
 {
@@ -29,6 +33,7 @@ class PostController extends Controller
             });
         return response()->json(['comments' => $comments]);
     }
+
     public function getPostLikes($postId)
     {
         $post = Post::findOrFail($postId);
@@ -45,7 +50,6 @@ class PostController extends Controller
                     'created_at' => $l->created_at->toDateTimeString(),
                 ];
             });
-        // dd($Likes);
         return response()->json(['likes' => $Likes]);
     }
 
@@ -63,7 +67,6 @@ class PostController extends Controller
             'user_id' => $user->id,
             'comment' => $request->comment,
         ]);
-        // eager load user info for response
         $comment->load('user:id,name,image');
         return response()->json([
             'id' => $comment->id,
@@ -74,6 +77,7 @@ class PostController extends Controller
             'created_at' => $comment->created_at->toDateTimeString(),
         ]);
     }
+
     public function AddLike($id)
     {
         $user = Auth::user();
@@ -82,14 +86,11 @@ class PostController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // See if this user already liked this post
         $like = $post->likes()->where('user_id', $user->id)->first();
         if ($like) {
-            // Unlike (remove like)
             $like->delete();
             $liked = false;
         } else {
-            // Add like
             $post->likes()->create(['user_id' => $user->id]);
             $liked = true;
         }
@@ -101,14 +102,14 @@ class PostController extends Controller
             'likes_count' => $count,
         ]);
     }
+
     public function deleteComment($id)
     {
         $comment = Comment::find($id);
-
         $comment->delete();
-
         return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
+
     public function updateComment(Request $request, $id)
     {
         $request->validate([
@@ -121,18 +122,35 @@ class PostController extends Controller
         ]);
         return response()->json(['message' => 'Comment edited succesfully']);
     }
-    public function deletePost($id)
+
+    public function deletePost(Request $request, $id)
     {
-        $post = Post::find($id);
+        $post = Post::with(['comments', 'likes'])->find($id);
+
         if (!$post) {
-            return redirect()->back()->with('error', 'Post not found');
-        } else if (Auth::user()->id != $post->user_id) {
-            return redirect()->back()->with('error', "You can't delete this post");
+            return $this->respondWithMessage($request, 'Post not found', false, 404);
         }
-        $post->delete();
-        return redirect()->back()->with('success', 'Post must be deleted');
+
+        if (Auth::id() !== $post->user_id) {
+            return $this->respondWithMessage($request, "You can't delete this post", false, 403);
+        }
+
+        $images = $this->collectPostImages($post->images);
+
+        DB::transaction(function () use ($post, $images) {
+            if ($images->isNotEmpty()) {
+                $this->deleteStoredImages($images);
+            }
+
+            $this->clearPostImages($post);
+            $post->comments()->delete();
+            $post->likes()->delete();
+            $post->delete();
+        });
+
+        return $this->respondWithMessage($request, 'Post deleted successfully');
     }
-    //! edit post function
+
     public function editPost(Request $request, $id)
     {
         $post = Post::findOrFail($id);
@@ -154,12 +172,12 @@ class PostController extends Controller
         $ownedImages = collect($post->images ?? []);
 
         $removedImages = collect($request->input('removed_images', []))
-            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->filter(fn($image) => $ownedImages->contains($image))
             ->unique()
             ->values();
 
         $keepImages = collect($request->input('keep_images', []))
-            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->filter(fn($image) => $ownedImages->contains($image))
             ->unique()
             ->values();
 
@@ -180,7 +198,9 @@ class PostController extends Controller
 
         $newUploads = $this->persistUploadedImages($incomingFiles);
 
-        $finalImages = array_values(array_merge($keepImages->all(), $newUploads));
+        $finalImages = $this->sanitizeImageNames(
+            array_merge($keepImages->all(), $newUploads)
+        );
 
         $post->update([
             'description' => $request->input('description', $post->description),
@@ -189,26 +209,23 @@ class PostController extends Controller
 
         return back()->with('success', 'Post Updated Successfully');
     }
-    //! create post
+
     public function storePost(Request $request)
     {
-        // Validate
-        // dd($request->all());
         $request->validate([
             'description' => 'nullable|string',
             'images' => 'array|max:' . Post::MAX_IMAGES,
-            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
+            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240', // 10MB max
         ]);
 
         $uploadedFiles = $request->file('images', []);
-
         if (count($uploadedFiles) > Post::MAX_IMAGES) {
             return back()->withErrors([
-                'images' => "You can upload up to " . Post::MAX_IMAGES . " images per post.",
+                'images' => "You can upload up to " . Post::MAX_IMAGES . " images per post."
             ])->withInput($request->except(['images']));
         }
 
-        $imagesArray = $this->persistUploadedImages($uploadedFiles);
+        $imagesArray = $this->sanitizeImageNames($this->persistUploadedImages($uploadedFiles));
 
         Post::create([
             'user_id' => Auth::id(),
@@ -216,43 +233,300 @@ class PostController extends Controller
             'images' => $imagesArray,
         ]);
 
-        $posts = Post::withCount(['likes', 'comments'])
-            ->latest()
-            ->get();
+        $posts = Post::withCount(['likes', 'comments'])->latest()->get();
 
         return back()->with([
-            'success' => 'Post Updated Successfully',
+            'success' => 'Post Created Successfully',
             'posts' => $posts
         ]);
     }
+
     private function persistUploadedImages(array $files = []): array
     {
         $stored = [];
+        $disk = $this->postImagesDisk();
+        $this->ensurePostImagesDirectoryExists($disk);
 
         foreach ($files as $image) {
-            if (!$image) {
-                continue;
-            }
+            if (!$image || !$image->isValid()) continue;
 
-            $fileName = $image->hashName();
-            $image->move(public_path('/storage/img/posts'), $fileName);
-            $stored[] = $fileName;
+            try {
+                $path = $image->store('img/posts', $disk);
+                if ($path) $stored[] = basename($path);
+            } catch (Throwable $e) {
+                \Log::error("Failed to store image: " . $e->getMessage());
+                report($e);
+            }
         }
 
         return $stored;
     }
 
-    private function deleteStoredImages(array $filenames = []): void
+    private function deleteStoredImages(iterable $filenames = []): void
     {
+        $defaultDisk = $this->postImagesDisk();
+
+        foreach ($this->uniqueImageDescriptors($filenames) as $descriptor) {
+            $path = $descriptor['path'];
+            $disk = $descriptor['disk'] ?? $defaultDisk;
+            $publicId = $descriptor['public_id'];
+
+            if ($publicId) {
+                $this->deleteFileFromDisk($publicId, $disk);
+            }
+
+            if ($path) {
+                $this->deleteFileFromDisk($path, $disk);
+            }
+        }
+    }
+
+    private function uniqueImageDescriptors(iterable $filenames): array
+    {
+        $unique = [];
+        $seen = [];
+
         foreach ($filenames as $fileName) {
             if (!$fileName) {
                 continue;
             }
 
-            $path = public_path('/storage/img/posts/' . $fileName);
+            $descriptor = $this->normalizeImageDescriptor($fileName);
 
-            if (file_exists($path)) {
-                @unlink($path);
+            if (!$descriptor['path'] && !$descriptor['public_id']) {
+                continue;
+            }
+
+            $key = implode('|', [
+                $descriptor['disk'] ?? $this->postImagesDisk(),
+                $descriptor['public_id'] ?? '',
+                $descriptor['path'] ?? '',
+            ]);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $unique[] = $descriptor;
+        }
+
+        return $unique;
+    }
+
+    private function collectPostImages($images): Collection
+    {
+        if (blank($images)) {
+            return collect();
+        }
+
+        if (is_string($images)) {
+            $decoded = json_decode($images, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $images = $decoded;
+            } else {
+                $images = [$images];
+            }
+        }
+
+        if ($images instanceof Collection) {
+            return $images->filter(fn($image) => !blank($image))->values();
+        }
+
+        if (!is_array($images)) {
+            return collect();
+        }
+
+        return collect($images)
+            ->filter(fn($image) => !blank($image))
+            ->values();
+    }
+
+    private function sanitizeImageNames(iterable $images): array
+    {
+        $names = [];
+
+        foreach ($images as $image) {
+            $name = $this->extractImageName($image);
+
+            if ($name) {
+                $names[] = $name;
+            }
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    private function extractImageName($image): ?string
+    {
+        $value = null;
+
+        if (is_array($image)) {
+            $value = $image['name']
+                ?? $image['path']
+                ?? $image['url']
+                ?? $image['preview']
+                ?? $image['id']
+                ?? null;
+        } else {
+            $value = $image;
+        }
+
+        if (!$value) {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $withoutQuery = preg_split('/[?#]/', $trimmed, 2)[0];
+        $basename = basename($withoutQuery);
+
+        if ($basename === '' || $basename === '.' || $basename === '..') {
+            return null;
+        }
+
+        return $basename;
+    }
+
+    private function normalizeImageDescriptor($image): array
+    {
+        if (is_array($image)) {
+            return [
+                'path' => $this->normalizeImagePath($image['path'] ?? $image['url'] ?? $image['preview'] ?? $image['id'] ?? null),
+                'disk' => $image['disk'] ?? $image['storage_disk'] ?? null,
+                'public_id' => $image['public_id'] ?? $image['provider_public_id'] ?? null,
+            ];
+        }
+
+        return [
+            'path' => $this->normalizeImagePath($image),
+            'disk' => null,
+            'public_id' => null,
+        ];
+    }
+
+    private function normalizeImagePath($path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        $value = trim((string) $path);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $value)) {
+            return null;
+        }
+
+        $value = ltrim($value, '/');
+
+        if (str_starts_with($value, 'storage/')) {
+            $value = substr($value, strlen('storage/'));
+        }
+
+        if (str_starts_with($value, 'public/')) {
+            $value = substr($value, strlen('public/'));
+        }
+
+        if (!str_contains($value, '/')) {
+            $value = 'img/posts/' . $value;
+        }
+
+        return $value;
+    }
+
+    private function deleteFileFromDisk(string $path, ?string $disk = null): void
+    {
+        $trimmed = ltrim($path, '/');
+        $diskName = $disk ?? $this->postImagesDisk();
+
+        try {
+            $storage = Storage::disk($diskName);
+            if ($storage->exists($trimmed)) {
+                $storage->delete($trimmed);
+                return;
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        if ($diskName === 'public') {
+            $publicStoragePath = public_path('storage/' . $trimmed);
+            if (file_exists($publicStoragePath)) {
+                @unlink($publicStoragePath);
+                return;
+            }
+
+            $absolutePath = public_path($trimmed);
+            if (file_exists($absolutePath)) {
+                @unlink($absolutePath);
+            }
+        }
+    }
+
+    private function respondWithMessage(Request $request, string $message, bool $success = true, int $status = 200)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], $status);
+        }
+
+        $flashKey = $success ? 'success' : 'error';
+
+        return redirect()->back()->with($flashKey, $message);
+    }
+
+    private function clearPostImages(Post $post): void
+    {
+        $post->forceFill(['images' => []]);
+
+        if (method_exists($post, 'saveQuietly')) {
+            $post->saveQuietly();
+            return;
+        }
+
+        $originalTimestamps = $post->timestamps;
+        $post->timestamps = false;
+        $post->save();
+        $post->timestamps = $originalTimestamps;
+    }
+
+    private function postImagesDisk(): string
+    {
+        // Always fallback to public
+        $configured = config('filesystems.post_images_disk')
+            ?? env('POST_IMAGES_DISK')
+            ?? 'public';
+
+        $disks = config('filesystems.disks', []);
+
+        return array_key_exists($configured, $disks) ? $configured : 'public';
+    }
+
+    private function ensurePostImagesDirectoryExists(string $disk): void
+    {
+        $directory = 'img/posts';
+        $storage = Storage::disk($disk);
+
+        // Make directory if it doesn't exist
+        if (!$storage->exists($directory)) {
+            try {
+                $storage->makeDirectory($directory, 0755, true);
+            } catch (Throwable $e) {
+                // fallback to manual creation for public disk
+                if ($disk === 'public') {
+                    $fullPath = storage_path('app/public/' . $directory);
+                    if (!file_exists($fullPath)) {
+                        mkdir($fullPath, 0755, true);
+                    }
+                }
+                report($e);
             }
         }
     }

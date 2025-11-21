@@ -1,9 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { timeAgo } from '../../lib/utils';
-import CommentsModal from './CommentsModal';
-import LikesModal from './LikesModal';
-import UndoRemove from '../UndoRemove';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { helpers } from '../utils/helpers';
 import PostCardHeader from './PostCardHeader';
 import PostCardMainContent from './PostCardMainContent';
@@ -12,37 +9,39 @@ import PostCardFooter from './PostCardFooter';
 const PostCard = ({ user, posts }) => {
     const { auth } = usePage().props
     const { addOrRemoveFollow } = helpers();
-    const [undoState, setUndoState] = useState(false);
-    const [pendingDeleteId, setPendingDeleteId] = useState(null);
-    const [undoTimer, setUndoTimer] = useState(null);
+    const [postList, setPostList] = useState(posts ?? []);
+    const [deletingPostId, setDeletingPostId] = useState(null);
 
-    // 🩵 Comment count handlers
-
-
-
-    // 🩵 Undo delete logic
     useEffect(() => {
+        setPostList(posts ?? []);
+    }, [posts]);
+
+    const handlePostRemoved = useCallback((postId) => {
+        if (!postId) {
+            return null;
+        }
+
+        let snapshot = null;
+
+        setPostList((prev) => {
+            snapshot = prev;
+            return prev.filter((post) => post.id !== postId);
+        });
+
         return () => {
-            if (undoTimer) clearTimeout(undoTimer);
+            if (!snapshot) {
+                return;
+            }
+
+            setPostList((current) => {
+                if (current.some((post) => post.id === postId)) {
+                    return current;
+                }
+
+                return snapshot;
+            });
         };
-    }, [undoTimer]);
-
-    const handlePostRemoved = (postId) => {
-        // const newPosts = posts?.filter((p) => p?.id !== postId);
-        // onPostsChange(newPosts);
-    };
-
-
-
-    const handleUndoClick = () => {
-        if (undoTimer) clearTimeout(undoTimer);
-        setUndoState(false);
-        setPendingDeleteId(null);
-    };
-
-    // 🩵 Open/close post details dropdown
-
-
+    }, []);
 
     const takeToUserProfile = (post) => {
         if (auth.user.role.includes('admin')) {
@@ -51,13 +50,62 @@ const PostCard = ({ user, posts }) => {
         return '/student/' + post?.user_id
     }
 
+    const handleDeletePost = useCallback((postId) => {
+        if (!postId) {
+            return Promise.resolve(false);
+        }
+
+        if (deletingPostId === postId) {
+            return Promise.resolve(false);
+        }
+
+        const rollback = handlePostRemoved(postId);
+        setDeletingPostId(postId);
+
+        return new Promise((resolve, reject) => {
+            try {
+                router.delete(`/posts/post/${postId}`, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => {
+                        resolve(true);
+                    },
+                    onError: (errors) => {
+                        rollback?.();
+                        reject(errors || new Error('Unable to delete post.'));
+                    },
+                    onFinish: () => {
+                        setDeletingPostId((current) => current === postId ? null : current);
+                    },
+                });
+            } catch (error) {
+                rollback?.();
+                setDeletingPostId((current) => current === postId ? null : current);
+                reject(error);
+            }
+        });
+    }, [deletingPostId, handlePostRemoved]);
+
     return (
         <>
-            {posts?.map((p, index) => {
+            {postList?.map((p, index) => {
+                const isDeleting = deletingPostId === p.id;
                 return (
-                    <div key={index} className="bg-white dark:bg-dark_gray rounded-lg shadow mb-4">
+                    <div key={p.id ?? index} className="relative bg-white dark:bg-dark_gray rounded-lg shadow mb-4 overflow-hidden">
+                        {isDeleting && (
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-dark/70 text-dark dark:text-light text-sm font-semibold">
+                                Deleting...
+                            </div>
+                        )}
                         {/* Post Header */}
-                        <PostCardHeader post={p} user={auth.user} takeUserProfile={takeToUserProfile} timeAgo={timeAgo} />
+                        <PostCardHeader
+                            post={p}
+                            user={auth.user}
+                            takeUserProfile={takeToUserProfile}
+                            timeAgo={timeAgo}
+                            onDeletePost={handleDeletePost}
+                            isDeleting={isDeleting}
+                        />
 
                         {/* Post Content */}
                         <PostCardMainContent post={p} user={auth.user} addOrRemoveFollow={addOrRemoveFollow} timeAgo={timeAgo} takeToUserProfile={takeToUserProfile} />
@@ -67,12 +115,6 @@ const PostCard = ({ user, posts }) => {
                     </div>
                 );
             })}
-
-            {/* Undo popup */}
-            {undoState && <UndoRemove state={undoState} onUndo={handleUndoClick} />}
-
-
-           
         </>
     );
 };
