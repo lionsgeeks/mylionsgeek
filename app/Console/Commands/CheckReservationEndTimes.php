@@ -66,7 +66,9 @@ class CheckReservationEndTimes extends Command
 
                 // Send the email
                 $verificationPath = "reservations/{$reservation->id}/verify-end";
-                Mail::to("boujjarr@gmail.com")->send(new ReservationEndedMail($user, $reservation, $verificationPath));
+                foreach ($this->studioResponsableEmails() as $email) {
+                    Mail::to($email)->send(new ReservationEndedMail($user, $reservation, $verificationPath));
+                }
 
                 // Mark the reservation as passed to avoid duplicate emails
                 DB::table('reservations')->where('id', $reservation->id)->update(['passed' => true]);
@@ -84,5 +86,22 @@ class CheckReservationEndTimes extends Command
         $this->info("Processed {$processedCount} reservations that have reached their end time.");
 
         return Command::SUCCESS;
+    }
+    private function studioResponsableEmails(): array
+    {
+        $emails = DB::table('users')
+            ->where('role', 'studio_responsable')
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($emails->isEmpty()) {
+            $fallback = collect(array_filter(array_map('trim', explode(',', env('STUDIO_RESPONSABLE_EMAILS', env('ADMIN_NOTIFICATION_EMAILS', ''))))));
+            $emails = $fallback->filter()->unique()->values();
+        }
+
+        return $emails->all();
     }
 }

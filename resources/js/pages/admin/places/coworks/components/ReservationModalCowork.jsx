@@ -55,6 +55,12 @@ const ReservationModalCowork = ({
         onClose();
     };
 
+    const isDateTimeInPast = (dayValue, timeValue) => {
+        if (!dayValue || !timeValue) return false;
+        const composed = new Date(`${dayValue}T${timeValue}`);
+        return composed < new Date();
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
 
@@ -87,6 +93,11 @@ const ReservationModalCowork = ({
 
         if (endMinutes <= startMinutes) {
             setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        if (isDateTimeInPast(data.day, data.start)) {
+            setTimeError('Reservation start time cannot be in the past.');
             return;
         }
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -32,64 +32,70 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
         onClose();
     };
 
+    const toMinutes = (time) => {
+        const [h, m] = time.split(':').map(Number);
+        return h * 60 + m;
+    };
+
+    const isDateTimeInPast = useCallback((dayValue, timeValue) => {
+        if (!dayValue || !timeValue) return false;
+        const composed = new Date(`${dayValue}T${timeValue}`);
+        return composed < new Date();
+    }, []);
+
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // 🕒 Prevent end time before or equal start time
-        if (data.start >= data.end) {
-            //alert('End time must be after start time.');
-            const toMinutes = (time) => {
-                const [h, m] = time.split(':').map(Number);
-                return h * 60 + m;
-            };
+        if (!data.day || !data.start || !data.end) {
+            setTimeError('Please select a date, start time, and end time.');
+            return;
+        }
 
-            const minMinutes = 8 * 60;
-            const maxMinutes = 18 * 60;
-            const startMinutes = data.start ? toMinutes(data.start) : null;
-            const endMinutes = data.end ? toMinutes(data.end) : null;
+        const minMinutes = 8 * 60;
+        const maxMinutes = 18 * 60;
+        const startMinutes = toMinutes(data.start);
+        const endMinutes = toMinutes(data.end);
 
+        if (startMinutes < minMinutes || startMinutes > maxMinutes) {
+            setTimeError('Start time must be between 08:00 and 18:00.');
+            return;
+        }
 
-            if (!data.start || !data.end) {
-                setTimeError('Please select both start and end times.');
-                return;
-            }
+        if (endMinutes < minMinutes || endMinutes > maxMinutes) {
+            setTimeError('End time must be between 08:00 and 18:00.');
+            return;
+        }
 
-            if (startMinutes < minMinutes || startMinutes > maxMinutes) {
-                setTimeError('Start time must be between 08:00 and 18:00.');
-                return;
-            }
+        if (endMinutes <= startMinutes) {
+            setTimeError('End time must be later than start time.');
+            return;
+        }
 
-            if (endMinutes < minMinutes || endMinutes > maxMinutes) {
-                setTimeError('End time must be between 08:00 and 18:00.');
-                return;
-            }
+        if (isDateTimeInPast(data.day, data.start)) {
+            setTimeError('Reservation start time cannot be in the past.');
+            return;
+        }
 
-            if (endMinutes <= startMinutes) {
-                setTimeError('End time must be later than start time.');
-                return;
-            }
+        setTimeError('');
 
-            setTimeError('');
-
-            const formData = {
-                meeting_room_id: data.meeting_room_id,
-                day: data.day,
-                start: data.start,
-                end: data.end,
-            };
-
-            post('/admin/reservations/storeReservationMeetingRoom', {
-                data: formData,
-                onSuccess: () => {
-                    handleClose();
-                    onSuccess();
-                },
-                onError: (errors) => {
-                    console.error('Meeting room reservation error:', errors);
-                },
-            });
+        const formData = {
+            meeting_room_id: data.meeting_room_id,
+            day: data.day,
+            start: data.start,
+            end: data.end,
         };
-    }
+
+        post('/admin/reservations/storeReservationMeetingRoom', {
+            data: formData,
+            onSuccess: () => {
+                handleClose();
+                onSuccess();
+            },
+            onError: (errors) => {
+                console.error('Meeting room reservation error:', errors);
+            },
+        });
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>

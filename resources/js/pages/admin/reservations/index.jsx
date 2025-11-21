@@ -15,6 +15,7 @@ import StatCard from '../../../components/StatCard';
 import ReservationDetailsModal from './components/ReservationDetailsModal';
 import ReservationsTable from './components/ReservationsTable';
 import TablePagination from '@/components/TablePagination';
+import Rolegard from '@/components/rolegard';
 
 // Helpers to normalize and compare dates
 function parseYmd(dateStr) {
@@ -369,25 +370,27 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                         <h1 className="text-2xl font-medium">Reservations</h1>
                         <p className="text-sm text-muted-foreground">{(rangeActive ? baseAll.length : allReservations.length)} total — {(rangeActive ? baseCowork.length : coworkReservations.length)} coworks — {(rangeActive ? baseStudio.length : studioReservations.length)} studios</p>
                     </div>
-                    <div className="flex items-end justify-end">
-                        <div className='flex gap-x-2'>
+                    <Rolegard except={['studio_responsable']}>
+                        <div className="flex items-end justify-end">
+                            <div className='flex gap-x-2'>
 
-                            <Button onClick={() => setShowExportModal(true)}
-                                className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
-                            >
-                                <Download /> Export
-                            </Button>
+                                <Button onClick={() => setShowExportModal(true)}
+                                    className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
+                                >
+                                    <Download /> Export
+                                </Button>
 
-                            <Link
-                                href="/admin/reservations/analytics"
-                                className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
-                            >
-                                <Activity className="w-6 h-4" />
-                                Analytics
-                            </Link>
+                                <Link
+                                    href="/admin/reservations/analytics"
+                                    className="flex items-center gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer px-2 rounded-md"
+                                >
+                                    <Activity className="w-6 h-4" />
+                                    Analytics
+                                </Link>
 
+                            </div>
                         </div>
-                    </div>
+                    </Rolegard>
                     <div className="flex items-center gap-2 ">
                         <div className="relative ">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 " />

@@ -17,6 +17,7 @@ use Inertia\Response;
 
 class ReservationController extends Controller
 {
+    private const ACCESS_BYPASS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
 
 
     public function users()
@@ -258,6 +259,13 @@ class ReservationController extends Controller
             'user_id' => 'required|integer|exists:users,id', // added
         ]);
 
+        $user = User::find($validated['user_id']);
+        if (!$this->userHasAccessFlag($user, 'access_studio')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to reserve a studio.',
+            ], 403);
+        }
 
         try {
             $reservationId = null;
@@ -400,6 +408,9 @@ class ReservationController extends Controller
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
+        if (!$this->userHasAccessFlag($user, 'access_cowork')) {
+            return response()->json(['message' => 'You do not have permission to reserve a cowork table.'], 403);
+        }
         $request->validate([
             'table' => 'required|integer',
             'seats' => 'required|integer|min:1',
@@ -429,5 +440,54 @@ class ReservationController extends Controller
             'message' => 'Cowork reservation created and approved automatically',
             'reservation' => $reservation,
         ], 201);
+    }
+
+    private function normalizeRolesList($roles): array
+    {
+        if (is_array($roles)) {
+            $list = $roles;
+        } elseif (is_string($roles) && $roles !== '') {
+            $decoded = json_decode($roles, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = $decoded;
+            } else {
+                $list = array_map('trim', explode(',', $roles));
+            }
+        } else {
+            $list = [];
+        }
+
+        return array_filter(array_map(fn ($role) => strtolower((string) $role), $list));
+    }
+
+    private function userHasAccessFlag($user, string $field): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $roles = $this->normalizeRolesList(data_get($user, 'role'));
+        if (!empty(array_intersect($roles, self::ACCESS_BYPASS_ROLES))) {
+            return true;
+        }
+
+        $directValue = data_get($user, $field);
+        if ($directValue !== null) {
+            return (bool) $directValue;
+        }
+
+        $relationValue = data_get($user, "access.$field");
+        if ($relationValue !== null) {
+            return (bool) $relationValue;
+        }
+
+        if ($user instanceof User) {
+            $relationValue = optional($user->access)->{$field};
+            if ($relationValue !== null) {
+                return (bool) $relationValue;
+            }
+        }
+
+        return false;
     }
 }

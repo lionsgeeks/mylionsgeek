@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -88,6 +88,12 @@ const ReservationModal = ({
         onClose();
     };
 
+    const isDateTimeInPast = useCallback((dayValue, timeValue) => {
+        if (!dayValue || !timeValue) return false;
+        const composed = new Date(`${dayValue}T${timeValue}`);
+        return composed < new Date();
+    }, []);
+
     const handleNext = () => {
         const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
         const endTime = data.end ? parseFloat(data.end.replace(':', '.')) : null;
@@ -104,6 +110,11 @@ const ReservationModal = ({
 
         if (endTime <= startTime) {
             setTimeError('End time must be later than start time.');
+            return;
+        }
+
+        if (isDateTimeInPast(data.day, data.start)) {
+            setTimeError('Reservation start time cannot be in the past.');
             return;
         }
 
@@ -165,8 +176,6 @@ const ReservationModal = ({
         }
     }, [currentStep, shouldShowStudioSelection, availableStudios]);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
     const handleRangeFieldChange = (field, value) => {
         setData(field, value);
         if (onTimeChange) {
@@ -179,6 +188,13 @@ const ReservationModal = ({
         }
     };
 
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        if (isDateTimeInPast(data.day, data.start)) {
+            setTimeError('Reservation start time cannot be in the past.');
+            return;
+        }
 
         const formData = {
             ...data,
