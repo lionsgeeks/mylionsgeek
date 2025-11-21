@@ -5,6 +5,7 @@ const RolesMultiSelect = ({ roles, onChange }) => {
     const availableRoles = [
         'admin',
         'studio manager',
+        'studio_responsable',
         'student',
         'coworker',
         'coach',

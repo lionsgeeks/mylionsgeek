@@ -36,7 +36,7 @@ import EditReservationModal from './components/EditReservationModal';
 export default function AdminReservationDetails({ reservation }) {
     const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('studio_responsable');
     const handleBackNavigation = () => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
@@ -257,7 +257,7 @@ export default function AdminReservationDetails({ reservation }) {
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>
-                            <Rolegard authorized={["admin", "super_admin"]}>
+                            <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
 
                                 <p className="text-muted-foreground">Reservation #{reservation.id}</p>
                             </Rolegard>
@@ -268,7 +268,7 @@ export default function AdminReservationDetails({ reservation }) {
                         <span className="text-sm text-muted-foreground">
                             Created {new Date(reservation.created_at).toLocaleDateString()}
                         </span>
-                        <Rolegard authorized={["admin", "super_admin"]}>
+                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
                             {isPending && (
                                 <div className="ml-auto flex items-center gap-2">
                                     <Button
@@ -607,7 +607,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardContent>
                             </Card>
                         )}
-                        <Rolegard authorized={["admin", "super_admin"]}>
+                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
                             <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
                                 <CardHeader className="px-6 py-4">
                                     <CardTitle className="text-lg">Quick Actions</CardTitle>

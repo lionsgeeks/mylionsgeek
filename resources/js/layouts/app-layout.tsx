@@ -16,8 +16,8 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     // Always treat roles as an array
     const userRoles: string[] = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
 
-    // If the user has 'admin', show sidebar (even if they are also 'coach')
-    const isAdmin = userRoles.includes('admin');
+    // If the user has 'admin' or 'studio_responsable', show sidebar (even if they are also 'coach')
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('studio_responsable');
 
     // Show header only for students/coworkers without admin
     const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));
@@ -27,7 +27,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
 
     return (
         <Layout breadcrumbs={breadcrumbs} {...props}>
-            <div className={`bg-light dark:bg-dark ${auth.user.role.includes('student') && 'pt-20'}  shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg`}>
+            <div className={`bg-light dark:bg-dark ${userRoles.includes('student') && 'pt-20'}  shadow-lg w-[96%] my-6 mx-auto h-full rounded-lg`}>
                 <ShowSkippableModal />
                 {children}
             </div>
