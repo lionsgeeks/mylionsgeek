@@ -38,20 +38,20 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
                 )}
             </div>
             {post?.images?.length > 0 && (
-                <div onClick={() => setOpenPostModal(true)} className="relative w-full cursor-pointer px-1 aspect-video mt-3 flex flex-col gap-3">
+                <div onClick={() => setOpenPostModal(true)} className={`relative w-full cursor-pointer px-1 aspect-video mt-3 gap-3 ${post.images.length == 2 ? 'flex' : 'flex flex-col'}`}>
 
                     {/* Top big image */}
                     <img
                         src={`/storage/img/posts/${post?.images[0]}`}
                         alt=""
-                        className={`w-full object-cover rounded-lg ${post?.images.length == 1 ? 'h-full' : 'h-[70%]'}`}
+                        className={`object-cover rounded-lg ${post.images.length <= 2 ? post.images.length == 2 ? 'h-full w-1/2' : 'w-full h-full' : 'h-[70%] w-full'}`}
                     />
 
                     {/* Bottom small images */}
                     {post?.images.length > 1 && (
-                        <div className="h-[30%] w-full flex gap-3">
+                        <div className={`flex gap-3 ${post.images.length == 2 ? 'h-full w-1/2' : 'h-[30%] w-full'}`}>
                             {post?.images.slice(1, 5).map((img, i) => (
-                                <div key={i} className={`relative w-1/${post?.images.slice(1, 5).length} h-full`}>
+                                <div key={i} className={`relative h-full ${post.images.length - 1 < 4 ? `w-1/${post?.images.slice(1, 5).length}` : `w-1/4`}`}>
                                     <img
                                         src={`/storage/img/posts/${img}`}
                                         alt=""

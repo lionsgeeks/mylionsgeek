@@ -3,7 +3,7 @@ import { Trash2, Edit } from 'lucide-react'
 import DeleteModal from '../DeleteModal';
 import EditPost from './EditPost';
 
-const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit, postText, onPostTextChange, postImage, onPostImageChange, handleEditePost }) => {
+const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit }) => {
     return (
         <>
             {/* Dropdown */}
@@ -24,7 +24,13 @@ const PostMenuDropDown = ({ user, openDelete, openChangeDelete, post, handleDele
                 </ul>
             </div>
             {openDelete && <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title='Delete Post' onConfirm={handleDelete} />}
-            {openEditPost && <EditPost user={user} open={openEditPost} onOpenChange={openChangeEdit} post={post} postText={postText} onPostTextChange={onPostTextChange} onPostImageChange={onPostImageChange} onConfirm={handleEditePost} />}
+            {openEditPost && (
+                <EditPost
+                    user={user}
+                    onOpenChange={openChangeEdit}
+                    post={post}
+                />
+            )}
         </>
     );
 };

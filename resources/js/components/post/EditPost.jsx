@@ -1,99 +1,198 @@
-import React, { useState } from 'react';
-import { X, Image, Calendar, Award, Plus, Smile, Clock } from 'lucide-react';
-import { Avatar } from '@/components/ui/avatar';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import InputError from '@/components/input-error';
+import { helpers, MAX_POST_IMAGES } from '../utils/helpers';
+import PostModalShell from './composer/PostModalShell';
+import PostTextarea from './composer/PostTextarea';
+import PostMediaGrid from './composer/PostMediaGrid';
+import PostMediaPicker from './composer/PostMediaPicker';
 
-const EditPost = ({ user, open, onOpenChange, post, postText, onPostTextChange, onPostImageChange, onConfirm }) => {
-    const [preview, setPreview] = useState(post?.image ? `/storage/img/posts/${post.image}` : null);
-    const handleImagePreview = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const newPreview = URL.createObjectURL(file);
-        setPreview(newPreview);
-        onPostImageChange(file);
-    }
+const EditPost = ({ user, onOpenChange, post }) => {
+    const {
+        stopScrolling,
+        buildImageEntries,
+        revokePreviewUrls,
+        mapExistingImages,
+    } = helpers();
+
+    const [existingImages, setExistingImages] = useState(() =>
+        mapExistingImages(post?.images)
+    );
+    const [newImages, setNewImages] = useState([]);
+    const [removedImages, setRemovedImages] = useState([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [limitMessage, setLimitMessage] = useState('');
+    const newImagesRef = useRef([]);
+
+    const form = useForm({
+        description: post?.description ?? '',
+        keep_images: post?.images ?? [],
+        removed_images: [],
+        new_images: [],
+    });
+
+    const displayedImages = useMemo(
+        () => [...existingImages, ...newImages],
+        [existingImages, newImages]
+    );
+
+    useEffect(() => {
+        newImagesRef.current = newImages;
+    }, [newImages]);
+
+    useEffect(() => {
+        stopScrolling(true);
+        return () => {
+            stopScrolling(false);
+            revokePreviewUrls(newImagesRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
+        setExistingImages(mapExistingImages(post?.images));
+        setNewImages([]);
+        setRemovedImages([]);
+        setLimitMessage('');
+        form.reset({
+            description: post?.description ?? '',
+            keep_images: post?.images ?? [],
+            removed_images: [],
+            new_images: [],
+        });
+    }, [post?.id]);
+
+    useEffect(() => {
+        form.setData('keep_images', existingImages.map((image) => image.id));
+    }, [existingImages]);
+
+    useEffect(() => {
+        form.setData('new_images', newImages.map(({ file }) => file));
+    }, [newImages]);
+
+    useEffect(() => {
+        form.setData('removed_images', removedImages);
+    }, [removedImages]);
+
+    const handleImageSelection = async (event) => {
+        const files = event.target.files;
+        if (!files?.length || form.processing) return;
+
+        setIsUploading(true);
+        setLimitMessage('');
+
+        try {
+            const { entries, rejected } = await buildImageEntries(files, displayedImages.length);
+            setNewImages((prev) => [...prev, ...entries]);
+            if (rejected > 0) {
+                setLimitMessage(`You can keep or upload up to ${MAX_POST_IMAGES} images per post.`);
+            }
+        } catch (error) {
+            console.error('Failed to add images', error);
+        } finally {
+            setIsUploading(false);
+            event.target.value = '';
+        }
+    };
+
+    const handleRemoveImage = (image) => {
+        if (image.kind === 'existing') {
+            setExistingImages((prev) => prev.filter((img) => img.id !== image.id));
+            setRemovedImages((prev) =>
+                prev.includes(image.id) ? prev : [...prev, image.id]
+            );
+        } else {
+            revokePreviewUrls([image]);
+            setNewImages((prev) => prev.filter((img) => img.id !== image.id));
+        }
+    };
+
+    const resetForm = () => {
+        revokePreviewUrls(newImages);
+        setNewImages([]);
+        setRemovedImages([]);
+        setExistingImages(mapExistingImages(post?.images));
+        setLimitMessage('');
+        form.reset({
+            description: post?.description ?? '',
+            keep_images: post?.images ?? [],
+            removed_images: [],
+            new_images: [],
+        });
+        form.clearErrors();
+    };
+
+    const handleClose = () => {
+        resetForm();
+        onOpenChange(false);
+    };
+
+    const handleSubmit = () => {
+        if (form.processing || (displayedImages.length === 0 && !form.data.description.trim() && removedImages.length === 0)) {
+            return;
+        }
+
+        form.post(`/posts/post/${post?.id}`, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                resetForm();
+                onOpenChange(false);
+            },
+        });
+    };
+
+    const canSubmit =
+        !!form.data.description.trim() ||
+        displayedImages.length > 0 ||
+        removedImages.length > 0;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-[70%] max-h-[90vh] flex flex-col rounded-2xl shadow-2xl bg-light dark:bg-beta overflow-hidden transition-all duration-300">
-
-                {/* Header */}
-                <div className="p-5 border-b border-gray-200 dark:border-dark_gray flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Avatar
-                            className="w-12 h-12 overflow-hidden"
-                            image={user?.image}
-                            name={user?.name}
-                            lastActivity={user?.last_online || null}
-                            onlineCircleClass="hidden"
+        <PostModalShell
+            user={user}
+            title="Edit post"
+            onClose={handleClose}
+            showLoader={form.processing}
+            loaderMessage="Updating post..."
+            footer={
+                <div className="flex w-full items-center justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                        <PostMediaPicker
+                            id="edit-post-media"
+                            onChange={handleImageSelection}
+                            disabled={form.processing}
                         />
-                        <div>
-                            <h3 className="font-semibold text-base text-dark dark:text-light">{user?.name}</h3>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Editing post</span>
-                        </div>
+                        <p className="text-xs text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/60">
+                            {displayedImages.length}/{MAX_POST_IMAGES} images selected
+                        </p>
                     </div>
-
                     <button
-                        onClick={() => onOpenChange(false)}
-                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark_gray text-dark dark:text-light transition"
-                        aria-label="Close modal"
+                        disabled={!canSubmit || form.processing || isUploading}
+                        onClick={handleSubmit}
+                        className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 shadow-md ${canSubmit
+                            ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
+                            : 'bg-[var(--color-dark_gray)]/30 dark:bg-[var(--color-light)]/10 text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/40 cursor-not-allowed opacity-60'
+                            }`}
                     >
-                        <X size={22} />
+                        {form.processing ? 'Updating...' : 'Update'}
                     </button>
                 </div>
-
-                {/* Content */}
-                <div className="flex-1 flex flex-col gap-4 px-5 py-4 overflow-y-auto">
-                    <textarea
-                        value={postText}
-                        onChange={(e) => onPostTextChange(e.target.value)}
-                        placeholder="What do you want to talk about?"
-                        className="w-full min-h-fit resize-none text-lg outline-none bg-transparent text-dark dark:text-light placeholder-gray-400 dark:placeholder-gray-500 p-3"
-                    />
-                    {
-                        preview && preview?.length !== 0 &&
-                        <div className='h-fit  rounded-lg'>
-                            <img
-                                src={preview}
-                                alt="Preview"
-                                className="w-full object-cover rounded-lg"
-                            />
-                        </div>
-
-                    }
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 border-t border-gray-200 dark:border-dark_gray bg-white/50 dark:bg-beta/70 backdrop-blur-sm">
-                    <div className="flex w-full items-center justify-between mb-3">
-                        <label
-                            htmlFor="imageUpload"
-                            className="p-2 rounded-full hover:bg-gray-100 cursor-pointer dark:hover:bg-dark_gray text-gray-600 dark:text-gray-400 transition flex items-center justify-center"
-                        >
-                            <Image size={20} />
-                            <input
-                                id="imageUpload"
-                                type="file"
-                                accept="image"
-                                // onChange={(e) => onPostImageChange(e.target.files[0])} // your handler
-                                onChange={(e) => handleImagePreview(e)}
-                                className="hidden"
-                            />
-                        </label>
-                        <button
-                            disabled={!postText.trim()}
-                            onClick={onConfirm}
-                            className={`px-6 py-2.5 rounded-full font-semibold transition-all duration-200 shadow-sm
-            ${postText.trim()
-                                    ? 'bg-alpha text-dark hover:opacity-90'
-                                    : 'bg-gray-200 dark:bg-dark_gray text-gray-400 cursor-not-allowed'}
-          `}
-                        >
-                            Update
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+            }
+        >
+            <PostTextarea
+                value={form.data.description}
+                onChange={(e) => form.setData('description', e.target.value)}
+                placeholder="What do you want to talk about?"
+                disabled={form.processing}
+            />
+            <InputError message={form.errors.description} />
+            <PostMediaGrid
+                images={displayedImages}
+                onRemove={handleRemoveImage}
+                isLoading={isUploading}
+            />
+            <InputError message={limitMessage || form.errors.new_images} />
+        </PostModalShell>
     );
-}
+};
+
 export default EditPost;
