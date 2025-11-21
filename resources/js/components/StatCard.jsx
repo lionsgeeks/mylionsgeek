@@ -5,7 +5,7 @@ export default function StatsGrid({ statsData }) {
         <div className="bg-light dark:bg-dark py-0 sm:py-0">
             <div className="w-full mx-auto">
                 <div className={`grid grid-cols-1 sm:grid-cols-2 ${statsData?.length > 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}  gap-4`}>
-                    {statsData.map((stat, index) => {
+                    {statsData?.map((stat, index) => {
                         const Icon = stat.icon;
                         return (
                             <div
