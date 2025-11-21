@@ -4,7 +4,6 @@ import { React, useEffect, useRef, useState } from "react";
 const RolesMultiSelect = ({ roles, onChange }) => {
     const availableRoles = [
         'admin',
-        'studio manager',
         'studio_responsable',
         'student',
         'coworker',

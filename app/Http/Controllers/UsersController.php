@@ -157,7 +157,7 @@ class UsersController extends Controller
         $roles = [
             'student',
             'admin',
-            'studio manager',
+            'studio_responsable',
             'coach',
             'pro',
             'moderator',
