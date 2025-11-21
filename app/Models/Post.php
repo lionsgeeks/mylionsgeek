@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Post extends Model
 {
-    //
+    public const MAX_IMAGES = 16;
+
     protected $fillable = [
         'user_id',
         'description',

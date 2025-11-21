@@ -125,4 +125,5 @@ class StudentController extends Controller
         $followeRecord->delete();
         return back()->with('success', 'Your now unfollow something');
     }
+    
 }

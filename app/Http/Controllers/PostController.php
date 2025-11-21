@@ -135,27 +135,59 @@ class PostController extends Controller
     //! edit post function
     public function editPost(Request $request, $id)
     {
-        $post = Post::find($id);
-        if (Auth::user()->id == $post->user_id) {
-            # code...
-            $request->validate([
-                'description' => 'nullable|string',
-                'image' => 'nullable'
-            ]);
-            // dd($post);
-            if ($request->hasFile('image')) {
-                # code...
-                $file = $request->file('image');
-                $fileName = $file->hashName();
-                $file->move(public_path('/storage/img/posts'), $fileName);
-                $request->image = $fileName;
-            };
-            $post->update([
-                'description' => $request->description,
-                'image' => $request->image
-            ]);
-            return back()->with('success', 'Post Updated SuccesFully');
+        $post = Post::findOrFail($id);
+
+        if (Auth::id() !== $post->user_id) {
+            abort(403);
         }
+
+        $request->validate([
+            'description' => 'nullable|string',
+            'keep_images' => 'array',
+            'keep_images.*' => 'string',
+            'removed_images' => 'array',
+            'removed_images.*' => 'string',
+            'new_images' => 'array',
+            'new_images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
+        ]);
+
+        $ownedImages = collect($post->images ?? []);
+
+        $removedImages = collect($request->input('removed_images', []))
+            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->unique()
+            ->values();
+
+        $keepImages = collect($request->input('keep_images', []))
+            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->unique()
+            ->values();
+
+        if ($keepImages->isEmpty()) {
+            $keepImages = $ownedImages->diff($removedImages)->values();
+        }
+
+        $incomingFiles = $request->file('new_images', []);
+        if ($keepImages->count() + count($incomingFiles) > Post::MAX_IMAGES) {
+            return back()->withErrors([
+                'new_images' => "You can keep or upload up to " . Post::MAX_IMAGES . " images per post.",
+            ])->withInput($request->except(['new_images']));
+        }
+
+        if ($removedImages->isNotEmpty()) {
+            $this->deleteStoredImages($removedImages->all());
+        }
+
+        $newUploads = $this->persistUploadedImages($incomingFiles);
+
+        $finalImages = array_values(array_merge($keepImages->all(), $newUploads));
+
+        $post->update([
+            'description' => $request->input('description', $post->description),
+            'images' => $finalImages,
+        ]);
+
+        return back()->with('success', 'Post Updated Successfully');
     }
     //! create post
     public function storePost(Request $request)
@@ -164,28 +196,24 @@ class PostController extends Controller
         // dd($request->all());
         $request->validate([
             'description' => 'nullable|string',
-            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp', // validate each file
+            'images' => 'array|max:' . Post::MAX_IMAGES,
+            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp',
         ]);
 
-        $imagesArray = [];
+        $uploadedFiles = $request->file('images', []);
 
-        // Handle multiple images
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-
-                $fileName = $image->hashName();
-                $image->move(public_path('/storage/img/posts'), $fileName);
-
-                $imagesArray[] = $fileName; // push filename to array
-            }
+        if (count($uploadedFiles) > Post::MAX_IMAGES) {
+            return back()->withErrors([
+                'images' => "You can upload up to " . Post::MAX_IMAGES . " images per post.",
+            ])->withInput($request->except(['images']));
         }
-        
-        // Create post
-        // dd($imagesArray);
+
+        $imagesArray = $this->persistUploadedImages($uploadedFiles);
+
         Post::create([
             'user_id' => Auth::id(),
             'description' => $request->description,
-            'images' => $imagesArray, // save JSON array
+            'images' => $imagesArray,
         ]);
 
         $posts = Post::withCount(['likes', 'comments'])
@@ -196,5 +224,36 @@ class PostController extends Controller
             'success' => 'Post Updated Successfully',
             'posts' => $posts
         ]);
+    }
+    private function persistUploadedImages(array $files = []): array
+    {
+        $stored = [];
+
+        foreach ($files as $image) {
+            if (!$image) {
+                continue;
+            }
+
+            $fileName = $image->hashName();
+            $image->move(public_path('/storage/img/posts'), $fileName);
+            $stored[] = $fileName;
+        }
+
+        return $stored;
+    }
+
+    private function deleteStoredImages(array $filenames = []): void
+    {
+        foreach ($filenames as $fileName) {
+            if (!$fileName) {
+                continue;
+            }
+
+            $path = public_path('/storage/img/posts/' . $fileName);
+
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+        }
     }
 }
