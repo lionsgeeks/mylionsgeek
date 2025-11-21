@@ -895,10 +895,19 @@ class ReservationsController extends Controller
                 // Get admin users
                 $adminUsers = DB::table('users')
                     ->whereIn('role', ['admin', 'super_admin'])
-                    ->select('email', 'name')
-                    ->get();
+                    ->whereNotNull('email')
+                    ->pluck('email')
+                    ->filter()
+                    ->unique()
+                    ->values();
 
-                \Log::info('Admin users found: ' . $adminUsers->count());
+                \Log::info('Admin emails found: ' . $adminUsers->count());
+
+                if ($adminUsers->isEmpty()) {
+                    $fallbackRecipients = collect(array_filter(array_map('trim', explode(',', env('ADMIN_NOTIFICATION_EMAILS', 'boujjarr@gmail.com')))));
+                    \Log::warning('No admin users found for reservation notification. Falling back to configured recipients: ' . $fallbackRecipients->implode(', '));
+                    $adminUsers = $fallbackRecipients->unique()->values();
+                }
 
                 // Get the created reservation data for the email
                 $createdReservation = DB::table('reservations')
@@ -914,12 +923,14 @@ class ReservationsController extends Controller
 
                 \Log::info('User data: ' . json_encode($reservationUser));
 
-                // Send email to all admin users
-                foreach ($adminUsers as $admin) {
-                    \Log::info('Sending email to: boujjarr@gmail.com');
-                    // Mail::to($admin->email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    Mail::to("boujjarr@gmail.com")->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
-                    \Log::info('Email sent successfully to: boujjarr@gmail.com');
+                if ($adminUsers->isEmpty()) {
+                    \Log::warning('No admin notification recipients configured. Skipping email dispatch.');
+                } else {
+                    foreach ($adminUsers as $email) {
+                        \Log::info('Sending reservation notification to: ' . $email);
+                        Mail::to($email)->send(new ReservationCreatedAdminMail($reservationUser, $createdReservation));
+                        \Log::info('Email sent successfully to: ' . $email);
+                    }
                 }
             } catch (\Exception $e) {
                 // Log the error but don't fail the reservation creation
@@ -967,6 +978,56 @@ class ReservationsController extends Controller
                 'table' => $coworkData->table,
                 'image' => $coworkData->image ?? null,
             ],
+        ]);
+    }
+
+    public function meetingRoomCalendar(int $meetingRoom)
+    {
+        $meetingRoomData = DB::table('meeting_rooms')->where('id', $meetingRoom)->first();
+
+        if (!$meetingRoomData) {
+            return redirect()->route('admin.places')->with('error', 'Meeting room not found');
+        }
+
+        $events = DB::table('reservation_meeting_rooms as rmr')
+            ->leftJoin('users as u', 'u.id', '=', 'rmr.user_id')
+            ->where('rmr.meeting_room_id', $meetingRoom)
+            ->select(
+                'rmr.id',
+                'rmr.day as start',
+                'rmr.start as startTime',
+                'rmr.end as endTime',
+                'rmr.approved',
+                'rmr.canceled',
+                'rmr.user_id as user_id',
+                'rmr.created_at',
+                'u.name as user_name'
+            )
+            ->orderByDesc('rmr.created_at')
+            ->get()
+            ->map(function ($reservation) {
+                return [
+                    'id' => $reservation->id,
+                    'reservation_id' => $reservation->id,
+                    'title' => 'Meeting Room — ' . ($reservation->user_name ?? 'Unknown'),
+                    'start' => $reservation->start . 'T' . $reservation->startTime,
+                    'end' => $reservation->start . 'T' . $reservation->endTime,
+                    'backgroundColor' => $reservation->canceled ? '#6b7280' : ($reservation->approved ? '#FFC801' : '#f59e0b'),
+                    'user_id' => $reservation->user_id,
+                    'canceled' => (bool) $reservation->canceled,
+                    'approved' => (bool) $reservation->approved,
+                    'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
+                ];
+            })
+            ->values();
+
+        return Inertia::render('admin/places/meeting_room/components/MeetingRoomCalendar', [
+            'meetingRoom' => [
+                'id' => $meetingRoomData->id,
+                'name' => $meetingRoomData->name,
+                'image' => $meetingRoomData->image ?? null,
+            ],
+            'reservations' => $events,
         ]);
     }
 
@@ -2399,8 +2460,27 @@ class ReservationsController extends Controller
             'members' => $members,
         ];
 
+        $studioOptions = [];
+        if (Schema::hasTable('studios')) {
+            $studioOptions = DB::table('studios')
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($studio) {
+                    return [
+                        'id' => $studio->id,
+                        'name' => $studio->name,
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
+
         return Inertia::render('admin/reservations/[id]', [
-            'reservation' => $reservation
+            'reservation' => $reservation,
+            'equipmentOptions' => $this->getEquipmentOptions(),
+            'teamMemberOptions' => $this->getTeamMemberOptions(),
+            'studios' => $studioOptions,
         ]);
     }
 
@@ -2501,6 +2581,75 @@ class ReservationsController extends Controller
         }
 
         return back()->with('success', 'Meeting room reservation canceled');
+    }
+
+    private function getEquipmentOptions(): array
+    {
+        if (!Schema::hasTable('equipment')) {
+            return [];
+        }
+
+        return DB::table('equipment as e')
+            ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+            ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
+            ->orderBy('e.mark')
+            ->get()
+            ->map(function ($equipment) {
+                $image = $equipment->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference,
+                    'mark' => $equipment->mark,
+                    'image' => $imageUrl,
+                    'type_name' => $equipment->type_name,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private function getTeamMemberOptions(): array
+    {
+        if (!Schema::hasTable('users')) {
+            return [];
+        }
+
+        return DB::table('users')
+            ->select('id', 'name', 'email', 'image', 'last_online')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                $image = $user->image ?? null;
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $imageUrl = asset(Str::startsWith($image, ['storage/', '/storage/']) ? $image : 'storage/' . ltrim($image, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'image' => $imageUrl,
+                    'last_online' => $user->last_online,
+                ];
+            })
+            ->values()
+            ->toArray();
     }
 
     /**

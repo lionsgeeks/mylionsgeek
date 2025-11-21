@@ -1,21 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ChevronDown } from 'lucide-react';
 import TeamMemberSelector from './TeamMemberSelector';
 import EquipmentSelector from './EquipmentSelector';
 
-const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, studios = [] }) => {
+const ReservationModal = ({
+    isOpen,
+    onClose,
+    studio,
+    selectedRange,
+    onSuccess,
+    studios = [],
+    equipmentOptions = [],
+    teamMemberOptions = [],
+    blockedStudioIds = [],
+    onTimeChange,
+}) => {
     // If studio is already provided, skip step 0. Otherwise, show studio selection if studios array is provided
+    const availableStudios = useMemo(
+        () => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)),
+        [studios, blockedStudioIds]
+    );
     const shouldShowStudioSelection = studios.length > 0 && !studio?.id;
     const [currentStep, setCurrentStep] = useState(shouldShowStudioSelection ? 0 : 1);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
     const [timeError, setTimeError] = useState('');
     const [selectedStudio, setSelectedStudio] = useState(studio);
+    const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+    const scrollContainerRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
         studio_id: selectedStudio?.id || studio?.id || '',
@@ -29,10 +47,21 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
     });
 
     useEffect(() => {
-        if (selectedStudio) {
+        if (selectedStudio?.id) {
             setData('studio_id', selectedStudio.id);
+        } else if (!studio?.id) {
+            setData('studio_id', '');
         }
-    }, [selectedStudio]);
+    }, [selectedStudio, studio]);
+
+    useEffect(() => {
+        if (studio?.id) {
+            return;
+        }
+        if (selectedStudio && blockedStudioIds.includes(selectedStudio.id)) {
+            setSelectedStudio(null);
+        }
+    }, [blockedStudioIds, selectedStudio, studio]);
 
     // Update form when selectedRange changes
     useEffect(() => {
@@ -43,8 +72,11 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                 start: selectedRange.start,
                 end: selectedRange.end,
             });
+            if (onTimeChange) {
+                onTimeChange(selectedRange);
+            }
         }
-    }, [selectedRange]);
+    }, [selectedRange, onTimeChange]);
 
     const handleClose = () => {
         reset();
@@ -98,8 +130,55 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
         setData('equipment', selectedEquipment.map(e => e.id));
     }, [selectedEquipment]);
 
+    // Check if scrollable content exists and update scroll indicator
+    useEffect(() => {
+        if (currentStep === 0 && shouldShowStudioSelection) {
+            const checkScroll = () => {
+                const container = scrollContainerRef.current;
+                if (container) {
+                    const hasScroll = container.scrollHeight > container.clientHeight;
+                    const isScrolledToBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 10;
+                    setShowScrollIndicator(hasScroll && !isScrolledToBottom);
+                }
+            };
+            
+            // Wait for DOM to render
+            const timeoutId = setTimeout(() => {
+                checkScroll();
+                const container = scrollContainerRef.current;
+                if (container) {
+                    container.addEventListener('scroll', checkScroll);
+                    window.addEventListener('resize', checkScroll);
+                }
+            }, 100);
+            
+            return () => {
+                clearTimeout(timeoutId);
+                const container = scrollContainerRef.current;
+                if (container) {
+                    container.removeEventListener('scroll', checkScroll);
+                    window.removeEventListener('resize', checkScroll);
+                }
+            };
+        } else {
+            setShowScrollIndicator(false);
+        }
+    }, [currentStep, shouldShowStudioSelection, availableStudios]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
+    const handleRangeFieldChange = (field, value) => {
+        setData(field, value);
+        if (onTimeChange) {
+            const nextRange = {
+                day: field === 'day' ? value : data.day,
+                start: field === 'start' ? value : data.start,
+                end: field === 'end' ? value : data.end,
+            };
+            onTimeChange(nextRange);
+        }
+    };
+
 
         const formData = {
             ...data,
@@ -119,55 +198,98 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="max-w-3xl max-h-[85vh] max-md:w-[95vw] bg-light dark:bg-dark border border-gray-300 dark:border-gray-600 shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 ">
                     <DialogTitle className="text-xl font-bold text-foreground">
                         Reservation — Step {currentStep + 1}/{shouldShowStudioSelection ? 4 : 3}
                     </DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6 px-6 py-4 overflow-y-auto max-h-[calc(85vh-100px)]">
+                <form onSubmit={handleSubmit} className="space-y-6 px-6 py-4">
                     {/* Step 0: Studio Selection */}
                     {currentStep === 0 && shouldShowStudioSelection && (
-                        <div className="space-y-4">
-                            <Label className="text-base font-semibold mb-4 block text-foreground">Select Studio</Label>
-                            <div className="flex gap-4 overflow-x-auto pb-4 px-1 custom-scrollbar" style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}>
-                                {studios.filter(s => s.state).map(s => {
+                        <div className="space-y-4 flex flex-col relative" style={{ maxHeight: 'calc(85vh - 180px)' }}>
+                            <Label className="text-base font-semibold mb-4 block text-foreground flex-shrink-0">Select Studio</Label>
+                            <div 
+                                ref={scrollContainerRef}
+                                className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0 pb-4 px-1 custom-scrollbar relative" 
+                                style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}
+                            >
+                                {availableStudios.map(s => {
                                     const isSelected = selectedStudio?.id === s.id;
                                     return (
                                         <button
                                             key={s.id}
                                             type="button"
                                             onClick={() => setSelectedStudio(s)}
-                                            className={`flex-shrink-0 w-[160px] rounded-lg border-2 p-3 transition-all hover:shadow-md bg-white dark:bg-gray-800 ${
+                                            className={`group w-full rounded-xl border-2 p-4 transition-all duration-200 bg-card dark:bg-neutral-800/50 backdrop-blur-sm ${
                                                 isSelected
-                                                    ? 'border-[#FFC801] bg-[#FFC801]/20 dark:bg-[#FFC801]/10 shadow-md scale-105'
-                                                    : 'border-gray-200 dark:border-gray-700 hover:border-[#FFC801]/50 dark:hover:border-[#FFC801]/50'
+                                                    ? 'border-[#FFC801] bg-[#FFC801]/10 dark:bg-[#FFC801]/15 shadow-lg shadow-[#FFC801]/20 ring-2 ring-[#FFC801]/30'
+                                                    : 'border-border dark:border-neutral-700 hover:border-[#FFC801]/60 dark:hover:border-[#FFC801]/60 hover:bg-accent/50 dark:hover:bg-neutral-800/80 hover:shadow-md'
                                             }`}
                                         >
-                                            {s.image ? (
-                                                <img
-                                                    src={s.image}
-                                                    alt={s.name}
-                                                    className="w-full h-24 object-cover rounded-md mb-2 border border-gray-200 dark:border-gray-700"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-24 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 flex items-center justify-center mb-2">
-                                                    <span className="text-gray-400 dark:text-gray-500 text-xs">No Image</span>
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative flex-shrink-0">
+                                                    {s.image ? (
+                                                        <img
+                                                            src={s.image}
+                                                            alt={s.name}
+                                                            className={`w-20 h-20 object-cover rounded-lg border-2 transition-all duration-200 ${
+                                                                isSelected
+                                                                    ? 'border-[#FFC801] shadow-md'
+                                                                    : 'border-border dark:border-neutral-700 group-hover:border-[#FFC801]/50'
+                                                            }`}
+                                                        />
+                                                    ) : (
+                                                        <div className={`w-20 h-20 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${
+                                                            isSelected
+                                                                ? 'border-[#FFC801] bg-muted/50'
+                                                                : 'border-border dark:border-neutral-700 bg-muted/30 group-hover:border-[#FFC801]/50'
+                                                        }`}>
+                                                            <span className="text-muted-foreground text-xs">No Image</span>
+                                                        </div>
+                                                    )}
+                                                    {isSelected && (
+                                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#FFC801] rounded-full flex items-center justify-center shadow-md">
+                                                            <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div className="text-center">
-                                                <div className="font-semibold text-foreground text-sm">{s.name}</div>
-                                                {isSelected && (
-                                                    <div className="text-xs text-[#FFC801] mt-1 font-medium">
-                                                        Selected
+                                                <div className="flex-1 text-left min-w-0">
+                                                    <div className={`font-semibold text-foreground text-lg mb-1 transition-colors ${
+                                                        isSelected ? 'text-[#FFC801]' : 'group-hover:text-[#FFC801]'
+                                                    }`}>
+                                                        {s.name}
                                                     </div>
-                                                )}
+                                                    {isSelected && (
+                                                        <div className="inline-flex items-center gap-1.5 text-xs text-[#FFC801] font-medium px-2 py-1 rounded-full bg-[#FFC801]/10 dark:bg-[#FFC801]/20">
+                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            Selected
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </button>
                                     );
                                 })}
+                                {availableStudios.length === 0 && (
+                                    <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 text-sm font-medium text-center">
+                                        All studios are busy for this time slot. Please pick another time.
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex justify-end pt-2">
+                            {showScrollIndicator && (
+                                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
+                                    <div className="flex flex-col items-center gap-1 animate-bounce">
+                                        <ChevronDown className="w-5 h-5 text-[#FFC801] drop-shadow-lg" />
+                                        <div className="w-1 h-8 bg-gradient-to-b from-[#FFC801]/80 to-transparent rounded-full"></div>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex justify-end pt-2 flex-shrink-0">
                                 <Button
                                     type="button"
                                     onClick={() => {
@@ -222,7 +344,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                                         id="day"
                                         type="date"
                                         value={data.day}
-                                        onChange={(e) => setData('day', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('day', e.target.value)}
                                         required
                                     />
                                 </div>
@@ -233,7 +355,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                                         id="start"
                                         type="time"
                                         value={data.start}
-                                        onChange={(e) => setData('start', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('start', e.target.value)}
                                         required
                                         min="08:00"
                                         max="18:00"
@@ -246,7 +368,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                                         id="end"
                                         type="time"
                                         value={data.end}
-                                        onChange={(e) => setData('end', e.target.value)}
+                                        onChange={(e) => handleRangeFieldChange('end', e.target.value)}
                                         required
                                         min="08:00"
                                         max="18:00"
@@ -276,6 +398,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                             <TeamMemberSelector
                                 selected={selectedMembers}
                                 onSelect={setSelectedMembers}
+                                teamMemberOptions={teamMemberOptions}
                             />
 
                             <div className="flex justify-between">
@@ -295,6 +418,7 @@ const ReservationModal = ({ isOpen, onClose, studio, selectedRange, onSuccess, s
                             <EquipmentSelector
                                 selected={selectedEquipment}
                                 onSelect={setSelectedEquipment}
+                                equipmentOptions={equipmentOptions}
                             />
 
                             <div className="flex justify-between">

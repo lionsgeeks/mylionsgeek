@@ -1,41 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const InfoModalContent = ({ reservationId, initial }) => {
-    const [data, setData] = useState({ 
-        loading: true, 
-        team_name: initial.team_name, 
-        team_members: initial.team_members, 
-        equipments: initial.equipments 
+    const [data, setData] = useState({
+        team_name: initial?.team_name ?? null,
+        team_members: Array.isArray(initial?.team_members) ? initial.team_members : [],
+        equipments: Array.isArray(initial?.equipments) ? initial.equipments : [],
     });
 
     useEffect(() => {
-        let aborted = false;
-        async function load() {
-            try {
-                const res = await fetch(`/admin/reservations/${reservationId}/info`, { 
-                    headers: { 'Accept': 'application/json' }, 
-                    credentials: 'same-origin' 
-                });
-                const body = await res.json();
-                if (!aborted) {
-                    setData({ 
-                        loading: false, 
-                        team_name: body.team_name ?? null, 
-                        team_members: Array.isArray(body.team_members) ? body.team_members : [], 
-                        equipments: Array.isArray(body.equipments) ? body.equipments : [] 
-                    });
-                }
-            } catch (e) {
-                if (!aborted) setData((d) => ({ ...d, loading: false }));
-            }
-        }
-        load();
-        return () => { aborted = true; };
-    }, [reservationId]);
-
-    if (data.loading) {
-        return <div className="text-sm text-muted-foreground">Loading…</div>;
-    }
+        setData({
+            team_name: initial?.team_name ?? null,
+            team_members: Array.isArray(initial?.team_members) ? initial.team_members : [],
+            equipments: Array.isArray(initial?.equipments) ? initial.equipments : [],
+        });
+    }, [initial, reservationId]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,52 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-// import * as AvatarPrimitive from '@radix-ui/react-avatar';
-import { Avatar } from '@/components/ui/avatar';
-const TeamMemberSelector = ({ selected, onSelect }) => {
+const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [users, setUsers] = useState([]);
-    const [filteredUsers, setFilteredUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (isModalOpen && users.length === 0) {
-            loadUsers();
-        }
-    }, [isModalOpen]);
-
-    useEffect(() => {
-        if (searchQuery) {
-            setFilteredUsers(
-                users.filter((u) =>
-                    u.name.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-            );
-        } else {
-            setFilteredUsers(users);
-        }
-    }, [searchQuery, users]);
-
-    const loadUsers = () => {
-        setLoading(true);
-        fetch('/admin/api/users', {
-            headers: { Accept: 'application/json' },
-            credentials: 'same-origin',
-        })
-            .then((r) => r.json())
-            .then((data) => {
-                setUsers(Array.isArray(data) ? data : []);
-                setFilteredUsers(Array.isArray(data) ? data : []);
-            })
-            .catch(() => {
-                setUsers([]);
-                setFilteredUsers([]);
-            })
-            .finally(() => setLoading(false));
+    const normalizeImage = (image) => {
+        if (!image) return null;
+        if (image.startsWith('http://') || image.startsWith('https://')) return image;
+        if (image.startsWith('/')) return image;
+        if (image.startsWith('storage/')) return `/${image}`;
+        if (image.startsWith('public/')) return `/${image.replace(/^public\//, 'storage/')}`;
+        if (image.startsWith('img/')) return `/storage/${image}`;
+        return `/storage/${image.replace(/^\/?/, '')}`;
     };
+
+    const users = useMemo(
+        () =>
+            (Array.isArray(teamMemberOptions)
+                ? teamMemberOptions.map((user) => ({
+                      ...user,
+                      image: normalizeImage(user.image),
+                  }))
+                : []),
+        [teamMemberOptions]
+    );
+
+    const filteredUsers = useMemo(() => {
+        if (!searchQuery) return users;
+        const query = searchQuery.toLowerCase();
+        return users.filter((u) => (u.name || '').toLowerCase().includes(query));
+    }, [users, searchQuery]);
 
     const handleToggle = (user) => {
         const isSelected = selected.some((m) => m.id === user.id);
@@ -82,37 +68,40 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
             {/* Selected Members */}
             {selected.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
-                    {selected.map((member) => (
-                        <div
-                            key={member.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg"
-                        >
-                            {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full mx-auto">
-                                <AvatarImage src={member.image} />
-                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
-                                    {getInitials(member.name)}
-                                </AvatarFallback>
-                            </AvatarPrimitive.Root> */}
-                            <Avatar
-                                className=" w-10 h-10"
-                                image={member?.image}
-                                name={member?.name}
-                                lastActivity={member?.last_online || null}
-                                onlineCircleClass="hidden"
-                                edit={false}
-                            />
-                            <span className="flex-1 text-sm">{member.name}</span>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemove(member.id)}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                    {selected.map((member) => {
+                        const image = normalizeImage(member?.image);
+                        return (
+                            <div
+                                key={member.id}
+                                className="flex items-center gap-2 p-2 border border-border rounded-lg bg-white/80 dark:bg-[#111]"
                             >
-                                ×
-                            </Button>
-                        </div>
-                    ))}
+                                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                                    {image ? (
+                                        <img
+                                            src={image}
+                                            alt={member?.name || 'Member'}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => e.currentTarget.remove()}
+                                        />
+                                    ) : (
+                                        getInitials(member?.name)
+                                    )}
+                                </div>
+                                <span className="flex-1 text-sm">{member.name}</span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemove(member.id)}
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                >
+                                    ×
+                                </Button>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">
@@ -122,7 +111,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-light dark:bg-dark text-foreground border border-border">
                     <DialogHeader>
                         <DialogTitle>Select Team Members</DialogTitle>
                     </DialogHeader>
@@ -133,35 +122,41 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                             placeholder="Search members..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-white dark:bg-[#0f0f0f]"
                         />
 
-                        {loading ? (
-                            <p className="text-sm text-center py-4">Loading...</p>
+                        {users.length === 0 ? (
+                            <p className="text-sm text-center py-4">No team members available</p>
                         ) : filteredUsers.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredUsers.map((user) => {
                                     const isSelected = selected.some((m) => m.id === user.id);
+                                    const avatar = (
+                                        <div className="team-avatar relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                                            {user?.image ? (
+                                                <img
+                                                    src={user.image}
+                                                    alt={user?.name || 'Team member'}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.remove();
+                                                    }}
+                                                />
+                                            ) : (
+                                                getInitials(user?.name)
+                                            )}
+                                        </div>
+                                    );
                                     return (
                                         <div
                                             key={user.id}
-                                            className="flex items-center gap-3 p-2 border rounded-lg hover:bg-accent cursor-pointer"
+                                            className="flex items-center gap-3 p-3 border border-border rounded-lg bg-white/80 dark:bg-[#111] hover:bg-muted/60 cursor-pointer transition-colors"
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
-                                            {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-10 h-10 mx-auto">
-                                                <AvatarImage src={user.image} />
-                                                <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
-                                                    {getInitials(user.name)}
-                                                </AvatarFallback>
-                                            </AvatarPrimitive.Root> */}
-                                            <Avatar
-                                                className="w-10 h-10"
-                                                image={user?.image}
-                                                name={user?.name}
-                                                lastActivity={user?.last_online || null}
-                                                onlineCircleClass="hidden"
-                                                edit={false}
-                                            />
+                                            {avatar}
                                             <span className="flex-1 text-sm">{user.name}</span>
                                         </div>
                                     );
@@ -173,7 +168,7 @@ const TeamMemberSelector = ({ selected, onSelect }) => {
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t">
+                    <div className="pt-4 border-t border-border">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}

@@ -4,22 +4,23 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { router } from '@inertiajs/react';
 
-const CalendarModal = ({ 
-    isOpen, 
-    onClose, 
-    place, 
-    events, 
-    loadingEvents, 
-    onDateSelect, 
-    onAddReservationClick 
+const CalendarModal = ({
+    isOpen,
+    onClose,
+    place,
+    events,
+    loadingEvents,
+    onDateSelect,
+    onAddReservationClick
 }) => {
     if (!place) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent 
-                className="p-6 overflow-hidden"
+            <DialogContent
+                className="p-6 overflow-hidden bg-light dark:bg-dark"
                 style={{
                     maxWidth: '95vw',
                     width: '95vw',
@@ -66,6 +67,11 @@ const CalendarModal = ({
                             eventTextColor="#000000"
                             slotMinTime="08:00:00"
                             slotMaxTime="18:30:00"
+                            eventClick={(info) => {
+                                const eventId = info?.event?.id || info?.event?.extendedProps?.reservation_id;
+                                if (!eventId) return;
+                                router.visit(`/admin/reservations/${eventId}/details`);
+                            }}
                         />
                     </div>
                 )}
