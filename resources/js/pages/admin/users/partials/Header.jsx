@@ -101,7 +101,6 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const availableRoles = [
         'admin',
         'studio_responsable',
-        'studio manager',
         'student',
         'coworker',
         'coach',

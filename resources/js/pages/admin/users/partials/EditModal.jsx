@@ -12,7 +12,9 @@ import RolesMultiSelect from './RolesMultiSelect';
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     const getInitials = useInitials();
-    const { auth } = usePage().props
+    const { auth } = usePage().props;
+    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
+    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
         name: editedUser?.name,
@@ -118,7 +120,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
             <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto bg-light text-dark dark:bg-dark dark:text-light">
                 <DialogHeader>
-                    <DialogTitle>Modify user</DialogTitle>
+                    <DialogTitle>{editedUser ? getInitials(editedUser.name) : 'Modify user'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={submitEdit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     {/* Avatar */}
@@ -152,7 +154,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     </div>
 
-                    {/* Form Fields */}
+                    {/* Form Fields - Left Column */}
                     <div className="col-span-1">
                         <Label htmlFor="name">Name</Label>
                         <Input
@@ -161,6 +163,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         />
                     </div>
+                    {/* Right Column - Email */}
                     <div className="col-span-1">
                         <Label htmlFor="email">Email</Label>
                         <Input
@@ -170,6 +173,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
                     </div>
+                    {/* Left Column - Phone */}
                     <div className="col-span-1">
                         <Label htmlFor="phone">Phone</Label>
                         <Input
@@ -178,9 +182,18 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         />
                     </div>
-                    { }
-
-                    {/* Roles - multi-select dropdown with chips */}
+                    {/* Right Column - CIN */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="cin">CIN</Label>
+                            <Input
+                                id="cin"
+                                value={formData.cin || ''}
+                                onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
+                            />
+                        </div>
+                    )}
+                    {/* Left Column - Status */}
                     <div className="col-span-1">
                         <Label>Status</Label>
                         <Select
@@ -199,66 +212,72 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </SelectContent>
                         </Select>
                     </div>
-                    {auth.user?.roles?.includes('admin') &&
-                        <>
-                            <div className="col-span-1">
-                                <Label htmlFor="roles">Roles</Label>
-                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
-                            </div>
-                            {/* Access Studio Field */}
-                            <div className='flex flex-col gap-2'>
-                                <Label htmlFor="access-studio">Access Studio</Label>
-                                <Select
-                                    id="access-studio"
-                                    value={formData.access_studio}
-                                    onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Access Studio" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={'Yes'}>Yes</SelectItem>
-                                        <SelectItem value={'No'}>No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {/* Access Cowork Field */}
-                            <div className='flex flex-col gap-2'>
-                                <Label htmlFor="access-cowork">Access Cowork</Label>
-                                <Select
-                                    id="access-cowork"
-                                    value={formData.access_cowork}
-                                    onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Access Cowork" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value={'Yes'}>Yes</SelectItem>
-                                        <SelectItem value={'No'}>No</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-1 md:col-span-2">
-                                <Label>Training</Label>
-                                <Select
-                                    value={formData.formation_id ? String(formData.formation_id) : ''}
-                                    onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select training" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {trainings.map((t) => (
-                                            <SelectItem key={t.id} value={String(t.id)}>
-                                                {t.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </>
-                    }
+                    {/* Right Column - Roles */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="roles">Roles</Label>
+                            <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                        </div>
+                    )}
+                    {/* Left Column - Access Studio */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-studio">Access Studio</Label>
+                            <Select
+                                id="access-studio"
+                                value={formData.access_studio}
+                                onValueChange={(v) => setFormData({ ...formData, access_studio: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Studio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {/* Right Column - Access Cowork */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-cowork">Access Cowork</Label>
+                            <Select
+                                id="access-cowork"
+                                value={formData.access_cowork}
+                                onValueChange={(v) => setFormData({ ...formData, access_cowork: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Cowork" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {/* Left Column - Training */}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1 md:col-span-2">
+                            <Label>Training</Label>
+                            <Select
+                                value={formData.formation_id ? String(formData.formation_id) : ''}
+                                onValueChange={(v) => setFormData({ ...formData, formation_id: Number(v) })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select training" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {trainings.map((t) => (
+                                        <SelectItem key={t.id} value={String(t.id)}>
+                                            {t.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
 
 
 
