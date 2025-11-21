@@ -13,9 +13,12 @@ const CalendarModal = ({
     events,
     loadingEvents,
     onDateSelect,
-    onAddReservationClick
+    onAddReservationClick,
+    selectAllow,
+    selectionError = '',
 }) => {
     if (!place) return null;
+    const allowSelection = selectAllow || (() => true);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -48,6 +51,11 @@ const CalendarModal = ({
                     </div>
                 ) : (
                     <div className="h-[calc(95vh-100px)]">
+                        {selectionError && (
+                            <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/40 dark:text-yellow-100">
+                                {selectionError}
+                            </div>
+                        )}
                         <FullCalendar
                             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                             initialView="timeGridWeek"
@@ -59,6 +67,7 @@ const CalendarModal = ({
                             events={events}
                             selectable={true}
                             selectMirror={true}
+                            selectAllow={allowSelection}
                             select={onDateSelect}
                             selectOverlap={false}
                             editable={false}

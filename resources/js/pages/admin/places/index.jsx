@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Pencil, Trash, ChevronsLeft, ChevronsRight, Grid3X3, List, ArrowRight } from 'lucide-react';
@@ -35,6 +35,7 @@ const PlaceIndex = ({
     const [selectedPlace, setSelectedPlace] = useState(calendarPlace);
     const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
     const [selectedRange, setSelectedRange] = useState(null);
+    const [calendarSelectionError, setCalendarSelectionError] = useState('');
 
     const requestCalendarData = (place) => {
         if (!place) return;
@@ -58,7 +59,21 @@ const PlaceIndex = ({
         requestCalendarData(place);
     };
 
+    const preventPastCalendarSelection = useCallback((selectInfo) => {
+        if (!selectInfo) return true;
+        const now = new Date();
+        if (selectInfo.start < now || (selectInfo.end && selectInfo.end < now)) {
+            setCalendarSelectionError('You cannot select a date or time in the past.');
+            return false;
+        }
+        setCalendarSelectionError('');
+        return true;
+    }, []);
+
     const handleDateSelect = (selectInfo) => {
+        if (!preventPastCalendarSelection(selectInfo)) {
+            return;
+        }
         const start = selectInfo.start;
         const end = selectInfo.end;
 
@@ -588,6 +603,7 @@ const PlaceIndex = ({
                         if (!open) {
                             setIsCalendarOpen(false);
                             setSelectedPlace(null);
+                            setCalendarSelectionError('');
                             setEvents([]);
                             router.get('/admin/places', {}, {
                                 preserveState: true,
@@ -597,6 +613,7 @@ const PlaceIndex = ({
                             });
                         } else {
                             setIsCalendarOpen(true);
+                            setCalendarSelectionError('');
                         }
                     }}
                     place={selectedPlace}
@@ -613,6 +630,8 @@ const PlaceIndex = ({
                         setSelectedRange({ day, start: startTime, end: endTime });
                         setIsReservationModalOpen(true);
                     }}
+                    selectAllow={preventPastCalendarSelection}
+                    selectionError={calendarSelectionError}
                 />
 
                 {/* Reservation Modals */}

@@ -42,6 +42,7 @@ export default function SpacesPage() {
     const [blockedStudioIds, setBlockedStudioIds] = useState([]);
     const [isMobile, setIsMobile] = useState(false);
     const [accessError, setAccessError] = useState('');
+    const [selectionError, setSelectionError] = useState('');
 
     const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
@@ -240,7 +241,25 @@ export default function SpacesPage() {
         });
     }, [events]);
 
+    const validateSelectionWindow = useCallback((startDate, endDate) => {
+        const now = new Date();
+        if ((startDate && startDate < now) || (endDate && endDate < now)) {
+            setSelectionError('You cannot select dates or times in the past.');
+            return false;
+        }
+        setSelectionError('');
+        return true;
+    }, []);
+
+    const ensureFutureSelection = useCallback((selectInfo) => {
+        if (!selectInfo) return true;
+        return validateSelectionWindow(selectInfo.start, selectInfo.end);
+    }, [validateSelectionWindow]);
+
     const selectAllowForMainCalendar = useCallback((selectInfo) => {
+        if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
         if (type === 'studio') {
             return canAccessStudio;
         }
@@ -254,9 +273,12 @@ export default function SpacesPage() {
             return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio]);
+    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
 
     const selectAllowForModal = useCallback((selectInfo) => {
+        if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
         if (calendarFor?.place_type === 'cowork') {
             return canAccessCowork;
         }
@@ -264,7 +286,7 @@ export default function SpacesPage() {
             return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio]);
+    }, [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
 
     function handleCardClick(card) {
         if (card.cardType === 'studio') {
@@ -382,6 +404,9 @@ export default function SpacesPage() {
         }
         const start = selectInfo.start;
         const end = selectInfo.end;
+        if (!validateSelectionWindow(start, end)) {
+            return;
+        }
         const day = start.toISOString().split('T')[0];
         const startTime = start.toTimeString().slice(0, 5);
         const endTime = end.toTimeString().slice(0, 5);
@@ -461,6 +486,12 @@ export default function SpacesPage() {
                         >
                             &times;
                         </button>
+                    </div>
+                )}
+
+                {selectionError && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
+                        {selectionError}
                     </div>
                 )}
 

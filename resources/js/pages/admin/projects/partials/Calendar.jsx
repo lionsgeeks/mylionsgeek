@@ -5,6 +5,9 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 const Calendar = ({ events = [] }) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     return (
         <div className="h-[50vh] mb-6">
             <FullCalendar
@@ -32,6 +35,11 @@ const Calendar = ({ events = [] }) => {
                     //('Event clicked:', info.event.title);
                 }}
                 dateClick={(info) => {
+                    const clicked = new Date(info.dateStr);
+                    clicked.setHours(0, 0, 0, 0);
+                    if (clicked < startOfToday) {
+                        return;
+                    }
                     //('Date clicked:', info.dateStr);
                 }}
             />
