@@ -9,6 +9,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
+const PRIVILEGED_ACCESS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
+
 const TABS = [
     { key: 'all', label: 'All' },
     { key: 'studio', label: 'Studios' },
@@ -39,7 +41,55 @@ export default function SpacesPage() {
     const [blockedTableIds, setBlockedTableIds] = useState([]);
     const [blockedStudioIds, setBlockedStudioIds] = useState([]);
     const [isMobile, setIsMobile] = useState(false);
+    const [accessError, setAccessError] = useState('');
 
+    const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
+    const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
+
+    const resolveAccessFlag = useCallback((key) => {
+        const direct = auth?.user?.[key];
+        if (direct !== undefined && direct !== null) {
+            return Boolean(Number(direct));
+        }
+        const nested = auth?.user?.access?.[key];
+        if (nested !== undefined && nested !== null) {
+            return Boolean(Number(nested));
+        }
+        return false;
+    }, [auth?.user]);
+
+    const hasUnlimitedAccess = normalizedRoles.some((role) => PRIVILEGED_ACCESS_ROLES.includes(role));
+    const canAccessStudio = hasUnlimitedAccess || resolveAccessFlag('access_studio');
+    const canAccessCowork = hasUnlimitedAccess || resolveAccessFlag('access_cowork');
+
+    const requireAccess = useCallback((target) => {
+        if (target === 'studio' && !canAccessStudio) {
+            setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
+            return false;
+        }
+        if (target === 'cowork' && !canAccessCowork) {
+            setAccessError('You do not currently have access to reserve cowork tables. Please contact the staff for assistance.');
+            return false;
+        }
+        setAccessError('');
+        return true;
+    }, [canAccessStudio, canAccessCowork]);
+
+    const openStudioModal = useCallback((payload) => {
+        if (!requireAccess('studio')) {
+            return false;
+        }
+        setModalStudio(payload);
+        return true;
+    }, [requireAccess]);
+
+    const openCoworkModal = useCallback(() => {
+        if (!requireAccess('cowork')) {
+            return false;
+        }
+        setModalCowork(true);
+        return true;
+    }, [requireAccess]);
 
     const breadcrumbs = [
         { title: 'Spaces', href: '/spaces' }
@@ -192,26 +242,35 @@ export default function SpacesPage() {
 
     const selectAllowForMainCalendar = useCallback((selectInfo) => {
         if (type === 'studio') {
-            return true;
+            return canAccessStudio;
         }
         if (type === 'cowork') {
-            return true;
+            return canAccessCowork;
         }
         if (type === 'all' && calendarFor?.place_type === 'cowork') {
-            return true;
+            return canAccessCowork;
+        }
+        if (type === 'all' && calendarFor?.place_type === 'studio') {
+            return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [type, calendarFor, selectionOverlapsExisting]);
+    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio]);
 
     const selectAllowForModal = useCallback((selectInfo) => {
         if (calendarFor?.place_type === 'cowork') {
-            return true;
+            return canAccessCowork;
+        }
+        if (calendarFor?.place_type === 'studio') {
+            return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [calendarFor, selectionOverlapsExisting]);
+    }, [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio]);
 
     function handleCardClick(card) {
         if (card.cardType === 'studio') {
+            if (!requireAccess('studio')) {
+                return;
+            }
             const context = { place_type: 'studio', id: card.id, name: card.name };
             setSelectedRange(null);
             setCalendarFor(context);
@@ -223,6 +282,9 @@ export default function SpacesPage() {
                 event_id: card.id,
             });
         } else if (card.cardType === 'cowork') {
+            if (!requireAccess('cowork')) {
+                return;
+            }
             const context = { place_type: 'cowork', id: null, name: 'Cowork' };
             setSelectedRange(null);
             setCalendarFor(context);
@@ -310,6 +372,14 @@ export default function SpacesPage() {
     }, []);
 
     const onCalendarDateSelect = (selectInfo) => {
+        if (type === 'studio' && !canAccessStudio) {
+            requireAccess('studio');
+            return;
+        }
+        if (type === 'cowork' && !canAccessCowork) {
+            requireAccess('cowork');
+            return;
+        }
         const start = selectInfo.start;
         const end = selectInfo.end;
         const day = start.toISOString().split('T')[0];
@@ -330,23 +400,23 @@ export default function SpacesPage() {
         if (type === 'all' && calendarFor) {
             if (calendarFor.place_type === 'studio') {
                 // For all tab, directly open reservation modal
-                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                 return;
             }
             if (calendarFor.place_type === 'cowork') {
-                setModalCowork(true);
+                openCoworkModal();
                 return;
             }
         }
 
         // For studio and cowork tabs, directly open modal if selection exists
         if (type === 'studio') {
-            setModalStudio({ id: null, name: '', cardType: 'studio' });
+            openStudioModal({ id: null, name: '', cardType: 'studio' });
             return;
         }
         if (type === 'cowork') {
             // For cowork, always open modal - table selection is inside the modal
-            setModalCowork(true);
+            openCoworkModal();
             return;
         }
     };
@@ -378,6 +448,30 @@ export default function SpacesPage() {
                                 Loading calendar…
                             </p>
                         </div>
+                    </div>
+                )}
+
+                {accessError && (
+                    <div className="mb-4 flex items-start justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
+                        <span>{accessError}</span>
+                        <button
+                            type="button"
+                            onClick={() => setAccessError('')}
+                            className="ml-4 text-red-500 hover:text-red-700 dark:text-red-200 dark:hover:text-white"
+                        >
+                            &times;
+                        </button>
+                    </div>
+                )}
+
+                {type === 'studio' && !canAccessStudio && (
+                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
+                        You currently do not have studio reservation access. Please contact the staff if you believe this is an error.
+                    </div>
+                )}
+                {type === 'cowork' && !canAccessCowork && (
+                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
+                        You currently do not have cowork reservation access. Please contact the staff if you need access.
                     </div>
                 )}
 
@@ -452,12 +546,15 @@ export default function SpacesPage() {
                                 className="ml-auto px-4 py-2 rounded-md text-sm font-semibold border bg-alpha text-black border-alpha hover:bg-alpha/90"
                                 onClick={() => {
                                     if (type === 'studio') {
-                                        // In Studios tab, open reservation modal (will show studio selection in step 1)
+                                        if (!openStudioModal({ id: null, name: '', cardType: 'studio' })) {
+                                            return;
+                                        }
                                         setBlockedStudioIds([]);
-                                        setModalStudio({ id: null, name: '', cardType: 'studio' });
                                     } else if (type === 'cowork') {
+                                        if (!openCoworkModal()) {
+                                            return;
+                                        }
                                         setBlockedTableIds([]);
-                                        setModalCowork(true);
                                     }
                                 }}
                             >
@@ -495,7 +592,9 @@ export default function SpacesPage() {
                                                 const conflicts = computeBlockedTables(start, end);
                                                 setBlockedTableIds(conflicts);
                                                 // Open modal to reserve another table
-                                                setModalCowork(true);
+                                                if (!openCoworkModal()) {
+                                                    return;
+                                                }
                                             } else if (type === 'studio') {
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
                                                     router.visit(`/reservations/${e.id}/details`);
@@ -503,7 +602,9 @@ export default function SpacesPage() {
                                                 }
                                                 const conflicts = computeBlockedStudios(start, end);
                                                 setBlockedStudioIds(conflicts);
-                                                setModalStudio({ id: null, name: '', cardType: 'studio' });
+                                                if (!openStudioModal({ id: null, name: '', cardType: 'studio' })) {
+                                                    return;
+                                                }
                                             } else {
                                                 // For studio, navigate to details page only if user owns the reservation
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
@@ -549,10 +650,10 @@ export default function SpacesPage() {
 
                             if (calendarFor.place_type === 'studio') {
                                 setBlockedTableIds([]);
-                                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                             } else if (calendarFor.place_type === 'cowork') {
                                 setBlockedTableIds(computeBlockedTables(start, end));
-                                setModalCowork(true);
+                                openCoworkModal();
                             }
                         }}
                         onEventClick={(info) => {
@@ -595,10 +696,10 @@ export default function SpacesPage() {
                             setSelectedRange({ day, start: startTime, end: endTime });
 
                             if (calendarFor.place_type === 'studio') {
-                                setModalStudio({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
+                                openStudioModal({ id: calendarFor.id, name: calendarFor.name, cardType: 'studio' });
                             } else if (calendarFor.place_type === 'cowork') {
                                 setBlockedTableIds([]);
-                                setModalCowork(true);
+                                openCoworkModal();
                             }
                         }}
                     />

@@ -25,6 +25,7 @@ use App\Mail\ReservationTimeSuggestedAdminMail;
 
 class ReservationsController extends Controller
 {
+    private const ACCESS_BYPASS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
     public function index(Request $request)
     {
 
@@ -834,6 +835,11 @@ class ReservationsController extends Controller
             'equipment.*' => 'integer|exists:equipment,id',
         ]);
 
+        $currentUser = auth()->user();
+        if (!$this->userHasAccessFlag($currentUser, 'access_studio')) {
+            return back()->with('error', 'You do not have permission to reserve a studio.');
+        }
+
         try {
             $reservationId = null;
 
@@ -1031,6 +1037,11 @@ class ReservationsController extends Controller
             'start' => 'required',
             'end' => 'required',
         ]);
+
+        $currentUser = auth()->user();
+        if (!$this->userHasAccessFlag($currentUser, 'access_cowork')) {
+            return back()->with('error', 'You do not have permission to reserve a cowork table.');
+        }
 
         // Get user data for email
         $user = DB::table('users')->where('id', Auth::id())->first();
@@ -2600,6 +2611,55 @@ class ReservationsController extends Controller
         }
 
         return $emails->all();
+    }
+
+    private function normalizeRolesList($roles): array
+    {
+        if (is_array($roles)) {
+            $list = $roles;
+        } elseif (is_string($roles) && $roles !== '') {
+            $decoded = json_decode($roles, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = $decoded;
+            } else {
+                $list = array_map('trim', explode(',', $roles));
+            }
+        } else {
+            $list = [];
+        }
+
+        return array_filter(array_map(fn ($role) => strtolower((string) $role), $list));
+    }
+
+    private function userHasAccessFlag($user, string $field): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $roles = $this->normalizeRolesList(data_get($user, 'role'));
+        if (!empty(array_intersect($roles, self::ACCESS_BYPASS_ROLES))) {
+            return true;
+        }
+
+        $directValue = data_get($user, $field);
+        if ($directValue !== null) {
+            return (bool) $directValue;
+        }
+
+        if ($user instanceof User) {
+            $relationValue = optional($user->access)->{$field};
+            if ($relationValue !== null) {
+                return (bool) $relationValue;
+            }
+        } else {
+            $relationValue = data_get($user, "access.$field");
+            if ($relationValue !== null) {
+                return (bool) $relationValue;
+            }
+        }
+
+        return false;
     }
 
     private function getEquipmentOptions(): array
