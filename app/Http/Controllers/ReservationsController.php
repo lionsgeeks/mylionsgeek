@@ -234,11 +234,9 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Send approval email
+        // Send approval email to reservation owner
         try {
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationApprovedMail($user, $reservationData));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the approval
             \Log::error('Failed to send approval email: ' . $e->getMessage());
@@ -331,11 +329,9 @@ class ReservationsController extends Controller
             'updated_at' => now(),
         ]);
 
-        // Send cancellation email
+        // Send cancellation email to reservation owner
         try {
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationCanceledMail($user, $reservationData));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cancellation email: ' . $e->getMessage());
@@ -1074,9 +1070,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationApprovedMail($user, $reservationData));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             // Log the error but don't fail the reservation creation
             \Log::error('Failed to send cowork approval email: ' . $e->getMessage());
@@ -1124,9 +1118,7 @@ class ReservationsController extends Controller
                 'type' => 'cowork'
             ];
 
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationCanceledMail($user, $reservationForEmail));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             // Log the error but don't fail the cancellation
             \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
@@ -1166,17 +1158,15 @@ class ReservationsController extends Controller
         $suggestUrl = route('reservations.proposal.suggest', ['token' => $token]);
 
         try {
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationTimeProposalMail([
-                    'user_name' => $reservationData->user_name,
-                    'proposed_day' => $request->day,
-                    'proposed_start' => $request->start,
-                    'proposed_end' => $request->end,
-                    'accept_url' => $acceptUrl,
-                    'cancel_url' => $cancelUrl,
-                    'suggest_url' => $suggestUrl,
-                ]));
-            }
+            Mail::to($reservationData->user_email)->send(new ReservationTimeProposalMail([
+                'user_name' => $reservationData->user_name,
+                'proposed_day' => $request->day,
+                'proposed_start' => $request->start,
+                'proposed_end' => $request->end,
+                'accept_url' => $acceptUrl,
+                'cancel_url' => $cancelUrl,
+                'suggest_url' => $suggestUrl,
+            ]));
         } catch (\Throwable $e) {
             \Log::error('Failed sending proposal mail: ' . $e->getMessage());
         }
@@ -2540,9 +2530,7 @@ class ReservationsController extends Controller
                 'type' => 'meeting_room'
             ];
 
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationApprovedMail($user, $reservationData));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
         } catch (\Exception $e) {
             \Log::error('Failed to send meeting room approval email: ' . $e->getMessage());
         }
@@ -2585,9 +2573,7 @@ class ReservationsController extends Controller
                 'type' => 'meeting_room'
             ];
 
-            foreach ($this->studioResponsableEmails() as $email) {
-                Mail::to($email)->send(new ReservationCanceledMail($user, $reservationForEmail));
-            }
+            $this->sendMailToReservationOwner($user, new ReservationCanceledMail($user, $reservationForEmail));
         } catch (\Exception $e) {
             \Log::error('Failed to send meeting room cancellation email: ' . $e->getMessage());
         }
@@ -2597,20 +2583,41 @@ class ReservationsController extends Controller
 
     private function studioResponsableEmails(): array
     {
-        $emails = DB::table('users')
-            ->where('role', 'studio_responsable')
-            ->whereNotNull('email')
-            ->pluck('email')
-            ->filter()
-            ->unique()
-            ->values();
+        // Get all users and filter by role (since role is JSON array, User model handles casting)
+        $users = User::whereNotNull('email')->get();
+        
+        $emails = $users->filter(function ($user) {
+            $roles = $this->normalizeRolesList($user->role);
+            return in_array('studio_responsable', $roles);
+        })->pluck('email')
+          ->filter()
+          ->unique()
+          ->values();
+
+        \Log::info('Studio responsable emails found: ' . $emails->count() . ' - ' . $emails->implode(', '));
 
         if ($emails->isEmpty()) {
+            \Log::warning('No studio_responsable users found, using fallback email from env');
             $fallback = collect(array_filter(array_map('trim', explode(',', env('STUDIO_RESPONSABLE_EMAILS', env('ADMIN_NOTIFICATION_EMAILS', ''))))));
             $emails = $fallback->filter()->unique()->values();
+            \Log::info('Fallback emails: ' . $emails->implode(', '));
         }
 
         return $emails->all();
+    }
+
+    private function sendMailToReservationOwner($user, $mailable): void
+    {
+        $email = data_get($user, 'email') ?? data_get($user, 'user_email');
+
+        if (!$email) {
+            $fallback = env('RESERVATION_USER_FALLBACK_EMAIL', env('MAIL_FROM_ADDRESS'));
+            $email = $fallback ?: null;
+        }
+
+        if ($email) {
+            Mail::to($email)->send($mailable);
+        }
     }
 
     private function normalizeRolesList($roles): array
@@ -2872,11 +2879,7 @@ class ReservationsController extends Controller
                         'end' => $coworkRow->end,
                         'type' => 'cowork'
                     ];
-                    foreach ($this->studioResponsableEmails() as $email) {
-                        Mail::to($email)->send(
-                            new ReservationCanceledMail(auth()->user(), $reservationForEmail)
-                        );
-                    }
+                    $this->sendMailToReservationOwner(auth()->user(), new ReservationCanceledMail(auth()->user(), $reservationForEmail));
                 } catch (\Exception $e) {
                     \Log::error('Failed to send cowork cancellation email: ' . $e->getMessage());
                 }
