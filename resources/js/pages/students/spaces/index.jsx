@@ -93,7 +93,7 @@ export default function SpacesPage() {
     }, [requireAccess]);
 
     const breadcrumbs = [
-        { title: 'Spaces', href: '/spaces' }
+        { title: 'Spaces', href: '/student/spaces' }
     ];
 
     const showStudios = type === 'all' || type === 'studio';
@@ -149,7 +149,7 @@ export default function SpacesPage() {
         setSelectedEvent(null);
         setBlockedTableIds([]);
         setBlockedStudioIds([]);
-        router.get('/spaces', params, {
+        router.get('/student/spaces', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -628,7 +628,7 @@ export default function SpacesPage() {
                                                 }
                                             } else if (type === 'studio') {
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                                    router.visit(`/reservations/${e.id}/details`);
+                                                    router.visit(`/student/reservations/${e.id}/details`);
                                                     return;
                                                 }
                                                 const conflicts = computeBlockedStudios(start, end);
@@ -639,7 +639,7 @@ export default function SpacesPage() {
                                             } else {
                                                 // For studio, navigate to details page only if user owns the reservation
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                                    router.visit(`/reservations/${e.id}/details`);
+                                                    router.visit(`/student/reservations/${e.id}/details`);
                                                 }
                                             }
                                         }
@@ -692,7 +692,7 @@ export default function SpacesPage() {
 
                             // For studio reservations, navigate to details page only if user owns it
                             if (calendarFor?.place_type === 'studio' && e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                router.visit(`/reservations/${e.id}/details`);
+                                router.visit(`/student/reservations/${e.id}/details`);
                                 return;
                             }
 

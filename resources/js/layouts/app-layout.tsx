@@ -22,7 +22,13 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     // Show header only for students/coworkers without admin
     const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));
 
-    const Layout = isStudentOrCoworker || window.location.href.includes('/feed') ? AppHeaderLayout : isAdmin ? AppSidebarLayout : AppHeaderLayout;
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isStudentRoute =
+        currentPath.startsWith('/feed') ||
+        currentPath.startsWith('/student') ||
+        currentPath.startsWith('/students');
+
+    const Layout = isStudentOrCoworker || isStudentRoute ? AppHeaderLayout : isAdmin ? AppSidebarLayout : AppHeaderLayout;
 
 
     return (

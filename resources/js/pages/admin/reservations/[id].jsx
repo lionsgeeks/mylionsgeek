@@ -42,7 +42,7 @@ export default function AdminReservationDetails({ reservation }) {
             window.history.back();
             return;
         }
-        router.visit(isAdmin ? '/admin/reservations' : '/reservations');
+        router.visit(isAdmin ? '/admin/reservations' : '/student/reservations');
     };
 
     if (!reservation) {
