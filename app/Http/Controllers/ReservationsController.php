@@ -937,6 +937,43 @@ class ReservationsController extends Controller
         }
     }
 
+    /**
+     * Check if a studio is available for the requested time slot.
+     */
+    public function checkStudioAvailability(Request $request)
+    {
+        $validated = $request->validate([
+            'studio_id' => 'required|integer|exists:studios,id',
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+        ]);
+
+        $conflicts = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.studio_id', $validated['studio_id'])
+            ->where('r.day', $validated['day'])
+            ->where('r.canceled', 0)
+            ->where(function ($query) use ($validated) {
+                $query->where('r.start', '<', $validated['end'])
+                    ->where('r.end', '>', $validated['start']);
+            })
+            ->select(
+                'r.id',
+                'r.start',
+                'r.end',
+                'r.title',
+                'u.name as user_name'
+            )
+            ->orderBy('r.start')
+            ->get();
+
+        return response()->json([
+            'available' => $conflicts->isEmpty(),
+            'conflicts' => $conflicts,
+        ]);
+    }
+
 
     /**
      * Show studio calendar page
