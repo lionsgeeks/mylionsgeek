@@ -36,7 +36,7 @@ import EditReservationModal from './components/EditReservationModal';
 export default function AdminReservationDetails({ reservation }) {
     const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('studio_responsable');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('super_admin') || userRoles.includes('studio_responsable');
     const handleBackNavigation = () => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();

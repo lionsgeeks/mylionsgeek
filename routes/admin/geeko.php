@@ -6,7 +6,7 @@ use App\Http\Controllers\GeekoPlayController;
 use Illuminate\Support\Facades\Route;
 
 // Admin/Coach routes for managing Geekos
-Route::middleware(['auth', 'role:admin'])->group(function () {
+Route::middleware(['auth', 'role:admin,moderateur'])->group(function () {
     // Geeko CRUD routes
     Route::get('/training/{formation}/geeko', [GeekoController::class, 'index'])->name('geeko.index');
     Route::get('/training/{formation}/geeko/create', [GeekoController::class, 'create'])->name('geeko.create');

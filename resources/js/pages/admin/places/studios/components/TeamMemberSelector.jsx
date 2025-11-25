@@ -54,7 +54,10 @@ const normalizeRoles = (rawRoles) => {
     return roles.filter(Boolean);
 };
 
-const hasAdminRole = (rawRoles) => normalizeRoles(rawRoles).includes('admin');
+const hasAdminRole = (rawRoles) => {
+    const roles = normalizeRoles(rawRoles);
+    return roles.includes('admin') || roles.includes('moderateur');
+};
 
 const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     const { auth } = usePage().props;

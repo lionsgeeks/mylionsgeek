@@ -14,7 +14,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('studio_responsable');
+    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
         name: editedUser?.name,

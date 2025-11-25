@@ -8,6 +8,11 @@ const Rolegard = ({ children, authorized = [], except = [] }) => {
         ? auth.user.role
         : [auth?.user?.role];
 
+    // Admins can see everything regardless of the following checks
+    if (userRoles.includes('admin')) {
+        return <>{children}</>;
+    }
+
     // kanakhdo authorized w except bach nkoun mt2akdin blli howma arrays
     const allowedRoles = Array.isArray(authorized) ? authorized : [authorized];
     const excludedRoles = Array.isArray(except) ? except : [except];
