@@ -80,8 +80,8 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
         return teamMemberOptions
             .filter((user) => viewerIsAdmin || !hasAdminRole(user?.role ?? user?.roles))
             .map((user) => ({
-                ...user,
-                image: normalizeImage(user.image),
+                      ...user,
+                      image: normalizeImage(user.image),
             }));
     }, [teamMemberOptions, viewerIsAdmin]);
 

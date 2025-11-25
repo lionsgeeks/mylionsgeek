@@ -256,8 +256,17 @@ export default function SpacesPage() {
         return validateSelectionWindow(selectInfo.start, selectInfo.end);
     }, [validateSelectionWindow]);
 
+    const activeStudioCalendar = calendarFor?.place_type === 'studio'
+        ? calendarFor
+        : (calendarContext?.place_type === 'studio' ? calendarContext : null);
+
     const selectAllowForMainCalendar = useCallback((selectInfo) => {
         if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+
+        if (activeStudioCalendar && overlaps) {
             return false;
         }
         if (type === 'studio') {
@@ -273,10 +282,14 @@ export default function SpacesPage() {
             return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
+    }, [type, calendarFor, calendarContext, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection, activeStudioCalendar]);
 
     const selectAllowForModal = useCallback((selectInfo) => {
         if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+        if (calendarFor?.place_type === 'studio' && overlaps) {
             return false;
         }
         if (calendarFor?.place_type === 'cowork') {

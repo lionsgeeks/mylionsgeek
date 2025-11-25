@@ -8,6 +8,15 @@ import { Label } from '@/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 import TeamMemberSelector from './TeamMemberSelector';
 import EquipmentSelector from './EquipmentSelector';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogFooter,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 const ReservationModal = ({
     isOpen,
@@ -33,6 +42,17 @@ const ReservationModal = ({
     const [timeError, setTimeError] = useState('');
     const [selectedStudio, setSelectedStudio] = useState(studio);
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+    const [conflictModalOpen, setConflictModalOpen] = useState(false);
+    const [conflictDetails, setConflictDetails] = useState([]);
+    const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const csrfTokenRef = useRef(null);
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            csrfTokenRef.current = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        }
+    }, []);
+    const [availableEquipment, setAvailableEquipment] = useState(equipmentOptions);
+    const [equipmentAvailabilityLoading, setEquipmentAvailabilityLoading] = useState(false);
     const scrollContainerRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -52,7 +72,7 @@ const ReservationModal = ({
         } else if (!studio?.id) {
             setData('studio_id', '');
         }
-    }, [selectedStudio, studio]);
+    }, [selectedStudio, studio, setData]);
 
     useEffect(() => {
         if (studio?.id) {
@@ -62,6 +82,59 @@ const ReservationModal = ({
             setSelectedStudio(null);
         }
     }, [blockedStudioIds, selectedStudio, studio]);
+
+    useEffect(() => {
+        setAvailableEquipment(equipmentOptions);
+    }, [equipmentOptions]);
+
+    const fetchAvailableEquipment = useCallback(async () => {
+        if (!data.day || !data.start || !data.end) {
+            setAvailableEquipment(equipmentOptions);
+            return;
+        }
+
+        setEquipmentAvailabilityLoading(true);
+        try {
+            const response = await fetch('/reservations/available-equipment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-Token': csrfTokenRef.current || '',
+                },
+                body: JSON.stringify({
+                    day: data.day,
+                    start: data.start,
+                    end: data.end,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch available equipment');
+            }
+
+            const payload = await response.json();
+            const availableList = Array.isArray(payload.available) ? payload.available : [];
+            setAvailableEquipment(availableList);
+
+            if (availableList.length) {
+                setSelectedEquipment((prev) =>
+                    prev.filter((item) => availableList.some((available) => available.id === item.id))
+                );
+            } else {
+                setSelectedEquipment([]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch available equipment', error);
+            setAvailableEquipment(equipmentOptions);
+        } finally {
+            setEquipmentAvailabilityLoading(false);
+        }
+    }, [data.day, data.start, data.end, equipmentOptions]);
+
+    useEffect(() => {
+        fetchAvailableEquipment();
+    }, [fetchAvailableEquipment]);
 
     // Update form when selectedRange changes
     useEffect(() => {
@@ -94,7 +167,51 @@ const ReservationModal = ({
         return composed < new Date();
     }, []);
 
-    const handleNext = () => {
+    const checkStudioAvailability = useCallback(async () => {
+        const activeStudioId = selectedStudio?.id || studio?.id || data.studio_id;
+        if (!activeStudioId || !data.day || !data.start || !data.end) {
+            return true;
+        }
+
+        setCheckingAvailability(true);
+        try {
+            const response = await fetch('/reservations/check-availability', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-Token': csrfTokenRef.current || '',
+                },
+                body: JSON.stringify({
+                    studio_id: activeStudioId,
+                    day: data.day,
+                    start: data.start,
+                    end: data.end,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to check studio availability');
+            }
+
+            const payload = await response.json();
+            if (payload.available) {
+                return true;
+            }
+
+            setConflictDetails(payload.conflicts || []);
+            setConflictModalOpen(true);
+            setTimeError('The selected studio is already reserved at this time. Please choose another time slot.');
+            return false;
+        } catch (error) {
+            console.error('Failed to check studio availability', error);
+            return true;
+        } finally {
+            setCheckingAvailability(false);
+        }
+    }, [data.day, data.start, data.end, data.studio_id, selectedStudio, studio]);
+
+    const handleNext = async () => {
         const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
         const endTime = data.end ? parseFloat(data.end.replace(':', '.')) : null;
 
@@ -119,7 +236,13 @@ const ReservationModal = ({
         }
 
         setTimeError('');
-        // Total steps: if studio selection shown (step 0), then steps 0,1,2,3. Otherwise steps 1,2,3
+        if (currentStep === 1) {
+            const available = await checkStudioAvailability();
+            if (!available) {
+                return;
+            }
+        }
+
         const maxStep = shouldShowStudioSelection ? 3 : 3;
         if (currentStep < maxStep) {
             setCurrentStep(currentStep + 1);
@@ -188,11 +311,16 @@ const ReservationModal = ({
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (isDateTimeInPast(data.day, data.start)) {
             setTimeError('Reservation start time cannot be in the past.');
+            return;
+        }
+
+        const available = await checkStudioAvailability();
+        if (!available) {
             return;
         }
 
@@ -400,6 +528,7 @@ const ReservationModal = ({
                                 <Button
                                     type="button"
                                     onClick={handleNext}
+                                    disabled={checkingAvailability}
                                     className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
                                 >
                                     Next →
@@ -431,17 +560,18 @@ const ReservationModal = ({
                     {/* Step 3: Equipment */}
                     {currentStep === 3 && (
                         <div className="space-y-4">
-                            <EquipmentSelector
-                                selected={selectedEquipment}
-                                onSelect={setSelectedEquipment}
-                                equipmentOptions={equipmentOptions}
-                            />
+                    <EquipmentSelector
+                        selected={selectedEquipment}
+                        onSelect={setSelectedEquipment}
+                        equipmentOptions={availableEquipment}
+                        loading={equipmentAvailabilityLoading}
+                    />
 
                             <div className="flex justify-between">
                                 <Button type="button" variant="outline" onClick={handlePrevious} className="cursor-pointer dark:hover:bg-accent">
                                     ← Previous
                                 </Button>
-                                <Button type="submit" disabled={processing} className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900">
+                                <Button type="submit" disabled={processing || checkingAvailability} className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900">
                                     {processing ? 'Creating...' : 'Create Reservation'}
                                 </Button>
                             </div>
@@ -449,6 +579,35 @@ const ReservationModal = ({
                     )}
                 </form>
             </DialogContent>
+            <AlertDialog open={conflictModalOpen} onOpenChange={setConflictModalOpen}>
+                <AlertDialogContent className="bg-light dark:bg-dark">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Studio already reserved</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The selected studio is already reserved for the chosen time. Please select another time slot.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {conflictDetails.length > 0 && (
+                        <div className="space-y-2 rounded-lg border border-border dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/60 px-4 py-3 text-sm">
+                            {conflictDetails.map((conflict) => (
+                                <div key={conflict.id} className="flex flex-col">
+                                    <span className="font-semibold text-foreground">
+                                        {conflict.title || 'Existing reservation'}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {conflict.start?.slice(0, 5)} - {conflict.end?.slice(0, 5)} {conflict.user_name ? `• ${conflict.user_name}` : ''}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setConflictModalOpen(false)}>
+                            Understood
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     );
 };

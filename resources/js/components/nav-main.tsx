@@ -25,59 +25,59 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             except={item.excludedRoles ?? []}
                         >
                             <SidebarMenuItem>
-                                {hasChildren ? (
-                                    <SidebarMenuButton
-                                        isActive={isActive}
-                                        tooltip={{ children: item.title }}
-                                        className="[&>[data-chevron]]:ml-auto py-6"
-                                        aria-expanded={isOpen}
-                                        onClick={() => toggleOpen(item.title)}
-                                    >
-                                        {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
-                                        <span>{item.title}</span>
-                                        <ChevronDown
-                                            data-chevron
-                                            className={`text-[var(--color-alpha)] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                                        />
-                                    </SidebarMenuButton>
-                                ) : (
-                                    <SidebarMenuButton
-                                        asChild
-                                        isActive={isActive}
-                                        tooltip={{ children: item.title }}
-                                        className="[&>[data-chevron]]:ml-auto py-5.5"
-                                    >
-                                        <Link href={item.href} prefetch>
+                            {hasChildren ? (
+                                <SidebarMenuButton
+                                    isActive={isActive}
+                                    tooltip={{ children: item.title }}
+                                    className="[&>[data-chevron]]:ml-auto py-6"
+                                    aria-expanded={isOpen}
+                                    onClick={() => toggleOpen(item.title)}
+                                >
+                                    {item.icon && <item.icon className="text-[var(--color-alpha)]" />}
+                                    <span>{item.title}</span>
+                                    <ChevronDown
+                                        data-chevron
+                                        className={`text-[var(--color-alpha)] opacity-80 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                                    />
+                                </SidebarMenuButton>
+                            ) : (
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isActive}
+                                    tooltip={{ children: item.title }}
+                                    className="[&>[data-chevron]]:ml-auto py-5.5"
+                                >
+                                    <Link href={item.href} prefetch>
                                             {item.icon && <item.icon className="dark:text-[var(--color-alpha)] text-[#d8a200] " />}
-                                            <span>{item.title}</span>
-                                            {item.chevron && (
-                                                <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />
-                                            )}
-                                        </Link>
-                                    </SidebarMenuButton>
-                                )}
-                                {typeof item.badge !== 'undefined' && (
-                                    <SidebarMenuBadge className="bg-destructive text-destructive-foreground">{item.badge}</SidebarMenuBadge>
-                                )}
-                                {hasChildren && (
-                                    <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} ml-8 mt-1 border-l border-sidebar-border/50 pl-2`}>
-                                        {item.children?.map((sub) => {
-                                            const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
-                                            const subActive = page.url.startsWith(subHref);
-                                            return (
-                                                <SidebarMenuSubItem key={sub.title}>
-                                                    <SidebarMenuSubButton asChild isActive={subActive}>
-                                                        <Link href={sub.href} prefetch>
-                                                            {sub.icon && <sub.icon className="text-[var(--color-alpha)]" />}
-                                                            <span>{sub.title}</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            );
-                                        })}
-                                    </SidebarMenuSub>
-                                )}
-                            </SidebarMenuItem>
+                                        <span>{item.title}</span>
+                                        {item.chevron && (
+                                            <ChevronRight data-chevron className="text-[var(--color-alpha)] opacity-80" />
+                                        )}
+                                    </Link>
+                                </SidebarMenuButton>
+                            )}
+                            {typeof item.badge !== 'undefined' && (
+                                <SidebarMenuBadge className="bg-destructive text-destructive-foreground">{item.badge}</SidebarMenuBadge>
+                            )}
+                            {hasChildren && (
+                                <SidebarMenuSub className={`${isOpen ? 'block' : 'hidden'} ml-8 mt-1 border-l border-sidebar-border/50 pl-2`}>
+                                    {item.children?.map((sub) => {
+                                        const subHref = typeof sub.href === 'string' ? sub.href : sub.href.url;
+                                        const subActive = page.url.startsWith(subHref);
+                                        return (
+                                            <SidebarMenuSubItem key={sub.title}>
+                                                <SidebarMenuSubButton asChild isActive={subActive}>
+                                                    <Link href={sub.href} prefetch>
+                                                        {sub.icon && <sub.icon className="text-[var(--color-alpha)]" />}
+                                                        <span>{sub.title}</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        );
+                                    })}
+                                </SidebarMenuSub>
+                            )}
+                        </SidebarMenuItem>
                         </Rolegard>
                     );
                 })}

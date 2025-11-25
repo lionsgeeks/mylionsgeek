@@ -937,6 +937,117 @@ class ReservationsController extends Controller
         }
     }
 
+    /**
+     * Check if a studio is available for the requested time slot.
+     */
+    public function checkStudioAvailability(Request $request)
+    {
+        $validated = $request->validate([
+            'studio_id' => 'required|integer|exists:studios,id',
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+        ]);
+
+        $conflicts = DB::table('reservations as r')
+            ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+            ->where('r.studio_id', $validated['studio_id'])
+            ->where('r.day', $validated['day'])
+            ->where('r.canceled', 0)
+            ->where(function ($query) use ($validated) {
+                $query->where('r.start', '<', $validated['end'])
+                    ->where('r.end', '>', $validated['start']);
+            })
+            ->select(
+                'r.id',
+                'r.start',
+                'r.end',
+                'r.title',
+                'u.name as user_name'
+            )
+            ->orderBy('r.start')
+            ->get();
+
+        return response()->json([
+            'available' => $conflicts->isEmpty(),
+            'conflicts' => $conflicts,
+        ]);
+    }
+
+    /**
+     * Get equipment that is available for a given time range.
+     */
+    public function availableEquipment(Request $request)
+    {
+        $validated = $request->validate([
+            'day' => 'required|date',
+            'start' => 'required|string',
+            'end' => 'required|string',
+        ]);
+
+        if (!Schema::hasTable('equipment')) {
+            return response()->json([
+                'available' => [],
+                'unavailable_ids' => [],
+            ]);
+        }
+
+        $reservedEquipmentIds = [];
+        if (Schema::hasTable('reservation_equipment')) {
+            $reservedEquipmentIds = DB::table('reservation_equipment')
+                ->where('day', $validated['day'])
+                ->where('start', '<', $validated['end'])
+                ->where('end', '>', $validated['start'])
+                ->pluck('equipment_id')
+                ->map(fn($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $query = DB::table('equipment as e')
+            ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+            ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
+            ->orderBy('e.mark');
+
+        if (!empty($reservedEquipmentIds)) {
+            $query->whereNotIn('e.id', $reservedEquipmentIds);
+        }
+
+        $available = $query
+            ->get()
+            ->map(function ($equipment) {
+                $image = $equipment->image ?? null;
+                $basePath = 'storage/img/equipment/';
+                if ($image) {
+                    if (Str::startsWith($image, ['http://', 'https://'])) {
+                        $imageUrl = $image;
+                    } else {
+                        $normalized = Str::startsWith($image, ['storage/', '/storage/', 'img/'])
+                            ? ltrim($image, '/')
+                            : $basePath . ltrim($image, '/');
+                        $imageUrl = asset(Str::startsWith($normalized, 'storage/') ? $normalized : 'storage/' . ltrim($normalized, '/'));
+                    }
+                } else {
+                    $imageUrl = null;
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference,
+                    'mark' => $equipment->mark,
+                    'image' => $imageUrl,
+                    'type_name' => $equipment->type_name,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'available' => $available,
+            'unavailable_ids' => $reservedEquipmentIds,
+        ]);
+    }
+
 
     /**
      * Show studio calendar page
