@@ -50,7 +50,7 @@ const mainNavItems = [
 
     { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench },
-    { id: 'training', title: 'Training', href: '/training', icon: GraduationCap },
+    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap },
     // { title: 'Games', href: '/games', icon: Gamepad2 },
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -59,12 +59,20 @@ const mainNavItems = [
 
 export function AppSidebar() {
     const { auth } = usePage().props;
-    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
+    const userRoles = Array.isArray(auth?.user?.role)
+        ? auth.user.role.filter(Boolean)
+        : [auth?.user?.role].filter(Boolean);
     const isStudioResponsable = userRoles.includes('studio_responsable');
+    const isCoach = userRoles.includes('coach');
     const studioResponsableAllowed = new Set(['dashboard', 'feed', 'spaces', 'reservations', 'equipment', 'settings']);
-    const navItems = isStudioResponsable
-        ? mainNavItems.filter((item) => studioResponsableAllowed.has(item.id))
-        : mainNavItems;
+    const coachAllowed = new Set(['dashboard', 'members', 'projects', 'leaderboard', 'computers', 'training', 'settings']);
+
+    let navItems = mainNavItems;
+    if (isStudioResponsable) {
+        navItems = mainNavItems.filter((item) => studioResponsableAllowed.has(item.id));
+    } else if (isCoach) {
+        navItems = mainNavItems.filter((item) => coachAllowed.has(item.id));
+    }
 
     return (
         <Sidebar collapsible="icon" variant="inset">

@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
+import Rolegard from '../../../components/rolegard';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -323,13 +324,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                             </button>
                                         ) : (
                                             <Popover
-                                                
+
                                                 open={quickAssign.computerId === c.id}
                                                 onOpenChange={(open) => {
                                                     setQuickAssign(open ? { computerId: c.id, search: '' } : { computerId: null, search: '' });
                                                 }}
                                             >
-                                                <PopoverTrigger  asChild>
+                                                <PopoverTrigger asChild>
                                                     <button
                                                         type="button"
                                                         className="inline-flex items-center justify-center rounded border border-dashed border-neutral-300 px-2 py-1 text-muted-foreground transition hover:border-primary hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-neutral-700"
@@ -351,19 +352,19 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                                     </div>
                                                     <div className="max-h-56 overflow-auto border rounded divide-y">
                                                         {quickAssignMatches.map(u => (
-                                                                <button
-                                                                    key={u.id}
-                                                                    type="button"
-                                                                    onClick={() => assignComputer(c, u.id)}
-                                                                    disabled={assigningComputerId === c.id}
-                                                                    className={`w-full px-3 py-2 text-left text-sm transition hover:bg-muted ${assigningComputerId === c.id ? 'opacity-60 cursor-wait' : ''}`}
-                                                                >
-                                                                    <div className="flex flex-col">
-                                                                        <span className="font-medium">{u.name}</span>
-                                                                        <span className="text-xs text-muted-foreground">{u.email}</span>
-                                                                    </div>
-                                                                </button>
-                                                            ))}
+                                                            <button
+                                                                key={u.id}
+                                                                type="button"
+                                                                onClick={() => assignComputer(c, u.id)}
+                                                                disabled={assigningComputerId === c.id}
+                                                                className={`w-full px-3 py-2 text-left text-sm transition hover:bg-muted ${assigningComputerId === c.id ? 'opacity-60 cursor-wait' : ''}`}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{u.name}</span>
+                                                                    <span className="text-xs text-muted-foreground">{u.email}</span>
+                                                                </div>
+                                                            </button>
+                                                        ))}
                                                         {quickAssignMatches.length === 0 && (
                                                             <p className="px-3 py-4 text-sm text-muted-foreground">No users found.</p>
                                                         )}
@@ -393,15 +394,18 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         >
                                             <Pencil size={18} className="text-alpha" />
                                         </button>
+                                        <Rolegard authorized={"admin"}>
 
-                                        <button
-                                            className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
-                                            title="Delete"
-                                            variant="destructive" onClick={() => handleDelete(c)}
-                                        >
-                                            <Trash size={18} className="text-error" />
-                                        </button>
+                                            <button
+                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                                title="Delete"
+                                                variant="destructive" onClick={() => handleDelete(c)}
+                                            >
+                                                <Trash size={18} className="text-error" />
+                                            </button>
+                                        </Rolegard>
                                     </TableCell>
+
                                 </TableRow>
                             );
                         })}
@@ -423,15 +427,18 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                 {/* Inlined Header JSX */}
                 <div className="mb-6 md:mb-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Computers</h1>
-                            <p className="text-sm text-muted-foreground mt-2">{computers.length} total</p>
+                    <Rolegard authorized={"admin"}>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Computers</h1>
+                                <p className="text-sm text-muted-foreground mt-2">{computers.length} total</p>
+                            </div>
+                            <Button className="bg-yellow-400 text-black hover:bg-yellow-500" onClick={openAddModal}>
+                                Add Computer
+                            </Button>
                         </div>
-                        <Button className="bg-yellow-400 text-black hover:bg-yellow-500" onClick={openAddModal}>
-                            Add Computer
-                        </Button>
-                    </div>
+
+                    </Rolegard>
 
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
                         <div className="relative">
@@ -476,7 +483,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
             {/* Add Modal */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent  className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light border-alpha/20">
+                <DialogContent className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light border-alpha/20">
                     <DialogHeader>
                         <DialogTitle>Add a Computer</DialogTitle>
                     </DialogHeader>
@@ -556,25 +563,27 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         <DialogTitle>Update Computer</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                        <div> <label className="block text-sm mb-1">Reference :</label>
-                            <Input value={editForm.reference} onChange={e => setEditForm(f => ({ ...f, reference: e.target.value }))} />
-                        </div>
-                        <div>
-                            <label className="block text-sm mb-1">Serial Number :</label>
-                            <Input value={editForm.cpu} onChange={e => setEditForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
-                        </div>
-                        <div>
-                            <label className="block text-sm mb-1">CPU-GPU :</label>
-                            <Select value={editForm.gpu} onValueChange={value => setEditForm(f => ({ ...f, gpu: value }))}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select CPU-GPU" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="I5-GTX">I5-GTX</SelectItem>
-                                    <SelectItem value="I7-RTX">I7-RTX</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <Rolegard authorized={"admin"}>
+                            <div> <label className="block text-sm mb-1">Reference :</label>
+                                <Input value={editForm.reference} onChange={e => setEditForm(f => ({ ...f, reference: e.target.value }))} />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1">Serial Number :</label>
+                                <Input value={editForm.cpu} onChange={e => setEditForm(f => ({ ...f, cpu: e.target.value }))} placeholder="Serial number" />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1">CPU-GPU :</label>
+                                <Select value={editForm.gpu} onValueChange={value => setEditForm(f => ({ ...f, gpu: value }))}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select CPU-GPU" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="I5-GTX">I5-GTX</SelectItem>
+                                        <SelectItem value="I7-RTX">I7-RTX</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </Rolegard>
                         <div>
                             <label className="block text-sm mb-1">Computer State :</label>
                             <Select
@@ -591,10 +600,12 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <label className="block text-sm mb-1">Mark :</label>
-                            <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
-                        </div>
+                        <Rolegard authorized={"admin"}>
+                            <div>
+                                <label className="block text-sm mb-1">Mark :</label>
+                                <Input value={editForm.mark} onChange={e => setEditForm(f => ({ ...f, mark: e.target.value }))} placeholder="Mark" />
+                            </div>
+                        </Rolegard>
                         <div>
                             <label className="block text-sm mb-1">Assign to User :</label>
                             <div className="space-y-2">
