@@ -506,7 +506,7 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                  
+
                     </div>
 
                     <div className="space-y-6">
@@ -518,7 +518,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
-                                <div className="text-center">
+                                <div className="text-center flex flex-col items-center">
                                     {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-16 h-16 mx-auto mb-4">
                                         <AvatarImage src={normalizeImageUrl(reservation.user_avatar)} />
                                         <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
@@ -527,7 +527,8 @@ export default function AdminReservationDetails({ reservation }) {
                                     </AvatarPrimitive.Root> */}
                                     <Avatar
                                         className="w-16 h-16"
-                                        image={reservation?.user_avatar}
+                                        image={reservation?.user_avatar?.split('/').pop()}
+
                                         name={reservation?.name}
                                         lastActivity={reservation?.online || null}
                                         onlineCircleClass="hidden"
@@ -577,7 +578,7 @@ export default function AdminReservationDetails({ reservation }) {
                                                 </AvatarPrimitive.Root> */}
                                                 <Avatar
                                                     className="w-10 h-10"
-                                                    image={member?.image}
+                                                    image={member?.avatar?.split('/').pop()}
                                                     name={member?.name}
                                                     lastActivity={member?.last_online || null}
                                                     onlineCircleClass="hidden"

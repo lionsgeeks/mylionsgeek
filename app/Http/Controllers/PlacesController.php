@@ -563,7 +563,7 @@ class PlacesController extends Controller
         }
 
         return DB::table('users')
-            ->select('id', 'name', 'email', 'image', 'last_online')
+            ->select('id', 'name', 'email', 'image', 'last_online', 'role')
             ->orderBy('name')
             ->get()
             ->map(function ($user) {
@@ -588,6 +588,7 @@ class PlacesController extends Controller
                     'email' => $user->email,
                     'image' => $imageUrl,
                     'last_online' => $user->last_online,
+                    'role' => $user->role,
                 ];
             })
             ->values()
@@ -606,7 +607,6 @@ class PlacesController extends Controller
             ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
             ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
             ->whereIn('r.studio_id', $studioIds)
-            ->where('r.approved', 1)
             ->where('r.canceled', 0)
             ->select(
                 'r.id',

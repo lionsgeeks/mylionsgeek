@@ -8,11 +8,7 @@ import { Button } from '@/components/ui/button';
 import TablePagination from '@/components/TablePagination';
 
 export default function ReservationsPage() {
-  const { reservations = [], auth } = usePage().props;
-  const userRoles = Array.isArray(auth?.user?.role)
-    ? auth.user.role
-    : [auth?.user?.role].filter(Boolean);
-  const isStudioResponsable = userRoles.includes('studio_responsable');
+  const { reservations = [] } = usePage().props;
   const parseTs = (s) => {
     if (!s || typeof s !== 'string') return 0;
     const isoish = s.includes('T') ? s : s.replace(' ', 'T');
@@ -29,8 +25,6 @@ export default function ReservationsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 7;
 
-  const effectiveTypeFilter = isStudioResponsable ? 'studio' : typeFilter;
-
   const filteredReservations = useMemo(() => {
     return sortedReservations.filter(r => {
       // status
@@ -41,8 +35,8 @@ export default function ReservationsPage() {
         (statusFilter === 'canceled' && r.canceled);
 
       // type
-      const typeVal = (r.type || r.place_type || '').toLowerCase().trim();
-      const typeOk = effectiveTypeFilter === 'all' || typeVal === effectiveTypeFilter;
+      const typeVal = (r.type || r.place_type || '').toLowerCase();
+      const typeOk = typeFilter === 'all' || typeVal === typeFilter;
 
       // quick query matches user or date or time
       const q = query.trim().toLowerCase();
@@ -54,7 +48,7 @@ export default function ReservationsPage() {
 
       return statusOk && typeOk && queryOk;
     });
-  }, [sortedReservations, statusFilter, effectiveTypeFilter, query]);
+  }, [sortedReservations, statusFilter, typeFilter, query]);
 
   const startIndex = (currentPage - 1) * perPage;
   const endIndex = startIndex + perPage;
@@ -63,7 +57,7 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, effectiveTypeFilter, query, filteredReservations.length]);
+  }, [statusFilter, typeFilter, query, filteredReservations.length]);
   const columns = [
     { key: "user_name", label: "User" },
     { key: "date", label: "Date" },
