@@ -17,7 +17,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     const userRoles: string[] = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
 
     // If the user has 'admin' or 'studio_responsable', show sidebar (even if they are also 'coach')
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('studio_responsable')|| userRoles.includes('coach');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable')|| userRoles.includes('coach');
 
     // Show header only for students/coworkers without admin
     const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));

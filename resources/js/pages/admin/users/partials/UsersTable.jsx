@@ -111,7 +111,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                     <h1 className="capitalize">{user.name}</h1>
                                     {(() => {
                                         const userRoles = Array.isArray(auth.user.role) ? auth.user.role : [auth.user.role];
-                                        if (userRoles.includes('admin') || userRoles.includes('studio_responsable')) {
+                                        if (userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable')) {
                                             return <span className="text-dark/80 dark:text-light/80 font-medium text-[0.8rem]">{user.cin}</span>;
                                         }
                                         return null;

@@ -9,7 +9,7 @@ const RolesMultiSelect = ({ roles, onChange }) => {
         'coworker',
         'coach',
         'pro',
-        'moderator',
+        'moderateur',
         'recruiter',
     ];
     const current = (roles || []).map(r => String(r).toLowerCase());

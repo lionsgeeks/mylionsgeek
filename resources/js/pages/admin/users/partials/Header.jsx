@@ -105,7 +105,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         'coworker',
         'coach',
         'pro',
-        'moderator',
+        'moderateur',
         'recruiter',
     ];
 

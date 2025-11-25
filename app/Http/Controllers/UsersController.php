@@ -160,7 +160,7 @@ class UsersController extends Controller
             'studio_responsable',
             'coach',
             'pro',
-            'moderator',
+            'moderateur',
             'recruiter',
             'coworker'
         ];

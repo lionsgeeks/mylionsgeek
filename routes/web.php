@@ -18,7 +18,7 @@ Route::get('/', function () {
 })->name('home');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin,coach,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');

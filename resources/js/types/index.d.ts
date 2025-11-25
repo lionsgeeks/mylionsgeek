@@ -16,6 +16,7 @@ export interface NavGroup {
 }
 
 export interface NavItem {
+    id?: string;
     title: string;
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
@@ -24,6 +25,8 @@ export interface NavItem {
     chevron?: boolean;
     children?: NavItem[];
     url:string;
+    authorizedRoles?: string[];
+    excludedRoles?: string[];
 }
 
 export interface SharedData {
