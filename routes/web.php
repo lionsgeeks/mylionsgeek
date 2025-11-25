@@ -28,7 +28,10 @@ Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_respo
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
 
-Route::middleware(['auth'])->post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
+Route::middleware(['auth'])->group(function () {
+    Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
+    Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
+});
 
 
 require __DIR__ . '/settings.php';

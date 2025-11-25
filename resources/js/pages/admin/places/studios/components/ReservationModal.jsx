@@ -44,11 +44,15 @@ const ReservationModal = ({
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const [conflictModalOpen, setConflictModalOpen] = useState(false);
     const [conflictDetails, setConflictDetails] = useState([]);
-    const csrfToken = useMemo(() => {
-        if (typeof document === 'undefined') return null;
-        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    }, []);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const csrfTokenRef = useRef(null);
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            csrfTokenRef.current = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        }
+    }, []);
+    const [availableEquipment, setAvailableEquipment] = useState(equipmentOptions);
+    const [equipmentAvailabilityLoading, setEquipmentAvailabilityLoading] = useState(false);
     const scrollContainerRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -68,7 +72,7 @@ const ReservationModal = ({
         } else if (!studio?.id) {
             setData('studio_id', '');
         }
-    }, [selectedStudio, studio]);
+    }, [selectedStudio, studio, setData]);
 
     useEffect(() => {
         if (studio?.id) {
@@ -78,6 +82,59 @@ const ReservationModal = ({
             setSelectedStudio(null);
         }
     }, [blockedStudioIds, selectedStudio, studio]);
+
+    useEffect(() => {
+        setAvailableEquipment(equipmentOptions);
+    }, [equipmentOptions]);
+
+    const fetchAvailableEquipment = useCallback(async () => {
+        if (!data.day || !data.start || !data.end) {
+            setAvailableEquipment(equipmentOptions);
+            return;
+        }
+
+        setEquipmentAvailabilityLoading(true);
+        try {
+            const response = await fetch('/reservations/available-equipment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-Token': csrfTokenRef.current || '',
+                },
+                body: JSON.stringify({
+                    day: data.day,
+                    start: data.start,
+                    end: data.end,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch available equipment');
+            }
+
+            const payload = await response.json();
+            const availableList = Array.isArray(payload.available) ? payload.available : [];
+            setAvailableEquipment(availableList);
+
+            if (availableList.length) {
+                setSelectedEquipment((prev) =>
+                    prev.filter((item) => availableList.some((available) => available.id === item.id))
+                );
+            } else {
+                setSelectedEquipment([]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch available equipment', error);
+            setAvailableEquipment(equipmentOptions);
+        } finally {
+            setEquipmentAvailabilityLoading(false);
+        }
+    }, [data.day, data.start, data.end, equipmentOptions]);
+
+    useEffect(() => {
+        fetchAvailableEquipment();
+    }, [fetchAvailableEquipment]);
 
     // Update form when selectedRange changes
     useEffect(() => {
@@ -123,7 +180,7 @@ const ReservationModal = ({
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-Token': csrfToken || '',
+                    'X-CSRF-Token': csrfTokenRef.current || '',
                 },
                 body: JSON.stringify({
                     studio_id: activeStudioId,
@@ -152,7 +209,7 @@ const ReservationModal = ({
         } finally {
             setCheckingAvailability(false);
         }
-    }, [data.day, data.start, data.end, data.studio_id, selectedStudio, studio, csrfToken]);
+    }, [data.day, data.start, data.end, data.studio_id, selectedStudio, studio]);
 
     const handleNext = async () => {
         const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
@@ -503,11 +560,12 @@ const ReservationModal = ({
                     {/* Step 3: Equipment */}
                     {currentStep === 3 && (
                         <div className="space-y-4">
-                            <EquipmentSelector
-                                selected={selectedEquipment}
-                                onSelect={setSelectedEquipment}
-                                equipmentOptions={equipmentOptions}
-                            />
+                    <EquipmentSelector
+                        selected={selectedEquipment}
+                        onSelect={setSelectedEquipment}
+                        equipmentOptions={availableEquipment}
+                        loading={equipmentAvailabilityLoading}
+                    />
 
                             <div className="flex justify-between">
                                 <Button type="button" variant="outline" onClick={handlePrevious} className="cursor-pointer dark:hover:bg-accent">
