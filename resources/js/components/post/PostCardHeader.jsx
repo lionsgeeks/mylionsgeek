@@ -1,32 +1,68 @@
-import React, { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from '@inertiajs/react';
 import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
 import { MoreHorizontal } from 'lucide-react';
 import { helpers } from '../utils/helpers';
 
-const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
+const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, isDeleting = false }) => {
     const { addOrRemoveFollow } = helpers();
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
+    const actionAreaRef = useRef(null);
+
     //! Delete Post
-    const handleDeletePost = (postId) => {
-        try {
-            router.delete(`/posts/post/${postId}`, {
-                onSuccess: () => {
-                    // const newPosts = posts?.filter((p) => p?.id !== postId);
-                    // onPostsChange(newPosts);
-                },
-            });
-        } catch (error) {
-            //console.log('Failed to delete post:', error);
+    const handleDeletePost = () => {
+        if (!post?.id || !onDeletePost || isDeleting) {
+            return Promise.resolve(false);
         }
+
+        return onDeletePost(post.id)
+            .then((result) => {
+                setOpenDetails(null);
+                setOpenDeletePost(false);
+                return result;
+            });
     };
     //! open dropdonw  
     const handleOpenDetails = (post) => {
-        setOpenDetails(post?.id);
+        setOpenDetails((current) => (current === post?.id ? null : post?.id));
     };
+
+    useEffect(() => {
+        if (!openDetails) {
+            return undefined;
+        }
+
+        const handlePointerDown = (event) => {
+            if (!actionAreaRef.current) {
+                return;
+            }
+
+            if (!actionAreaRef.current.contains(event.target)) {
+                setOpenDetails(null);
+                setOpenDeletePost(false);
+                setOpenEditPost(false);
+            }
+        };
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                setOpenDetails(null);
+                setOpenDeletePost(false);
+                setOpenEditPost(false);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown, true);
+        document.addEventListener('keydown', handleKeyDown, true);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown, true);
+            document.removeEventListener('keydown', handleKeyDown, true);
+        };
+    }, [openDetails]);
     return (
         <>
             <div className="p-4">
@@ -62,10 +98,10 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" ref={actionAreaRef}>
                         {user?.id === post?.user_id && (
                             <button
-                                className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded"
+                                className={`text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded ${isDeleting ? 'opacity-60 pointer-events-none' : ''}`}
                                 onClick={() => handleOpenDetails(post)}
                             >
                                 <MoreHorizontal className="w-5 h-5" />
@@ -82,7 +118,8 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
                                             }
                                         }}
                                         post={post}
-                                        handleDelete={() => handleDeletePost(post?.id)}
+                                        handleDelete={handleDeletePost}
+                                        isDeleting={isDeleting}
                                     />
                                 )}
                             </button>
