@@ -15,9 +15,11 @@ use App\Http\Controllers\ReservationsController;
 // =====================
 Route::middleware(['auth'])->group(function () {
     Route::get('/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('user.reservations');
+    Route::get('/student/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('student.reservations');
     Route::post('/reservations/{reservation}/cancel', [\App\Http\Controllers\ReservationsController::class, 'cancelOwn'])->name('user.reservations.cancel');
     Route::put('/reservations/{reservation}/update', [ReservationsController::class, 'update'])->name('reservations.update');
     Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('reservations.details');
+    Route::get('/student/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('student.reservations.details');
 });
 // =====================
 // USER READ-ONLY DETAILS (PROTECTED)

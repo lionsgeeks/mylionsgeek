@@ -5,8 +5,6 @@ import ReservationTable from '@/components/ReservationTable';
 import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TablePagination from '@/components/TablePagination';
 
 export default function ReservationsPage() {
@@ -93,49 +91,51 @@ export default function ReservationsPage() {
   };
 
   const breadcrumbs = [
-    { title: 'My Reservations', href: '/reservations' }
+    { title: 'My Reservations', href: '/student/reservations' }
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="max-w-6xl mx-auto px-6  bg-light dark:bg-dark">
-        <div className="mb-3 flex-shrink-0">
-          <h1 className="text-2xl font-bold tracking-tight">My Reservations</h1>
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 min-h-[80vh] sm:min-h-[85vh]">
+        <div className="mb-4 sm:mb-6 text-center sm:text-left">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Reservations</h1>
           <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
         </div>
-        {/* Controls */}
-        <div className="rounded-xl border border-sidebar-border/70 shadow-sm  bg-light dark:bg-dark flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="p-4 sm:p-6 flex-1 flex flex-col overflow-hidden min-h-0">
-            <div className="flex-1 overflow-auto min-h-0">
-              <ReservationTable
-                columns={columns}
-                data={pagedReservations}
-                onRowClick={row => {
-                  // Don't navigate to details for cowork reservations
-                  if (row.type === 'cowork' || row.place_type === 'cowork') {
-                    return;
-                  }
-                  router.visit(`/reservations/${row.id}/details`);
-                }}
-                renderActions={(row) => (
-                  !row.canceled && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={(e) => handleCancel(row.id, e)}
-                    >
-                      Cancel
-                    </Button>
-                  )
-                )}
-              />
-            </div>
-            <div className="flex-shrink-0 mt-4">
-              <TablePagination
-                currentPage={currentPage}
-                lastPage={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
-              />
-            </div>
+        <div className="rounded-2xl border border-sidebar-border/60 bg-light dark:bg-dark/80 shadow-sm p-3 sm:p-6">
+          <ReservationTable
+            columns={columns}
+            data={pagedReservations}
+            onRowClick={row => {
+              if (row.type === 'cowork' || row.place_type === 'cowork') {
+                return;
+              }
+              router.visit(`/student/reservations/${row.id}/details`);
+            }}
+            renderActions={(row) => (
+              !row.canceled && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={(e) => handleCancel(row.id, e)}
+                >
+                  Cancel
+                </Button>
+              )
+            )}
+            emptyState={
+              <div className="flex flex-col items-center gap-3">
+                <span>No reservations yet. Time to book your first one!</span>
+                <Button variant="default" onClick={() => router.visit('/student/spaces')}>
+                  Reserve Now
+                </Button>
+              </div>
+            }
+          />
+          <div className="mt-4">
+            <TablePagination
+              currentPage={currentPage}
+              lastPage={totalPages}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </div>
         </div>
       </div>
