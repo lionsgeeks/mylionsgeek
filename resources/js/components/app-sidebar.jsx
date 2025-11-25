@@ -56,7 +56,7 @@ const mainNavItems = [
     { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, excludedRoles: ['studio_responsable'] },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
     { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, excludedRoles: ['studio_responsable'] },
-    // { title: 'Games', href: '/games', icon: Gamepad2 },
+    { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
 

@@ -272,7 +272,11 @@ export default function Leaderboard() {
 
   const availablePromos = useMemo(() => {
     const promos = [...new Set(leaderboardData.map(user => user.user?.promo))].filter(Boolean);
-    return promos.sort((a, b) => b.localeCompare(a));
+    return promos.sort((a, b) => {
+      const strA = String(a || '');
+      const strB = String(b || '');
+      return strB.localeCompare(strA);
+    });
   }, [leaderboardData]);
 
   const highlightText = (text, searchTerm) => {
