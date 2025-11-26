@@ -40,7 +40,7 @@ class UsersController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $allFormation = Formation::orderBy('created_at', 'desc')->get();
+        $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
 
         return Inertia::render('admin/users/index', [
             'users' => $allUsers,

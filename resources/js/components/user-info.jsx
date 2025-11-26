@@ -1,14 +1,29 @@
-import { Avatar,  } from '@/components/ui/avatar';
-import { useInitials } from '@/hooks/use-initials';
+import { Avatar, } from '@/components/ui/avatar';
+
+const normalizeRoles = (roleValue) => {
+    if (!roleValue) return [];
+    if (Array.isArray(roleValue)) return roleValue.filter(Boolean);
+    return [roleValue].filter(Boolean);
+};
+
+const formatRoleLabel = (role) => {
+    if (!role) return role;
+    return role === 'studio_responsable' ? 'Responsable Studio' : role;
+};
 
 export function UserInfo({ user, showEmail = false }) {
-    const getInitials = useInitials();
+    const roles = normalizeRoles(user.role);
+    const displayRoles = roles.length ? roles.map(formatRoleLabel).join(', ') : null;
 
     return (
         <>
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate font-extralight text-xs text-dark dark:text-white/80">{user.role}</span>
+                {displayRoles && (
+                    <span className="truncate font-extralight text-xs text-dark dark:text-white/80">
+                        {displayRoles}
+                    </span>
+                )}
                 {showEmail && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
             </div>
             <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="hidden" />
