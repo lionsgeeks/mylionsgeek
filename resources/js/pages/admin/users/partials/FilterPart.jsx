@@ -50,14 +50,23 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     value={filters.training === null ? undefined : String(filters.training)}
                     onValueChange={e => handleChange('training', e === 'all' ? null : Number(e))}
                 >
-                    <SelectTrigger className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white data-[placeholder]:text-[#0a0a0a]/50 dark:data-[placeholder]:text-white">
+                    <SelectTrigger className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white data-[placeholder]:text-[#0a0a0a]/50 dark:data-[placeholder]:text-white px-2">
                         <SelectValue placeholder="Select By Training" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white">
                         <SelectItem value="all" className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">All</SelectItem>
                         {trainings.map(training => (
-                            <SelectItem key={training.id} value={training.id.toString()} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">
-                                {training.name}
+                            <SelectItem
+                                key={training.id}
+                                value={training.id?.toString?.() ?? String(training.id)}
+                                className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700"
+                            >
+                                <div className="flex flex-col">
+                                    <span>{training.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        Coach: {training.coach?.name ?? '—'}
+                                    </span>
+                                </div>
                             </SelectItem>
                         ))}
                     </SelectContent>
