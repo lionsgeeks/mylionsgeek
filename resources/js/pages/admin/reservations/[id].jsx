@@ -268,28 +268,7 @@ export default function AdminReservationDetails({ reservation }) {
                         <span className="text-sm text-muted-foreground">
                             Created {new Date(reservation.created_at).toLocaleDateString()}
                         </span>
-                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
-                            {isPending && (
-                                <div className="ml-auto flex items-center gap-2">
-                                    <Button
-                                        onClick={handleApprove}
-                                        className="bg-green-600 text-white hover:bg-green-700"
-                                        size="sm"
-                                    >
-                                        <CheckCircle className="w-4 h-4 mr-1" />
-                                        Approve
-                                    </Button>
-                                    <Button
-                                        onClick={handleCancel}
-                                        variant="destructive"
-                                        size="sm"
-                                    >
-                                        <XCircle className="w-4 h-4 mr-1" />
-                                        Cancel
-                                    </Button>
-                                </div>
-                            )}
-                        </Rolegard>
+
                         {canEdit && (
                             <div className="ml-auto flex items-center gap-2">
                                 <Button
@@ -510,6 +489,14 @@ export default function AdminReservationDetails({ reservation }) {
                     </div>
 
                     <div className="space-y-6">
+
+                       
+
+
+
+
+
+
                         <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
                             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
@@ -608,33 +595,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardContent>
                             </Card>
                         )}
-                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
-                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
-                                <CardHeader className="px-6 py-4">
-                                    <CardTitle className="text-lg">Quick Actions</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <div className="space-y-3">
-                                        <Button variant="outline" className="w-full justify-start" onClick={handleBackNavigation}>
-                                            <ArrowLeft className="w-4 h-4 mr-2" />
-                                            Back to reservations
-                                        </Button>
-                                        {reservation.status === 'upcoming' && (
-                                            <Button variant="destructive" className="w-full justify-start">
-                                                <XCircle className="w-4 h-4 mr-2" />
-                                                Cancel Reservation
-                                            </Button>
-                                        )}
-                                        {reservation.status === 'active' && (
-                                            <Button variant="default" className="w-full justify-start">
-                                                <CheckCircle className="w-4 h-4 mr-2" />
-                                                End Reservation
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Rolegard>
+
                     </div>
                 </div>
             </div>

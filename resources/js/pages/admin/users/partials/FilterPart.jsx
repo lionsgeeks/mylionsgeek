@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { Input } from "@/components/ui/input"
 import { RotateCw, Search } from "lucide-react"
 import {
@@ -12,7 +12,7 @@ import { Button } from '@headlessui/react';
 
 
 
-const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredUsers = [], status }) => {
+const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredUsers = [], status, fields = [], initialFilters }) => {
 
 
 
@@ -29,7 +29,7 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
 
     return (
         <>
-            <div className='grid lg:grid-cols-6 grid-cols-1 gap-4'>
+            <div className='grid lg:grid-cols-7 grid-cols-1 gap-4'>
                 {/* Search Input */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4" />
@@ -63,15 +63,33 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                 {/* Select by Promo */}
                 <Select
                     value={filters.promo ?? undefined}
-                    onValueChange={e => handleChange('promo', e === 'all' ? '' : e)}
+                    onValueChange={e => handleChange('promo', e === 'all' ? null : e)}
                 >
                     <SelectTrigger className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white data-[placeholder]:text-[#0a0a0a]/50 dark:data-[placeholder]:text-white">
                         <SelectValue placeholder="Select By Promo" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white">
                         <SelectItem value="all" className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">All</SelectItem>
-                        {allPromo.map((p, index) => (
-                            <SelectItem key={index} value={p} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">{p}</SelectItem>
+                        {allPromo.map((p) => (
+                            <SelectItem key={p} value={p} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">{p}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+
+                {/* Select by Field */}
+                <Select
+                    value={filters.field ?? undefined}
+                    onValueChange={value => handleChange('field', value === 'all' ? null : value)}
+                >
+                    <SelectTrigger className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white data-[placeholder]:text-[#0a0a0a]/50 dark:data-[placeholder]:text-white">
+                        <SelectValue placeholder="Select By Field" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white">
+                        <SelectItem value="all" className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">All</SelectItem>
+                        {fields.map((field) => (
+                            <SelectItem key={field} value={field} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">
+                                {field}
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -111,13 +129,14 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                 {/* Reset Button */}
                 <Button
                     className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg"
-                    onClick={() => setFilters({
+                    onClick={() => setFilters(initialFilters ? { ...initialFilters } : {
                         search: "",
                         training: null,
                         promo: null,
                         role: "",
                         status: "",
-                        date: ""
+                        date: "",
+                        field: null,
                     })}
                 >
                     <RotateCw size={15} /> Reset

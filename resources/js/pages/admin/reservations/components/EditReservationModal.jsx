@@ -126,7 +126,6 @@ const EditReservationModal = ({
                         )}
 
                         <div>
-                            <Label>Team Members</Label>
                             <TeamMemberSelector
                                 selected={selectedMembers}
                                 onSelect={setSelectedMembers}
@@ -135,7 +134,7 @@ const EditReservationModal = ({
                         </div>
 
                         <div>
-                            <Label>Equipment</Label>
+                           
                             <EquipmentSelector
                                 selected={selectedEquipment}
                                 onSelect={setSelectedEquipment}
