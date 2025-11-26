@@ -144,7 +144,7 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                             <TableCell>
                                 <div className="flex flex-wrap gap-2">
                                     {user.role ? (
-                                        <RoleBadge role={user.role} />
+                                        <RoleBadge role={user.role} email={user.email} />
                                     ) : (
                                         <span className="text-gray-400 text-xs">No role</span>
                                     )}

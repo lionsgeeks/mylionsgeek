@@ -12,6 +12,9 @@ import { Button } from '@headlessui/react';
 
 
 
+const displayRole = (role) =>
+    role === 'studio_responsable' ? 'Responsable Studio' : role;
+
 const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredUsers = [], status, fields = [], initialFilters }) => {
 
 
@@ -105,7 +108,9 @@ const FilterPart = ({ filters, setFilters, allPromo, trainings, roles, filteredU
                     <SelectContent className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white">
                         <SelectItem value="all" className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">All</SelectItem>
                         {roles.map((role, index) => (
-                            <SelectItem key={index} value={role} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">{role}</SelectItem>
+                            <SelectItem key={index} value={role} className="text-[#0a0a0a] dark:text-white focus:bg-gray-200 dark:focus:bg-neutral-700">
+                                {displayRole(role)}
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
