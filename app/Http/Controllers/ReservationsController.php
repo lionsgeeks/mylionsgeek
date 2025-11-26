@@ -131,6 +131,7 @@ class ReservationsController extends Controller
                 'id' => $r->id,
                 'user_name' => $r->user_name,
                 'date' => $r->date ?? $r->day ?? null,
+                'day' => $r->day ?? $r->date ?? null,
                 'start' => $r->start ?? null,
                 'end' => $r->end ?? null,
                 'type' => $r->type ?? null,
@@ -180,17 +181,10 @@ class ReservationsController extends Controller
                 ->get();
         }
 
-        // Studio reservations (main reservations table with type=studio and studio_id)
-        $studioReservations = [];
-        if (Schema::hasTable('reservations') && Schema::hasTable('studios')) {
-            $studioReservations = DB::table('reservations as r')
-                ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
-                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                ->where('r.type', 'studio')
-                ->select('r.*', 's.name as studio_name', 'u.name as user_name')
-                ->orderByDesc('r.created_at')
-                ->get();
-        }
+        // Studio reservations subset with equipment & team info
+        $studioReservations = $enriched->filter(function ($row) {
+            return ($row['type'] ?? null) === 'studio';
+        })->values();
 
         // Meeting room reservations (type=meeting_room with meeting_room_id)
         $meetingRoomReservations = DB::table('reservation_meeting_rooms as rm')
