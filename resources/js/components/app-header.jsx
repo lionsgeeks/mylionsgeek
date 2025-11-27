@@ -15,6 +15,7 @@ import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
 import SearchDialog from './search-dialog';
+import ChatIcon from './chat/ChatIcon';
 
 
 
@@ -132,11 +133,7 @@ export function AppHeader({ breadcrumbs = [] }) {
 
                     <div className="ml-auto flex items-center space-x-2">
                         <div className="flex items-center gap-4">
-
-                            <div className="">
-                                {/* component change mode */}
-                                <ThemeToggle />
-                            </div>
+                            <ChatIcon />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="size-10 rounded-full p-1">
@@ -147,6 +144,10 @@ export function AppHeader({ breadcrumbs = [] }) {
                                     <UserMenuContent user={auth.user} />
                                 </DropdownMenuContent>
                             </DropdownMenu>
+                            <div className="">
+                                {/* component change mode */}
+                                <ThemeToggle />
+                            </div>
                         </div>
                     </div>
                 </div>

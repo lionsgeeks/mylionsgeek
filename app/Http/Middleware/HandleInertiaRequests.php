@@ -77,6 +77,12 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
             ],
+            'conversations' => fn () => $request->session()->get('conversations'),
+            'conversation' => fn () => $request->session()->get('conversation'),
+            'messages' => fn () => $request->session()->get('messages'),
+            'message' => fn () => $request->session()->get('message'),
+            'unread_count' => fn () => $request->session()->get('unread_count'),
+            'posts' => fn () => $request->session()->get('posts'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

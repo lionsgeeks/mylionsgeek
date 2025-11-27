@@ -45,3 +45,4 @@ require __DIR__ . '/student/students.php';
 require __DIR__ . '/studentProjects.php';
 require __DIR__ . '/admin/project-approvals.php';
 require __DIR__ . '/student/posts.php';
+require __DIR__ . '/chat.php';

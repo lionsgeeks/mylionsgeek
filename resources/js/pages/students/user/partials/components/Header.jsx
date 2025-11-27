@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
-import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal, MessageCircle } from 'lucide-react';
 import { Link, router, usePage } from '@inertiajs/react';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 import { helpers } from '../../../../../components/utils/helpers';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Rolegard from '../../../../../components/rolegard'; // Assuming this is the path for Rolegard
+import Rolegard from '../../../../../components/rolegard';
 
 const Header = ({ user, userFunctionality }) => {
     const [openEdit, setOpenEdit] = useState(false);
     const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
+
+    const handleMessageClick = () => {
+        // 7al chat w 3tiw conversation dyal had user
+        window.dispatchEvent(new CustomEvent('open-chat', { 
+            detail: { userId: user?.id } 
+        }));
+        
+        // 7al chat dialog
+        const chatButton = document.querySelector('[aria-label="Chat"]');
+        if (chatButton) {
+            chatButton.click();
+        }
+    };
 
     const changeCover = (event, userId) => {
         const file = event.target.files[0]; // Get the first file
@@ -168,13 +181,24 @@ const Header = ({ user, userFunctionality }) => {
                                 </button>
                             )}
                             {auth.user?.id != user?.id && (
-                                <button
-                                    onClick={() => addOrRemoveFollow(user?.id, user?.is_Following)}
-                                    className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'
-                                        }`}
-                                >
-                                    <span className="text-sm font-medium">{user?.is_Following ? 'Unfollow' : 'Follow'}</span>
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => addOrRemoveFollow(user?.id, user?.is_Following)}
+                                        className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'
+                                            }`}
+                                    >
+                                        <span className="text-sm font-medium">{user?.is_Following ? 'Unfollow' : 'Follow'}</span>
+                                    </button>
+                                    {user?.is_Following && (
+                                        <button
+                                            onClick={handleMessageClick}
+                                            className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                                        >
+                                            <MessageCircle className="w-4 h-4" />
+                                            <span className="text-sm font-medium">Message</span>
+                                        </button>
+                                    )}
+                                </>
                             )}
 
                             <Popover>
