@@ -36,13 +36,13 @@ import EditReservationModal from './components/EditReservationModal';
 export default function AdminReservationDetails({ reservation }) {
     const { auth, equipmentOptions = [], teamMemberOptions = [], studios: studioOptions = [] } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('super_admin') || userRoles.includes('studio_responsable');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('super_admin') || userRoles.includes('studio_responsable');
     const handleBackNavigation = () => {
         if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
             return;
         }
-        router.visit(isAdmin ? '/admin/reservations' : '/reservations');
+        router.visit(isAdmin ? '/admin/reservations' : '/student/reservations');
     };
 
     if (!reservation) {
@@ -252,8 +252,8 @@ export default function AdminReservationDetails({ reservation }) {
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
                         <Button variant="outline" size="sm" onClick={handleBackNavigation}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to reservations
+                            <ArrowLeft className="w-4 h-4 " />
+                           
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>
@@ -268,28 +268,7 @@ export default function AdminReservationDetails({ reservation }) {
                         <span className="text-sm text-muted-foreground">
                             Created {new Date(reservation.created_at).toLocaleDateString()}
                         </span>
-                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
-                            {isPending && (
-                                <div className="ml-auto flex items-center gap-2">
-                                    <Button
-                                        onClick={handleApprove}
-                                        className="bg-green-600 text-white hover:bg-green-700"
-                                        size="sm"
-                                    >
-                                        <CheckCircle className="w-4 h-4 mr-1" />
-                                        Approve
-                                    </Button>
-                                    <Button
-                                        onClick={handleCancel}
-                                        variant="destructive"
-                                        size="sm"
-                                    >
-                                        <XCircle className="w-4 h-4 mr-1" />
-                                        Cancel
-                                    </Button>
-                                </div>
-                            )}
-                        </Rolegard>
+
                         {canEdit && (
                             <div className="ml-auto flex items-center gap-2">
                                 <Button
@@ -506,10 +485,18 @@ export default function AdminReservationDetails({ reservation }) {
                             </CardContent>
                         </Card>
 
-                  
+
                     </div>
 
                     <div className="space-y-6">
+
+                       
+
+
+
+
+
+
                         <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
                             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/10 px-6 py-2">
                                 <CardTitle className="flex items-center gap-2">
@@ -518,7 +505,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
-                                <div className="text-center">
+                                <div className="text-center flex flex-col items-center">
                                     {/* <AvatarPrimitive.Root className="relative flex shrink-0 overflow-hidden rounded-full w-16 h-16 mx-auto mb-4">
                                         <AvatarImage src={normalizeImageUrl(reservation.user_avatar)} />
                                         <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-lg font-semibold flex size-full items-center justify-center rounded-full">
@@ -527,7 +514,8 @@ export default function AdminReservationDetails({ reservation }) {
                                     </AvatarPrimitive.Root> */}
                                     <Avatar
                                         className="w-16 h-16"
-                                        image={reservation?.user_avatar}
+                                        image={reservation?.user_avatar?.split('/').pop()}
+
                                         name={reservation?.name}
                                         lastActivity={reservation?.online || null}
                                         onlineCircleClass="hidden"
@@ -577,7 +565,7 @@ export default function AdminReservationDetails({ reservation }) {
                                                 </AvatarPrimitive.Root> */}
                                                 <Avatar
                                                     className="w-10 h-10"
-                                                    image={member?.image}
+                                                    image={member?.avatar?.split('/').pop()}
                                                     name={member?.name}
                                                     lastActivity={member?.last_online || null}
                                                     onlineCircleClass="hidden"
@@ -607,33 +595,7 @@ export default function AdminReservationDetails({ reservation }) {
                                 </CardContent>
                             </Card>
                         )}
-                        <Rolegard authorized={["admin", "super_admin", "studio_responsable"]}>
-                            <Card className="shadow-sm bg-card/80 dark:bg-neutral-800/80 border border-sidebar-border/70">
-                                <CardHeader className="px-6 py-4">
-                                    <CardTitle className="text-lg">Quick Actions</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6">
-                                    <div className="space-y-3">
-                                        <Button variant="outline" className="w-full justify-start" onClick={handleBackNavigation}>
-                                            <ArrowLeft className="w-4 h-4 mr-2" />
-                                            Back to reservations
-                                        </Button>
-                                        {reservation.status === 'upcoming' && (
-                                            <Button variant="destructive" className="w-full justify-start">
-                                                <XCircle className="w-4 h-4 mr-2" />
-                                                Cancel Reservation
-                                            </Button>
-                                        )}
-                                        {reservation.status === 'active' && (
-                                            <Button variant="default" className="w-full justify-start">
-                                                <CheckCircle className="w-4 h-4 mr-2" />
-                                                End Reservation
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Rolegard>
+
                     </div>
                 </div>
             </div>

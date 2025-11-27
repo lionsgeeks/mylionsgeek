@@ -46,7 +46,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
         if (trackValue) params.set('track', trackValue);
         if (promoValue) params.set('promo', promoValue);
 
-        router.visit(`/training?${params.toString()}`);
+        router.visit(`/admin/training?${params.toString()}`);
     };
 
     const handleCoachChange = (e) => {
@@ -214,7 +214,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                     setSelectedCoach('');
                                     setSelectedTrack('');
                                     setSelectedPromo('');
-                                    router.visit('/training');
+                                    router.visit('/admin/training');
                                 }}
                                 className="cursor-pointer flex items-center gap-2 rounded-xl bg-yellow-500 hover:bg-yellow-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
                             >

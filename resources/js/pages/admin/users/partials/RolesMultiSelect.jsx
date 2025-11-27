@@ -1,6 +1,8 @@
 import { ChevronDown, X } from "lucide-react";
 import { React, useEffect, useRef, useState } from "react";
 
+const formatRoleLabel = (role) => role === 'studio_responsable' ? 'Responsable Studio' : role;
+
 const RolesMultiSelect = ({ roles, onChange }) => {
     const availableRoles = [
         'admin',
@@ -9,7 +11,7 @@ const RolesMultiSelect = ({ roles, onChange }) => {
         'coworker',
         'coach',
         'pro',
-        'moderator',
+        'moderateur',
         'recruiter',
     ];
     const current = (roles || []).map(r => String(r).toLowerCase());
@@ -40,7 +42,7 @@ const RolesMultiSelect = ({ roles, onChange }) => {
                 <div className="flex flex-wrap gap-2 mb-2">
                     {current.map((r) => (
                         <span key={r} className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium">
-                            {r}
+                            {formatRoleLabel(r)}
                             <button type="button" onClick={() => remove(r)} className="hover:bg-primary/20 rounded-full p-0.5">
                                 <X className="h-3 w-3" />
                             </button>
@@ -71,7 +73,7 @@ const RolesMultiSelect = ({ roles, onChange }) => {
                                     className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
                                     onClick={() => add(r)}
                                 >
-                                    <span className="text-sm">{r}</span>
+                                    <span className="text-sm">{formatRoleLabel(r)}</span>
                                 </div>
                             ))
                         )}

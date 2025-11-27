@@ -294,7 +294,7 @@ export default function Show({ training, usersNull }) {
   // Filter available users to exclude admins, coaches, and already assigned students
   const filteredAvailableUsers = availableUsers.filter(user => {
     // Exclude admins (assuming role field exists)
-    if (user.role.includes('admin')) return false;
+    if (user.role.includes('admin') || user.role.includes('moderateur')) return false;
 
     // Exclude coaches (assuming role field exists)
     if (user.role.includes('coach')) return false;

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
+const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const normalizeImage = (image) => {
@@ -127,7 +127,9 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [] }) => {
                             className="bg-white dark:bg-[#0f0f0f]"
                         />
 
-                        {equipmentList.length === 0 ? (
+                        {loading ? (
+                            <p className="text-sm text-center py-4 text-muted-foreground">Checking availability…</p>
+                        ) : equipmentList.length === 0 ? (
                             <p className="text-sm text-center py-4">No equipment available</p>
                         ) : filteredEquipment.length > 0 ? (
                             <div className="space-y-2">

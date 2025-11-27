@@ -1,6 +1,6 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen, Gamepad2, User } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -16,27 +16,31 @@ const mainNavItems = [
         title: 'Feed',
         href: "/feed",
         icon: User,
+       
     },
 
     {
         id: 'members',
         title: 'Members',
         href: '/admin/users',
-        icon: Users
+        icon: Users,
+        excludedRoles: ['studio_responsable'],
     },
 
     {
         id: 'projects',
         title: 'Projects',
         href: '/admin/projects',
-        icon: FolderOpen
+        icon: FolderOpen,
+        excludedRoles: ['studio_responsable'],
     },
 
     {
         id: 'leaderboard',
         title: 'LeaderBoard',
         href: '/students/leaderboard',
-        icon: AwardIcon
+        icon: AwardIcon,
+        excludedRoles: ['studio_responsable'],
     },
 
     {
@@ -44,28 +48,21 @@ const mainNavItems = [
         title: 'Spaces ',
         href: '/admin/places',
         icon: Building2,
+        excludedRoles: ['coach'],
 
     },
-    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer },
+    { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
 
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor },
-    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench },
-    { id: 'training', title: 'Training', href: '/training', icon: GraduationCap },
-    // { title: 'Games', href: '/games', icon: Gamepad2 },
+    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, excludedRoles: ['studio_responsable'] },
+    { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
+    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, excludedRoles: ['studio_responsable'] },
+    { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
 
 // Footer links removed per request
 
 export function AppSidebar() {
-    const { auth } = usePage().props;
-    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
-    const isStudioResponsable = userRoles.includes('studio_responsable');
-    const studioResponsableAllowed = new Set(['dashboard', 'feed', 'spaces', 'reservations', 'equipment', 'settings']);
-    const navItems = isStudioResponsable
-        ? mainNavItems.filter((item) => studioResponsableAllowed.has(item.id))
-        : mainNavItems;
-
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -81,7 +78,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={navItems} />
+                <NavMain items={mainNavItems} />
             </SidebarContent>
 
             <SidebarFooter>

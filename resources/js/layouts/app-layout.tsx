@@ -17,12 +17,18 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     const userRoles: string[] = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
 
     // If the user has 'admin' or 'studio_responsable', show sidebar (even if they are also 'coach')
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('studio_responsable');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable')|| userRoles.includes('coach');
 
     // Show header only for students/coworkers without admin
     const isStudentOrCoworker = !isAdmin && userRoles.some(role => ["student", "coworker"].includes(role));
 
-    const Layout = isStudentOrCoworker || window.location.href.includes('/feed') ? AppHeaderLayout : isAdmin ? AppSidebarLayout : AppHeaderLayout;
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isStudentRoute =
+        currentPath.startsWith('/feed') ||
+        currentPath.startsWith('/student') ||
+        currentPath.startsWith('/students');
+
+    const Layout = isStudentOrCoworker || isStudentRoute ? AppHeaderLayout : isAdmin ? AppSidebarLayout : AppHeaderLayout;
 
 
     return (

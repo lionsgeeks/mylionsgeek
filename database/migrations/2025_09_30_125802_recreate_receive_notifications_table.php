@@ -13,7 +13,7 @@ return new class extends Migration
 			$table->id();
 			$table->integer('student');
 			$table->integer('cowork');
-			$table->integer('moderator');
+			$table->integer('moderateur');
 			$table->integer('coach');
 			$table->integer('user_id');
 			$table->string('created_at')->nullable()->default('NULL');

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Http\Controllers\UserProjectController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
 use App\Http\Controllers\AdminProjectController;
+use App\Http\Controllers\ReservationsController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -18,13 +19,18 @@ Route::get('/', function () {
 })->name('home');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin,coach,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
     // Global Analytics (admin)
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
+    Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
 });
 
 

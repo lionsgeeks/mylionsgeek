@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -16,7 +16,8 @@ import ReservationDetailsModal from './components/ReservationDetailsModal';
 import ReservationsTable from './components/ReservationsTable';
 import TablePagination from '@/components/TablePagination';
 import Rolegard from '@/components/rolegard';
-
+import Banner from '@/components/banner'
+import students from "../../../../../public/assets/images/banner/studio.png"
 // Helpers to normalize and compare dates
 function parseYmd(dateStr) {
     // Expecting YYYY-MM-DD
@@ -70,6 +71,24 @@ function buildTimeStats(list) {
 }
 
 const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioReservations = [], meetingRoomReservations = [] }) => {
+    const page = usePage();
+    const userRoles = Array.isArray(page?.props?.auth?.user?.role)
+        ? page.props.auth.user.role
+        : [page?.props?.auth?.user?.role].filter(Boolean);
+    const isStudioResponsable = userRoles.includes('studio_responsable');
+
+    const effectiveReservations = useMemo(
+        () => (isStudioResponsable ? studioReservations : reservations),
+        [isStudioResponsable, reservations, studioReservations]
+    );
+    const effectiveCoworkReservations = useMemo(
+        () => (isStudioResponsable ? [] : coworkReservations),
+        [isStudioResponsable, coworkReservations]
+    );
+    const effectiveMeetingReservations = useMemo(
+        () => (isStudioResponsable ? [] : meetingRoomReservations),
+        [isStudioResponsable, meetingRoomReservations]
+    );
     const [tab, setTab] = useState('all');
     const [loadingAction, setLoadingAction] = useState({ id: null, type: null });
     const [selected, setSelected] = useState(null);
@@ -88,7 +107,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
 
     // Combine all reservations (including cowork) for the "All" tab and sort by created_at (most recent first)
     const allReservations = useMemo(() => {
-        const normalizedCowork = coworkReservations.map(c => ({
+        const normalizedCowork = effectiveCoworkReservations.map(c => ({
             ...c,
             type: 'cowork',
             title: `Cowork - Table ${c.table}`,
@@ -98,7 +117,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             place_type: 'cowork'
         }));
 
-        const mixed = [...reservations, ...normalizedCowork];
+        const mixed = [...effectiveReservations, ...normalizedCowork];
 
         // Sort by created_at in descending order (most recent first)
         return mixed.sort((a, b) => {
@@ -106,16 +125,16 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
             return dateB - dateA; // Descending order (newest first)
         });
-    }, [reservations, coworkReservations]);
+    }, [effectiveReservations, effectiveCoworkReservations]);
 
     // Derived stats (global, not range-filtered)
     const stats = useMemo(() => {
         const totalAll = allReservations.length;
-        const totalCowork = coworkReservations.length;
+        const totalCowork = effectiveCoworkReservations.length;
         const totalStudio = studioReservations.length;
 
         const timeAll = buildTimeStats(allReservations);
-        const timeCowork = buildTimeStats(coworkReservations);
+        const timeCowork = buildTimeStats(effectiveCoworkReservations);
         const timeStudio = buildTimeStats(studioReservations);
 
         const perStudio = studioReservations.reduce((acc, r) => {
@@ -150,9 +169,9 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
 
     // Filter reservations for range and search
     const baseAll = useMemo(() => (rangeActive ? allReservations.filter(inRange) : allReservations), [allReservations, rangeActive, inRange]);
-    const baseCowork = useMemo(() => (rangeActive ? coworkReservations.filter(inRange) : coworkReservations), [coworkReservations, rangeActive, inRange]);
+    const baseCowork = useMemo(() => (rangeActive ? effectiveCoworkReservations.filter(inRange) : effectiveCoworkReservations), [effectiveCoworkReservations, rangeActive, inRange]);
     const baseStudio = useMemo(() => (rangeActive ? studioReservations.filter(inRange) : studioReservations), [studioReservations, rangeActive, inRange]);
-    const baseRooms = useMemo(() => (rangeActive ? meetingRoomReservations.filter(inRange) : meetingRoomReservations), [meetingRoomReservations, rangeActive, inRange]);
+    const baseRooms = useMemo(() => (rangeActive ? effectiveMeetingReservations.filter(inRange) : effectiveMeetingReservations), [effectiveMeetingReservations, rangeActive, inRange]);
 
     // Exterior detection and lists
     const isExterior = React.useCallback((r) => {
@@ -163,11 +182,13 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     }, []);
     const baseExterior = useMemo(() => baseAll.filter(isExterior), [baseAll, isExterior]);
 
+    const effectiveFilterType = isStudioResponsable ? 'studio' : filterType;
+
     const filteredReservations = useMemo(() => {
         const typeMatch = (r) => {
-            if (!filterType) return true;
-            if (filterType === 'exterior') return isExterior(r);
-            return (r?.type || '').toLowerCase() === filterType;
+            if (!effectiveFilterType) return true;
+            if (effectiveFilterType === 'exterior') return isExterior(r);
+            return (r?.type || '').toLowerCase() === effectiveFilterType;
         };
         const statusMatch = (r) => {
             if (!filterStatus) return true;
@@ -190,7 +211,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             );
         };
         return baseAll.filter((r) => typeMatch(r) && statusMatch(r) && searchMatch(r));
-    }, [baseAll, searchTerm, filterType, filterStatus, isExterior]);
+    }, [baseAll, searchTerm, effectiveFilterType, filterStatus, isExterior]);
 
     const filteredCoworkReservations = useMemo(() => {
         if (!searchTerm) return baseCowork;
@@ -364,6 +385,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     return (
         <AppLayout>
             <Head title="Reservations" />
+             <Banner illustration={students} />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
@@ -402,14 +424,14 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                                 className="pl-10 w-64 bg-neutral-200 dark:bg-neutral-800"
                             />
                         </div>
-                        <Select value={filterType || 'all'} onValueChange={onTypeChange}>
+                        <Select value={isStudioResponsable ? 'studio' : (filterType || 'all')} onValueChange={onTypeChange} disabled={isStudioResponsable}>
                             <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800 w-44"><SelectValue placeholder="Type (all)" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All types</SelectItem>
-                                <SelectItem value="cowork">Cowork</SelectItem>
+                                {!isStudioResponsable && <SelectItem value="cowork">Cowork</SelectItem>}
                                 <SelectItem value="studio">Studio</SelectItem>
-                                <SelectItem value="meeting_room">Meeting room</SelectItem>
-                                <SelectItem value="exterior">Exterior</SelectItem>
+                                {!isStudioResponsable && <SelectItem value="meeting_room">Meeting room</SelectItem>}
+                                {!isStudioResponsable && <SelectItem value="exterior">Exterior</SelectItem>}
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus || 'all'} onValueChange={onStatusChange}>

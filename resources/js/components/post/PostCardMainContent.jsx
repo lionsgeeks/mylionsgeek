@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import PostModal from './PostModal';
+import { helpers } from '../utils/helpers';
 
 const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUserProfile }) => {
 
     const [openPostModal, setOpenPostModal] = useState(false)
+    const { resolvePostImageUrl } = helpers();
     const [expandedDescriptions, setExpandedDescriptions] = useState({});
 
     const toggleDescription = (id) => {
@@ -42,7 +44,7 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
 
                     {/* Top big image */}
                     <img
-                        src={`/storage/img/posts/${post?.images[0]}`}
+                        src={resolvePostImageUrl(post?.images[0]) ?? ''}
                         alt=""
                         className={`object-cover rounded-lg ${post.images.length <= 2 ? post.images.length == 2 ? 'h-full w-1/2' : 'w-full h-full' : 'h-[70%] w-full'}`}
                     />
@@ -53,7 +55,7 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
                             {post?.images.slice(1, 5).map((img, i) => (
                                 <div key={i} className={`relative h-full ${post.images.length - 1 < 4 ? `w-1/${post?.images.slice(1, 5).length}` : `w-1/4`}`}>
                                     <img
-                                        src={`/storage/img/posts/${img}`}
+                                        src={resolvePostImageUrl(img) ?? ''}
                                         alt=""
                                         className="w-full h-full object-cover rounded-lg"
                                     />

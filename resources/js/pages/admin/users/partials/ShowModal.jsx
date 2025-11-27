@@ -234,7 +234,7 @@ const [processingId, setProcessingId] = useState(null);
                                         <Label className="text-xs font-semibold text-alpha">Phone</Label>
                                         <p className="text-dark dark:text-light">{user.phone || '-'}</p>
                                     </div>
-                                    {auth.user?.role?.includes('admin') && (
+                                    {(auth.user?.role?.includes('admin') || auth.user?.role?.includes('moderateur')) && (
                                         <div className="space-y-1">
                                             <Label className="text-xs font-semibold text-alpha">CIN</Label>
                                             <p className="text-dark dark:text-light">{user.cin || '-'}</p>

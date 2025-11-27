@@ -40,11 +40,11 @@ export function AppHeader({ breadcrumbs = [] }) {
         },
         {
             title: 'Spaces ',
-            url: '/spaces',
+            url: '/student/spaces',
             icon: Building2,
 
         },
-        { title: 'Reservations', url: '/reservations', icon: Timer },
+        { title: 'Reservations', url: '/student/reservations', icon: Timer },
 
         {
             title: 'Projects', 

@@ -7,7 +7,7 @@ use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', "role:admin"])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->group(function () {
 
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);

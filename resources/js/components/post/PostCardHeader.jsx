@@ -1,27 +1,27 @@
 import React, { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
-import { MoreHorizontal } from 'lucide-react';
 import { helpers } from '../utils/helpers';
 
-const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
+const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, isDeleting = false }) => {
     const { addOrRemoveFollow } = helpers();
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
+
     //! Delete Post
-    const handleDeletePost = (postId) => {
-        try {
-            router.delete(`/posts/post/${postId}`, {
-                onSuccess: () => {
-                    // const newPosts = posts?.filter((p) => p?.id !== postId);
-                    // onPostsChange(newPosts);
-                },
-            });
-        } catch (error) {
-            //console.log('Failed to delete post:', error);
+    const handleDeletePost = () => {
+        if (!post?.id || !onDeletePost || isDeleting) {
+            return Promise.resolve(false);
         }
+
+        return onDeletePost(post.id)
+            .then((result) => {
+                setOpenDetails(null);
+                setOpenDeletePost(false);
+                return result;
+            });
     };
     //! open dropdonw  
     const handleOpenDetails = (post) => {
@@ -63,29 +63,24 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo }) => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                        {user?.id === post?.user_id && (
-                            <button
-                                className="text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded"
-                                onClick={() => handleOpenDetails(post)}
-                            >
-                                <MoreHorizontal className="w-5 h-5" />
-                                {openDetails === post?.id && (
-                                    <PostMenuDropDown
-                                        user={user}
-                                        openDelete={openDeletePost}
-                                        openChangeDelete={setOpenDeletePost}
-                                        openEditPost={openEditPost}
-                                        openChangeEdit={(state) => {
-                                            setOpenEditPost(state);
-                                            if (!state) {
-                                                setOpenDetails(null);
-                                            }
-                                        }}
-                                        post={post}
-                                        handleDelete={() => handleDeletePost(post?.id)}
-                                    />
-                                )}
-                            </button>
+                        {user?.id === post?.user_id && (    
+                            <PostMenuDropDown
+                                user={user}
+                                onOpen={openDetails}
+                                onOpenChange={setOpenDetails}
+                                openDelete={openDeletePost}
+                                openChangeDelete={setOpenDeletePost}
+                                openEditPost={openEditPost}
+                                openChangeEdit={(state) => {
+                                    setOpenEditPost(state);
+                                    if (!state) {
+                                        setOpenDetails(null);
+                                    }
+                                }}
+                                post={post}
+                                handleDelete={handleDeletePost}
+                                isDeleting={isDeleting}
+                            />
                         )}
                     </div>
                 </div>

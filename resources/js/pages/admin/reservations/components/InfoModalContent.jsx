@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Avatar } from '@/components/ui/avatar';
 
 const InfoModalContent = ({ reservationId, initial }) => {
     const [data, setData] = useState({
@@ -45,11 +46,14 @@ const InfoModalContent = ({ reservationId, initial }) => {
                     <div className="grid grid-cols-1 gap-3">
                         {data.team_members.map((m, idx) => (
                             <div key={idx} className="flex items-center gap-3">
-                                {m?.image ? (
-                                    <img src={m.image} alt={m.name || 'member'} className="h-9 w-9 rounded-full object-cover" />
-                                ) : (
-                                    <div className="h-9 w-9 rounded-full bg-muted" />
-                                )}
+                                <Avatar
+                                    className="w-10 h-10"
+                                    image={m?.image?.split('/').pop()}
+                                    name={m?.name}
+                                    lastActivity={m?.last_online || null}
+                                    onlineCircleClass="hidden"
+                                    edit={false}
+                                />
                                 <div className="text-sm font-medium break-words">{m?.name || '—'}</div>
                             </div>
                         ))}
