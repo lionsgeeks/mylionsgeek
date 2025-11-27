@@ -98,7 +98,7 @@ export default function ReservationsPage() {
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 min-h-[80vh] sm:min-h-[85vh]">
         <div className="mb-4 sm:mb-6 text-center sm:text-left">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Reservations</h1>
-          <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your bookings.</p>
+          <p className="text-sm text-muted-foreground mt-1">Track, filter, and review your reservations.</p>
         </div>
         <div className="rounded-2xl border border-sidebar-border/60 bg-light dark:bg-dark/80 shadow-sm p-3 sm:p-6">
           <ReservationTable

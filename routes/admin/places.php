@@ -55,7 +55,6 @@ Route::middleware(['auth','verified','role:admin,super_admin,moderateur,studio_r
 //         'coworks' => $coworks,
 //     ]);
 // })->name('spaces');
-Route::get('/spaces', [PlacesController::class, 'index2'])->name('spaces');
 Route::middleware(['auth'])->get('/student/spaces', [PlacesController::class, 'index2'])->name('student.spaces');
 
 // =====================

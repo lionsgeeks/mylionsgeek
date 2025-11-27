@@ -2339,6 +2339,54 @@ class ReservationsController extends Controller
             }
         }
 
+        // Active / Damaged Equipment snapshots
+        $activeEquipment = [];
+        $damagedEquipment = [];
+        if (Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $equipmentBaseQuery = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name', 'e.state');
+
+            if ($hasEquipmentImage) {
+                $equipmentBaseQuery->addSelect('e.image');
+            }
+
+            $formatEquipment = function ($equipment) {
+                $img = isset($equipment->image) ? $equipment->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference ?? 'Unknown',
+                    'mark' => $equipment->mark ?? '',
+                    'type_name' => $equipment->type_name ?? 'Unknown',
+                    'image' => $img,
+                ];
+            };
+
+            $damagedEquipment = (clone $equipmentBaseQuery)
+                ->where('e.state', 0)
+                ->orderByDesc(DB::raw('COALESCE(e.updated_at, e.created_at)'))
+                ->limit(50)
+                ->get()
+                ->map($formatEquipment)
+                ->toArray();
+
+            $activeEquipment = (clone $equipmentBaseQuery)
+                ->where('e.state', 1)
+                ->orderByDesc(DB::raw('COALESCE(e.updated_at, e.created_at)'))
+                ->limit(50)
+                ->get()
+                ->map($formatEquipment)
+                ->toArray();
+        }
+
         // Equipment Not Reserved
         $unusedEquipment = [];
         if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
@@ -2422,6 +2470,8 @@ class ReservationsController extends Controller
             'timeSlotStats' => $timeSlotStats,
             'topUsers' => $topUsers,
             'topEquipment' => $topEquipment,
+            'damagedEquipment' => $damagedEquipment,
+            'activeEquipment' => $activeEquipment,
             'unusedEquipment' => $unusedEquipment,
             'monthlyTrend' => $monthlyTrend,
         ];
