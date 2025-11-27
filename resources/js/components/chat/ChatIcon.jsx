@@ -2,56 +2,50 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { router, usePage } from '@inertiajs/react';
 import ConversationsList from './ConversationsList';
 
 // Component dial chat icon - y7al chat w ybdl conversations
 export default function ChatIcon() {
-    const { unread_count } = usePage().props;
-    const [unreadCount, setUnreadCount] = useState(unread_count || 0);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const conversationsListRef = useRef(null);
 
     useEffect(() => {
-        if (unread_count !== undefined) {
-            setUnreadCount(unread_count);
-        }
-    }, [unread_count]);
-
-    useEffect(() => {
-        // Only fetch if we don't have it from props
-        if (unread_count === undefined) {
-            fetchUnreadCount();
-        }
+        fetchUnreadCount();
         
-        // Tssma3 l event dial open chat dyal user specific
+        // Listen to open-chat event for specific user
         const handleOpenChat = (event) => {
             const { userId } = event.detail;
             setIsOpen(true);
             setTimeout(() => {
-                if (conversationsListRef.current && conversationsListRef.current.openConversationWithUser) {
+                if (conversationsListRef.current?.openConversationWithUser) {
                     conversationsListRef.current.openConversationWithUser(userId);
                 }
             }, 100);
         };
 
         window.addEventListener('open-chat', handleOpenChat);
-        
-        return () => {
-            window.removeEventListener('open-chat', handleOpenChat);
-        };
+        return () => window.removeEventListener('open-chat', handleOpenChat);
     }, []);
 
-    // Jib unread count via Inertia router
-    const fetchUnreadCount = () => {
-        router.visit('/chat/unread-count', {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['unread_count'],
-            onSuccess: (page) => {
-                setUnreadCount(page.props.unread_count || 0);
-            },
-        });
+    // Fetch unread count b fetch
+    const fetchUnreadCount = async () => {
+        try {
+            const response = await fetch('/chat/unread-count', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            setUnreadCount(data.unread_count || 0);
+        } catch (error) {
+            console.error('Failed to fetch unread count:', error);
+        }
     };
 
     const handleOpenChange = (open) => {

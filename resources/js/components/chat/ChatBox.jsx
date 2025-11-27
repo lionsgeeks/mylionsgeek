@@ -79,11 +79,12 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         loadDuration();
                     } else {
                         audio.addEventListener('loadedmetadata', loadDuration, { once: true });
-                        audio.load(); // Force load metadata
+                        audio.load();
                     }
                 }
             }
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [messages]);
 
     const getCsrfToken = () => {
@@ -259,23 +260,19 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             created_at: new Date().toISOString(),
         };
 
-        // Zwid preview dyal attachment ila kayn
+        // Add attachment preview if exists
         if (attachment) {
+            const attachmentURL = URL.createObjectURL(attachment);
+            optimisticMessage.attachment_path = attachmentURL;
+            optimisticMessage.attachment_name = attachment.name;
+            optimisticMessage.attachment_size = attachment.size;
+            
             if (attachment.type.startsWith('image/')) {
-                optimisticMessage.attachment_path = URL.createObjectURL(attachment);
                 optimisticMessage.attachment_type = 'image';
-                optimisticMessage.attachment_name = attachment.name;
-                optimisticMessage.attachment_size = attachment.size;
             } else if (attachment.type.startsWith('video/')) {
-                optimisticMessage.attachment_path = URL.createObjectURL(attachment);
                 optimisticMessage.attachment_type = 'video';
-                optimisticMessage.attachment_name = attachment.name;
-                optimisticMessage.attachment_size = attachment.size;
             } else {
-                optimisticMessage.attachment_path = URL.createObjectURL(attachment);
                 optimisticMessage.attachment_type = 'file';
-                optimisticMessage.attachment_name = attachment.name;
-                optimisticMessage.attachment_size = attachment.size;
             }
         }
 
@@ -294,14 +291,15 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         setMessages(prev => [...prev, optimisticMessage]);
         scrollToBottom();
 
-        // Nfs5 form
+        // Save form data before clearing
         const formMessageBody = messageBody;
         const formAttachment = attachment;
         const formAudioBlob = audioBlob;
+        const prevAudioURL = audioURL;
         
+        // Clear form
         setNewMessage('');
         setAttachment(null);
-        const prevAudioURL = audioURL;
         setAudioBlob(null);
         setAudioURL(null);
         setRecordingTime(0);
@@ -309,22 +307,18 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             fileInputRef.current.value = '';
         }
 
-        // B3t message b fetch avec FormData
+        // Prepare FormData for sending
         setSending(true);
-        
         const formData = new FormData();
         formData.append('body', formMessageBody);
         formData.append('_token', getCsrfToken());
         
         if (formAttachment) {
             formData.append('attachment', formAttachment);
-            if (formAttachment.type.startsWith('image/')) {
-                formData.append('attachment_type', 'image');
-            } else if (formAttachment.type.startsWith('video/')) {
-                formData.append('attachment_type', 'video');
-            } else {
-                formData.append('attachment_type', 'file');
-            }
+            const attachmentType = formAttachment.type.startsWith('image/') ? 'image' 
+                : formAttachment.type.startsWith('video/') ? 'video' 
+                : 'file';
+            formData.append('attachment_type', attachmentType);
         }
         
         if (formAudioBlob) {
@@ -395,6 +389,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         }
     };
 
+    // Format message time - static (no real-time updates)
     const formatMessageTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -405,9 +400,9 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const diffHours = Math.floor(diffMins / 60);
         const diffDays = Math.floor(diffHours / 24);
 
-        if (diffSecs < 60) return `${diffSecs} second${diffSecs !== 1 ? 's' : ''} ago`;
-        if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-        if (isToday(date)) return format(date, 'h:mm a');
+        if (diffSecs < 60) return 'few seconds ago';
+        if (diffMins < 60) return diffMins === 1 ? '1 minute ago' : `${diffMins} minutes ago`;
+        if (diffHours < 24 && isToday(date)) return format(date, 'h:mm a');
         if (isYesterday(date)) return `Yesterday at ${format(date, 'h:mm a')}`;
         if (diffDays < 7) return format(date, 'EEEE');
         return format(date, 'MMM d, yyyy');

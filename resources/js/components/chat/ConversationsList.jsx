@@ -1,86 +1,124 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, Loader2, X, MessageCircle } from 'lucide-react';
+import { Search, X, MessageCircle } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { router, usePage } from '@inertiajs/react';
 import ChatBox from './ChatBox';
 import { Button } from '@/components/ui/button';
 import ConversationDeletePopover from './partials/ConversationDeletePopover';
 
 // Component dial list dial conversations - ybdl conversations w y7al chatbox
 const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, onUnreadCountChange }, ref) {
-    const { conversations: sharedConversations, conversation: sharedConversation } = usePage().props;
-    const [conversations, setConversations] = useState(sharedConversations || []);
-    const [selectedConversation, setSelectedConversation] = useState(sharedConversation || null);
-    const [loading, setLoading] = useState(!sharedConversations);
+    const [conversations, setConversations] = useState([]);
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Get CSRF token
+    const getCsrfToken = () => {
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        return metaTag ? metaTag.getAttribute('content') : '';
+    };
 
     // Expose method dial open conversation dyal user specific
     useImperativeHandle(ref, () => ({
-        openConversationWithUser: (userId) => {
-            router.visit(`/chat/conversation/${userId}`, {
-                preserveState: true,
-                preserveScroll: true,
-                only: ['conversation'],
-                onSuccess: (page) => {
-                    setSelectedConversation(page.props.conversation);
-                },
-            });
+        openConversationWithUser: async (userId) => {
+            try {
+                const response = await fetch(`/chat/conversation/${userId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch conversation');
+                
+                const data = await response.json();
+                setSelectedConversation(data.conversation);
+            } catch (error) {
+                console.error('Failed to open conversation:', error);
+            }
         }
     }));
 
     useEffect(() => {
-        // If we don't have conversations in props, fetch them
-        if (!conversations.length) {
-            fetchConversations();
-        }
+        fetchConversations();
     }, []);
 
-    useEffect(() => {
-        if (sharedConversations) {
-            setConversations(sharedConversations);
-        }
-    }, [sharedConversations]);
+    // Fetch conversations b fetch
+    const fetchConversations = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/chat', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
 
-    const fetchConversations = () => {
-        setLoading(true);
-        router.visit('/chat', {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['conversations'],
-            onSuccess: (page) => {
-                const fetchedConversations = page.props.conversations || [];
-                setConversations(fetchedConversations);
-                
-                const totalUnread = fetchedConversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
-                if (onUnreadCountChange) {
-                    onUnreadCountChange(totalUnread);
-                }
-            },
-            onFinish: () => {
-                setLoading(false);
-            },
-        });
+            if (!response.ok) throw new Error('Failed to fetch conversations');
+
+            const data = await response.json();
+            const fetchedConversations = data.conversations || [];
+            setConversations(fetchedConversations);
+
+            const totalUnread = fetchedConversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+            if (onUnreadCountChange) {
+                onUnreadCountChange(totalUnread);
+            }
+        } catch (error) {
+            console.error('Failed to fetch conversations:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleConversationClick = (conversationId, otherUserId) => {
-        router.visit(`/chat/conversation/${otherUserId}`, {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['conversation'],
-            onSuccess: (page) => {
-                setSelectedConversation(page.props.conversation);
-            },
-        });
+    // Handle conversation click b fetch
+    const handleConversationClick = async (conversationId, otherUserId) => {
+        try {
+            const response = await fetch(`/chat/conversation/${otherUserId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) throw new Error('Failed to fetch conversation');
+
+            const data = await response.json();
+            setSelectedConversation(data.conversation);
+        } catch (error) {
+            console.error('Failed to fetch conversation:', error);
+        }
     };
 
     const filteredConversations = conversations.filter(conv => 
         conv.other_user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Skeleton loader
+    const ConversationListSkeleton = () => (
+        <div className="p-2 space-y-1">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/20">
+                    <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Skeleton className="h-4 w-2/3 rounded" />
+                            <Skeleton className="h-3 w-12 rounded" />
+                        </div>
+                        <Skeleton className="h-3 w-full max-w-[80%] rounded" />
+                    </div>
+                </div>
+            ))}
+        </div>
     );
 
     return (
@@ -121,20 +159,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 {/* Conversations List */}
                 <ScrollArea className="flex-1 min-h-0">
                     {loading ? (
-                        <div className="p-2 space-y-1">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <div key={i} className="flex items-center gap-3 p-3 rounded-xl">
-                                    <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-                                    <div className="flex-1 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Skeleton className="h-4 w-24 rounded" />
-                                            <Skeleton className="h-3 w-12 rounded" />
-                                        </div>
-                                        <Skeleton className="h-3 w-full max-w-[80%] rounded" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <ConversationListSkeleton />
                     ) : filteredConversations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
                             <MessageCircle className="h-16 w-16 mb-4 opacity-20" />
@@ -166,7 +191,6 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             {/* Right Side - Chat Box */}
             {selectedConversation ? (
                 <>
-                    {/* Desktop: Show chat alongside conversations */}
                     <div className="flex-1 hidden md:flex flex-col min-w-0">
                         <ChatBox
                             conversation={selectedConversation}
@@ -178,7 +202,6 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                             isExpanded={false}
                         />
                     </div>
-                    {/* Mobile: Full Screen Chat Overlay */}
                     <div className="md:hidden fixed inset-0 z-[100] bg-background flex flex-col">
                         <ChatBox
                             conversation={selectedConversation}
