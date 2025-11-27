@@ -1,5 +1,5 @@
 const forcedRoles = {
-  'aymanboujjar12@gmail.com': ['pro'],
+  'aymenboujjar12@gmail.com': ['pro'],
   'forkanimahdi@gmail.com': ['coach'],
 };
 
