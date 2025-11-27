@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Avatar } from '@/components/ui/avatar';
 import PostMenuDropDown from './PostMenuDropDown';
@@ -10,7 +10,6 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
     const [openEditPost, setOpenEditPost] = useState(false);
-    const actionAreaRef = useRef(null);
 
     //! Delete Post
     const handleDeletePost = () => {
@@ -27,42 +26,8 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
     };
     //! open dropdonw  
     const handleOpenDetails = (post) => {
-        setOpenDetails((current) => (current === post?.id ? null : post?.id));
+        setOpenDetails(post?.id);
     };
-
-    useEffect(() => {
-        if (!openDetails) {
-            return undefined;
-        }
-
-        const handlePointerDown = (event) => {
-            if (!actionAreaRef.current) {
-                return;
-            }
-
-            if (!actionAreaRef.current.contains(event.target)) {
-                setOpenDetails(null);
-                setOpenDeletePost(false);
-                setOpenEditPost(false);
-            }
-        };
-
-        const handleKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                setOpenDetails(null);
-                setOpenDeletePost(false);
-                setOpenEditPost(false);
-            }
-        };
-
-        document.addEventListener('pointerdown', handlePointerDown, true);
-        document.addEventListener('keydown', handleKeyDown, true);
-
-        return () => {
-            document.removeEventListener('pointerdown', handlePointerDown, true);
-            document.removeEventListener('keydown', handleKeyDown, true);
-        };
-    }, [openDetails]);
     return (
         <>
             <div className="p-4">
@@ -98,7 +63,7 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2" ref={actionAreaRef}>
+                    <div className="flex items-center gap-2">
                         {user?.id === post?.user_id && (
                             <button
                                 className={`text-gray-600 relative dark:text-gray-400 dark:hover:text-alpha cursor-pointer hover:text-dark p-2 rounded ${isDeleting ? 'opacity-60 pointer-events-none' : ''}`}
