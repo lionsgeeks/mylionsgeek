@@ -82,10 +82,20 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
 
 
 // =====================
+// VERIFICATION ROUTES (ADMIN & STUDIO_RESPONSABLE ONLY)
+// =====================
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable'])->group(function () {
+    Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
+        ->name('reservations.verify-end');
+    Route::post('/reservations/{reservation}/verify-end', [ReservationsController::class, 'submitVerification'])
+        ->name('reservations.submit-verification');
+    Route::get('/reservations/{reservation}/download-report', [ReservationsController::class, 'downloadReport'])
+        ->name('reservations.download-report');
+});
+
+// =====================
 // PUBLIC VERIFICATION / PROPOSAL / CALENDAR FEEDS (NO AUTH)
 // =====================
-Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
-    ->name('reservations.verify-end');
 Route::get('/reservations/proposal/{token}/accept', [ReservationsController::class, 'acceptProposal'])
     ->name('reservations.proposal.accept');
 Route::get('/reservations/proposal/{token}/cancel', [ReservationsController::class, 'cancelProposal'])
@@ -100,10 +110,6 @@ Route::get('/reservations/suggest/{token}/approve', [ReservationsController::cla
 // Public calendar feed for suggestion page
 Route::get('/reservations/public-place/{type}/{id}', [ReservationsController::class, 'byPlacePublic'])
     ->name('reservations.place.public');
-Route::post('/reservations/{reservation}/verify-end', [ReservationsController::class, 'submitVerification'])
-    ->name('reservations.submit-verification');
-Route::get('/reservations/{reservation}/download-report', [ReservationsController::class, 'downloadReport'])
-    ->name('reservations.download-report');
 
 
 
