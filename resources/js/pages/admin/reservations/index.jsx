@@ -16,7 +16,8 @@ import ReservationDetailsModal from './components/ReservationDetailsModal';
 import ReservationsTable from './components/ReservationsTable';
 import TablePagination from '@/components/TablePagination';
 import Rolegard from '@/components/rolegard';
-
+import Banner from '@/components/banner'
+import students from "../../../../../public/assets/images/banner/studio.png"
 // Helpers to normalize and compare dates
 function parseYmd(dateStr) {
     // Expecting YYYY-MM-DD
@@ -384,6 +385,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     return (
         <AppLayout>
             <Head title="Reservations" />
+             <Banner illustration={students} />
             <div className="px-4 py-6 sm:p-8 lg:p-10 flex flex-col gap-6 lg:gap-10">
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>

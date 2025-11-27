@@ -252,8 +252,8 @@ export default function AdminReservationDetails({ reservation }) {
                 <div className="mb-8">
                     <div className="flex items-center gap-4 mb-4">
                         <Button variant="outline" size="sm" onClick={handleBackNavigation}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to reservations
+                            <ArrowLeft className="w-4 h-4 " />
+                           
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold text-foreground">Reservation Details</h1>

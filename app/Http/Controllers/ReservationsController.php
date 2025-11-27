@@ -1766,8 +1766,10 @@ class ReservationsController extends Controller
 
         try {
             $verificationData = null;
+            $equipmentStatus = $request->input('equipment_status', []);
+            $notes = $request->input('notes', '');
 
-            DB::transaction(function () use ($request, $reservation, &$verificationData) {
+            DB::transaction(function () use ($request, $reservation, $equipmentStatus, $notes, &$verificationData) {
                 // Update reservation as verified and store notes
                 $updateReservation = [
                     'end_signed' => true,
@@ -1778,9 +1780,12 @@ class ReservationsController extends Controller
                 }
                 DB::table('reservations')->where('id', $reservation)->update($updateReservation);
 
-                // Update equipment states and record status
-                $equipmentStatus = $request->input('equipment_status', []);
-                $notes = $request->input('notes', '');
+                // Get reservation details for PDF (before loop to avoid overwriting)
+                $reservationData = DB::table('reservations as r')
+                    ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
+                    ->where('r.id', $reservation)
+                    ->select('r.*', 'u.name as user_name')
+                    ->first();
 
                 // Get equipment details for PDF
                 $equipments = [];
@@ -1798,21 +1803,15 @@ class ReservationsController extends Controller
                                 'reference' => $e->reference,
                                 'mark' => $e->mark,
                                 'type_name' => $e->type_name ?? 'Unknown',
-                                'goodCondition' => isset($status['goodCondition']) ? (bool) $status['goodCondition'] : false,
-                                'badCondition' => isset($status['badCondition']) ? (bool) $status['badCondition'] : false,
-                                'notReturned' => isset($status['notReturned']) ? (bool) $status['notReturned'] : false,
+                                'goodCondition' => !empty($status['goodCondition']) && ($status['goodCondition'] === true || $status['goodCondition'] === '1' || $status['goodCondition'] === 1),
+                                'badCondition' => !empty($status['badCondition']) && ($status['badCondition'] === true || $status['badCondition'] === '1' || $status['badCondition'] === 1),
+                                'notReturned' => !empty($status['notReturned']) && ($status['notReturned'] === true || $status['notReturned'] === '1' || $status['notReturned'] === 1),
                             ];
                         })
                         ->toArray();
                 }
 
-                // Get reservation details for PDF
-                $reservationData = DB::table('reservations as r')
-                    ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                    ->where('r.id', $reservation)
-                    ->select('r.*', 'u.name as user_name')
-                    ->first();
-
+                // Build verification data structure
                 $verificationData = [
                     'reservation' => [
                         'id' => $reservationData->id,
@@ -1852,7 +1851,7 @@ class ReservationsController extends Controller
                             ->where('equipment_id', $equipmentId)
                             ->first();
 
-                        $verificationData = [
+                        $verificationRecord = [
                             'reservation_id' => $reservation,
                             'equipment_id' => $equipmentId,
                             'good_condition' => $isGood ? 1 : 0,
@@ -1864,10 +1863,10 @@ class ReservationsController extends Controller
                         if ($existing) {
                             DB::table('equipment_verifications')
                                 ->where('id', $existing->id)
-                                ->update($verificationData);
+                                ->update($verificationRecord);
                         } else {
-                            $verificationData['created_at'] = now();
-                            DB::table('equipment_verifications')->insert($verificationData);
+                            $verificationRecord['created_at'] = now();
+                            DB::table('equipment_verifications')->insert($verificationRecord);
                         }
                     }
 
@@ -1895,19 +1894,6 @@ class ReservationsController extends Controller
                 }
             });
 
-            // Generate and download PDF
-            $pdf = Pdf::loadView('pdf.verification_report_simple', [
-                'reservation' => $verificationData['reservation'],
-                'verificationData' => $verificationData
-            ])
-                ->setPaper('a4', 'portrait')
-                ->setOptions([
-                    'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => true,
-                    'defaultFont' => 'Arial',
-                    'isPhpEnabled' => true,
-                    'isFontSubsettingEnabled' => true
-                ]);
 
             // Log equipment usage to activity_log on end verification (event = verified_end)
             try {
@@ -1968,36 +1954,67 @@ class ReservationsController extends Controller
             } catch (\Throwable $e) {
                 \Log::error('Failed to write equipment verified_end activity logs: ' . $e->getMessage());
             }
+
+            // Generate PDF and download it
             $userName = str_replace(' ', '_', $verificationData['reservation']['user_name'] ?? 'User');
             $date = \Carbon\Carbon::now()->format('Y-m-d_H-i-s');
             $filename = "Verification_Report_{$userName}_{$date}.pdf";
 
-            // Store PDF data in session for download
-            session(['verification_pdf_data' => [
-                'reservation' => $verificationData['reservation'],
-                'verificationData' => $verificationData,
-                'filename' => $filename
-            ]]);
+            try {
+                $pdf = Pdf::loadView('pdf.verification_report_simple', [
+                    'reservation' => $verificationData['reservation'],
+                    'verificationData' => $verificationData
+                ])
+                    ->setPaper('a4', 'portrait')
+                    ->setOptions([
+                        'isHtml5ParserEnabled' => true,
+                        'isRemoteEnabled' => true,
+                        'defaultFont' => 'Arial',
+                        'isPhpEnabled' => true,
+                        'isFontSubsettingEnabled' => true
+                    ]);
 
-            // Store PDF data in session for download
-            session(['verification_pdf_data' => [
-                'reservation' => $verificationData['reservation'],
-                'verificationData' => $verificationData,
-                'filename' => $filename
-            ]]);
-
-            // Check if this is an Inertia request
-            if (request()->header('X-Inertia')) {
-                // Return JSON for Inertia requests
-                $downloadUrl = route('reservations.download-report', $reservation);
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Verification completed successfully!',
-                    'downloadUrl' => $downloadUrl
-                ]);
-            } else {
-                // Redirect directly to download for regular form submissions
-                return redirect()->route('reservations.download-report', $reservation);
+                // Store PDF data in session for download route
+                session(['verification_pdf_data' => [
+                    'reservation' => $verificationData['reservation'],
+                    'verificationData' => $verificationData,
+                    'filename' => $filename
+                ]]);
+                
+                // Check if this is an Inertia request
+                if (request()->header('X-Inertia')) {
+                    // For Inertia, return JSON with download URL
+                    $downloadUrl = route('reservations.download-report', $reservation);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Verification completed successfully!',
+                        'downloadUrl' => $downloadUrl
+                    ]);
+                } else {
+                    // For regular form submissions, download directly
+                    return $pdf->download($filename);
+                }
+            } catch (\Exception $pdfError) {
+                \Log::error('PDF generation error in submitVerification: ' . $pdfError->getMessage());
+                \Log::error('PDF generation stack trace: ' . $pdfError->getTraceAsString());
+                
+                // Still save the data even if PDF fails
+                session(['verification_pdf_data' => [
+                    'reservation' => $verificationData['reservation'],
+                    'verificationData' => $verificationData,
+                    'filename' => $filename
+                ]]);
+                
+                if (request()->header('X-Inertia')) {
+                    $downloadUrl = route('reservations.download-report', $reservation);
+                    return redirect()->route('admin.reservations')
+                        ->with('success', 'Verification completed successfully!')
+                        ->with('downloadUrl', $downloadUrl)
+                        ->with('warning', 'PDF generation had issues, but you can try downloading it from the link.');
+                } else {
+                    return redirect()->route('reservations.download-report', $reservation)
+                        ->with('warning', 'PDF generation had issues, but you can try downloading it.');
+                }
             }
         } catch (\Exception $e) {
             \Log::error('PDF generation failed: ' . $e->getMessage());
@@ -2322,6 +2339,54 @@ class ReservationsController extends Controller
             }
         }
 
+        // Active / Damaged Equipment snapshots
+        $activeEquipment = [];
+        $damagedEquipment = [];
+        if (Schema::hasTable('equipment')) {
+            $hasEquipmentImage = Schema::hasColumn('equipment', 'image');
+            $equipmentBaseQuery = DB::table('equipment as e')
+                ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
+                ->select('e.id', 'e.reference', 'e.mark', 'et.name as type_name', 'e.state');
+
+            if ($hasEquipmentImage) {
+                $equipmentBaseQuery->addSelect('e.image');
+            }
+
+            $formatEquipment = function ($equipment) {
+                $img = isset($equipment->image) ? $equipment->image : null;
+                if ($img) {
+                    if (!Str::startsWith($img, ['http://', 'https://', 'storage/'])) {
+                        $img = 'storage/img/equipment/' . ltrim($img, '/');
+                    }
+                    $img = asset($img);
+                }
+
+                return [
+                    'id' => $equipment->id,
+                    'reference' => $equipment->reference ?? 'Unknown',
+                    'mark' => $equipment->mark ?? '',
+                    'type_name' => $equipment->type_name ?? 'Unknown',
+                    'image' => $img,
+                ];
+            };
+
+            $damagedEquipment = (clone $equipmentBaseQuery)
+                ->where('e.state', 0)
+                ->orderByDesc(DB::raw('COALESCE(e.updated_at, e.created_at)'))
+                ->limit(50)
+                ->get()
+                ->map($formatEquipment)
+                ->toArray();
+
+            $activeEquipment = (clone $equipmentBaseQuery)
+                ->where('e.state', 1)
+                ->orderByDesc(DB::raw('COALESCE(e.updated_at, e.created_at)'))
+                ->limit(50)
+                ->get()
+                ->map($formatEquipment)
+                ->toArray();
+        }
+
         // Equipment Not Reserved
         $unusedEquipment = [];
         if (Schema::hasTable('reservation_equipment') && Schema::hasTable('equipment')) {
@@ -2405,6 +2470,8 @@ class ReservationsController extends Controller
             'timeSlotStats' => $timeSlotStats,
             'topUsers' => $topUsers,
             'topEquipment' => $topEquipment,
+            'damagedEquipment' => $damagedEquipment,
+            'activeEquipment' => $activeEquipment,
             'unusedEquipment' => $unusedEquipment,
             'monthlyTrend' => $monthlyTrend,
         ];

@@ -9,6 +9,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
+import Rolegard from '../../../../components/rolegard';
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     const getInitials = useInitials();
@@ -213,12 +214,14 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </Select>
                     </div>
                     {/* Right Column - Roles */}
+                    <Rolegard authorized={"admin"}>
                     {isAdminOrStudioResponsable && (
                         <div className="col-span-1">
                             <Label htmlFor="roles">Roles</Label>
                             <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
                         </div>
                     )}
+                    </Rolegard>
                     {/* Left Column - Access Studio */}
                     {isAdminOrStudioResponsable && (
                         <div className="col-span-1">

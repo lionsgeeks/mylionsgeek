@@ -34,7 +34,7 @@ class ReservationEndedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Reservation Completed - Verification Required',
+            subject: 'Reservation Completed - Studio Verification Required',
         );
     }
 
