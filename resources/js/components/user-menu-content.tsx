@@ -5,7 +5,7 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, LayoutGrid } from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
@@ -18,6 +18,9 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
         cleanup();
         router.flushAll();
     };
+
+    const userRoles = Array.isArray(user?.role) ? user.role : [user?.role].filter(Boolean);
+    const isAdmin = userRoles.includes('admin');
 
     return (
         <>
@@ -34,6 +37,14 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         Settings
                     </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                    <DropdownMenuItem asChild>
+                        <Link className="block w-full" href="/admin/dashboard" prefetch onClick={cleanup}>
+                            <LayoutGrid className="mr-2" />
+                            Back to admin
+                        </Link>
+                    </DropdownMenuItem>
+                )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
