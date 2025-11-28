@@ -14,3 +14,4 @@ Schedule::command('reservations:check-end-times')
     ->runInBackground();
 
 
+

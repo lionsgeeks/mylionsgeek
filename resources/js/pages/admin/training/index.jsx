@@ -78,20 +78,20 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
     const activeTrainingsCount = trainings.filter((t) => getTrainingStatus(t) === 'active').length;
     const coachTraining = trainings.find((c) => c.coach?.id == selectedCoach) || null;
-    const items = [
+    const statsData = [
         {
             title: "Total Programs",
-            number: trainings.length,
+            value: trainings.length,
             icon: BookOpen,
         },
         {
             title: "Active Now",
-            number: activeTrainingsCount,
+            value: activeTrainingsCount,
             icon: Timer,
         },
         {
             title: filteredCoach ? "Expert Mentor" : "Expert Mentors",
-            number: filteredCoach ? filteredCoach.name : coaches.length,
+            value: filteredCoach ? filteredCoach.name : coaches.length,
             icon: Award,
             isSmallNumber: !!filteredCoach,
         },
@@ -127,10 +127,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
 
                 {/* Stats Cards - Premium Design */}
                 {trainings && trainings.length > 0 && (
-
-                    <StatCard items={items} />
-
-
+                    <StatCard statsData={statsData} />
                 )}
 
                 {/* Filters - Modern Design */}

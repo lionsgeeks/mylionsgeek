@@ -16,6 +16,7 @@ import {
 import { TrendingUp, Package, AlertCircle } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Camera-amico.png"
+import StatCard from '@/components/StatCard';
 
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
@@ -39,7 +40,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [historyTab, setHistoryTab] = useState('usage'); // usage, notes
     const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
-    
+
 
     // Type management state
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
@@ -76,7 +77,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         type: 'general',
     });
 
-    
+
 
     const handleEdit = (equipment) => {
         // Set the equipment being edited
@@ -106,21 +107,21 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         setIsHistoryOpen(true);
         setIsLoadingHistory(true);
         try {
-            
+
             const [usageRes, notesRes] = await Promise.all([
                 fetch(`/admin/equipements/${equipment.id}/usage-activities`),
                 fetch(`/admin/equipements/${equipment.id}/notes`)
             ]);
-            
+
             const usageData = usageRes.ok ? await usageRes.json() : { usage_activities: [] };
             const notesData = notesRes.ok ? await notesRes.json() : { notes: [] };
-            
-            
+
+
             const combinedHistory = [
                 ...usageData.usage_activities.map(item => ({ ...item, type: 'usage' })),
                 ...notesData.notes.map(item => ({ ...item, type: 'note' }))
             ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            
+
             setHistoryItems(combinedHistory);
         } catch (err) {
             console.error(err);
@@ -145,7 +146,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         });
     };
 
-    
+
 
     const handleUpdateEquipment = () => {
         put(`/admin/equipements/${editingEquipment.id}`, {
@@ -324,6 +325,18 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         return { totalAll, totalWorking, totalNotWorking, byType };
     }, [equipment]);
 
+    const equipmentHighlights = useMemo(() => {
+        const sortedTypes = Object.entries(stats.byType || {}).sort((a, b) => (b[1]?.total || 0) - (a[1]?.total || 0));
+        const topType = sortedTypes[0];
+
+        return [
+            { title: 'Total Equipment', value: stats.totalAll, icon: Package },
+            { title: 'Working Equipment', value: stats.totalWorking, icon: TrendingUp },
+            { title: 'Not Working', value: stats.totalNotWorking, icon: AlertCircle },
+          
+        ];
+    }, [stats]);
+
     // Chart data
     const statusData = Object.keys(stats.byType).map(type => ({
         name: type,
@@ -365,6 +378,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                         Add equipment
                     </button>
                 </div>
+
+                <StatCard statsData={equipmentHighlights} />
 
 
                 <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
@@ -924,7 +939,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     </span>
                                     {isLoadingHistory && <span className="text-muted-foreground text-xs">Loading…</span>}
                                 </div>
-                                
+
                                 {historyItems.length === 0 ? (
                                     <div className="p-6 text-sm text-muted-foreground text-center">
                                         {isLoadingHistory ? 'Fetching history…' : 'No history found.'}
@@ -974,7 +989,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                         </div>
                                                     );
                                                 }
-                                                
+
                                                 if (item.type === 'note') {
                                                     return (
                                                         <div key={`note-${item.id}-${index}`} className="px-4 py-3 flex items-start gap-4">
@@ -1000,7 +1015,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                         </div>
                                                     );
                                                 }
-                                                
+
                                                 return null;
                                             })}
                                     </div>
@@ -1052,7 +1067,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                     </DialogContent>
                 </Dialog>
 
-                
+
             </div>
         </AppLayout>
     );

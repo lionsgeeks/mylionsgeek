@@ -9,13 +9,14 @@ import AuthSplitLayout from '@/layouts/auth/auth-split-layout';
 import AuthLayout from '@/layouts/auth-layout';
 // import { register } from '@/routes';
 import { request } from '@/routes/password';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
 
 
 export default function Login({ status, canResetPassword }) {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const { csrfToken } = usePage().props
     const handleCustomErrors = (responseErrors) => {
         if (responseErrors.email) {
             //alert("h")
@@ -31,6 +32,7 @@ export default function Login({ status, canResetPassword }) {
 
                     return (
                         <>
+                            <input type="hidden" name="_token" value={csrfToken ?? ''} />
                             <div className="grid gap-6">
                                 <div className="grid gap-2">
                                     <Label htmlFor="email">Email address</Label>

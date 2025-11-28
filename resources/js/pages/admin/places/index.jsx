@@ -179,15 +179,14 @@ const PlaceIndex = ({
         setLoadingEvents(false);
     }, [calendarPlace]);
     ////console.log(places);
-    const studioCount = places.filter(p => p.place_type === "studio").length;
-    const coworkCount = places.filter(p => p.place_type === "cowork").length;
     const meetingCount = places.filter(p => p.place_type === "meeting_room").length;
+    const studioCount = places.filter(p => p.place_type === "studio").length + meetingCount;
+    const coworkCount = places.filter(p => p.place_type === "cowork").length;
 
-    const items = [
+    const statsData = [
         { title: "All places", number: places.length, icon: ArrowRight },
         { title: "Studio", number: studioCount, icon: ArrowRight },
         { title: "Cowork", number: coworkCount, icon: ArrowRight },
-        { title: "Meeting Room", number: meetingCount, icon: ArrowRight },
     ];
     return (
         <AppLayout>
@@ -225,7 +224,7 @@ const PlaceIndex = ({
                         </button>
                     </div>
                 </div>
-                {/* <StatCard items={items} /> */}
+                <StatCard statsData={statsData} />
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
