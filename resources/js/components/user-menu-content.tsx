@@ -20,8 +20,6 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
         router.flushAll();
     };
 
-    const userRoles = Array.isArray(user?.role) ? user.role : [user?.role].filter(Boolean);
-
     return (
         <>
             <DropdownMenuLabel className="p-0 font-normal">
