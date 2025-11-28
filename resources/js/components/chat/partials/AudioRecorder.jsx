@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { Send, X } from 'lucide-react';
+import { Send, X, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 // Component dial audio recording style Instagram m3a waves animation w timer
-export default function AudioRecorder({ onSend, onCancel, isRecording, recordingTime }) {
+export default function AudioRecorder({ onSend, onCancel, isRecording, recordingTime, isPaused, onPause, onResume }) {
     const animationRef = useRef(null);
     const barsRef = useRef([]);
 
@@ -44,7 +44,7 @@ export default function AudioRecorder({ onSend, onCancel, isRecording, recording
     };
 
     return (
-        <div className="flex items-center gap-3 p-2 bg-alpha/10 rounded-lg border border-alpha/20">
+        <div className="flex items-center gap-2 p-2 bg-alpha/10 rounded-lg border border-alpha/20">
             <Button
                 type="button"
                 variant="ghost"
@@ -56,8 +56,33 @@ export default function AudioRecorder({ onSend, onCancel, isRecording, recording
                 <X className="h-4 w-4" />
             </Button>
 
+            {/* Pause/Resume Button */}
+            {isPaused ? (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onResume}
+                    className="h-8 w-8 hover:bg-alpha/20 text-alpha"
+                    title="Resume recording"
+                >
+                    <Play className="h-4 w-4" />
+                </Button>
+            ) : (
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onPause}
+                    className="h-8 w-8 hover:bg-alpha/20 text-alpha"
+                    title="Pause recording"
+                >
+                    <Pause className="h-4 w-4" />
+                </Button>
+            )}
+
             <div className="flex-1 flex items-center gap-2">
-                <div className="h-3 w-3 bg-alpha rounded-full animate-pulse" />
+                <div className={cn("h-3 w-3 bg-alpha rounded-full", isPaused ? "" : "animate-pulse")} />
                 <span className="text-sm font-medium text-foreground tabular-nums min-w-[3rem]">
                     {formatTime(recordingTime)}
                 </span>
@@ -68,7 +93,7 @@ export default function AudioRecorder({ onSend, onCancel, isRecording, recording
                             ref={el => barsRef.current[i] = el}
                             className={cn(
                                 "w-0.5 bg-alpha rounded-full transition-all duration-100 ease-out",
-                                isRecording ? "opacity-100" : "opacity-0"
+                                isRecording && !isPaused ? "opacity-100" : "opacity-30"
                             )}
                             style={{ height: '10%' }}
                         />

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Ably\AblyRest;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
@@ -54,6 +55,7 @@ class ChatController extends Controller
                         'id' => $lastMessage->id,
                         'body' => $lastMessage->body,
                         'sender_id' => $lastMessage->sender_id,
+                        'attachment_type' => $lastMessage->attachment_type,
                         'created_at' => $lastMessage->created_at->toISOString(),
                     ] : null,
                     'unread_count' => $unreadCount,
@@ -67,7 +69,7 @@ class ChatController extends Controller
                 'conversations' => $conversations,
             ]);
         }
-        
+
         return response()->json([
             'conversations' => $conversations,
         ]);
@@ -151,7 +153,7 @@ class ChatController extends Controller
                 'conversation' => $conversationData,
             ]);
         }
-        
+
         return response()->json([
             'conversation' => $conversationData,
         ]);
@@ -211,6 +213,42 @@ class ChatController extends Controller
     }
 
     /**
+     * Get Ably token for real-time messaging
+     * Jib token dial Ably bach n3tiw access l channels
+     */
+    public function getAblyToken()
+    {
+        $user = Auth::user();
+        
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return response()->json(['error' => 'Ably not configured'], 500);
+            }
+
+            // Generate token request using Ably PHP SDK
+            $tokenRequest = [
+                'capability' => json_encode([
+                    'chat:conversation:*' => ['subscribe', 'publish'], // Access l kolchi conversations
+                ]),
+                'clientId' => (string) $user->id,
+            ];
+
+            // Use Ably REST client to create token request
+            $ably = new AblyRest($ablyKey);
+            $tokenDetails = $ably->auth->requestToken($tokenRequest);
+
+            return response()->json([
+                'token' => $tokenDetails->token,
+                'expires' => $tokenDetails->expires,
+                'clientId' => (string) $user->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to generate token: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Send a message
      */
     public function sendMessage(Request $request, $conversationId)
@@ -231,8 +269,8 @@ class ChatController extends Controller
             ->firstOrFail();
 
         // Get the other user
-        $otherUserId = $conversation->user_one_id == $user->id 
-            ? $conversation->user_two_id 
+        $otherUserId = $conversation->user_one_id == $user->id
+            ? $conversation->user_two_id
             : $conversation->user_one_id;
 
         // Check if current user is following the other user
@@ -263,7 +301,7 @@ class ChatController extends Controller
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
             $attachmentName = $file->getClientOriginalName();
-            
+
             // Determine attachment type if not provided
             if (!$attachmentType) {
                 $mimeType = $file->getMimeType();
@@ -317,6 +355,19 @@ class ChatController extends Controller
             'created_at' => $message->created_at->toISOString(),
         ];
 
+        // Broadcast message via Ably for real-time updates
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("chat:conversation:{$conversation->id}");
+                $channel->publish('new-message', $messageData);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail the request
+            \Illuminate\Support\Facades\Log::error('Failed to broadcast message via Ably: ' . $e->getMessage());
+        }
+
         // Always return JSON for fetch requests
         return response()->json([
             'message' => $messageData,
@@ -344,7 +395,7 @@ class ChatController extends Controller
                 'unread_count' => $totalUnread,
             ]);
         }
-        
+
         return response()->json([
             'unread_count' => $totalUnread,
         ]);
@@ -364,13 +415,31 @@ class ChatController extends Controller
             })
             ->firstOrFail();
 
-        $conversation->messages()
+        $updatedCount = $conversation->messages()
             ->where('sender_id', '!=', $user->id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
                 'read_at' => now(),
             ]);
+
+        // Broadcast seen status via Ably
+        if ($updatedCount > 0) {
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    $channel->publish('seen', [
+                        'user_id' => $user->id,
+                        'conversation_id' => $conversationId,
+                        'read_at' => now()->toISOString(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast seen status via Ably: ' . $e->getMessage());
+            }
+        }
 
         // Always return JSON for fetch requests
         return response()->json(['success' => true]);
@@ -395,7 +464,20 @@ class ChatController extends Controller
             }
         }
 
+        $conversationId = $message->conversation_id;
         $message->delete();
+
+        // Broadcast deletion via Ably
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                $channel->publish('message-deleted', ['message_id' => $messageId]);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to broadcast message deletion via Ably: ' . $e->getMessage());
+        }
 
         // Always return JSON for fetch requests
         return response()->json(['success' => true]);
@@ -408,7 +490,7 @@ class ChatController extends Controller
     {
         $userController = new \App\Http\Controllers\UsersController();
         $posts = $userController->getPosts($userId);
-        
+
         // Always return JSON for fetch requests
         return response()->json(['posts' => $posts]);
     }

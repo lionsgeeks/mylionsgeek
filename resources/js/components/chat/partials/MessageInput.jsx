@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, Send, Paperclip, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,75 @@ export default function MessageInput({
     handleSendMessage,
     isExpanded,
     audioDuration,
+    onTypingStart,
+    onTypingStop,
+    isPaused,
+    onPause,
+    onResume,
 }) {
+    // Typing indicator management
+    const typingTimeoutRef = useRef(null);
+    const hasTypedRef = useRef(false);
+    const lastTypingTimeRef = useRef(0);
+
+    // Handle typing events on input change - triggers typing indicator
+    const handleInputChange = (e) => {
+        const value = e.target.value;
+        setNewMessage(value);
+        
+        if (!onTypingStart || !onTypingStop) return;
+
+        // Only trigger if user is actually typing (has content)
+        if (value.trim().length > 0) {
+            const now = Date.now();
+            
+            // Debounce typing start - only trigger every 1 second max
+            if (!hasTypedRef.current || (now - lastTypingTimeRef.current) > 1000) {
+                onTypingStart();
+                hasTypedRef.current = true;
+                lastTypingTimeRef.current = now;
+            }
+            
+            // Clear existing timeout
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            
+            // Stop typing after 2 seconds of inactivity
+            typingTimeoutRef.current = setTimeout(() => {
+                onTypingStop();
+                hasTypedRef.current = false;
+            }, 2000);
+        } else {
+            // Stop typing if input is cleared
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            onTypingStop();
+            hasTypedRef.current = false;
+        }
+    };
+
+    // Stop typing when message is sent or component unmounts
+    useEffect(() => {
+        if (!newMessage.trim() && hasTypedRef.current && onTypingStop) {
+            onTypingStop();
+            hasTypedRef.current = false;
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+        }
+        
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+            if (hasTypedRef.current && onTypingStop) {
+                onTypingStop();
+            }
+        };
+    }, [newMessage, onTypingStop]);
+
     // Format audio duration
     const formatAudioDuration = (seconds) => {
         if (!seconds) return '';
@@ -97,6 +165,9 @@ export default function MessageInput({
                         }}
                         onCancel={cancelRecording}
                         isRecording={isRecording}
+                        isPaused={isPaused}
+                        onPause={onPause}
+                        onResume={onResume}
                         recordingTime={recordingTime}
                     />
                 </div>
@@ -124,7 +195,7 @@ export default function MessageInput({
                 <div className="flex-1 relative">
                     <Input
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInputChange}
                         placeholder="Type a message..."
                         className={cn("h-9 text-sm pr-12", isExpanded && "text-base h-10")}
                         disabled={sending || isRecording}
@@ -137,15 +208,10 @@ export default function MessageInput({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onMouseDown={(e) => {
+                            onClick={(e) => {
                                 e.preventDefault();
                                 startRecording();
                             }}
-                            onMouseUp={(e) => {
-                                e.preventDefault();
-                                stopRecording();
-                            }}
-                            onMouseLeave={stopRecording}
                             className="h-9 w-9 shrink-0 hover:bg-alpha/10"
                             title="Record audio"
                         >

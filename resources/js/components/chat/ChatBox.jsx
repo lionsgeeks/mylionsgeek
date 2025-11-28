@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePage } from '@inertiajs/react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import useAblyChannel from '@/hooks/useAblyChannel';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useRecordingIndicator } from '@/hooks/useRecordingIndicator';
+import { publishToChannel } from '@/lib/ablyManager';
+import { showDesktopNotification, requestNotificationPermission, hasNotificationPermission } from '@/lib/notificationManager';
 import ChatHeader from './partials/ChatHeader';
 import MessageList from './partials/MessageList';
 import MessageInput from './partials/MessageInput';
 import PreviewPanel from './partials/PreviewPanel';
 import ChatToolbox from './partials/ChatToolbox';
+import TypingIndicator from './partials/TypingIndicator';
+import RecordingIndicator from './partials/RecordingIndicator';
 
 // Main ChatBox component - refactored b components so9or
 export default function ChatBox({ conversation, onClose, onBack, isExpanded, onExpand }) {
@@ -18,6 +25,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const [loading, setLoading] = useState(false);
     const [attachment, setAttachment] = useState(null);
     const [isRecording, setIsRecording] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [audioBlob, setAudioBlob] = useState(null);
     const [audioURL, setAudioURL] = useState(null);
@@ -30,9 +38,169 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const [showToolbox, setShowToolbox] = useState(false);
     const messagesEndRef = useRef(null);
     const mediaRecorderRef = useRef(null);
+    const audioStreamRef = useRef(null);
+    const chunksRef = useRef([]);
     const fileInputRef = useRef(null);
     const recordingTimerRef = useRef(null);
     const pendingTempIdsRef = useRef(new Set());
+
+    const channelName = `chat:conversation:${conversation.id}`;
+    
+    // Real-time messaging with Ably - Tssma3 3la channel dial conversation
+    const { isConnected, subscribe, publish } = useAblyChannel(
+        channelName,
+        ['new-message', 'message-deleted', 'seen', 'typing', 'recording'],
+        {
+            onConnected: () => {
+                console.log('Ably connected for conversation:', conversation.id);
+                // Request notification permission on first connection
+                requestNotificationPermission();
+            },
+            onError: (error) => {
+                console.error('Ably connection error:', error);
+            },
+        }
+    );
+
+    // Typing indicator
+    const { typingUsers, startTyping, stopTyping } = useTypingIndicator(channelName, currentUser.id, isConnected);
+    
+    // Recording indicator
+    const { recordingUsers, startRecordingIndicator, stopRecordingIndicator } = useRecordingIndicator(channelName, currentUser.id, isConnected);
+    
+    // Real-time seen status
+    const [seenStatus, setSeenStatus] = useState({});
+
+    // Subscribe to real-time message events
+    useEffect(() => {
+        if (!isConnected) return;
+
+        // Handle new messages from other users
+        const handleNewMessage = (messageData) => {
+            const isFromOtherUser = messageData.sender_id !== currentUser.id;
+            
+            // Show notification if chatbox is closed or minimized
+            if (isFromOtherUser) {
+                // Desktop notification
+                if (hasNotificationPermission() && (document.hidden || !document.hasFocus())) {
+                    console.log(messageData);
+                    showDesktopNotification(
+                        `${messageData.sender?.name || 'New message'}`,
+                        {
+                            body: messageData.body || '📎 Attachment',
+                            icon:"storage/img/profile/" +  messageData.sender?.image || '/favicon.ico',
+                            tag: `chat-${conversation.id}`,
+                            data: {
+                                conversationId: conversation.id,
+                                userId: messageData.sender_id,
+                            },
+                        }
+                    );
+                }
+
+                // Toast notifications are handled globally - no need to show here
+                // Global listener will handle showing toasts unconditionally
+            }
+
+            // Check if message already exists (avoid duplicates)
+            setMessages(prev => {
+                const exists = prev.some(msg => msg.id === messageData.id);
+                if (exists) return prev;
+
+                // Check if it's a pending message that was just sent
+                const isPending = prev.some(msg => 
+                    msg.tempId && pendingTempIdsRef.current.has(msg.tempId) &&
+                    msg.sender_id === messageData.sender_id
+                );
+                
+                // If we have a pending message, replace it with the real one
+                if (isPending) {
+                    const filtered = prev.filter(msg => 
+                        !msg.tempId || !pendingTempIdsRef.current.has(msg.tempId)
+                    );
+                    // Clean up temp IDs for this sender
+                    pendingTempIdsRef.current.forEach(tempId => {
+                        const msg = prev.find(m => m.tempId === tempId);
+                        if (msg && msg.sender_id === messageData.sender_id) {
+                            pendingTempIdsRef.current.delete(tempId);
+                        }
+                    });
+                    return [...filtered, {
+                        ...messageData,
+                        sender: messageData.sender || {
+                            id: messageData.sender_id,
+                            name: '',
+                            image: '',
+                        }
+                    }];
+                }
+
+                // Add new message from other user
+                return [...prev, {
+                    ...messageData,
+                    sender: messageData.sender || {
+                        id: messageData.sender_id,
+                        name: '',
+                        image: '',
+                    }
+                }];
+            });
+
+            // Mark as read if message is from other user and chatbox is visible and focused
+            // This will broadcast seen status via Ably automatically
+            if (isFromOtherUser && !document.hidden && document.hasFocus()) {
+                fetch(`/chat/conversation/${conversation.id}/read`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                }).catch(err => console.error('Failed to mark as read:', err));
+            }
+
+            scrollToBottom();
+        };
+
+        // Handle message deletions
+        const handleMessageDeleted = (data) => {
+            setMessages(prev => prev.filter(msg => msg.id !== data.message_id));
+        };
+
+        // Handle seen status updates
+        const handleSeen = (data) => {
+            if (data.user_id !== currentUser.id) {
+                setSeenStatus(prev => ({
+                    ...prev,
+                    [conversation.id]: {
+                        read_at: data.read_at,
+                        user_id: data.user_id,
+                    },
+                }));
+
+                // Update message read status
+                setMessages(prev => prev.map(msg => {
+                    if (msg.sender_id === currentUser.id && !msg.is_read) {
+                        return {
+                            ...msg,
+                            is_read: true,
+                            read_at: data.read_at,
+                        };
+                    }
+                    return msg;
+                }));
+            }
+        };
+
+        subscribe('new-message', handleNewMessage);
+        subscribe('message-deleted', handleMessageDeleted);
+        subscribe('seen', handleSeen);
+
+        return () => {
+            // Cleanup handled by useAblyChannel
+        };
+    }, [isConnected, subscribe, conversation.id, currentUser.id]);
 
     // Fetch messages - b3d ma y3tiw 3la conversation
     useEffect(() => {
@@ -45,7 +213,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     // Update recording time timer
     useEffect(() => {
-        if (isRecording) {
+        if (isRecording && !isPaused) {
             recordingTimerRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
@@ -61,7 +229,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 clearInterval(recordingTimerRef.current);
             }
         };
-    }, [isRecording]);
+    }, [isRecording, isPaused]);
 
     // Load audio durations when messages change
     useEffect(() => {
@@ -155,23 +323,56 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+            // Check if MediaRecorder is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('MediaRecorder API is not supported in this browser');
+            }
+
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                } 
             });
-            const chunks = [];
+            
+            // Store stream reference
+            audioStreamRef.current = stream;
+            
+            // Check if MediaRecorder is available
+            if (!window.MediaRecorder) {
+                throw new Error('MediaRecorder is not supported in this browser');
+            }
+
+            // Determine best mime type
+            let mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
+                } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+                    mimeType = 'audio/ogg';
+                } else {
+                    mimeType = ''; // Use default
+                }
+            }
+
+            const mediaRecorder = mimeType 
+                ? new MediaRecorder(stream, { mimeType })
+                : new MediaRecorder(stream);
+            
+            chunksRef.current = [];
 
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data && e.data.size > 0) {
-                    chunks.push(e.data);
+                    chunksRef.current.push(e.data);
                 }
             };
 
             mediaRecorder.onstop = () => {
-                if (chunks.length > 0) {
-                    const blob = new Blob(chunks, { 
-                        type: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-                    });
+                if (chunksRef.current.length > 0) {
+                    const blobType = mimeType || (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4');
+                    const blob = new Blob(chunksRef.current, { type: blobType });
                     setAudioBlob(blob);
                     const url = URL.createObjectURL(blob);
                     setAudioURL(url);
@@ -186,23 +387,91 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     });
                     audio.load();
                 }
-                stream.getTracks().forEach(track => track.stop());
+                
+                // Stop all tracks
+                if (audioStreamRef.current) {
+                    audioStreamRef.current.getTracks().forEach(track => {
+                        track.stop();
+                    });
+                    audioStreamRef.current = null;
+                }
+                
+                // Stop recording indicator
+                if (stopRecordingIndicator) {
+                    stopRecordingIndicator();
+                }
             };
 
             mediaRecorder.onerror = (e) => {
                 console.error('MediaRecorder error:', e);
                 setIsRecording(false);
-                stream.getTracks().forEach(track => track.stop());
+                setIsPaused(false);
+                
+                // Clean up stream
+                if (audioStreamRef.current) {
+                    audioStreamRef.current.getTracks().forEach(track => track.stop());
+                    audioStreamRef.current = null;
+                }
+                
+                stopRecordingIndicator();
             };
 
-            mediaRecorder.start();
+            // Start recording with timeslice for data chunks
+            mediaRecorder.start(1000); // Get data every second
             mediaRecorderRef.current = mediaRecorder;
             setIsRecording(true);
+            setIsPaused(false);
             setRecordingTime(0);
+            chunksRef.current = [];
+            
+            // Start recording indicator
+            if (startRecordingIndicator) {
+                startRecordingIndicator();
+            }
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            alert('Microphone access denied. Please allow microphone access to record audio.');
+            
+            let errorMessage = 'Failed to access microphone. ';
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage += 'Please allow microphone access in your browser settings.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage += 'No microphone found. Please connect a microphone.';
+            } else {
+                errorMessage += error.message || 'Unknown error occurred.';
+            }
+            
+            alert(errorMessage);
             setIsRecording(false);
+            setIsPaused(false);
+            
+            // Stop recording indicator if function exists
+            if (stopRecordingIndicator) {
+                stopRecordingIndicator();
+            }
+            
+            // Clean up any partial stream
+            if (audioStreamRef.current) {
+                audioStreamRef.current.getTracks().forEach(track => track.stop());
+                audioStreamRef.current = null;
+            }
+        }
+    };
+
+    const pauseRecording = () => {
+        if (mediaRecorderRef.current && isRecording && !isPaused) {
+            if (mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.pause();
+                setIsPaused(true);
+            }
+        }
+    };
+
+    const resumeRecording = () => {
+        if (mediaRecorderRef.current && isRecording && isPaused) {
+            if (mediaRecorderRef.current.state === 'paused') {
+                mediaRecorderRef.current.resume();
+                setIsPaused(false);
+            }
         }
     };
 
@@ -210,19 +479,25 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
+            setIsPaused(false);
+            stopRecordingIndicator();
         }
     };
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
-            if (mediaRecorderRef.current.stream) {
-                mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+            if (audioStreamRef.current) {
+                audioStreamRef.current.getTracks().forEach(track => track.stop());
+                audioStreamRef.current = null;
             }
             setIsRecording(false);
+            setIsPaused(false);
             setAudioBlob(null);
             setAudioURL(null);
             setRecordingTime(0);
+            chunksRef.current = [];
+            stopRecordingIndicator();
             setAudioDuration(prev => {
                 const newState = { ...prev };
                 delete newState['preview'];
@@ -578,6 +853,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         messagesEndRef={messagesEndRef}
                         showToolbox={showToolbox}
                         previewAttachment={previewAttachment}
+                        typingUsers={typingUsers}
+                        recordingUsers={recordingUsers}
                     />
                     
                     {/* Toolbox f right side dial messages */}
@@ -614,6 +891,10 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     handleSendMessage={handleSendMessage}
                     isExpanded={isExpanded}
                     audioDuration={audioDuration['preview']}
+                    onTypingStart={startTyping}
+                    onTypingStop={stopTyping}
+                    onPause={pauseRecording}
+                    onResume={resumeRecording}
                 />
             </div>
 

@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePage } from '@inertiajs/react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/ablyManager';
+import { initializeGlobalChatListener, subscribeToConversationForNotifications, unsubscribeFromConversationNotifications } from '@/lib/globalChatListener';
 import ConversationsList from './ConversationsList';
 
 // Component dial chat icon - y7al chat w ybdl conversations
 export default function ChatIcon() {
+    const { auth } = usePage().props;
+    const currentUser = auth.user;
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const conversationsListRef = useRef(null);
+    const conversationIdsRef = useRef([]);
 
     useEffect(() => {
         fetchUnreadCount();
+        
+        // Initialize global chat listener for toast notifications
+        initializeGlobalChatListener(currentUser.id);
         
         // Listen to open-chat event for specific user
         const handleOpenChat = (event) => {
@@ -26,7 +35,55 @@ export default function ChatIcon() {
 
         window.addEventListener('open-chat', handleOpenChat);
         return () => window.removeEventListener('open-chat', handleOpenChat);
-    }, []);
+    }, [currentUser.id]);
+
+    // Real-time unread count updates + global toast notifications
+    useEffect(() => {
+        // Fetch conversations to get all conversation IDs
+        const fetchConversationsForRealTime = async () => {
+            try {
+                const response = await fetch('/chat', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const conversations = data.conversations || [];
+                conversationIdsRef.current = conversations.map(c => c.id);
+
+                // Subscribe to all conversations for global notifications
+                conversations.forEach((conversation) => {
+                    subscribeToConversationForNotifications(conversation.id, conversation);
+                    
+                    // Also subscribe for unread count updates
+                    const channelName = `chat:conversation:${conversation.id}`;
+                    const handleNewMessage = (messageData) => {
+                        if (messageData.sender_id !== currentUser.id) {
+                            setUnreadCount(prev => prev + 1);
+                        }
+                    };
+                    
+                    subscribeToChannel(channelName, 'new-message', handleNewMessage);
+                });
+
+                // Cleanup
+                return () => {
+                    conversations.forEach((conversation) => {
+                        unsubscribeFromConversationNotifications(conversation.id);
+                    });
+                };
+            } catch (error) {
+                console.error('Failed to setup real-time notifications:', error);
+            }
+        };
+
+        fetchConversationsForRealTime();
+    }, [currentUser.id]);
 
     // Fetch unread count b fetch
     const fetchUnreadCount = async () => {

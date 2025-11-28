@@ -4,6 +4,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import MessageItem from './MessageItem';
+import TypingIndicator from './TypingIndicator';
+import RecordingIndicator from './RecordingIndicator';
 
 // Component dial list dial messages
 export default function MessageList({
@@ -25,6 +27,8 @@ export default function MessageList({
     messagesEndRef,
     showToolbox,
     previewAttachment,
+    typingUsers = [],
+    recordingUsers = [],
 }) {
     const isCurrentUserMessage = (senderId) => {
         return String(senderId) === String(currentUser.id);
@@ -88,6 +92,20 @@ export default function MessageList({
                                 formatSeenTime={formatSeenTime}
                             />
                         );
+                    })}
+                    {/* Typing indicators */}
+                    {typingUsers.length > 0 && typingUsers.map(userId => {
+                        const user = userId === conversation.other_user.id ? conversation.other_user : null;
+                        return user ? (
+                            <TypingIndicator key={userId} userName={user.name} isCurrentUser={false} />
+                        ) : null;
+                    })}
+                    {/* Recording indicators */}
+                    {recordingUsers.length > 0 && recordingUsers.map(userId => {
+                        const user = userId === conversation.other_user.id ? conversation.other_user : null;
+                        return user ? (
+                            <RecordingIndicator key={userId} userName={user.name} isCurrentUser={false} />
+                        ) : null;
                     })}
                     <div ref={messagesEndRef} />
                 </div>
