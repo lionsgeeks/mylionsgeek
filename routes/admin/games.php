@@ -12,8 +12,9 @@ Route::get('/games/connect-four', [GamesController::class, 'connectFour'])->name
 Route::get('/games/rock-paper-scissors', [GamesController::class, 'rockPaperScissors'])->name('games.rock-paper-scissors');
 Route::get('/games/pacman', [GamesController::class, 'pacman'])->name('games.pacman');
 
-// API routes for game state management
-Route::prefix('api/games')->group(function () {
+// API routes for game state management - requires authentication like chat
+Route::middleware(['auth'])->prefix('api/games')->group(function () {
+    Route::get('/ably-token', [GamesController::class, 'getAblyToken'])->name('games.ably-token');
     Route::get('/state/{roomId}', [GamesController::class, 'getGameState'])->name('games.get-state');
     Route::post('/state/{roomId}', [GamesController::class, 'updateGameState'])->name('games.update-state');
     Route::post('/reset/{roomId}', [GamesController::class, 'resetGameSession'])->name('games.reset');
