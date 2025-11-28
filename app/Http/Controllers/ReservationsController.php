@@ -2378,13 +2378,36 @@ class ReservationsController extends Controller
                 ->map($formatEquipment)
                 ->toArray();
 
-            $activeEquipment = (clone $equipmentBaseQuery)
-                ->where('e.state', 1)
-                ->orderByDesc(DB::raw('COALESCE(e.updated_at, e.created_at)'))
-                ->limit(50)
-                ->get()
-                ->map($formatEquipment)
-                ->toArray();
+            if (Schema::hasTable('reservation_equipment') && Schema::hasTable('reservations')) {
+                $activeUsage = DB::table('reservation_equipment as re')
+                    ->join('reservations as r', 'r.id', '=', 're.reservation_id')
+                    ->select('re.equipment_id', DB::raw('MAX(COALESCE(re.updated_at, re.created_at)) as last_usage'))
+                    ->where('r.approved', 1)
+                    ->where('r.canceled', 0)
+                    ->groupBy('re.equipment_id')
+                    ->orderByDesc('last_usage')
+                    ->limit(50)
+                    ->get();
+
+                $activeEquipmentIds = $activeUsage->pluck('equipment_id')->toArray();
+
+                if (!empty($activeEquipmentIds)) {
+                    $equipmentDetails = (clone $equipmentBaseQuery)
+                        ->whereIn('e.id', $activeEquipmentIds)
+                        ->get()
+                        ->mapWithKeys(function ($equipment) use ($formatEquipment) {
+                            return [$equipment->id => $formatEquipment($equipment)];
+                        });
+
+                    $activeEquipment = collect($activeUsage)
+                        ->map(function ($usage) use ($equipmentDetails) {
+                            return $equipmentDetails->get($usage->equipment_id);
+                        })
+                        ->filter()
+                        ->values()
+                        ->toArray();
+                }
+            }
         }
 
         // Equipment Not Reserved

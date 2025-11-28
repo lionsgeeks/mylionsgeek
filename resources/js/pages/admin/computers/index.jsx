@@ -7,14 +7,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash } from 'lucide-react';
+import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash, Monitor, PlugZap, UserCheck, Laptop } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
 import Rolegard from '../../../components/rolegard';
+import StatCard from '@/components/StatCard';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
 }
+
+const getComputerState = (computer) => {
+    if (!computer) return 'not_working';
+
+    const normalizedState = (computer.state ?? '').toString().trim().toLowerCase();
+    if (['working', 'not_working', 'damaged'].includes(normalizedState)) {
+        return normalizedState;
+    }
+
+    if (computer.assignedUserId) return 'working';
+    return 'not_working';
+};
 
 export default function ComputersIndex({ computers: computersProp = [], users: usersProp = [] }) {
     const [query, setQuery] = useState('');
@@ -44,6 +57,27 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [userHistoryError, setUserHistoryError] = useState('');
     const [selectedUserForHistory, setSelectedUserForHistory] = useState(null);
     const [userAssignmentHistory, setUserAssignmentHistory] = useState([]);
+
+    const totalComputers = computers.length;
+    const assignedCount = computers.filter((c) => !!c.assignedUserId).length;
+    const unassignedCount = totalComputers - assignedCount;
+    const stateCounts = computers.reduce(
+        (acc, computer) => {
+            const state = getComputerState(computer);
+            acc[state] = (acc[state] || 0) + 1;
+            return acc;
+        },
+        { working: 0, not_working: 0, damaged: 0 }
+    );
+
+    const computerStats = [
+        { title: 'Total Computers', value: totalComputers, icon: Monitor },
+        { title: 'Working Units', value: stateCounts.working || 0, icon: Laptop },
+        { title: 'Not Working Units', value: stateCounts.not_working || 0, icon: Route },
+        { title: 'Damaged Units', value: stateCounts.damaged || 0, icon: PlugZap },
+        { title: 'Assigned', value: assignedCount, icon: UserCheck },
+        { title: 'Unassigned', value: unassignedCount, icon: Route },
+    ];
 
     const displayDate = (value) => {
         if (!value) return null;
@@ -76,8 +110,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         }
 
         if (damaged !== 'all') {
-            const wantDamaged = damaged === 'damaged';
-            list = list.filter(c => (wantDamaged ? c.isBroken : !c.isBroken));
+            list = list.filter(c => {
+                const state = getComputerState(c);
+                if (damaged === 'damaged') return state === 'damaged';
+                if (damaged === 'working') return state === 'working';
+                if (damaged === 'not_working') return state === 'not_working';
+                return true;
+            });
         }
 
         if (assigned !== 'all') {
@@ -144,7 +183,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             reference: computer.reference || '',
             cpu: computer.cpu || '',
             gpu: computer.gpu || '',
-            state: computer.isBroken ? 'not_working' : 'working',
+            state: computer.state || 'not_working',
             user_id: computer.assignedUserId || null,
             start: computer.contractStart || '',
             end: computer.contractEnd || '',
@@ -155,10 +194,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     }
 
     function computeStateForComputer(computer) {
-        if (computer.state) return computer.state;
-        if (computer.isBroken === true) return 'not_working';
-        if (computer.isBroken === false) return 'working';
-        return 'working';
+        return computer.state || 'not_working';
     }
 
     function assignComputer(computer, userId) {
@@ -218,7 +254,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 reference: editForm.reference,
                                 cpu: editForm.cpu,
                                 gpu: editForm.gpu,
-                                isBroken: editForm.state !== 'working',
+                                state: editForm.state,
                                 contractStart: editForm.start,
                                 contractEnd: editForm.end,
                                 mark: editForm.mark
@@ -284,7 +320,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
     function renderAllTable() {
         return (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mt-5">
                 <Table>
                     <TableCaption>A list of your computers.</TableCaption>
                     <TableHeader>
@@ -459,6 +495,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 <SelectItem value="all">Damaged: All</SelectItem>
                                 <SelectItem value="damaged">Damaged</SelectItem>
                                 <SelectItem value="working">Working</SelectItem>
+                                <SelectItem value="not_working">Not Working</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -477,6 +514,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     </div>
                 </div>
                 {/* End Header */}
+
+                <StatCard statsData={computerStats} />
 
                 {renderAllTable()}
             </div>

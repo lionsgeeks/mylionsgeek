@@ -25,8 +25,8 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const open = isControlled ? controlledOpen : internalOpen;
     const setOpen = isControlled && onOpenChange ? onOpenChange : setInternalOpen;
 
-    const { searchItems, search } = useSearchItems();
-    const results = useMemo(() => search(query), [query, searchItems]);
+    const { search } = useSearchItems();
+    const results = useMemo(() => search(query), [query, search]);
 
     // Keyboard shortcut handler
     useEffect(() => {
@@ -73,7 +73,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [open, results, selectedIndex]);
+    }, [handleSelect, open, results, selectedIndex]);
 
     // Scroll selected item into view
     useEffect(() => {
