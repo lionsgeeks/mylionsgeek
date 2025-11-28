@@ -46,6 +46,7 @@ class HandleInertiaRequests extends Middleware
             return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'csrfToken' => csrf_token(),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'session' => [
                 'id' => $request->session()->getId(),
