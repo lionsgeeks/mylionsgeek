@@ -1,8 +1,6 @@
 // Notification manager for desktop and toast notifications
 // Manager dial notifications bach n3tiw desktop notifications w toast notifications
 
-let notificationPermission = null;
-
 // Request notification permission
 export const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
@@ -19,7 +17,6 @@ export const requestNotificationPermission = async () => {
 
     try {
         const permission = await Notification.requestPermission();
-        notificationPermission = permission;
         return permission;
     } catch (error) {
         console.error('Error requesting notification permission:', error);

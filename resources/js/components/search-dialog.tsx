@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,17 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         }
     }, [open]);
 
+    const handleSelect = useCallback((item: typeof results[number]) => {
+        setOpen(false);
+        setQuery('');
+        setSelectedIndex(0);
+        if (item.href) {
+            router.visit(item.href);
+        } else if ('onSelect' in item && typeof item.onSelect === 'function') {
+            item.onSelect();
+        }
+    }, [setOpen]);
+
     // Keyboard navigation for results
     useEffect(() => {
         if (!open || results.length === 0) return;
@@ -84,17 +95,6 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
             }
         }
     }, [selectedIndex]);
-
-    function handleSelect(item: typeof results[number]) {
-        setOpen(false);
-        setQuery('');
-        setSelectedIndex(0);
-        if (item.href) {
-            router.visit(item.href);
-        } else if (item.onSelect) {
-            item.onSelect();
-        }
-    }
 
     function handleQueryChange(value: string) {
         setQuery(value);
