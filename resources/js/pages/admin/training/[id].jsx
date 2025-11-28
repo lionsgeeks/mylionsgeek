@@ -48,14 +48,7 @@ export default function Show({ training, usersNull }) {
   const [calendarError, setCalendarError] = useState('');
   const [hasAttendanceToday, setHasAttendanceToday] = useState(false);
   const [reminderModal, setReminderModal] = useState({ open: false, slot: null });
-  const isBeforeToday = (dateLike) => {
-    if (!dateLike) return false;
-    const target = new Date(dateLike);
-    target.setHours(0, 0, 0, 0);
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return target < startOfToday;
-  };
+
 
 
   // Map status to color styles for SelectTrigger
@@ -367,7 +360,7 @@ export default function Show({ training, usersNull }) {
   });
 
   // Delete student
-  
+
 
   // Add student from modal
   const handleAddStudent = (user) => {
@@ -733,10 +726,7 @@ export default function Show({ training, usersNull }) {
                   const eventDate = info?.event?.start;
                   const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0, 10);
                   if (!dateStr) return;
-                  if (!isBeforeToday(eventDate || dateStr)) {
-                    setCalendarError('You can only manage attendance for dates before today.');
-                    return;
-                  }
+
                   setCalendarError('');
                   setSelectedDate(dateStr);
                   AddAttendance(dateStr);
@@ -744,10 +734,7 @@ export default function Show({ training, usersNull }) {
                   setShowAttendanceList(true);
                 }}
                 dateClick={(info) => {
-                  if (!isBeforeToday(info.date)) {
-                    setCalendarError('You can only select dates earlier than today.');
-                    return;
-                  }
+              
                   setCalendarError('');
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);
@@ -1097,7 +1084,7 @@ export default function Show({ training, usersNull }) {
           showWinnerModal={showWinnerModal}
           spinWheel={spinWheel}
           wheelRotation={wheelRotation}
-          
+
            />
         {/* Delete Confirmation Modal */}
         <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
