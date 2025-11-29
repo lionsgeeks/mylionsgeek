@@ -50,6 +50,11 @@ class GamesController extends Controller
         return Inertia::render('Games/Pacman');
     }
 
+    public function uno()
+    {
+        return Inertia::render('Games/Uno');
+    }
+
     /**
      * Get Ably token for real-time game updates
      * Jib token dial Ably bach n3tiw access l channels dial games
@@ -139,20 +144,22 @@ class GamesController extends Controller
         $session->refresh();
 
         // Broadcast game state update via Ably for REAL-TIME updates
-        // This ensures ALL players (Ayman and Yahya) see moves IMMEDIATELY
+        // For UNO: Filter hands so each player only sees their own cards
         try {
             $ablyKey = config('services.ably.key');
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
                 $channel = $ably->channels->get("game:{$roomId}");
                 
+                // For UNO game, we need to send full state (server needs all hands)
+                // Client will filter to show only own cards
                 $broadcastData = [
                     'game_state' => $session->game_state,
                     'last_activity' => $session->last_activity->toIso8601String(),
                 ];
                 
                 // Publish IMMEDIATELY with latest state from database
-                // This broadcasts to ALL players in the room (Ayman and Yahya)
+                // This broadcasts to ALL players in the room
                 $channel->publish('game-state-updated', $broadcastData);
                 
                 // Log for debugging

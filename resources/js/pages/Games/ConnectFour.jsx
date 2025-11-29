@@ -29,6 +29,8 @@ export default function ConnectFour() {
     const [isConnected, setIsConnected] = useState(false);
     const [assignedPlayer, setAssignedPlayer] = useState(null); // '🔵' | '🟡'
     const lastStateHashRef = useRef(null);
+    const [droppingColumn, setDroppingColumn] = useState(null); // Track which column is animating
+    const [droppingRow, setDroppingRow] = useState(null); // Track which row the disc is dropping to
 
     // Ably channel for real-time game updates
     const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
@@ -82,52 +84,72 @@ export default function ConnectFour() {
         }
         
         const newBoard = board.map(row => [...row]);
+        let dropRow = null;
         for (let r = ROWS - 1; r >= 0; r--) {
             if (!newBoard[r][col]) {
-                newBoard[r][col] = currentPlayer;
-                const w = checkWin(newBoard);
-                const full = newBoard.every(row => row.every(cell => cell));
-                const nextPlayer = w ? currentPlayer : (currentPlayer === '🔵' ? '🟡' : '🔵');
+                dropRow = r;
+                // Start animation
+                setDroppingColumn(col);
+                setDroppingRow(r);
                 
-                // Optimistic update for better UX (will be confirmed by Ably)
-                setBoard(newBoard);
-                setWinner(w);
-                setIsFull(full);
-                if (!w) setCurrentPlayer(nextPlayer);
-                
-                // POST move to server - server saves to database and broadcasts via Ably IMMEDIATELY
-                if (isConnected && roomId) {
-                    // Prepare state to send - server will preserve players array
-                    const currentState = {
-                        board: newBoard,
-                        currentPlayer: nextPlayer,
-                        winner: w,
-                        isFull: full,
-                        // Note: players array is preserved by server's updateState method
-                    };
+                // Wait for animation to complete before updating board
+                setTimeout(() => {
+                    newBoard[r][col] = currentPlayer;
+                    const w = checkWin(newBoard);
+                    const full = newBoard.every(row => row.every(cell => cell));
+                    const nextPlayer = w ? currentPlayer : (currentPlayer === '🔵' ? '🟡' : '🔵');
                     
-                    try {
-                        console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Player:', currentPlayer);
-                        // Save to database and broadcast via Ably
-                        // Server will:
-                        // 1. Save to database (preserving players array)
-                        // 2. Broadcast to ALL players via Ably immediately
-                        const response = await axios.post(`/api/games/state/${roomId}`, {
-                            game_type: 'connectfour',
-                            game_state: currentState,
-                        });
+                    // Update board after animation
+                    setBoard(newBoard);
+                    setWinner(w);
+                    setIsFull(full);
+                    if (!w) setCurrentPlayer(nextPlayer);
+                    
+                    // Clear animation state
+                    setDroppingColumn(null);
+                    setDroppingRow(null);
+                    
+                    // POST move to server - server saves to database and broadcasts via Ably IMMEDIATELY
+                    if (isConnected && roomId) {
+                        // Prepare state to send - server will preserve players array
+                        const currentState = {
+                            board: newBoard,
+                            currentPlayer: nextPlayer,
+                            winner: w,
+                            isFull: full,
+                            // Note: players array is preserved by server's updateState method
+                        };
                         
-                        console.log('✅ Move saved! Server broadcasted to all players via Ably');
-                        console.log('📡 Other player should receive update NOW via Ably subscription');
-                    } catch (error) {
-                        console.error('❌ Failed to save move:', error);
-                        // Revert optimistic update on error
-                        setBoard(board);
-                        setCurrentPlayer(currentPlayer);
-                        setWinner(null);
-                        setIsFull(false);
+                        try {
+                            console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Player:', currentPlayer);
+                            // Save to database and broadcast via Ably
+                            // Server will:
+                            // 1. Save to database (preserving players array)
+                            // 2. Broadcast to ALL players via Ably immediately
+                            axios.post(`/api/games/state/${roomId}`, {
+                                game_type: 'connectfour',
+                                game_state: currentState,
+                            }).then(() => {
+                                console.log('✅ Move saved! Server broadcasted to all players via Ably');
+                                console.log('📡 Other player should receive update NOW via Ably subscription');
+                            }).catch(error => {
+                                console.error('❌ Failed to save move:', error);
+                                // Revert optimistic update on error
+                                setBoard(board);
+                                setCurrentPlayer(currentPlayer);
+                                setWinner(null);
+                                setIsFull(false);
+                            });
+                        } catch (error) {
+                            console.error('❌ Failed to save move:', error);
+                            // Revert optimistic update on error
+                            setBoard(board);
+                            setCurrentPlayer(currentPlayer);
+                            setWinner(null);
+                            setIsFull(false);
+                        }
                     }
-                }
+                }, 400); // Animation duration
                 return;
             }
         }
@@ -172,35 +194,78 @@ export default function ConnectFour() {
         if (stateHash !== lastStateHashRef.current) {
             lastStateHashRef.current = stateHash;
             
-            // Update all state from server
-            if (state.board) setBoard(state.board);
-            if (state.currentPlayer) setCurrentPlayer(state.currentPlayer);
-            if (state.winner !== undefined) setWinner(state.winner);
-            if (state.isFull !== undefined) setIsFull(state.isFull);
+            // Check if board changed to trigger animation for remote moves
+            if (state.board) {
+                const oldBoard = board;
+                const newBoard = state.board;
+                
+                // Find which column and row changed (for animation)
+                for (let c = 0; c < COLS; c++) {
+                    for (let r = ROWS - 1; r >= 0; r--) {
+                        if (!oldBoard[r][c] && newBoard[r][c]) {
+                            // New disc dropped in this position
+                            setDroppingColumn(c);
+                            setDroppingRow(r);
+                            
+                            // Update board after animation
+                            setTimeout(() => {
+                                setBoard(newBoard);
+                                setDroppingColumn(null);
+                                setDroppingRow(null);
+                            }, 400);
+                            
+                            // Update other state immediately
+                            if (state.currentPlayer) setCurrentPlayer(state.currentPlayer);
+                            if (state.winner !== undefined) setWinner(state.winner);
+                            if (state.isFull !== undefined) setIsFull(state.isFull);
+                            
+                            // Assign player based on stored player for this player name
+                            if (state.players && state.players.length > 0) {
+                                const playerIndex = state.players.findIndex(p => p.name === playerName);
+                                if (playerIndex >= 0) {
+                                    const player = state.players[playerIndex]?.player;
+                                    if (player === '🔵' || player === '🟡') {
+                                        setAssignedPlayer(player);
+                                    }
+                                } else {
+                                    // If name not found:
+                                    // - Keep current role if already assigned (never flip)
+                                    // - If no role yet and there is exactly 1 player, infer the opposite
+                                    // - If 0 or 2+ players, do not guess; wait for explicit assignment
+                                    if (!assignedPlayer && state.players.length === 1) {
+                                        const onlyPlayer = state.players[0]?.player;
+                                        if (onlyPlayer === '🔵' || onlyPlayer === '🟡') {
+                                            setAssignedPlayer(onlyPlayer === '🔵' ? '🟡' : '🔵');
+                                        }
+                                    }
+                                }
+                            }
+                            return; // Exit early after finding the change
+                        }
+                    }
+                }
+                
+                // If no change found (shouldn't happen), just update normally
+                setBoard(newBoard);
+            } else {
+                // No board change, update other state normally
+                if (state.currentPlayer) setCurrentPlayer(state.currentPlayer);
+                if (state.winner !== undefined) setWinner(state.winner);
+                if (state.isFull !== undefined) setIsFull(state.isFull);
+            }
             
-            // Assign player based on stored player for this player name
-            if (state.players && state.players.length > 0) {
+            // Assign player if not already done above
+            if (state.players && state.players.length > 0 && !assignedPlayer) {
                 const playerIndex = state.players.findIndex(p => p.name === playerName);
                 if (playerIndex >= 0) {
                     const player = state.players[playerIndex]?.player;
                     if (player === '🔵' || player === '🟡') {
                         setAssignedPlayer(player);
                     }
-                } else {
-                    // If name not found:
-                    // - Keep current role if already assigned (never flip)
-                    // - If no role yet and there is exactly 1 player, infer the opposite
-                    // - If 0 or 2+ players, do not guess; wait for explicit assignment
-                    if (!assignedPlayer && state.players.length === 1) {
-                        const onlyPlayer = state.players[0]?.player;
-                        if (onlyPlayer === '🔵' || onlyPlayer === '🟡') {
-                            setAssignedPlayer(onlyPlayer === '🔵' ? '🟡' : '🔵');
-                        }
-                    }
                 }
             }
         }
-    }, [playerName, assignedPlayer]);
+    }, [playerName, assignedPlayer, board]);
 
     // Fetch initial game state
     const fetchInitialGameState = React.useCallback(async () => {
@@ -386,6 +451,19 @@ export default function ConnectFour() {
 
     return (
         <AppLayout>
+            <style>{`
+                @keyframes drop-disc {
+                    0% {
+                        transform: translateY(0);
+                    }
+                    100% {
+                        transform: translateY(calc(${droppingRow !== null ? (droppingRow + 1) * 64 : 0}px));
+                    }
+                }
+                .animate-drop-disc {
+                    animation: drop-disc 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+            `}</style>
             <div className="min-h-screen bg-gradient-to-br from-amber-50 to-yellow-100 py-8">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-8">
@@ -490,10 +568,27 @@ export default function ConnectFour() {
                                     >Drop</button>
                                 ))}
                             </div>
-                            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${COLS}, 56px)` }}>
+                            <div className="grid gap-2 relative" style={{ gridTemplateColumns: `repeat(${COLS}, 56px)` }}>
+                                {/* Render dropping disc overlay if animation is active */}
+                                {droppingColumn !== null && droppingRow !== null && (
+                                    <div
+                                        className="absolute pointer-events-none z-10"
+                                        style={{
+                                            left: `${droppingColumn * 64}px`,
+                                            top: '0px',
+                                            width: '56px',
+                                        }}
+                                    >
+                                        <div className="w-12 h-12 rounded-full flex items-center justify-center animate-drop-disc" style={{ margin: '2px' }}>
+                                            {currentPlayer}
+                                        </div>
+                                    </div>
+                                )}
                                 {board.map((row, r) => row.map((cell, c) => (
-                                    <div key={`${r}-${c}`} className="w-14 h-14 bg-blue-900 rounded-full flex items-center justify-center">
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${cell ? '' : 'bg-white'}`}>{cell}</div>
+                                    <div key={`${r}-${c}`} className="w-14 h-14 bg-blue-900 rounded-full flex items-center justify-center relative overflow-hidden">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${cell ? '' : 'bg-white'}`}>
+                                            {cell}
+                                        </div>
                                     </div>
                                 )))}
                             </div>
