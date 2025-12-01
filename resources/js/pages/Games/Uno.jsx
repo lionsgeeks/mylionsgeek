@@ -136,6 +136,10 @@ export default function Uno() {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [unoCalled, setUnoCalled] = useState({}); // Track who called UNO
     const [pendingDraw, setPendingDraw] = useState(0); // Cards to draw (Draw 2, Draw 4)
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [drawnCardIndex, setDrawnCardIndex] = useState(null); // Track if a card was just drawn and can be played
+    const [needsUnoCall, setNeedsUnoCall] = useState({}); // Track players who need to call UNO (have 1 card after playing)
+    const [unoAnimation, setUnoAnimation] = useState(null); // Track UNO animation: { playerIndex, timestamp }
     
     // Online multiplayer state
     const [roomId, setRoomId] = useState('');
@@ -144,6 +148,7 @@ export default function Uno() {
     const [assignedPlayerIndex, setAssignedPlayerIndex] = useState(null);
     const lastStateHashRef = useRef(null);
     const fullGameStateRef = useRef(null); // Store full game state with all hands (for server communication)
+    const gameStateRef = useRef({ deck: [], discardPile: [], players: [], currentPlayerIndex: 0, playDirection: 1, currentColor: null }); // Store latest game state for timer callbacks
     
     // Ably channel for real-time game updates
     const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
@@ -194,6 +199,9 @@ export default function Uno() {
         setWinner(null);
         setUnoCalled({});
         setPendingDraw(0);
+        // Clear all UNO status
+        setNeedsUnoCall({});
+        setUnoCalled({});
         
         return {
             deck: newRemainingDeck,
@@ -326,11 +334,8 @@ export default function Uno() {
             return;
         }
         
-        // ⚠️ UNO RULE: Check if player has 2 cards and hasn't called UNO
-        // They must call UNO before playing their second-to-last card
-        // If they forget, they'll be penalized after playing (see below)
-        const handSize = currentPlayer.hand.filter(c => c !== null).length;
-        const forgotToCallUno = handSize === 2 && !unoCalled[currentPlayerIndex];
+        // Check hand size before playing
+        const handSizeBefore = currentPlayer.hand.filter(c => c !== null).length;
         
         // For Wild cards, require color selection
         if (card.type === 'wild' && !chosenColor) {
@@ -373,74 +378,101 @@ export default function Uno() {
         // Add to discard pile
         newState.discardPile.push(card);
         
-        // ⚠️ UNO PENALTY: If player forgot to call UNO before playing second-to-last card
-        // They must draw 2 cards as penalty (before checking for win)
-        if (forgotToCallUno) {
-            newState = drawCards(2, currentPlayerIndex, newState);
-            // Clear any UNO call status since they now have more cards
-            setUnoCalled(prev => {
-                const updated = { ...prev };
-                delete updated[currentPlayerIndex];
-                return updated;
-            });
-        }
+        // Check hand size after playing
+        const handSizeAfter = newState.players[currentPlayerIndex].hand.filter(c => c !== null).length;
         
-        // 🏆 Check for win - if last card is played legally, win immediately
-        // No card effects happen when you win with your last card
+        // 🏆 Check for win - if last card is played
         if (newState.players[currentPlayerIndex].hand.length === 0) {
-            newState.winner = currentPlayerIndex;
-            setWinner(currentPlayerIndex);
-            // Clear UNO call status for winner
-            setUnoCalled(prev => {
-                const updated = { ...prev };
-                delete updated[currentPlayerIndex];
-                return updated;
-            });
-            
-            // Update local state immediately for win
-            setDeck(newState.deck);
-            setDiscardPile(newState.discardPile);
-            setPlayers(newState.players);
-            setCurrentPlayerIndex(currentPlayerIndex);
-            setPlayDirection(newState.playDirection);
-            setCurrentColor(newState.currentColor);
-            setPendingDraw(0);
-            setSelectedCard(null);
-            setShowColorPicker(false);
-            
-            // Save to database and broadcast via Ably
-            if (isConnected && roomId) {
-                const gameState = {
+            // Check if player had called UNO before playing last card
+            if (unoCalled[currentPlayerIndex]) {
+                // ✅ Player wins - they called UNO and played their last card
+                newState.winner = currentPlayerIndex;
+                setWinner(currentPlayerIndex);
+                
+                // Clear UNO call status for winner
+                setUnoCalled(prev => {
+                    const updated = { ...prev };
+                    delete updated[currentPlayerIndex];
+                    return updated;
+                });
+                setNeedsUnoCall(prev => {
+                    const updated = { ...prev };
+                    delete updated[currentPlayerIndex];
+                    return updated;
+                });
+                
+                // Update local state immediately for win
+                setDeck(newState.deck);
+                setDiscardPile(newState.discardPile);
+                setPlayers(newState.players);
+                setCurrentPlayerIndex(currentPlayerIndex);
+                setPlayDirection(newState.playDirection);
+                setCurrentColor(newState.currentColor);
+                setPendingDraw(0);
+                setSelectedCard(null);
+                setShowColorPicker(false);
+                
+                // Update ref
+                gameStateRef.current = {
                     deck: newState.deck,
                     discardPile: newState.discardPile,
-                    players: newState.players.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        hand: p.hand,
-                        score: p.score,
-                    })),
+                    players: newState.players,
                     currentPlayerIndex: currentPlayerIndex,
                     playDirection: newState.playDirection,
                     currentColor: newState.currentColor,
-                    gameStarted: true,
-                    winner: newState.winner,
-                    pendingDraw: 0,
                 };
                 
-                try {
-                    axios.post(`/api/games/state/${roomId}`, {
-                        game_type: 'uno',
-                        game_state: gameState,
-                    });
-                } catch (error) {
-                    console.error('Failed to update game state:', error);
+                // Save to database and broadcast via Ably
+                if (isConnected && roomId) {
+                    const gameState = {
+                        deck: newState.deck,
+                        discardPile: newState.discardPile,
+                        players: newState.players.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            hand: p.hand,
+                            score: p.score,
+                        })),
+                        currentPlayerIndex: currentPlayerIndex,
+                        playDirection: newState.playDirection,
+                        currentColor: newState.currentColor,
+                        gameStarted: true,
+                        winner: newState.winner,
+                        pendingDraw: 0,
+                    };
+                    
+                    try {
+                        axios.post(`/api/games/state/${roomId}`, {
+                            game_type: 'uno',
+                            game_state: gameState,
+                        });
+                    } catch (error) {
+                        console.error('Failed to update game state:', error);
+                    }
                 }
+                return; // Exit early - no card effects when winning
+            } else {
+                // Player played last card - they win (no penalty for not calling UNO)
+                // Continue with game normally
             }
-            return; // Exit early - no card effects when winning
+        }
+        
+        // ⚠️ UNO RULE: If player now has 1 card after playing, show UNO button
+        // Player must call UNO when they have 2 cards and play one, leaving them with 1 card
+        if (handSizeAfter === 1) {
+            // Show UNO button - player needs to call UNO
+            setNeedsUnoCall(prev => ({ ...prev, [currentPlayerIndex]: true }));
+        } else {
+            // Clear needsUnoCall if they have more than 1 card
+            setNeedsUnoCall(prev => {
+                const updated = { ...prev };
+                delete updated[currentPlayerIndex];
+                return updated;
+            });
         }
         
         // Clear UNO call status if player now has more than 1 card
-        if (newState.players[currentPlayerIndex].hand.length > 1) {
+        if (newState.players[currentPlayerIndex].hand.filter(c => c !== null).length > 1) {
             setUnoCalled(prev => {
                 const updated = { ...prev };
                 delete updated[currentPlayerIndex];
@@ -463,6 +495,14 @@ export default function Uno() {
             newState.pendingDraw = 0;
         }
         
+        // Clear UNO status when turn changes (someone played or drew)
+        // Once someone plays or draws, all UNO statuses are cleared
+        if (newState.currentPlayerIndex !== currentPlayerIndex) {
+            // Clear all UNO statuses when turn changes
+            setUnoCalled({});
+            setNeedsUnoCall({});
+        }
+        
         // Update local state
         setDeck(newState.deck);
         setDiscardPile(newState.discardPile);
@@ -473,6 +513,17 @@ export default function Uno() {
         setPendingDraw(0);
         setSelectedCard(null);
         setShowColorPicker(false);
+        setDrawnCardIndex(null); // Clear drawn card indicator when playing
+        
+        // Update ref with latest game state for timer callbacks
+        gameStateRef.current = {
+            deck: newState.deck,
+            discardPile: newState.discardPile,
+            players: newState.players,
+            currentPlayerIndex: newState.currentPlayerIndex,
+            playDirection: newState.playDirection,
+            currentColor: newState.currentColor,
+        };
         
         // Save to database and broadcast via Ably
         if (isConnected && roomId) {
@@ -594,23 +645,45 @@ export default function Uno() {
         // Draw 1 card
         newState = drawCards(1, currentPlayerIndex, newState);
         
-        // Check if drawn card is playable (optional rule - player can choose to play it)
-        // For now, we'll just move to next player
-        // In a full implementation, you could show a prompt to play the drawn card
+        // Get the drawn card (last card in player's hand)
+        const drawnCard = newState.players[currentPlayerIndex].hand[newState.players[currentPlayerIndex].hand.length - 1];
+        const topCard = newState.discardPile[newState.discardPile.length - 1];
         
-        // Move to next player
-        newState.currentPlayerIndex = getNextPlayerIndex(
-            currentPlayerIndex,
-            playDirection,
-            players.length
-        );
+        // Check if drawn card is playable
+        const isDrawnCardPlayable = drawnCard && isPlayable(drawnCard, topCard, currentColor);
         
-        // Update local state
-        setDeck(newState.deck);
-        setDiscardPile(newState.discardPile);
-        setPlayers(newState.players);
-        setCurrentPlayerIndex(newState.currentPlayerIndex);
-        setPendingDraw(0);
+        if (isDrawnCardPlayable) {
+            // Card is playable - player can choose to play it immediately
+            // Keep the turn with current player and highlight the drawn card
+            const drawnCardIndex = newState.players[currentPlayerIndex].hand.length - 1;
+            setDrawnCardIndex(drawnCardIndex);
+            
+            // Update local state but keep current player's turn
+            setDeck(newState.deck);
+            setDiscardPile(newState.discardPile);
+            setPlayers(newState.players);
+            // Don't change currentPlayerIndex - player can still play
+            setPendingDraw(0);
+        } else {
+            // Card is not playable - move to next player
+            newState.currentPlayerIndex = getNextPlayerIndex(
+                currentPlayerIndex,
+                playDirection,
+                players.length
+            );
+            setDrawnCardIndex(null);
+            
+            // Clear UNO status when someone draws (someone played or drew)
+            setUnoCalled({});
+            setNeedsUnoCall({});
+            
+            // Update local state
+            setDeck(newState.deck);
+            setDiscardPile(newState.discardPile);
+            setPlayers(newState.players);
+            setCurrentPlayerIndex(newState.currentPlayerIndex);
+            setPendingDraw(0);
+        }
         
         // Save to database and broadcast via Ably
         if (isConnected && roomId) {
@@ -623,7 +696,7 @@ export default function Uno() {
                     hand: p.hand,
                     score: p.score,
                 })),
-                currentPlayerIndex: newState.currentPlayerIndex,
+                currentPlayerIndex: isDrawnCardPlayable ? currentPlayerIndex : newState.currentPlayerIndex,
                 playDirection: newState.playDirection,
                 currentColor: newState.currentColor,
                 gameStarted: true,
@@ -640,19 +713,43 @@ export default function Uno() {
                 console.error('Failed to update game state:', error);
             }
         }
-    }, [gameStarted, winner, players, currentPlayerIndex, assignedPlayerIndex, deck, discardPile, currentColor, playDirection, pendingDraw, isConnected, roomId, drawCards, getNextPlayerIndex]);
+    }, [gameStarted, winner, players, currentPlayerIndex, assignedPlayerIndex, deck, discardPile, currentColor, playDirection, pendingDraw, isConnected, roomId, drawCards, getNextPlayerIndex, isPlayable]);
     
     // Call UNO - must be called when you have 2 cards (before playing second-to-last)
+    // Call UNO - can only be called when you have exactly 1 card
+    // If called with more than 1 card, draw 5 cards as penalty
     const callUno = useCallback(() => {
-        const currentPlayer = players[currentPlayerIndex];
-        if (!currentPlayer) return;
+        // Check the player who clicked the button (assignedPlayerIndex), not the current player
+        if (assignedPlayerIndex === null || assignedPlayerIndex === undefined) return;
         
-        const handSize = currentPlayer.hand.filter(c => c !== null).length;
-        // Can call UNO when you have 2 cards (before playing) or 1 card (if you forgot earlier)
-        if (handSize === 2 || handSize === 1) {
-            setUnoCalled(prev => ({ ...prev, [currentPlayerIndex]: true }));
+        const myPlayer = players[assignedPlayerIndex];
+        if (!myPlayer) return;
+        
+        const handSize = myPlayer.hand.filter(c => c !== null).length;
+        
+        // Player can only call UNO when they have 1 card
+        if (handSize === 1) {
+            // Mark player as having called UNO
+            setUnoCalled(prev => ({ ...prev, [assignedPlayerIndex]: true }));
+            // Clear the needsUnoCall flag since they called it
+            setNeedsUnoCall(prev => {
+                const updated = { ...prev };
+                delete updated[assignedPlayerIndex];
+                return updated;
+            });
+            // Show UNO animation
+            setUnoAnimation({ playerIndex: assignedPlayerIndex, timestamp: Date.now() });
+            // Clear animation after 2 seconds
+            setTimeout(() => {
+                setUnoAnimation(prev => {
+                    if (prev && prev.playerIndex === assignedPlayerIndex) {
+                        return null;
+                    }
+                    return prev;
+                });
+            }, 2000);
         }
-    }, [players, currentPlayerIndex]);
+    }, [players, assignedPlayerIndex]);
     
     // Update game state from received data
     // IMPORTANT: Only show current player's own cards, hide other players' cards
@@ -705,7 +802,13 @@ export default function Uno() {
             if (state.discardPile) setDiscardPile(state.discardPile);
             setPlayers(filteredPlayers);
             
-            if (state.currentPlayerIndex !== undefined) setCurrentPlayerIndex(state.currentPlayerIndex);
+            if (state.currentPlayerIndex !== undefined) {
+                // Clear drawn card indicator when turn changes
+                if (state.currentPlayerIndex !== currentPlayerIndex) {
+                    setDrawnCardIndex(null);
+                }
+                setCurrentPlayerIndex(state.currentPlayerIndex);
+            }
             if (state.playDirection !== undefined) setPlayDirection(state.playDirection);
             if (state.currentColor) setCurrentColor(state.currentColor);
             if (state.gameStarted !== undefined) setGameStarted(state.gameStarted);
@@ -919,8 +1022,59 @@ export default function Uno() {
     const myPlayer = players[assignedPlayerIndex];
     const topCard = discardPile[discardPile.length - 1];
     
-    return (
-        <AppLayout>
+    // Fullscreen toggle
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => {
+                setIsFullscreen(true);
+            }).catch(err => {
+                console.error('Error attempting to enable fullscreen:', err);
+            });
+        } else {
+            document.exitFullscreen().then(() => {
+                setIsFullscreen(false);
+            }).catch(err => {
+                console.error('Error attempting to exit fullscreen:', err);
+            });
+        }
+    };
+    
+    // Listen for fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+    
+    
+    // Cleanup UNO timers on unmount
+    useEffect(() => {
+        return () => {
+            // Clear all timers on component unmount
+        };
+    }, []);
+    
+    const gameContent = (
+        <>
+            <style>{`
+                @keyframes unoPulse {
+                    0% {
+                        transform: scale(0.5);
+                        opacity: 0;
+                    }
+                    50% {
+                        transform: scale(1.5);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: scale(1);
+                        opacity: 0.9;
+                    }
+                }
+            `}</style>
             {!gameStarted ? (
                 // Lobby Screen
                 <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 py-8">
@@ -1021,51 +1175,161 @@ export default function Uno() {
                     <div className="h-4 bg-red-600 w-full"></div>
                     
                     <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
-                        {/* Back button */}
-                        <Link href="/games" className="inline-flex items-center text-white hover:text-blue-200 mb-4 text-lg">
-                            ← Back to Games
-                        </Link>
-                        
-                        {/* Top Player (Opponent) - Face-down cards */}
-                        <div className="mb-8">
-                            {players.map((player, index) => {
-                                if (index === assignedPlayerIndex) return null;
-                                return (
-                                    <div key={player.id} className="flex flex-col items-center mb-4">
-                                        <div className="text-white font-bold text-xl mb-2">
-                                            {player.name} ({player.hand.length} cards)
-                                        </div>
-                                        <div className="flex gap-2 justify-center">
-                                            {Array.from({ length: Math.min(player.hand.length, 7) }).map((_, i) => (
-                                                <img
-                                                    key={i}
-                                                    src="/assets/images/uno-card-images/backofthecardblack.png"
-                                                    alt="Face-down card"
-                                                    className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
-                                                    style={{
-                                                        transform: `rotate(${(i - 3) * 5}deg) translateY(${Math.abs(i - 3) * 2}px)`,
-                                                        zIndex: 10 - Math.abs(i - 3)
-                                                    }}
-                                                    onError={(e) => {
-                                                        // Fallback styling if image fails to load
-                                                        e.target.style.display = 'none';
-                                                        const parent = e.target.parentNode;
-                                                        const fallback = document.createElement('div');
-                                                        fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
-                                                        fallback.style.cssText = e.target.style.cssText;
-                                                        fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
-                                                        parent.replaceChild(fallback, e.target);
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        {/* Fullscreen button */}
+                        <div className="absolute top-4 right-4 z-20">
+                            <button
+                                onClick={toggleFullscreen}
+                                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-5 py-3 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 border-2 border-white border-opacity-30"
+                                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                            >
+                                {isFullscreen ? (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        <span>Exit Fullscreen</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                        </svg>
+                                        <span>Fullscreen</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                         
-                        {/* Center Game Area */}
-                        <div className="flex justify-center items-center gap-12 mb-8">
+                        {/* Game Layout: Top, Left, Center, Right, Bottom */}
+                        <div className="relative min-h-[600px]">
+                            {/* Helper function to get player positions */}
+                            {(() => {
+                                const opponentPlayers = players.filter((_, index) => index !== assignedPlayerIndex);
+                                const topPlayer = opponentPlayers[0] || null;
+                                const leftPlayer = opponentPlayers[1] || null;
+                                const rightPlayer = opponentPlayers[2] || null;
+                                
+                                return (
+                                    <>
+                                        {/* Top Player - Horizontal cards */}
+                                        {topPlayer && (
+                                            <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+                                                <div className="flex flex-col items-center mb-4">
+                                                    <div className="text-white font-bold text-xl mb-2">
+                                                        {topPlayer.name} ({topPlayer.hand.length} cards)
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
+                                                        {Array.from({ length: topPlayer.hand.length }).map((_, i) => {
+                                                            const row = Math.floor(i / 7);
+                                                            const col = i % 7;
+                                                            return (
+                                                                <img
+                                                                    key={i}
+                                                                    src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                                    alt="Face-down card"
+                                                                    className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                                    style={{
+                                                                        transform: `rotate(${(col - 3) * 5}deg) translateY(${Math.abs(col - 3) * 2}px)`,
+                                                                        zIndex: 10 - Math.abs(col - 3)
+                                                                    }}
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = 'none';
+                                                                        const parent = e.target.parentNode;
+                                                                        const fallback = document.createElement('div');
+                                                                        fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                        fallback.style.cssText = e.target.style.cssText;
+                                                                        fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                        parent.replaceChild(fallback, e.target);
+                                                                    }}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Left Player - Vertical stack of horizontal cards */}
+                                        {leftPlayer && (
+                                            <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
+                                                <div className="flex flex-row items-center gap-4">
+                                                    <div className="flex flex-col gap-2 items-center">
+                                                        {Array.from({ length: Math.min(leftPlayer.hand.length, 7) }).map((_, i) => (
+                                                            <img
+                                                                key={i}
+                                                                src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                                alt="Face-down card"
+                                                                className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                                style={{
+                                                                    transform: `rotate(${(i - 3) * 2}deg) translateX(${Math.abs(i - 3) * 1}px)`,
+                                                                    zIndex: 10 - Math.abs(i - 3)
+                                                                }}
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    const parent = e.target.parentNode;
+                                                                    const fallback = document.createElement('div');
+                                                                    fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                    fallback.style.cssText = e.target.style.cssText;
+                                                                    fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                    parent.replaceChild(fallback, e.target);
+                                                                }}
+                                                            />
+                                                        ))}
+                                                        {leftPlayer.hand.length > 7 && (
+                                                            <div className="text-white text-xs mt-2">
+                                                                +{leftPlayer.hand.length - 7} more
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-white font-bold text-lg transform -rotate-90 whitespace-nowrap">
+                                                        {leftPlayer.name} ({leftPlayer.hand.length} cards)
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Right Player - Vertical stack of horizontal cards */}
+                                        {rightPlayer && (
+                                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
+                                                <div className="flex flex-row items-center gap-4">
+                                                    <div className="text-white font-bold text-lg transform rotate-90 whitespace-nowrap">
+                                                        {rightPlayer.name} ({rightPlayer.hand.length} cards)
+                                                    </div>
+                                                    <div className="flex flex-col gap-2 items-center">
+                                                        {Array.from({ length: Math.min(rightPlayer.hand.length, 7) }).map((_, i) => (
+                                                            <img
+                                                                key={i}
+                                                                src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                                alt="Face-down card"
+                                                                className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                                style={{
+                                                                    transform: `rotate(${(i - 3) * -2}deg) translateX(${Math.abs(i - 3) * -1}px)`,
+                                                                    zIndex: 10 - Math.abs(i - 3)
+                                                                }}
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    const parent = e.target.parentNode;
+                                                                    const fallback = document.createElement('div');
+                                                                    fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                    fallback.style.cssText = e.target.style.cssText;
+                                                                    fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                    parent.replaceChild(fallback, e.target);
+                                                                }}
+                                                            />
+                                                        ))}
+                                                        {rightPlayer.hand.length > 7 && (
+                                                            <div className="text-white text-xs mt-2">
+                                                                +{rightPlayer.hand.length - 7} more
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Center Game Area */}
+                                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                            <div className="flex justify-center items-center gap-12">
                             {/* Draw Pile (Left) */}
                             <div className="flex flex-col items-center">
                                 <div className="text-white font-semibold mb-2">Draw Pile</div>
@@ -1155,6 +1419,11 @@ export default function Uno() {
                                     </div>
                                 )}
                             </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     
                         {/* Bottom Player (Current Player) - Visible cards */}
@@ -1166,26 +1435,9 @@ export default function Uno() {
                                     </div>
                                     {(() => {
                                         const handSize = myPlayer.hand.filter(c => c !== null).length;
-                                        const hasCalledUno = unoCalled[assignedPlayerIndex];
                                         const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
                                         
-                                        // Show CALL UNO button when you have 2 cards (before playing) or 1 card (if forgot)
-                                        if ((handSize === 2 || handSize === 1) && !hasCalledUno && isMyTurn) {
-                                            return (
-                                                <button
-                                                    onClick={callUno}
-                                                    className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 mb-4 shadow-lg animate-pulse"
-                                                >
-                                                    CALL UNO! {handSize === 2 ? '(Before playing)' : '(Forgot earlier)'}
-                                                </button>
-                                            );
-                                        }
-                                        // Show UNO! indicator if called
-                                        if ((handSize === 2 || handSize === 1) && hasCalledUno) {
-                                            return (
-                                                <div className="text-red-400 font-bold text-lg mb-2">UNO!</div>
-                                            );
-                                        }
+                                        
                                         return null;
                                     })()}
                                 </div>
@@ -1199,6 +1451,7 @@ export default function Uno() {
                                             const topCard = discardPile[discardPile.length - 1];
                                             const playable = isPlayable(card, topCard, currentColor);
                                             const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
+                                            const isDrawnCard = drawnCardIndex === originalIndex;
                                             
                                             return (
                                                 <button
@@ -1236,6 +1489,32 @@ export default function Uno() {
                                                 </button>
                                             );
                                         })}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* UNO Button - Show when player has 1 card and hasn't called UNO yet */}
+                        {gameStarted && myPlayer && 
+                         myPlayer.hand.filter(c => c !== null).length === 1 &&
+                         !unoCalled[assignedPlayerIndex] && (
+                            <button
+                                onClick={callUno}
+                                className="fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white font-bold text-2xl px-8 py-6 rounded-full shadow-2xl transition-all transform hover:scale-110 active:scale-95 animate-pulse"
+                                style={{
+                                    boxShadow: '0 10px 25px rgba(220, 38, 38, 0.5)'
+                                }}
+                            >
+                                Call UNO!
+                            </button>
+                        )}
+                        
+                        {/* UNO Animation - Shows when player successfully calls UNO */}
+                        {unoAnimation && unoAnimation.playerIndex === assignedPlayerIndex && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                                <div className="bg-red-600 text-white font-bold text-6xl px-16 py-12 rounded-2xl shadow-2xl" style={{
+                                    animation: 'unoPulse 2s ease-out forwards'
+                                }}>
+                                    UNO!
                                 </div>
                             </div>
                         )}
@@ -1297,7 +1576,411 @@ export default function Uno() {
                         </div>
                     </div>
                 )}
-            </AppLayout>
+        </>
+    );
+
+    // In fullscreen mode, render without AppLayout wrapper
+    if (isFullscreen && gameStarted) {
+        return (
+            <div className="fixed inset-0 bg-blue-900 overflow-hidden" style={{
+                backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px)'
+            }}>
+                {/* Red border at top */}
+                <div className="h-4 bg-red-600 w-full"></div>
+                
+                <div className="w-full h-[calc(100vh-1rem)] px-4 py-8 relative z-10">
+                    {/* Fullscreen button */}
+                    <div className="absolute top-4 right-4 z-20">
+                        <button
+                            onClick={toggleFullscreen}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-5 py-3 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 border-2 border-white border-opacity-30"
+                            title="Exit Fullscreen"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span>Exit Fullscreen</span>
+                        </button>
+                    </div>
+                    
+                    {/* Game Layout: Top, Left, Center, Right, Bottom */}
+                    <div className="relative w-full h-full">
+                        {(() => {
+                            const opponentPlayers = players.filter((_, index) => index !== assignedPlayerIndex);
+                            const topPlayer = opponentPlayers[0] || null;
+                            const leftPlayer = opponentPlayers[1] || null;
+                            const rightPlayer = opponentPlayers[2] || null;
+                            
+                            return (
+                                <>
+                                    {/* Top Player - Horizontal cards */}
+                                    {topPlayer && (
+                                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+                                            <div className="flex flex-col items-center mb-4">
+                                                <div className="text-white font-bold text-xl mb-2">
+                                                    {topPlayer.name} ({topPlayer.hand.length} cards)
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
+                                                    {Array.from({ length: topPlayer.hand.length }).map((_, i) => {
+                                                        const row = Math.floor(i / 7);
+                                                        const col = i % 7;
+                                                        return (
+                                                            <img
+                                                                key={i}
+                                                                src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                                alt="Face-down card"
+                                                                className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                                style={{
+                                                                    transform: `rotate(${(col - 3) * 5}deg) translateY(${Math.abs(col - 3) * 2}px)`,
+                                                                    zIndex: 10 - Math.abs(col - 3)
+                                                                }}
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    const parent = e.target.parentNode;
+                                                                    const fallback = document.createElement('div');
+                                                                    fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                    fallback.style.cssText = e.target.style.cssText;
+                                                                    fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                    parent.replaceChild(fallback, e.target);
+                                                                }}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Left Player - Vertical stack of horizontal cards */}
+                                    {leftPlayer && (
+                                        <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
+                                            <div className="flex flex-row items-center gap-4">
+                                                <div className="flex flex-col gap-2 items-center">
+                                                    {Array.from({ length: Math.min(leftPlayer.hand.length, 7) }).map((_, i) => (
+                                                        <img
+                                                            key={i}
+                                                            src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                            alt="Face-down card"
+                                                            className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                            style={{
+                                                                transform: `rotate(${(i - 3) * 2}deg) translateX(${Math.abs(i - 3) * 1}px)`,
+                                                                zIndex: 10 - Math.abs(i - 3)
+                                                            }}
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                                const parent = e.target.parentNode;
+                                                                const fallback = document.createElement('div');
+                                                                fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                fallback.style.cssText = e.target.style.cssText;
+                                                                fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                parent.replaceChild(fallback, e.target);
+                                                            }}
+                                                        />
+                                                    ))}
+                                                    {leftPlayer.hand.length > 7 && (
+                                                        <div className="text-white text-xs mt-2">
+                                                            +{leftPlayer.hand.length - 7} more
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="text-white font-bold text-lg transform -rotate-90 whitespace-nowrap">
+                                                    {leftPlayer.name} ({leftPlayer.hand.length} cards)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Right Player - Vertical stack of horizontal cards */}
+                                    {rightPlayer && (
+                                        <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
+                                            <div className="flex flex-row items-center gap-4">
+                                                <div className="text-white font-bold text-lg transform rotate-90 whitespace-nowrap">
+                                                    {rightPlayer.name} ({rightPlayer.hand.length} cards)
+                                                </div>
+                                                <div className="flex flex-col gap-2 items-center">
+                                                    {Array.from({ length: Math.min(rightPlayer.hand.length, 7) }).map((_, i) => (
+                                                        <img
+                                                            key={i}
+                                                            src="/assets/images/uno-card-images/backofthecardblack.png"
+                                                            alt="Face-down card"
+                                                            className="w-16 h-24 object-contain rounded-lg border-2 border-white shadow-lg"
+                                                            style={{
+                                                                transform: `rotate(${(i - 3) * -2}deg) translateX(${Math.abs(i - 3) * -1}px)`,
+                                                                zIndex: 10 - Math.abs(i - 3)
+                                                            }}
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                                const parent = e.target.parentNode;
+                                                                const fallback = document.createElement('div');
+                                                                fallback.className = 'w-16 h-24 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700 shadow-lg flex items-center justify-center';
+                                                                fallback.style.cssText = e.target.style.cssText;
+                                                                fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                                parent.replaceChild(fallback, e.target);
+                                                            }}
+                                                        />
+                                                    ))}
+                                                    {rightPlayer.hand.length > 7 && (
+                                                        <div className="text-white text-xs mt-2">
+                                                            +{rightPlayer.hand.length - 7} more
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Center Game Area */}
+                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                        <div className="flex justify-center items-center gap-12">
+                                            {/* Draw Pile (Left) */}
+                                            <div className="flex flex-col items-center">
+                                                <div className="text-white font-semibold mb-2">Draw Pile</div>
+                                                <button
+                                                    onClick={drawCard}
+                                                    disabled={currentPlayerIndex !== assignedPlayerIndex || winner !== null}
+                                                    className={`relative w-20 h-28 rounded-lg border-2 border-white shadow-xl transition-transform disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden ${
+                                                        currentPlayerIndex === assignedPlayerIndex && !winner ? 'hover:scale-105 cursor-pointer' : ''
+                                                    }`}
+                                                    style={{
+                                                        transform: 'rotate(-5deg)',
+                                                    }}
+                                                >
+                                                    <img
+                                                        src="/assets/images/uno-card-images/backofthecardred.png"
+                                                        alt="Draw pile"
+                                                        className="w-full h-full object-contain"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                            const fallback = document.createElement('div');
+                                                            fallback.className = 'absolute inset-0 bg-gradient-to-br from-red-800 to-red-900 flex items-center justify-center';
+                                                            fallback.innerHTML = '<div class="text-white text-xs font-bold">UNO</div>';
+                                                            e.target.parentNode.appendChild(fallback);
+                                                        }}
+                                                    />
+                                                </button>
+                                                <div className="text-white text-xs mt-2">{deck.length} cards</div>
+                                                {pendingDraw > 0 && currentPlayerIndex === assignedPlayerIndex && (
+                                                    <div className="text-red-300 text-xs mt-1 font-semibold">
+                                                        Draw {pendingDraw}!
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            {/* Discard Pile (Center) */}
+                                            <div className="flex flex-col items-center">
+                                                <div className="text-white font-semibold mb-2">Discard Pile</div>
+                                                <div className="relative">
+                                                    {discardPile.length > 1 && (
+                                                        <div className="absolute w-20 h-28 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-gray-700"
+                                                            style={{ transform: 'translate(4px, 4px) rotate(-2deg)', zIndex: 0 }}
+                                                        />
+                                                    )}
+                                                    {topCard && (
+                                                        <img 
+                                                            src={getCardImage(topCard)} 
+                                                            alt={`${topCard.color || 'Wild'} ${topCard.value}`} 
+                                                            className="w-20 h-28 object-contain rounded-lg border-2 border-white shadow-xl relative z-10"
+                                                            onError={(e) => {
+                                                                console.error('Failed to load card image:', getCardImage(topCard));
+                                                                e.target.src = `https://via.placeholder.com/80x112/333333/ffffff?text=${topCard.value || 'CARD'}`;
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Current Color Indicator */}
+                                                <div className="mt-4 flex flex-col items-center gap-2">
+                                                    <div className="text-white text-xs font-semibold">Current Color</div>
+                                                    <div 
+                                                        className="w-12 h-12 rounded-lg shadow-lg border-2 border-white"
+                                                        style={{
+                                                            backgroundColor: currentColor === 'red' ? '#dc2626' :
+                                                                           currentColor === 'green' ? '#16a34a' :
+                                                                           currentColor === 'blue' ? '#2563eb' :
+                                                                           currentColor === 'yellow' ? '#ca8a04' : '#000'
+                                                        }}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Turn indicator */}
+                                                <div className="mt-2 text-white text-sm">
+                                                    {currentPlayer && (
+                                                        currentPlayer.id === assignedPlayerIndex ? (
+                                                            <span className="font-bold text-yellow-300">Your turn!</span>
+                                                        ) : (
+                                                            <span>{currentPlayer.name}'s turn</span>
+                                                        )
+                                                    )}
+                                                </div>
+                                                
+                                                {/* Pending Draw Warning */}
+                                                {pendingDraw > 0 && currentPlayerIndex === assignedPlayerIndex && (
+                                                    <div className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                                                        Draw {pendingDraw} card{pendingDraw > 1 ? 's' : ''}!
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Bottom Player (Current Player) - Visible cards */}
+                                    {gameStarted && myPlayer && (
+                                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full">
+                                            <div className="flex flex-col items-center mb-4">
+                                                <div className="text-white font-bold text-xl mb-2">
+                                                    {myPlayer.name} ({myPlayer.hand.filter(c => c !== null).length} cards)
+                                                </div>
+                                                {(() => {
+                                                    const handSize = myPlayer.hand.filter(c => c !== null).length;
+                                                    const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
+                                                    
+                                                    // Show warning if player needs to call UNO
+                                                    
+                                                    return null;
+                                                })()}
+                                            </div>
+                                            
+                                            {/* Player's Hand */}
+                                            <div className="flex flex-wrap gap-2 justify-center items-end pb-8">
+                                                {myPlayer.hand
+                                                    .map((card, originalIndex) => ({ card, originalIndex }))
+                                                    .filter(({ card }) => card !== null)
+                                                    .map(({ card, originalIndex }, displayIndex) => {
+                                                        const topCard = discardPile[discardPile.length - 1];
+                                                        const playable = isPlayable(card, topCard, currentColor);
+                                                        const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
+                                                        const isDrawnCard = drawnCardIndex === originalIndex;
+                                                        
+                                                        return (
+                                                            <button
+                                                                key={originalIndex}
+                                                                onClick={() => {
+                                                                    if (isMyTurn && playable && !winner) {
+                                                                        playCard(originalIndex);
+                                                                    }
+                                                                }}
+                                                                disabled={!isMyTurn || !playable || winner !== null || pendingDraw > 0}
+                                                                className={`relative transition-all ${
+                                                                    isMyTurn && playable && !pendingDraw
+                                                                        ? 'hover:scale-110 hover:-translate-y-4 cursor-pointer' 
+                                                                        : 'opacity-50 cursor-not-allowed'
+                                                                }`}
+                                                                style={{
+                                                                    transform: `rotate(${(displayIndex - myPlayer.hand.filter(c => c !== null).length / 2) * 2}deg)`,
+                                                                    zIndex: isMyTurn && playable ? 20 : 10
+                                                                }}
+                                                            >
+                                                                <img 
+                                                                    src={getCardImage(card)} 
+                                                                    alt={`${card.color || 'Wild'} ${card.value}`}
+                                                                    className="w-20 h-28 object-contain rounded-lg border-2 border-white shadow-xl"
+                                                                    onError={(e) => {
+                                                                        console.error('Failed to load card image:', getCardImage(card));
+                                                                        e.target.src = `https://via.placeholder.com/80x112/333333/ffffff?text=${card.value || 'CARD'}`;
+                                                                    }}
+                                                                />
+                                                                {isMyTurn && playable && !pendingDraw && (
+                                                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs shadow-lg">
+                                                                        ✓
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Winner Announcement */}
+                                    {winner !== null && players[winner] && (
+                                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                                            <div className="bg-white rounded-xl p-8 max-w-md text-center shadow-2xl">
+                                                <h2 className="text-4xl font-bold mb-4">🎉 Winner!</h2>
+                                                <p className="text-2xl mb-6 font-semibold">{players[winner].name} wins!</p>
+                                                <button
+                                                    onClick={() => {
+                                                        setWinner(null);
+                                                        setGameStarted(false);
+                                                    }}
+                                                    className="px-8 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 text-lg"
+                                                >
+                                                    New Game
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
+                    </div>
+                    
+                    {/* UNO Button - Show when player has 1 card and hasn't called UNO yet (fullscreen) */}
+                    {gameStarted && myPlayer && 
+                     myPlayer.hand.filter(c => c !== null).length === 1 &&
+                     !unoCalled[assignedPlayerIndex] && (
+                        <button
+                            onClick={callUno}
+                            className="fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white font-bold text-2xl px-8 py-6 rounded-full shadow-2xl transition-all transform hover:scale-110 active:scale-95 animate-pulse"
+                            style={{
+                                boxShadow: '0 10px 25px rgba(220, 38, 38, 0.5)'
+                            }}
+                        >
+                            Call UNO!
+                        </button>
+                    )}
+                    
+                    {/* UNO Animation - Shows when player successfully calls UNO (fullscreen) */}
+                    {unoAnimation && unoAnimation.playerIndex === assignedPlayerIndex && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                            <div className="bg-red-600 text-white font-bold text-6xl px-16 py-12 rounded-2xl shadow-2xl" style={{
+                                animation: 'unoPulse 2s ease-out forwards'
+                            }}>
+                                UNO!
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Color Picker Modal */}
+                    {showColorPicker && selectedCard && (
+                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-xl p-8 max-w-md shadow-2xl">
+                                <h3 className="text-2xl font-bold mb-6 text-center">Choose a Color</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {COLORS.map(color => (
+                                        <button
+                                            key={color}
+                                            onClick={() => {
+                                                playCard(selectedCard.index, color);
+                                            }}
+                                            className={`px-6 py-6 rounded-lg font-bold text-white capitalize text-lg shadow-lg hover:scale-105 transition-transform ${
+                                                color === 'red' ? 'bg-red-600 hover:bg-red-700' :
+                                                color === 'green' ? 'bg-green-600 hover:bg-green-700' :
+                                                color === 'blue' ? 'bg-blue-600 hover:bg-blue-700' :
+                                                'bg-yellow-600 hover:bg-yellow-700'
+                                            }`}
+                                        >
+                                            {color}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowColorPicker(false);
+                                        setSelectedCard(null);
+                                    }}
+                                    className="mt-6 w-full px-4 py-3 bg-gray-300 rounded-lg hover:bg-gray-400 font-semibold"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         );
     }
+
+    // Normal mode with AppLayout
+    return <AppLayout>{gameContent}</AppLayout>;
+}
 
