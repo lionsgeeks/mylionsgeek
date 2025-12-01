@@ -354,7 +354,7 @@ class ReservationsController extends Controller
         // Check authorization: user must be the owner OR admin
         $user = auth()->user();
         $isOwner = (int) $reservationData->user_id === (int) $user->id;
-        
+
         // Handle roles - ensure it's always an array
         $userRoles = is_array($user->role) ? $user->role : (is_string($user->role) ? json_decode($user->role, true) ?? [$user->role] : [$user->role]);
         $isAdmin = in_array('admin', $userRoles) || in_array('super_admin', $userRoles) || in_array('studio_responsable', $userRoles);
@@ -1504,7 +1504,7 @@ class ReservationsController extends Controller
             if ($filterType) {
                 if ($filterType === 'exterior') {
                     // Exterior detection logic
-                    $query->where(function($q) {
+                    $query->where(function ($q) {
                         $q->where('r.type', 'exterior')
                           ->orWhere('r.type', 'outside');
                     });
@@ -1527,7 +1527,7 @@ class ReservationsController extends Controller
             // Apply search filter
             if ($searchTerm) {
                 $searchTermLower = strtolower($searchTerm);
-                $query->where(function($q) use ($searchTermLower) {
+                $query->where(function ($q) use ($searchTermLower) {
                     $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
                       ->orWhereRaw('LOWER(r.title) LIKE ?', ['%' . $searchTermLower . '%'])
                       ->orWhereRaw('LOWER(r.description) LIKE ?', ['%' . $searchTermLower . '%'])
@@ -1587,7 +1587,7 @@ class ReservationsController extends Controller
                     // Apply search filter to cowork reservations
                     if ($searchTerm && $coworkQuery) {
                         $searchTermLower = strtolower($searchTerm);
-                        $coworkQuery->where(function($q) use ($searchTermLower, $searchTerm) {
+                        $coworkQuery->where(function ($q) use ($searchTermLower, $searchTerm) {
                             $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
                               ->orWhereRaw('rc.day LIKE ?', ['%' . $searchTerm . '%'])
                               ->orWhere('rc.table', 'LIKE', '%' . $searchTerm . '%');
@@ -1980,7 +1980,7 @@ class ReservationsController extends Controller
                     'verificationData' => $verificationData,
                     'filename' => $filename
                 ]]);
-                
+
                 // Check if this is an Inertia request
                 if (request()->header('X-Inertia')) {
                     // For Inertia, return JSON with download URL
@@ -1997,14 +1997,14 @@ class ReservationsController extends Controller
             } catch (\Exception $pdfError) {
                 \Log::error('PDF generation error in submitVerification: ' . $pdfError->getMessage());
                 \Log::error('PDF generation stack trace: ' . $pdfError->getTraceAsString());
-                
+
                 // Still save the data even if PDF fails
                 session(['verification_pdf_data' => [
                     'reservation' => $verificationData['reservation'],
                     'verificationData' => $verificationData,
                     'filename' => $filename
                 ]]);
-                
+
                 if (request()->header('X-Inertia')) {
                     $downloadUrl = route('reservations.download-report', $reservation);
                     return redirect()->route('admin.reservations')
@@ -2780,7 +2780,7 @@ class ReservationsController extends Controller
     {
         // Get all users and filter by role (since role is JSON array, User model handles casting)
         $users = User::whereNotNull('email')->get();
-        
+
         $emails = $users->filter(function ($user) {
             $roles = $this->normalizeRolesList($user->role);
             return in_array('studio_responsable', $roles);
@@ -2830,7 +2830,7 @@ class ReservationsController extends Controller
             $list = [];
         }
 
-        return array_filter(array_map(fn ($role) => strtolower((string) $role), $list));
+        return array_filter(array_map(fn($role) => strtolower((string) $role), $list));
     }
 
     private function userHasAccessFlag($user, string $field): bool
@@ -3086,78 +3086,706 @@ class ReservationsController extends Controller
         return back()->with('error', 'Reservation not found or you do not have permission to cancel it');
     }
 
+
+    public function bookAppointment(Request $request)
+    {
+        $validated = $request->validate([
+            'person' => 'required|string|in:Mahdi Bouziane,Hamid Boumehraz,Amina Khabab,Ayman Boujjar',
+            'day' => 'required|date|after_or_equal:today',
+            'start' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'end' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+        ]);
+
+        $startTime = strtotime($validated['start']);
+        $endTime = strtotime($validated['end']);
+        if ($endTime <= $startTime) {
+            return response()->json([
+                'message' => 'End time must be after start time'
+            ], 422);
+        }
+
+        $appointmentDateTime = new \DateTime($validated['day'] . ' ' . $validated['start']);
+        $now = new \DateTime();
+        if ($appointmentDateTime < $now) {
+            return response()->json([
+                'message' => 'You cannot book appointments in the past'
+            ], 422);
+        }
+
+        try {
+            $user = auth()->user();
+            if (!$user) {
+                return response()->json([
+                    'message' => 'You must be logged in to book an appointment'
+                ], 401);
+            }
+
+            $personEmail = $this->getPersonEmail($validated['person']);
+            if (!$personEmail) {
+                return response()->json([
+                    'message' => 'Could not find email for the selected person. Please contact support.'
+                ], 404);
+            }
+
+            // Build token for approve/cancel actions
+            $token = $this->buildAppointmentToken([
+                'person' => $validated['person'],
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'user_email' => $user->email,
+                'day' => $validated['day'],
+                'start' => $validated['start'],
+                'end' => $validated['end'],
+                'ts' => time(),
+            ]);
+
+            // Store appointment in database
+            $appointmentId = null;
+            if (Schema::hasTable('appointments')) {
+                $appointmentId = DB::table('appointments')->insertGetId([
+                    'user_id' => $user->id,
+                    'person_name' => $validated['person'],
+                    'person_email' => $personEmail,
+                    'day' => $validated['day'],
+                    'start' => $validated['start'],
+                    'end' => $validated['end'],
+                    'status' => 'pending',
+                    'created_at' => now()->toDateTimeString(),
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+            }
+
+            $approveUrl = route('appointments.approve', ['token' => $token]);
+            $cancelUrl = route('appointments.cancel', ['token' => $token]);
+            $suggestUrl = route('appointments.suggest', ['token' => $token]);
+
+            try {
+                Mail::to($personEmail)->send(new \App\Mail\AppointmentRequestMail([
+                    'person_name' => $validated['person'],
+                    'requester_name' => $user->name,
+                    'requester_email' => $user->email,
+                    'day' => $validated['day'],
+                    'start' => $validated['start'],
+                    'end' => $validated['end'],
+                    'approve_url' => $approveUrl,
+                    'cancel_url' => $cancelUrl,
+                    'suggest_url' => $suggestUrl,
+                ]));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send appointment request email: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Failed to send appointment request. Please try again.'
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment request sent successfully. You will receive an email once it\'s approved or canceled.',
+                'appointment_id' => $appointmentId
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to book appointment: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to book appointment. Please try again.'
+            ], 500);
+        }
+    }
+
+
+    public function approveAppointment(string $token)
+    {
+        $data = $this->parseAppointmentToken($token);
+        if (!$data) {
+            return response()->view('appointment_invalid', [], 400);
+        }
+
+        // Update appointment status in database
+        if (Schema::hasTable('appointments')) {
+            DB::table('appointments')
+                ->where('user_id', $data['user_id'])
+                ->where('person_name', $data['person'])
+                ->where('day', $data['day'])
+                ->where('start', $data['start'])
+                ->where('end', $data['end'])
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'approved',
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+        }
+
+        try {
+            Mail::to($data['user_email'])->send(new \App\Mail\AppointmentApprovedMail([
+                'user_name' => $data['user_name'],
+                'person_name' => $data['person'],
+                'day' => $data['day'],
+                'start' => $data['start'],
+                'end' => $data['end'],
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment approval email: ' . $e->getMessage());
+            return response()->view('appointment_error', [
+                'message' => 'Appointment was approved but failed to send confirmation email.'
+            ], 500);
+        }
+
+        return response()->view('appointment_approved', [
+            'person_name' => $data['person'],
+            'requester_name' => $data['user_name'],
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+        ]);
+    }
+
+
+    public function cancelAppointment(string $token)
+    {
+        $data = $this->parseAppointmentToken($token);
+        if (!$data) {
+            return response()->view('appointment_invalid', [], 400);
+        }
+
+        // Update appointment status in database
+        if (Schema::hasTable('appointments')) {
+            DB::table('appointments')
+                ->where('user_id', $data['user_id'])
+                ->where('person_name', $data['person'])
+                ->where('day', $data['day'])
+                ->where('start', $data['start'])
+                ->where('end', $data['end'])
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'canceled',
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+        }
+
+        try {
+            Mail::to($data['user_email'])->send(new \App\Mail\AppointmentCanceledMail([
+                'user_name' => $data['user_name'],
+                'person_name' => $data['person'],
+                'day' => $data['day'],
+                'start' => $data['start'],
+                'end' => $data['end'],
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment cancellation email: ' . $e->getMessage());
+            return response()->view('appointment_error', [
+                'message' => 'Appointment was canceled but failed to send notification email.'
+            ], 500);
+        }
+
+        return response()->view('appointment_canceled', [
+            'person_name' => $data['person'],
+            'requester_name' => $data['user_name'],
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+        ]);
+    }
+
     /**
-     * Show details for a reservation belonging to the authenticated user only
+     * Show appointments index page (filtered by person email)
      */
-    // public function userDetails(int $reservation)
-    // {
-    //     $row = \DB::table('reservations as r')
-    //         ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-    //         ->leftJoin('studios as s', 's.id', '=', 'r.studio_id')
-    //         ->where('r.id', $reservation)
-    //         ->select('r.*', 'u.name as user_name', 'u.email as user_email', 's.name as studio_name')
-    //         ->first();
-    //     if (!$row || $row->user_id != auth()->id()) {
-    //         abort(404, 'Reservation not found.');
-    //     }
-    //     $equipments = [];
-    //     if (\Schema::hasTable('reservation_equipment') && \Schema::hasTable('equipment')) {
-    //         $equipments = \DB::table('reservation_equipment as re')
-    //             ->leftJoin('equipment as e', 'e.id', '=', 're.equipment_id')
-    //             ->leftJoin('equipment_types as et', 'et.id', '=', 'e.equipment_type_id')
-    //             ->where('re.reservation_id', $reservation)
-    //             ->select('e.id', 'e.reference', 'e.mark', 'e.image', 'et.name as type_name')
-    //             ->get()
-    //             ->map(function ($e) {
-    //                 $img = $e->image;
-    //                 if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
-    //                     $img = 'img/equipment/' . ltrim($img, '/');
-    //                 }
-    //                 return [
-    //                     'id' => $e->id,
-    //                     'reference' => $e->reference,
-    //                     'mark' => $e->mark,
-    //                     'type_name' => $e->type_name,
-    //                     'image' => $img,
-    //                 ];
-    //             });
-    //     }
-    //     $teamMembers = [];
-    //     if (\Schema::hasTable('reservation_teams')) {
-    //         $teamMembers = \DB::table('reservation_teams as rt')
-    //             ->leftJoin('users as u', 'u.id', '=', 'rt.user_id')
-    //             ->where('rt.reservation_id', $reservation)
-    //             ->select('u.id', 'u.name', 'u.email', 'u.image')
-    //             ->get()
-    //             ->map(function ($u) {
-    //                 $img = $u->image;
-    //                 if ($img && !str_starts_with($img, 'http') && !str_starts_with($img, 'storage/')) {
-    //                     $img = 'img/profile/' . ltrim($img, '/');
-    //                 }
-    //                 return [
-    //                     'id' => $u->id,
-    //                     'name' => $u->name,
-    //                     'email' => $u->email,
-    //                     'image' => $img,
-    //                 ];
-    //             });
-    //     }
-    //     $details = [
-    //         'id' => $row->id,
-    //         'user_name' => $row->user_name,
-    //         'user_email' => $row->user_email,
-    //         'studio_name' => $row->studio_name ?? null,
-    //         'date' => $row->date ?? $row->day,
-    //         'start' => $row->start,
-    //         'end' => $row->end,
-    //         'title' => $row->title,
-    //         'description' => $row->description,
-    //         'type' => $row->type,
-    //         'approved' => (bool) ($row->approved ?? 0),
-    //         'canceled' => (bool) ($row->canceled ?? 0),
-    //         'equipments' => $equipments,
-    //         'team_members' => $teamMembers,
-    //     ];
-    //     return Inertia::render('reservations/details', ['reservation' => $details]);
-    // }
+    public function appointmentsIndex()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $appointments = [];
+        if (Schema::hasTable('appointments')) {
+            // Get person email for current user
+            $personEmail = $this->getPersonEmailByUser($user);
+
+            if ($personEmail) {
+                // User is one of the appointment persons - show only their appointments
+                $appointments = DB::table('appointments as a')
+                    ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+                    ->where('a.person_email', $personEmail)
+                    ->select('a.*', 'u.name as requester_name', 'u.email as requester_email')
+                    ->orderByDesc('a.created_at')
+                    ->get()
+                    ->map(function ($apt) {
+                        return [
+                            'id' => $apt->id,
+                            'requester_name' => $apt->requester_name,
+                            'requester_email' => $apt->requester_email,
+                            'person_name' => $apt->person_name,
+                            'day' => $apt->day,
+                            'start' => $apt->start,
+                            'end' => $apt->end,
+                            'status' => $apt->status,
+                            'suggested_day' => $apt->suggested_day,
+                            'suggested_start' => $apt->suggested_start,
+                            'suggested_end' => $apt->suggested_end,
+                            'notes' => $apt->notes,
+                            'created_at' => $apt->created_at,
+                            'updated_at' => $apt->updated_at,
+                        ];
+                    })
+                    ->toArray();
+            } else {
+                // User is admin - show all appointments
+                $appointments = DB::table('appointments as a')
+                    ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+                    ->select('a.*', 'u.name as requester_name', 'u.email as requester_email')
+                    ->orderByDesc('a.created_at')
+                    ->get()
+                    ->map(function ($apt) {
+                        return [
+                            'id' => $apt->id,
+                            'requester_name' => $apt->requester_name,
+                            'requester_email' => $apt->requester_email,
+                            'person_name' => $apt->person_name,
+                            'day' => $apt->day,
+                            'start' => $apt->start,
+                            'end' => $apt->end,
+                            'status' => $apt->status,
+                            'suggested_day' => $apt->suggested_day,
+                            'suggested_start' => $apt->suggested_start,
+                            'suggested_end' => $apt->suggested_end,
+                            'notes' => $apt->notes,
+                            'created_at' => $apt->created_at,
+                            'updated_at' => $apt->updated_at,
+                        ];
+                    })
+                    ->toArray();
+            }
+        }
+
+        return Inertia::render('admin/appointments/index', [
+            'appointments' => $appointments,
+            'isPerson' => $personEmail !== null,
+        ]);
+    }
+
+    /**
+     * Approve appointment from admin panel
+     */
+    public function approveAppointmentById(int $appointment)
+    {
+        if (!Schema::hasTable('appointments')) {
+            return back()->with('error', 'Appointments table missing');
+        }
+
+        $appointmentData = DB::table('appointments')->where('id', $appointment)->first();
+        if (!$appointmentData) {
+            return back()->with('error', 'Appointment not found');
+        }
+
+        // Get requester user
+        $requester = DB::table('users')->where('id', $appointmentData->user_id)->first();
+        if (!$requester) {
+            return back()->with('error', 'Requester not found');
+        }
+
+        // If there's a suggested time, use it; otherwise use original time
+        $finalDay = $appointmentData->suggested_day ?? $appointmentData->day;
+        $finalStart = $appointmentData->suggested_start ?? $appointmentData->start;
+        $finalEnd = $appointmentData->suggested_end ?? $appointmentData->end;
+        $timeChanged = !empty($appointmentData->suggested_day);
+
+        // Update status and time (if suggested time exists, update the appointment time)
+        $updateData = [
+            'status' => 'approved',
+            'updated_at' => now()->toDateTimeString(),
+        ];
+
+        if ($timeChanged) {
+            // Use suggested time
+            $updateData['day'] = $finalDay;
+            $updateData['start'] = $finalStart;
+            $updateData['end'] = $finalEnd;
+            $updateData['suggested_day'] = null;
+            $updateData['suggested_start'] = null;
+            $updateData['suggested_end'] = null;
+        }
+
+        DB::table('appointments')->where('id', $appointment)->update($updateData);
+
+        // Send email with updated time information
+        try {
+            Mail::to($requester->email)->send(new \App\Mail\AppointmentApprovedMail([
+                'user_name' => $requester->name,
+                'person_name' => $appointmentData->person_name,
+                'day' => $finalDay,
+                'start' => $finalStart,
+                'end' => $finalEnd,
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment approval email: ' . $e->getMessage());
+        }
+
+        $message = $timeChanged 
+            ? 'Appointment approved and time updated successfully. Email sent to requester.'
+            : 'Appointment approved successfully. Email sent to requester.';
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Cancel appointment from admin panel
+     */
+    public function cancelAppointmentById(int $appointment)
+    {
+        if (!Schema::hasTable('appointments')) {
+            return back()->with('error', 'Appointments table missing');
+        }
+
+        $appointmentData = DB::table('appointments')->where('id', $appointment)->first();
+        if (!$appointmentData) {
+            return back()->with('error', 'Appointment not found');
+        }
+
+        // Get requester user
+        $requester = DB::table('users')->where('id', $appointmentData->user_id)->first();
+        if (!$requester) {
+            return back()->with('error', 'Requester not found');
+        }
+
+        // Update status
+        DB::table('appointments')->where('id', $appointment)->update([
+            'status' => 'canceled',
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        // Send email
+        try {
+            Mail::to($requester->email)->send(new \App\Mail\AppointmentCanceledMail([
+                'user_name' => $requester->name,
+                'person_name' => $appointmentData->person_name,
+                'day' => $appointmentData->day,
+                'start' => $appointmentData->start,
+                'end' => $appointmentData->end,
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment cancellation email: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Appointment canceled successfully');
+    }
+
+    /**
+     * Suggest new time for appointment
+     */
+    public function suggestAppointmentTime(Request $request, int $appointment)
+    {
+        $validated = $request->validate([
+            'suggested_day' => 'required|date|after_or_equal:today',
+            'suggested_start' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'suggested_end' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        if (!Schema::hasTable('appointments')) {
+            return back()->with('error', 'Appointments table missing');
+        }
+
+        $appointmentData = DB::table('appointments')->where('id', $appointment)->first();
+        if (!$appointmentData) {
+            return back()->with('error', 'Appointment not found');
+        }
+
+        // Validate that end time is after start time
+        $startTime = strtotime($validated['suggested_start']);
+        $endTime = strtotime($validated['suggested_end']);
+        if ($endTime <= $startTime) {
+            return back()->with('error', 'End time must be after start time');
+        }
+
+        // Get requester user
+        $requester = DB::table('users')->where('id', $appointmentData->user_id)->first();
+        if (!$requester) {
+            return back()->with('error', 'Requester not found');
+        }
+
+        // Update appointment with suggested time
+        DB::table('appointments')->where('id', $appointment)->update([
+            'status' => 'suggested',
+            'suggested_day' => $validated['suggested_day'],
+            'suggested_start' => $validated['suggested_start'],
+            'suggested_end' => $validated['suggested_end'],
+            'notes' => $validated['notes'] ?? null,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        // Build token for accepting suggested time
+        $token = $this->buildAppointmentToken([
+            'appointment_id' => $appointment,
+            'person' => $appointmentData->person_name,
+            'user_id' => $appointmentData->user_id,
+            'user_name' => $requester->name,
+            'user_email' => $requester->email,
+            'day' => $validated['suggested_day'],
+            'start' => $validated['suggested_start'],
+            'end' => $validated['suggested_end'],
+            'ts' => time(),
+        ]);
+
+        $acceptUrl = route('appointments.suggest.accept', ['token' => $token]);
+        $cancelUrl = route('appointments.cancel', ['token' => $this->buildAppointmentToken([
+            'person' => $appointmentData->person_name,
+            'user_id' => $appointmentData->user_id,
+            'user_name' => $requester->name,
+            'user_email' => $requester->email,
+            'day' => $appointmentData->day,
+            'start' => $appointmentData->start,
+            'end' => $appointmentData->end,
+            'ts' => time(),
+        ])]);
+
+        // Send email with suggested time
+        try {
+            Mail::to($requester->email)->send(new \App\Mail\ReservationTimeProposalMail([
+                'user_name' => $requester->name,
+                'proposed_day' => $validated['suggested_day'],
+                'proposed_start' => $validated['suggested_start'],
+                'proposed_end' => $validated['suggested_end'],
+                'accept_url' => $acceptUrl,
+                'cancel_url' => $cancelUrl,
+                'suggest_url' => route('appointments.suggest', ['token' => $token]),
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment time suggestion email: ' . $e->getMessage());
+            return back()->with('error', 'Failed to send suggestion email. Please try again.');
+        }
+
+        return back()->with('success', 'New time suggested successfully. Email sent to requester.');
+    }
+
+    /**
+     * Show suggest form for appointment (from email link)
+     */
+    public function showAppointmentSuggestForm(string $token)
+    {
+        $data = $this->parseAppointmentToken($token);
+        if (!$data) {
+            return response()->view('appointment_invalid', [], 400);
+        }
+
+        return view('appointment_suggest_form', [
+            'token' => $token,
+            'person_name' => $data['person'] ?? '',
+            'requester_name' => $data['user_name'] ?? '',
+            'original_day' => $data['day'] ?? '',
+            'original_start' => $data['start'] ?? '',
+            'original_end' => $data['end'] ?? '',
+        ]);
+    }
+
+    /**
+     * Submit suggest form for appointment (from email link)
+     */
+    public function submitAppointmentSuggestForm(Request $request, string $token)
+    {
+        $data = $this->parseAppointmentToken($token);
+        if (!$data) {
+            return response()->view('appointment_invalid', [], 400);
+        }
+
+        $request->validate([
+            'day' => 'required|date|after_or_equal:today',
+            'start' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+            'end' => ['required', 'string', 'regex:/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/'],
+        ]);
+
+        // Validate that end time is after start time
+        $startTime = strtotime($request->start);
+        $endTime = strtotime($request->end);
+        if ($endTime <= $startTime) {
+            return back()->with('error', 'End time must be after start time');
+        }
+
+        // Find appointment in database
+        if (!Schema::hasTable('appointments')) {
+            return response()->view('appointment_error', [
+                'message' => 'Appointments table missing.'
+            ], 500);
+        }
+
+        $appointment = DB::table('appointments')
+            ->where('user_id', $data['user_id'])
+            ->where('person_name', $data['person'])
+            ->where('day', $data['day'])
+            ->where('start', $data['start'])
+            ->where('end', $data['end'])
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$appointment) {
+            return response()->view('appointment_error', [
+                'message' => 'Appointment not found.'
+            ], 404);
+        }
+
+        // Update appointment with suggested time
+        DB::table('appointments')->where('id', $appointment->id)->update([
+            'status' => 'suggested',
+            'suggested_day' => $request->day,
+            'suggested_start' => $request->start,
+            'suggested_end' => $request->end,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        // Build token for accepting suggested time
+        $acceptToken = $this->buildAppointmentToken([
+            'appointment_id' => $appointment->id,
+            'person' => $data['person'],
+            'user_id' => $data['user_id'],
+            'user_name' => $data['user_name'],
+            'user_email' => $data['user_email'],
+            'day' => $request->day,
+            'start' => $request->start,
+            'end' => $request->end,
+            'ts' => time(),
+        ]);
+
+        $acceptUrl = route('appointments.suggest.accept', ['token' => $acceptToken]);
+        $cancelUrl = route('appointments.cancel', ['token' => $token]);
+
+        // Send email to requester with suggested time
+        try {
+            Mail::to($data['user_email'])->send(new \App\Mail\ReservationTimeProposalMail([
+                'user_name' => $data['user_name'],
+                'proposed_day' => $request->day,
+                'proposed_start' => $request->start,
+                'proposed_end' => $request->end,
+                'accept_url' => $acceptUrl,
+                'cancel_url' => $cancelUrl,
+                'suggest_url' => route('appointments.suggest', ['token' => $token]),
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment time suggestion email: ' . $e->getMessage());
+        }
+
+        return response()->view('appointment_suggested', [
+            'person_name' => $data['person'],
+            'requester_name' => $data['user_name'],
+        ]);
+    }
+
+    /**
+     * Accept suggested appointment time
+     */
+    public function acceptSuggestedTime(string $token)
+    {
+        $data = $this->parseAppointmentToken($token);
+        if (!$data) {
+            return response()->view('appointment_invalid', [], 400);
+        }
+
+        if (!Schema::hasTable('appointments') || !isset($data['appointment_id'])) {
+            return response()->view('appointment_error', [
+                'message' => 'Invalid appointment token.'
+            ], 400);
+        }
+
+        // Update appointment with suggested time
+        DB::table('appointments')->where('id', $data['appointment_id'])->update([
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+            'status' => 'approved',
+            'suggested_day' => null,
+            'suggested_start' => null,
+            'suggested_end' => null,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+
+        // Send approval email
+        try {
+            Mail::to($data['user_email'])->send(new \App\Mail\AppointmentApprovedMail([
+                'user_name' => $data['user_name'],
+                'person_name' => $data['person'],
+                'day' => $data['day'],
+                'start' => $data['start'],
+                'end' => $data['end'],
+            ]));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send appointment approval email: ' . $e->getMessage());
+        }
+
+        return response()->view('appointment_approved', [
+            'person_name' => $data['person'],
+            'requester_name' => $data['user_name'],
+            'day' => $data['day'],
+            'start' => $data['start'],
+            'end' => $data['end'],
+        ]);
+    }
+
+    /**
+     * Get person email by checking if current user is one of the appointment persons
+     */
+    private function getPersonEmailByUser($user): ?string
+    {
+        $userEmail = $user->email ?? null;
+        if (!$userEmail) {
+            return null;
+        }
+
+        $personEmails = [
+            $this->getPersonEmail('Mahdi Bouziane'),
+            $this->getPersonEmail('Hamid Boumehraz'),
+            $this->getPersonEmail('Amina Khabab'),
+            $this->getPersonEmail('Ayman Boujjar'),
+        ];
+
+        if (in_array($userEmail, array_filter($personEmails))) {
+            return $userEmail;
+        }
+
+        return null;
+    }
+
+
+    private function getPersonEmail(string $personName): ?string
+    {
+        if (Schema::hasTable('users')) {
+            $user = DB::table('users')
+                ->where('name', $personName)
+                ->whereNotNull('email')
+                ->first();
+
+            if ($user && !empty($user->email)) {
+                return $user->email;
+            }
+        }
+
+        $emailMapping = [
+            'Mahdi Bouziane' => env('MAHDI_BOUZIANE_EMAIL', 'mahdi.bouziane@lionsgeek.com'),
+            'Hamid Boumehraz' => env('HAMID_BOUMEHRaz_EMAIL', 'hamid.boumehraz@lionsgeek.com'),
+            'Amina Khabab' => env('AMINA_KHABAB_EMAIL', 'amina.khabab@lionsgeek.com'),
+            'Ayman Boujjar' => env('AYMAN_BOUJJAR_EMAIL', 'aymenboujjar12@gmail.com'),
+        ];
+
+        return $emailMapping[$personName] ?? null;
+    }
+
+
+    private function buildAppointmentToken(array $payload): string
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $b64 = rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+        $sig = hash_hmac('sha256', $b64, config('app.key'));
+        return $b64 . '.' . $sig;
+    }
+
+
+    private function parseAppointmentToken(string $token): array|false
+    {
+        $parts = explode('.', $token, 2);
+        if (count($parts) !== 2) return false;
+        [$b64, $sig] = $parts;
+        $calc = hash_hmac('sha256', $b64, config('app.key'));
+        if (!hash_equals($calc, $sig)) return false;
+        $json = base64_decode(strtr($b64, '-_', '+/'));
+        $data = json_decode($json, true);
+        if (!is_array($data)) return false;
+        if (!isset($data['ts']) || $data['ts'] < time() - 60 * 60 * 24 * 7) return false;
+        return $data;
+}
 }
