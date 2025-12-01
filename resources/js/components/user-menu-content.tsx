@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
@@ -5,15 +6,16 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, LayoutGrid } from 'lucide-react';
+import { LogOut, Settings, LayoutGrid, Dock } from 'lucide-react';
 import Rolegard from './rolegard';
-
+import { AddDocumentModal } from './add-document-modal';
 interface UserMenuContentProps {
     user: User;
 }
 
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
+    const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
     const handleLogout = () => {
         cleanup();
@@ -29,6 +31,18 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+                <DropdownMenuItem
+                    onSelect={(e) => {
+                        e.preventDefault();
+                        setTimeout(() => {
+                            setIsDocModalOpen(true);
+                        }, 150);
+                    }}
+                    className="flex items-center cursor-pointer"
+                >
+                    <Dock className="mr-2" />
+                    Add document
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                     <Link className="block w-full" href={edit()} as="button" prefetch onClick={cleanup}>
                         <Settings className="mr-2" />
@@ -52,6 +66,13 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     Log out
                 </Link>
             </DropdownMenuItem>
+
+            {/* Add Document Modal */}
+            <AddDocumentModal 
+                user={user} 
+                isOpen={isDocModalOpen} 
+                onClose={() => setIsDocModalOpen(false)} 
+            />
         </>
     );
 }
