@@ -54,6 +54,12 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
         ->name('admin.reservations.update');
     Route::get('/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('admin.reservations.details');
 
+    // Appointments routes
+    Route::get('/appointments', [ReservationsController::class, 'appointmentsIndex'])->name('admin.appointments');
+    Route::post('/appointments/{appointment}/approve', [ReservationsController::class, 'approveAppointmentById'])->name('admin.appointments.approve');
+    Route::post('/appointments/{appointment}/cancel', [ReservationsController::class, 'cancelAppointmentById'])->name('admin.appointments.cancel');
+    Route::post('/appointments/{appointment}/suggest-time', [ReservationsController::class, 'suggestAppointmentTime'])->name('admin.appointments.suggest-time');
+
     // Get users for team member selector
     Route::get('/api/users', [ReservationsController::class, 'getUsers'])
         ->name('admin.api.users');

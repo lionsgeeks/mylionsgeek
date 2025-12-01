@@ -8,6 +8,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { Button } from '@headlessui/react';
+import BookAppointment from '@/components/book-appointment';
 
 const PRIVILEGED_ACCESS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
 
@@ -43,6 +45,7 @@ export default function SpacesPage() {
     const [isMobile, setIsMobile] = useState(false);
     const [accessError, setAccessError] = useState('');
     const [selectionError, setSelectionError] = useState('');
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
     const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
@@ -519,9 +522,18 @@ export default function SpacesPage() {
                     </div>
                 )}
 
-                <div className="mb-6">
+                <div className="mb-6 flex justify-between">
+                <div>
+
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
+                </div>
+                    <Button
+                        className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
+                        onClick={() => setIsAppointmentModalOpen(true)}
+                    >
+                        Book an appointment
+                    </Button>
                 </div>
 
                 <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
@@ -791,6 +803,16 @@ export default function SpacesPage() {
                         userRouteMode
                     />
                 )}
+
+                {/* Book Appointment Modal */}
+                <BookAppointment
+                    isOpen={isAppointmentModalOpen}
+                    onClose={() => setIsAppointmentModalOpen(false)}
+                    onSuccess={(selectedPerson) => {
+                        console.log('Appointment booked with:', selectedPerson);
+
+                    }}
+                />
             </div>
         </AppLayout>
     );
