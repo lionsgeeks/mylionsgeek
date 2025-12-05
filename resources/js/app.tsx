@@ -17,16 +17,6 @@ if (csrfMeta?.content) {
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.withCredentials = true;
 
-// Function to refresh CSRF token from meta tag
-const refreshCsrfToken = () => {
-    const meta = document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null;
-    if (meta?.content) {
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = meta.content;
-        return meta.content;
-    }
-    return null;
-};
-
 // Axios interceptor to handle 419 errors (CSRF token expired)
 axios.interceptors.response.use(
     (response) => response,
