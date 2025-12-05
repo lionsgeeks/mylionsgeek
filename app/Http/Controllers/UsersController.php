@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
 use App\Mail\NewsletterMail;
+use App\Jobs\SendNewsletterEmail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
 use App\Models\User;
@@ -823,19 +824,41 @@ class UsersController extends Controller
         $validated = $request->validate([
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer|exists:users,id',
             'subject' => 'required|string|max:255',
             'body' => 'required|string',
         ]);
 
-        // Get users based on training_ids
-        if ($validated['training_ids'] && count($validated['training_ids']) > 0) {
-            $users = User::whereIn('formation_id', $validated['training_ids'])
+        $users = collect();
+
+        // Check if "All Users" is selected (training_ids is null)
+        $isAllUsers = is_null($validated['training_ids']);
+
+        if ($isAllUsers) {
+            // Send to all users (including those with and without training)
+            $users = User::whereNotNull('email')->get();
+        } else {
+            // Get users from selected trainings
+            if (isset($validated['training_ids']) && count($validated['training_ids']) > 0) {
+                $trainingUsers = User::whereIn('formation_id', $validated['training_ids'])
+                    ->whereNotNull('email')
+                    ->get();
+                $users = $users->merge($trainingUsers);
+            }
+        }
+
+        // Add users from user_ids (users without training or specific users)
+        // This works even if "All Users" is selected (they'll be deduplicated)
+        if (isset($validated['user_ids']) && count($validated['user_ids']) > 0) {
+            $specificUsers = User::whereIn('id', $validated['user_ids'])
                 ->whereNotNull('email')
                 ->get();
-        } else {
-            // Send to all users
-            $users = User::whereNotNull('email')->get();
+            $users = $users->merge($specificUsers);
         }
+
+        // Remove duplicates
+        $users = $users->unique('id');
 
         if ($users->isEmpty()) {
             return response()->json([
@@ -843,26 +866,39 @@ class UsersController extends Controller
             ], 400);
         }
 
-        $sentCount = 0;
-        $failedCount = 0;
+        // Dispatch jobs for each user
+        $totalUsers = $users->count();
 
         foreach ($users as $user) {
-            try {
-                Mail::to($user->email)->send(
-                    new NewsletterMail($user, $validated['subject'], $validated['body'])
-                );
-                $sentCount++;
-            } catch (\Exception $e) {
-                \Log::error("Failed to send newsletter email to {$user->email}: " . $e->getMessage());
-                $failedCount++;
+            SendNewsletterEmail::dispatch($user, $validated['subject'], $validated['body']);
+        }
+
+        // Send notification email to admins after jobs are queued
+        try {
+            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com'];
+            $notificationSubject = 'Newsletter Jobs Queued';
+            $notificationBody = "Newsletter emails have been queued for processing.\n\n";
+            $notificationBody .= "Subject: {$validated['subject']}\n";
+            $notificationBody .= "Total Recipients: {$totalUsers} users\n";
+            $notificationBody .= "Queued at: " . now()->format('Y-m-d H:i:s') . "\n\n";
+            $notificationBody .= "You can now run the queue worker to process these emails:\n";
+            $notificationBody .= "php artisan queue:work";
+
+            foreach ($notificationEmails as $email) {
+                Mail::raw($notificationBody, function ($message) use ($email, $notificationSubject) {
+                    $message->to($email)
+                            ->subject($notificationSubject);
+                });
             }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send notification email: " . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => "Email sent successfully to {$sentCount} user(s)." . ($failedCount > 0 ? " {$failedCount} failed." : ''),
-            'sent_count' => $sentCount,
-            'failed_count' => $failedCount,
+            'message' => "Newsletter emails are being sent to {$totalUsers} user(s) in the background.",
+            'total_users' => $totalUsers,
+            'queued' => true,
         ]);
     }
 }
