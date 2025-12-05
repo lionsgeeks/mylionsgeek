@@ -7,6 +7,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
+use App\Mail\NewsletterMail;
+use App\Jobs\SendNewsletterEmail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
 use App\Models\User;
@@ -812,5 +814,91 @@ class UsersController extends Controller
             ->values(); // reset keys
 
         return response()->json($monthlyAbsences);
+    }
+
+    /**
+     * Send newsletter email to users in selected trainings or all users
+     */
+    public function sendEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'training_ids' => 'nullable|array',
+            'training_ids.*' => 'integer|exists:formations,id',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer|exists:users,id',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        $users = collect();
+
+        // Check if "All Users" is selected (training_ids is null)
+        $isAllUsers = is_null($validated['training_ids']);
+
+        if ($isAllUsers) {
+            // Send to all users (including those with and without training)
+            $users = User::whereNotNull('email')->get();
+        } else {
+            // Get users from selected trainings
+            if (isset($validated['training_ids']) && count($validated['training_ids']) > 0) {
+                $trainingUsers = User::whereIn('formation_id', $validated['training_ids'])
+                    ->whereNotNull('email')
+                    ->get();
+                $users = $users->merge($trainingUsers);
+            }
+        }
+
+        // Add users from user_ids (users without training or specific users)
+        // This works even if "All Users" is selected (they'll be deduplicated)
+        if (isset($validated['user_ids']) && count($validated['user_ids']) > 0) {
+            $specificUsers = User::whereIn('id', $validated['user_ids'])
+                ->whereNotNull('email')
+                ->get();
+            $users = $users->merge($specificUsers);
+        }
+
+        // Remove duplicates
+        $users = $users->unique('id');
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'error' => 'No users found to send email to.'
+            ], 400);
+        }
+
+        // Dispatch jobs for each user
+        $totalUsers = $users->count();
+
+        foreach ($users as $user) {
+            SendNewsletterEmail::dispatch($user, $validated['subject'], $validated['body']);
+        }
+
+        // Send notification email to admins after jobs are queued
+        try {
+            $notificationEmails = ['forkanimahdi@gmail.com', 'boujjarr@gmail.com'];
+            $notificationSubject = 'Newsletter Jobs Queued';
+            $notificationBody = "Newsletter emails have been queued for processing.\n\n";
+            $notificationBody .= "Subject: {$validated['subject']}\n";
+            $notificationBody .= "Total Recipients: {$totalUsers} users\n";
+            $notificationBody .= "Queued at: " . now()->format('Y-m-d H:i:s') . "\n\n";
+            $notificationBody .= "You can now run the queue worker to process these emails:\n";
+            $notificationBody .= "php artisan queue:work";
+
+            foreach ($notificationEmails as $email) {
+                Mail::raw($notificationBody, function ($message) use ($email, $notificationSubject) {
+                    $message->to($email)
+                            ->subject($notificationSubject);
+                });
+            }
+        } catch (\Exception $e) {
+            \Log::error("Failed to send notification email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Newsletter emails are being sent to {$totalUsers} user(s) in the background.",
+            'total_users' => $totalUsers,
+            'queued' => true,
+        ]);
     }
 }

@@ -36,5 +36,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Handle 419 CSRF token expired errors for Inertia requests
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'message' => 'CSRF token expired. Please refresh the page and try again.',
+                    'errors' => ['csrf' => ['CSRF token expired. Please refresh the page.']]
+                ], 419);
+            }
+        });
     })->create();

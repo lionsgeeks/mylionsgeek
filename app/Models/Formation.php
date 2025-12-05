@@ -4,23 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
 class Formation extends Model
 {
     use HasFactory;
-     public $incrementing = false; 
-    protected $keyType = 'string';
-
-    protected static function boot(): void
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->{$model->getKeyName()})) {
-                $model->{$model->getKeyName()} = Str::uuid();
-            }
-        });
-    }
+    
+    // Use default integer auto-incrementing IDs (matches database schema)
+    // Removed UUID configuration to match $table->id() in migration
 
     protected $fillable = [
         "name",

@@ -23,7 +23,7 @@ class FormationController extends Controller
         $promo = $request->query('promo');
 
         $query = Formation::with('coach')->withCount('users');
-        
+
         // dd($query->where('promo', $promo)->get());
 
         if (!empty($coachId)) {
@@ -78,6 +78,7 @@ class FormationController extends Controller
             'user_id'    => 'required|exists:users,id',
             'promo'      => 'nullable|string|max:50',
         ]);
+        // dd($request->all());
 
         Formation::create($validated);
 
@@ -189,6 +190,7 @@ public function attendance(Request $request)
     // attendance list
 public function save(Request $request)
 {
+
         $request->validate([
             'attendance' => 'required|array|min:1',
             'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
@@ -275,6 +277,48 @@ public function save(Request $request)
         $formation->delete();
 
         return back()->with('success', 'Formation deleted successfully!');
+    }
+
+    // Bulk update users roles and status
+    public function bulkUpdateUsers(Formation $training, Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'required|exists:users,id',
+            'roles' => 'nullable|array',
+            'roles.*' => 'nullable|string',
+            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing',
+        ]);
+
+        $users = User::whereIn('id', $validated['user_ids'])
+            ->where('formation_id', $training->id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return back()->with('error', 'No valid users found for this training.');
+        }
+
+        $updated = 0;
+        foreach ($users as $user) {
+            $updateData = [];
+
+            if ($request->has('roles') && !empty($validated['roles'])) {
+                $updateData['role'] = array_values(array_map(function ($r) {
+                    return strtolower((string) $r);
+                }, array_filter($validated['roles'])));
+            }
+
+            if ($request->has('status') && !empty($validated['status'])) {
+                $updateData['status'] = $validated['status'];
+            }
+
+            if (!empty($updateData)) {
+                $user->update($updateData);
+                $updated++;
+            }
+        }
+
+        return back()->with('success', "Successfully updated {$updated} user(s).");
     }
 
 
