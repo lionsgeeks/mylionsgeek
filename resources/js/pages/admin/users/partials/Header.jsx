@@ -41,6 +41,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [emailSubject, setEmailSubject] = useState('');
     const [emailBody, setEmailBody] = useState('');
+    const [emailBodyFr, setEmailBodyFr] = useState('');
+    const [emailBodyAr, setEmailBodyAr] = useState('');
+    const [emailBodyEn, setEmailBodyEn] = useState('');
     const [emailProcessing, setEmailProcessing] = useState(false);
     const [exportFields, setExportFields] = useState({
         name: true,
@@ -149,7 +152,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
 
     const handleSendEmail = async (e) => {
         e.preventDefault();
-        if (!emailSubject.trim() || !emailBody.trim()) {
+        // Check if at least one language content is provided
+        if (!emailSubject.trim() || (!emailBody.trim() && !emailBodyFr.trim() && !emailBodyAr.trim() && !emailBodyEn.trim())) {
+            alert('Please provide at least one language content.');
             return;
         }
 
@@ -167,7 +172,10 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                     training_ids: selectAllTrainings ? null : selectedTrainingIds,
                     user_ids: selectedUserIds.length > 0 ? selectedUserIds : null,
                     subject: emailSubject,
-                    body: emailBody,
+                    body: emailBody.trim() || null,
+                    body_fr: emailBodyFr.trim() || null,
+                    body_ar: emailBodyAr.trim() || null,
+                    body_en: emailBodyEn.trim() || null,
                 }),
             });
 
@@ -185,6 +193,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 setUserSearchQuery('');
                 setEmailSubject('');
                 setEmailBody('');
+                setEmailBodyFr('');
+                setEmailBodyAr('');
+                setEmailBodyEn('');
             } else {
                 const error = await response.json();
                 console.error('Error sending email:', error);
@@ -669,21 +680,77 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                     />
                                 </div>
 
-                                {/* Email Body */}
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="email-body">Message</Label>
-                                    <Textarea
-                                        id="email-body"
-                                        value={emailBody}
-                                        onChange={(e) => setEmailBody(e.target.value)}
-                                        placeholder="Compose your email message here..."
-                                        className={inputClass}
-                                        rows={10}
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        You can use HTML formatting in your email message.
-                                    </p>
+                                {/* Email Body - Multi-language Support */}
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label>Message Content</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Fill at least one language. You can use HTML formatting.
+                                        </p>
+                                    </div>
+
+                                    {/* French Content */}
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="email-body-fr" className="text-sm font-semibold">
+                                            French (Français) 🇫🇷
+                                        </Label>
+                                        <Textarea
+                                            id="email-body-fr"
+                                            value={emailBodyFr}
+                                            onChange={(e) => setEmailBodyFr(e.target.value)}
+                                            placeholder="Compose your French message here..."
+                                            className={inputClass}
+                                            rows={8}
+                                        />
+                                    </div>
+
+                                    {/* Arabic Content */}
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="email-body-ar" className="text-sm font-semibold">
+                                            Arabic (العربية) 🇸🇦
+                                        </Label>
+                                        <Textarea
+                                            id="email-body-ar"
+                                            value={emailBodyAr}
+                                            onChange={(e) => setEmailBodyAr(e.target.value)}
+                                            placeholder="اكتب رسالتك بالعربية هنا..."
+                                            className={inputClass}
+                                            rows={8}
+                                            dir="rtl"
+                                        />
+                                    </div>
+
+                                    {/* English Content */}
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="email-body-en" className="text-sm font-semibold">
+                                            English 🇬🇧
+                                        </Label>
+                                        <Textarea
+                                            id="email-body-en"
+                                            value={emailBodyEn}
+                                            onChange={(e) => setEmailBodyEn(e.target.value)}
+                                            placeholder="Compose your English message here..."
+                                            className={inputClass}
+                                            rows={8}
+                                        />
+                                    </div>
+
+                                    {/* Legacy single body field (optional, for backward compatibility) */}
+                                    <details className="text-xs">
+                                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                            Legacy: Single Body Field (Optional)
+                                        </summary>
+                                        <div className="mt-2">
+                                            <Textarea
+                                                id="email-body"
+                                                value={emailBody}
+                                                onChange={(e) => setEmailBody(e.target.value)}
+                                                placeholder="Legacy: Single body field (if not using language-specific fields above)..."
+                                                className={inputClass}
+                                                rows={6}
+                                            />
+                                        </div>
+                                    </details>
                                 </div>
 
                                 {/* Recipients Preview */}
@@ -716,6 +783,9 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                 setUserSearchQuery('');
                                                 setEmailSubject('');
                                                 setEmailBody('');
+                                                setEmailBodyFr('');
+                                                setEmailBodyAr('');
+                                                setEmailBodyEn('');
                                             }}
                                         >
                                             Cancel
@@ -723,7 +793,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                     </DialogClose>
                                     <Button
                                         type="submit"
-                                        disabled={emailProcessing || (!selectAllTrainings && selectedTrainingIds.length === 0 && selectedUserIds.length === 0) || !emailSubject.trim() || !emailBody.trim()}
+                                        disabled={emailProcessing || (!selectAllTrainings && selectedTrainingIds.length === 0 && selectedUserIds.length === 0) || !emailSubject.trim() || (!emailBody.trim() && !emailBodyFr.trim() && !emailBodyAr.trim() && !emailBodyEn.trim())}
                                         className="bg-alpha hover:text-white text-black"
                                     >
                                         {emailProcessing ? 'Sending...' : `Send to ${selectedTrainingUsers.length} User${selectedTrainingUsers.length !== 1 ? 's' : ''}`}

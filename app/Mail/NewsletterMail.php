@@ -14,16 +14,23 @@ class NewsletterMail extends Mailable
 
     public $subject;
     public $body;
+    public $body_fr;
+    public $body_ar;
+    public $body_en;
     public $user;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($user, $subject, $body)
+    public function __construct($user, $subject, $body = null, $body_fr = null, $body_ar = null, $body_en = null)
     {
         $this->user = $user;
         $this->subject = $subject;
+        // Support both old format (single body) and new format (separate languages)
         $this->body = $body;
+        $this->body_fr = $body_fr;
+        $this->body_ar = $body_ar;
+        $this->body_en = $body_en;
     }
 
     /**
@@ -47,6 +54,9 @@ class NewsletterMail extends Mailable
                 'user' => $this->user,
                 'subject' => $this->subject,
                 'body' => $this->body,
+                'body_fr' => $this->body_fr,
+                'body_ar' => $this->body_ar,
+                'body_en' => $this->body_en,
             ],
         );
     }
