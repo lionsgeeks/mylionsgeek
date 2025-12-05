@@ -30,7 +30,7 @@ class StudentProjectController extends Controller
                 'created_at' => (string) $project->created_at,
             ]);
 
-        return Inertia::render('student/projects/index', [
+        return Inertia::render('students/projects/index', [
             'projects' => $projects,
         ]);
     }
