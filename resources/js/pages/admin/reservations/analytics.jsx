@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, TrendingUp, Calendar, Users, Package, Building2, Clock, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import StatCard from '@/components/StatCard';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -41,6 +42,25 @@ export default function Analytics({
     const activeTotal = activeEquipment?.length || 0;
     const usersTotal = topUsers?.length || 0;
 
+    const overviewStats = [
+        {
+            title: 'Total Reservations',
+            value: totalStats.total_reservations || 0,
+            icon: Calendar,
+        },
+        {
+            title: 'Cowork Reservations',
+            value: totalStats.total_cowork_reservations || 0,
+            icon: Building2,
+        },
+        {
+            title: 'Total Equipment',
+            value: totalStats.total_equipment || 0,
+            icon: Package,
+        },
+
+    ];
+
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
@@ -60,60 +80,9 @@ export default function Analytics({
                     <p className="text-muted-foreground">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
 
-                {/* Total Statistics Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalStats.total_reservations || 0}</div>
-                        </CardContent>
-                    </Card>
+                <StatCard statsData={overviewStats} />
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Cowork Reservations</CardTitle>
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalStats.total_cowork_reservations || 0}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalStats.total_equipment || 0}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalStats.total_users || 0}</div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Studios</CardTitle>
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalStats.total_studios || 0}</div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
                     {/* Studio Reservations Chart */}
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>

@@ -19,6 +19,8 @@ import { Clipboard, Copy, Plus, X, ChevronDown, Users, PlayCircle, Laptop, Code,
 import { Users2 } from "lucide-react";
 import StatsCard from '../../../../components/StatCard';
 
+const formatRoleLabel = (role) => role === 'studio_responsable' ? 'Responsable Studio' : role;
+
 const Header = ({ message, roles, trainings, filteredUsers }) => {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
@@ -105,7 +107,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         'coworker',
         'coach',
         'pro',
-        'moderator',
+        'moderateur',
         'recruiter',
     ];
 
@@ -289,7 +291,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {currentRoles.map((role) => (
                                                     <span key={role} className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium">
-                                                        {role}
+                                                        {formatRoleLabel(role)}
                                                         <button type="button" onClick={() => removeRole(role)} className="hover:bg-primary/20 rounded-full p-0.5">
                                                             <X className="h-3 w-3" />
                                                         </button>
@@ -324,7 +326,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                                                     className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
                                                                     onClick={() => addRole(role)}
                                                                 >
-                                                                    <span className="text-sm">{role}</span>
+                                                                    <span className="text-sm">{formatRoleLabel(role)}</span>
                                                                 </div>
                                                             ))
                                                         )}

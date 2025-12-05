@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EquipmentTypeController;
 
-Route::middleware(['auth','verified','role:admin,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth','verified','role:admin,moderateur,studio_responsable'])->prefix('admin')->group(function () {
     // Equipment routes
     Route::get('/equipements', [EquipmentController::class, 'index'])->name('admin.equipment');
     Route::post('/equipements', [EquipmentController::class, 'store'])->name('admin.equipment.store');

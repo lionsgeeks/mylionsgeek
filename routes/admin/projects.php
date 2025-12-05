@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 // Public join route (no auth required)
 Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join'])->name('projects.join');
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->name('admin.')->group(function () {
     // Project routes
     Route::resource('projects', ProjectController::class);
     Route::post('projects/{project}', [ProjectController::class, 'update'])->name('projects.update-post');
@@ -19,7 +19,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('projects/{project}/users/{user}', [ProjectController::class, 'removeUser'])->name('projects.remove-user');
     Route::put('projects/{project}/users/{user}', [ProjectController::class, 'updateRole'])->name('projects.update-role');
     Route::get('projects-statistics', [ProjectController::class, 'statistics'])->name('projects.statistics');
-    
+
     // Task routes
     Route::resource('tasks', TaskController::class)->except(['index', 'show', 'create', 'edit']);
     Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
@@ -36,18 +36,18 @@ Route::delete('tasks/{task}/comments/{comment}', [TaskController::class, 'delete
     Route::post('tasks/{task}/attachments', [TaskController::class, 'addAttachment'])->name('tasks.add-attachment');
     Route::delete('tasks/{task}/attachments', [TaskController::class, 'removeAttachment'])->name('tasks.remove-attachment');
     Route::post('tasks/{task}/pin', [TaskController::class, 'togglePin'])->name('tasks.toggle-pin');
-    
+
     // Project Notes routes
     Route::resource('project-notes', ProjectNoteController::class);
     Route::post('project-notes/{projectNote}/pin', [ProjectNoteController::class, 'togglePin'])->name('project-notes.toggle-pin');
-    
+
     // Task comment routes
     Route::resource('task-comments', TaskCommentController::class)->only(['store', 'destroy']);
-    
+
     // Attachment routes
     Route::resource('attachments', AttachmentController::class)->only(['store', 'destroy']);
     Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
-    
+
     // Project attachment routes
     Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
     Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');

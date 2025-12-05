@@ -44,9 +44,6 @@ const PostCard = ({ user, posts }) => {
     }, []);
 
     const takeToUserProfile = (post) => {
-        if (auth.user.role.includes('admin')) {
-            return '/admin/users/' + post?.user_id
-        }
         return '/student/' + post?.user_id
     }
 

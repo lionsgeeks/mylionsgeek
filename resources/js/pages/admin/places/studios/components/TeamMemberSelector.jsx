@@ -1,9 +1,67 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+const normalizeRoles = (rawRoles) => {
+    if (!rawRoles) return [];
+    const roles = [];
+    const pushRole = (role) => {
+        if (!role && role !== 0) return;
+        if (typeof role === 'string') {
+            const trimmed = role.trim();
+            if (!trimmed) return;
+            roles.push(trimmed.toLowerCase());
+            return;
+        }
+        if (typeof role === 'number') {
+            roles.push(String(role).toLowerCase());
+            return;
+        }
+        if (Array.isArray(role)) {
+            role.forEach((r) => pushRole(r));
+            return;
+        }
+        if (typeof role === 'object') {
+            Object.values(role).forEach((r) => pushRole(r));
+            return;
+        }
+    };
+
+    if (Array.isArray(rawRoles)) {
+        rawRoles.forEach((role) => pushRole(role));
+    } else if (typeof rawRoles === 'string') {
+        const trimmed = rawRoles.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                pushRole(parsed);
+            } catch (e) {
+                trimmed.split(',').forEach((chunk) => pushRole(chunk));
+            }
+        } else if (trimmed.includes(',')) {
+            trimmed.split(',').forEach((chunk) => pushRole(chunk));
+        } else {
+            pushRole(trimmed);
+        }
+    } else if (typeof rawRoles === 'object') {
+        pushRole(rawRoles);
+    } else {
+        pushRole(rawRoles);
+    }
+
+    return roles.filter(Boolean);
+};
+
+const hasAdminRole = (rawRoles) => {
+    const roles = normalizeRoles(rawRoles);
+    return roles.includes('admin') || roles.includes('moderateur');
+};
+
 const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
+    const { auth } = usePage().props;
+    const viewerIsAdmin = hasAdminRole(auth?.user?.role);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -17,16 +75,25 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
         return `/storage/${image.replace(/^\/?/, '')}`;
     };
 
-    const users = useMemo(
-        () =>
-            (Array.isArray(teamMemberOptions)
-                ? teamMemberOptions.map((user) => ({
+    const users = useMemo(() => {
+        if (!Array.isArray(teamMemberOptions)) return [];
+        return teamMemberOptions
+            .filter((user) => viewerIsAdmin || !hasAdminRole(user?.role ?? user?.roles))
+            .map((user) => ({
                       ...user,
                       image: normalizeImage(user.image),
-                  }))
-                : []),
-        [teamMemberOptions]
-    );
+            }));
+    }, [teamMemberOptions, viewerIsAdmin]);
+
+    useEffect(() => {
+        if (viewerIsAdmin) return;
+        const sanitizedSelection = selected.filter(
+            (member) => !hasAdminRole(member?.role ?? member?.roles)
+        );
+        if (sanitizedSelection.length !== selected.length) {
+            onSelect(sanitizedSelection);
+        }
+    }, [viewerIsAdmin, selected, onSelect]);
 
     const filteredUsers = useMemo(() => {
         if (!searchQuery) return users;

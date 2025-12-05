@@ -8,31 +8,24 @@ const Rolegard = ({ children, authorized = [], except = [] }) => {
         ? auth.user.role
         : [auth?.user?.role];
 
+    // Admins can see everything regardless of the following checks
+    if (userRoles.includes('admin')) {
+        return <>{children}</>;
+    }
+
     // kanakhdo authorized w except bach nkoun mt2akdin blli howma arrays
     const allowedRoles = Array.isArray(authorized) ? authorized : [authorized];
     const excludedRoles = Array.isArray(except) ? except : [except];
 
-    // Kanshouf wach user 3ndo chi role mn authorized Ila authorized khawya, kandirha b true bach ay user ykoun m9bol
-    const hasAuthorizedRole = allowedRoles.length === 0
-        ? true
-        : userRoles.some(role => allowedRoles.includes(role));
-
-    // Kanshouf wach user 3ndo chi role mn except
-    const hasExcludedRole = userRoles.some(role => excludedRoles.includes(role));
-
-    /* 
-    L-logic dyalna:
-
-    - Ila user 3ndo chi role mn authorized → yban children
-    - Ila ma3ndnach authorized (khawya) → kolchi yban ghir li roles dyalhom f except ma ybanouch
-    - Ila user 3ndo role f authorized w role f except f nafs l wa9t → yban (madam role wa7d  mkhlih idoz idn   iban lih )
-    */
-    const isAuthorized =
-        (hasAuthorizedRole && !(!allowedRoles.length && hasExcludedRole)) ||
-        (allowedRoles.length === 0 && !hasExcludedRole);
+    // Ila user 3ndo bzzaf dyal roles, naydo rol wahd ghaykfi ila kan m9bol u ma mchtabkhch f excluded
+    const roleCanAccess = userRoles.some((role) => {
+        const allowed = allowedRoles.length === 0 || allowedRoles.includes(role);
+        const excluded = excludedRoles.includes(role);
+        return allowed && !excluded;
+    });
 
     // Ila user m9bol kanreturn children, ila la kanreturn walou
-    return <>{isAuthorized ? children : null}</>;
+    return <>{roleCanAccess ? children : null}</>;
 };
 
 export default Rolegard;

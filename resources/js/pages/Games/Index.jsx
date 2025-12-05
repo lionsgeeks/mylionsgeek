@@ -35,14 +35,14 @@ const games = [
         color: 'from-orange-500 to-red-600',
         link: '/games/tetris'
     },
-    // {
-    //     id: 'connect-four',
-    //     name: 'Connect Four',
-    //     description: 'Drop discs and connect four in a row',
-    //     icon: '🟡',
-    //     color: 'from-yellow-400 to-amber-600',
-    //     link: '/games/connect-four'
-    // },
+    {
+        id: 'connect-four',
+        name: 'Connect Four',
+        description: 'Drop discs and connect four in a row',
+        icon: '🟡',
+        color: 'from-yellow-400 to-amber-600',
+        link: '/games/connect-four'
+    },
     // {
     //     id: 'rock-paper-scissors',
     //     name: 'Rock Paper Scissors',
@@ -90,7 +90,7 @@ export default function GamesIndex() {
                                             {game.icon}
                                         </span>
                                     </div>
-                                    
+
                                     <div className="p-6">
                                         <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gray-700">
                                             {game.name}

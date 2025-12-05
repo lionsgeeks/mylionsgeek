@@ -1,11 +1,12 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import profile from '@/routes/profile';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SearchDialog from '@/components/search-dialog';
+import ChatIcon from '@/components/chat/ChatIcon';
 
 import { NavUser } from '@/components/nav-user';
 
@@ -32,13 +33,14 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                     <span className="text-xl font-semibold tracking-tight text-foreground">{hours}</span>
                     <span className="text-sm text-muted-foreground">{dateStr}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                    <SearchDialog className="hidden sm:flex" />
-                    <div className="pb-2">
+                <SearchDialog className="hidden sm:flex" />
+                <div className="flex items-center gap-4 ">
+                    <ChatIcon />
+                    <NavUser />
+                    <div className="">
                         {/* component change mode */}
                         <ThemeToggle />
                     </div>
-                    <NavUser />
                 </div>
             </div>
         </header>

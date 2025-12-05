@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown } from 'lucide-react';
 import { Users, CalendarDays, User, Trash2, Plus, UserPlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +15,12 @@ import interactionPlugin from "@fullcalendar/interaction";
 import GeekyWheel from './partials/geekyWheel';
 
 export default function Show({ training, usersNull }) {
+  const { auth } = usePage().props;
+  const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
+  const isCoachRole = userRoles.includes('coach');
+  const isTrainingCoach = auth?.user?.id && training?.coach?.id ? auth.user.id === training.coach.id : false;
+  const trainingStatus = String(training?.status || '').toLowerCase();
+  const isActiveTraining = !trainingStatus || trainingStatus === 'active';
   const [students, setStudents] = useState(training.users || []);
   const [availableUsers, setAvailableUsers] = useState(usersNull || []);
   const [filter, setFilter] = useState('');
@@ -40,14 +46,9 @@ export default function Show({ training, usersNull }) {
   const [calendarApi, setCalendarApi] = useState(null);
   const [calendarTitle, setCalendarTitle] = useState('');
   const [calendarError, setCalendarError] = useState('');
-  const isBeforeToday = (dateLike) => {
-    if (!dateLike) return false;
-    const target = new Date(dateLike);
-    target.setHours(0, 0, 0, 0);
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    return target < startOfToday;
-  };
+  const [hasAttendanceToday, setHasAttendanceToday] = useState(false);
+  const [reminderModal, setReminderModal] = useState({ open: false, slot: null });
+
 
 
   // Map status to color styles for SelectTrigger
@@ -94,6 +95,52 @@ export default function Show({ training, usersNull }) {
     }
     fetchEvents();
   }, [training.id]);
+
+  useEffect(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const hasToday = events.some((event) => {
+      if (!event?.date) return false;
+      try {
+        return new Date(event.date).toISOString().slice(0, 10) === todayStr;
+      } catch {
+        return false;
+      }
+    });
+    setHasAttendanceToday(hasToday);
+    if (hasToday && reminderModal.open) {
+      setReminderModal({ open: false, slot: null });
+    }
+  }, [events, reminderModal.open]);
+
+  useEffect(() => {
+    if (!isCoachRole || !isTrainingCoach || !isActiveTraining) return;
+    const checkReminder = () => {
+      if (hasAttendanceToday || typeof window === 'undefined') {
+        return;
+      }
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const thresholds = [
+        { hour: 11, key: 'morning', label: '11:00 AM' },
+        { hour: 15, key: 'afternoon', label: '03:00 PM' },
+      ];
+
+      for (const threshold of thresholds) {
+        if (now.getHours() >= threshold.hour) {
+          const storageKey = `attendance-reminder-${training.id}-${todayStr}-${threshold.key}`;
+          if (!localStorage.getItem(storageKey)) {
+            localStorage.setItem(storageKey, 'shown');
+            setReminderModal({ open: true, slot: threshold });
+            break;
+          }
+        }
+      }
+    };
+
+    checkReminder();
+    const interval = setInterval(checkReminder, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isCoachRole, isTrainingCoach, isActiveTraining, hasAttendanceToday, training.id]);
 
   //   attendance
 
@@ -294,7 +341,7 @@ export default function Show({ training, usersNull }) {
   // Filter available users to exclude admins, coaches, and already assigned students
   const filteredAvailableUsers = availableUsers.filter(user => {
     // Exclude admins (assuming role field exists)
-    if (user.role.includes('admin')) return false;
+    if (user.role.includes('admin') || user.role.includes('moderateur')) return false;
 
     // Exclude coaches (assuming role field exists)
     if (user.role.includes('coach')) return false;
@@ -313,7 +360,7 @@ export default function Show({ training, usersNull }) {
   });
 
   // Delete student
-  
+
 
   // Add student from modal
   const handleAddStudent = (user) => {
@@ -677,12 +724,9 @@ export default function Show({ training, usersNull }) {
                 datesSet={(arg) => setCalendarTitle(arg.view.title)}
                 eventClick={(info) => {
                   const eventDate = info?.event?.start;
-                  const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0,10);
+                  const dateStr = info?.event?.startStr || info?.event?._instance?.range?.start?.toISOString()?.slice(0, 10);
                   if (!dateStr) return;
-                  if (isBeforeToday(eventDate || dateStr)) {
-                    setCalendarError('You cannot manage attendance for past dates.');
-                    return;
-                  }
+
                   setCalendarError('');
                   setSelectedDate(dateStr);
                   AddAttendance(dateStr);
@@ -690,10 +734,7 @@ export default function Show({ training, usersNull }) {
                   setShowAttendanceList(true);
                 }}
                 dateClick={(info) => {
-                  if (isBeforeToday(info.date)) {
-                    setCalendarError('You cannot select dates earlier than today.');
-                    return;
-                  }
+              
                   setCalendarError('');
                   setSelectedDate(info.dateStr);
                   AddAttendance(info.dateStr);
@@ -1043,7 +1084,7 @@ export default function Show({ training, usersNull }) {
           showWinnerModal={showWinnerModal}
           spinWheel={spinWheel}
           wheelRotation={wheelRotation}
-          
+
            />
         {/* Delete Confirmation Modal */}
         <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -1059,6 +1100,42 @@ export default function Show({ training, usersNull }) {
             <div className="mt-6 flex justify-end space-x-3">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
               <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmDelete}>Remove Student</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={reminderModal.open}
+          onOpenChange={(open) => setReminderModal((prev) => ({ open, slot: open ? prev.slot : null }))}
+        >
+          <DialogContent className="w-full max-w-md bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">Attendance Reminder</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mb-4">
+              It&apos;s past {reminderModal.slot?.label}. Don&apos;t forget to submit today&apos;s attendance for {training.name}.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                className="flex-1 bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                onClick={() => {
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  setReminderModal({ open: false, slot: null });
+                  setSelectedDate(todayStr);
+                  AddAttendance(todayStr);
+                  setShowAttendance(false);
+                  setShowAttendanceList(true);
+                }}
+              >
+                Go to Attendance
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setReminderModal({ open: false, slot: null })}
+              >
+                Later
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

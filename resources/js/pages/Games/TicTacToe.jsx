@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import axios from 'axios';
+import useAblyChannelGames from '@/hooks/useAblyChannelGames';
 
 const WINNING_COMBINATIONS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
@@ -25,8 +26,23 @@ export default function TicTacToe() {
     const [assignedSymbol, setAssignedSymbol] = useState(null); // 'X' | 'O'
     const [requestedSymbol, setRequestedSymbol] = useState(null); // optional preferred role from URL
     const [isConnected, setIsConnected] = useState(false);
-    const pollingIntervalRef = useRef(null);
     const lastStateHashRef = useRef(null);
+
+    // Ably channel for real-time game updates - EXACTLY like messages
+    // When Ayman (X) or Yahya (O) makes a move, the other sees it IMMEDIATELY
+    const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
+    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(
+        gameChannelName,
+        ['game-state-updated', 'game-reset'],
+        {
+            onConnected: () => {
+                console.log('✅ Ably connected for game room:', roomId, 'Channel:', gameChannelName);
+            },
+            onError: (error) => {
+                console.error('❌ Ably connection error:', error);
+            },
+        }
+    );
 
     // Check for winner
     const checkWinner = (currentBoard) => {
@@ -122,26 +138,34 @@ export default function TicTacToe() {
         }
     }, [isXNext, gameMode, board, gameOver, winner]);
 
-    // Reset game
+    // Reset game - Database + Ably flow
     const resetGame = () => {
         const newBoard = Array(9).fill(null);
+        
+        // Optimistic update
         setBoard(newBoard);
         setIsXNext(true);
         setWinner(null);
         setGameOver(false);
-        // POST reset to server
+        
+        // POST reset to server - server saves to database and broadcasts via Ably
         if (isConnected && roomId) {
             const newState = {
                 board: newBoard,
                 isXNext: true,
                 winner: null,
                 gameOver: false,
-                scores,
+                scores, // Preserve scores
+                // Note: players array is preserved by server's updateState merge
             };
+            
             axios.post(`/api/games/reset/${roomId}`, {
                 game_type: 'tictactoe',
                 initial_state: newState,
-            }).catch(err => console.error('Failed to reset game:', err));
+            }).catch(err => {
+                console.error('Failed to reset game:', err);
+                // Revert on error - but scores should stay
+            });
         }
     };
 
@@ -177,78 +201,78 @@ export default function TicTacToe() {
         );
     };
 
-    // Poll for game state updates - called by useEffect
-    const pollGameState = React.useCallback(async () => {
+    // Update game state from received data
+    const updateGameStateFromData = React.useCallback((state) => {
+        if (!state) return;
+        
+        const stateHash = JSON.stringify(state);
+        
+        // Only update if state changed
+        if (stateHash !== lastStateHashRef.current) {
+            lastStateHashRef.current = stateHash;
+            
+            // Update all state from server
+            if (state.board && Array.isArray(state.board)) {
+                setBoard(state.board);
+            }
+            
+            if (state.isXNext !== undefined) {
+                setIsXNext(state.isXNext);
+            }
+            
+            if (state.winner !== undefined) {
+                setWinner(state.winner);
+            }
+            
+            if (state.gameOver !== undefined) {
+                setGameOver(state.gameOver);
+            }
+            
+            if (state.scores) {
+                setScores(state.scores);
+            }
+            
+            // Assign symbol based on stored symbol for this player, not array index
+            if (state.players && state.players.length > 0) {
+                const playerIndex = state.players.findIndex(p => p.name === playerName);
+                if (playerIndex >= 0) {
+                    const sym = state.players[playerIndex]?.symbol;
+                    if (sym === 'X' || sym === 'O') {
+                        setAssignedSymbol(sym);
+                    }
+                } else {
+                    // If name not found:
+                    // - Keep current role if already assigned (never flip)
+                    // - If no role yet and there is exactly 1 player, infer the opposite
+                    // - If 0 or 2+ players, do not guess; wait for explicit assignment
+                    if (!assignedSymbol && state.players.length === 1) {
+                        const onlySym = state.players[0]?.symbol;
+                        if (onlySym === 'X' || onlySym === 'O') {
+                            setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
+                        }
+                    }
+                }
+            }
+        }
+    }, [playerName, assignedSymbol]);
+
+    // Fetch initial game state
+    const fetchInitialGameState = React.useCallback(async () => {
         if (!isConnected || !roomId) return;
         
         try {
             const response = await axios.get(`/api/games/state/${roomId}`);
             if (response.data.exists && response.data.game_state) {
-                const state = response.data.game_state;
-                const stateHash = JSON.stringify(state);
-                
-                // Only update if state changed
-                if (stateHash !== lastStateHashRef.current) {
-                    lastStateHashRef.current = stateHash;
-                    
-                    // Update all state from server
-                    if (state.board && Array.isArray(state.board)) {
-                        setBoard(state.board);
-                    }
-                    
-                    if (state.isXNext !== undefined) {
-                        setIsXNext(state.isXNext);
-                    }
-                    
-                    if (state.winner !== undefined) {
-                        setWinner(state.winner);
-                    }
-                    
-                    if (state.gameOver !== undefined) {
-                        setGameOver(state.gameOver);
-                    }
-                    
-                    if (state.scores) {
-                        setScores(state.scores);
-                    }
-                    
-                    // Assign symbol based on stored symbol for this player, not array index
-                    if (state.players && state.players.length > 0) {
-                        const playerIndex = state.players.findIndex(p => p.name === playerName);
-                        if (playerIndex >= 0) {
-                            const sym = state.players[playerIndex]?.symbol;
-                            if (sym === 'X' || sym === 'O') {
-                                setAssignedSymbol(sym);
-                            }
-                        } else {
-                            // If name not found:
-                            // - Keep current role if already assigned (never flip)
-                            // - If no role yet and there is exactly 1 player, infer the opposite
-                            // - If 0 or 2+ players, do not guess; wait for explicit assignment
-                            if (!assignedSymbol && state.players.length === 1) {
-                                const onlySym = state.players[0]?.symbol;
-                                if (onlySym === 'X' || onlySym === 'O') {
-                                    setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
-                                }
-                            }
-                        }
-                    }
-                }
+                updateGameStateFromData(response.data.game_state);
             }
         } catch (error) {
-            console.error('Failed to poll game state:', error);
+            console.error('Failed to fetch initial game state:', error);
         }
-    }, [isConnected, roomId, playerName]);
+    }, [isConnected, roomId, updateGameStateFromData]);
 
     // Online multiplayer handlers
     const connectRoom = async () => {
         if (!roomId || !playerName.trim()) return;
-        
-        // Stop any existing polling
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-        }
         
         setIsConnected(true);
         
@@ -338,9 +362,8 @@ export default function TicTacToe() {
                 setAssignedSymbol(creatorSymbol);
             }
             
-            // Start fast polling - 100ms for very fast updates
-            pollGameState(); // Immediate poll
-            pollingIntervalRef.current = setInterval(pollGameState, 100); // Poll every 100ms
+            // Fetch initial state after connecting
+            await fetchInitialGameState();
             
         } catch (error) {
             console.error('Failed to connect to room:', error);
@@ -348,11 +371,14 @@ export default function TicTacToe() {
         }
     };
 
-    const disconnectRoom = () => {
-        if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
+    // Fetch initial state when Ably connects and room is connected
+    useEffect(() => {
+        if (ablyConnected && isConnected && roomId) {
+            fetchInitialGameState();
         }
+    }, [ablyConnected, isConnected, roomId, fetchInitialGameState]);
+
+    const disconnectRoom = () => {
         setIsConnected(false);
         setAssignedSymbol(null);
         setRoomId('');
@@ -362,7 +388,7 @@ export default function TicTacToe() {
         resetGame();
     };
 
-    // Handle clicks with online support
+    // Handle clicks with online support - Database + Ably flow
     const handleCellClickNetworked = async (index) => {
         if (board[index] || gameOver) return;
         
@@ -390,7 +416,7 @@ export default function TicTacToe() {
             newScores.ties = (newScores.ties || 0) + 1;
         }
         
-        // Apply move locally
+        // Optimistic update for better UX (will be confirmed by Ably)
         setBoard(newBoard);
         setIsXNext(currentIsXNext);
         if (currentWinner) {
@@ -400,27 +426,44 @@ export default function TicTacToe() {
         } else if (currentGameOver) {
             setGameOver(true);
             setScores(newScores);
-        } else {
-            setIsXNext(currentIsXNext);
         }
         
-        // POST move to server immediately
+        // POST move to server - server saves to database and broadcasts via Ably IMMEDIATELY
         if (isConnected && roomId) {
-            const newState = {
+            // Prepare state to send - server will preserve players array
+            const currentState = {
                 board: newBoard,
                 isXNext: currentIsXNext,
                 winner: currentWinner,
                 gameOver: currentGameOver,
                 scores: newScores,
+                // Note: players array is preserved by server's updateState method
             };
             
             try {
-                await axios.post(`/api/games/state/${roomId}`, {
+                console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Symbol:', symbol);
+                // Save to database and broadcast via Ably
+                // Server will:
+                // 1. Save to database (preserving players array)
+                // 2. Broadcast to ALL players via Ably immediately
+                const response = await axios.post(`/api/games/state/${roomId}`, {
                     game_type: 'tictactoe',
-                    game_state: newState,
+                    game_state: currentState,
                 });
+                
+                console.log('✅ Move saved! Server broadcasted to all players via Ably');
+                console.log('📡 Other player should receive update NOW via Ably subscription');
+                
+                // Ably broadcasts immediately after DB save
+                // The other player (Yahya if Ayman moved, or Ayman if Yahya moved) receives update instantly
+                // The handleGameStateUpdate function will update their board
             } catch (error) {
-                console.error('Failed to save move:', error);
+                console.error('❌ Failed to save move:', error);
+                // Revert optimistic update on error
+                setBoard(board);
+                setIsXNext(isXNext);
+                setWinner(null);
+                setGameOver(false);
             }
         }
     };
@@ -461,32 +504,87 @@ export default function TicTacToe() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Polling useEffect - automatically polls when connected
+    // Subscribe to Ably real-time game state updates - EXACTLY like messages
+    // When Ayman (X) makes a move, Yahya (O) sees it IMMEDIATELY - NO REFRESH NEEDED
+    // When Yahya (O) makes a move, Ayman (X) sees it IMMEDIATELY - NO REFRESH NEEDED
     useEffect(() => {
-        if (!isConnected || !roomId) {
-            if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-            }
-            return;
-        }
+        // EXACTLY like messages - only check isConnected
+        // But also ensure roomId exists so we're subscribed to the right channel
+        if (!ablyConnected || !roomId) return;
 
-        // Start polling immediately
-        pollGameState();
-        
-        // Set up fast polling interval - 100ms for very fast updates
-        pollingIntervalRef.current = setInterval(() => {
-            pollGameState();
-        }, 100); // Poll every 100ms for near real-time
-
-        // Cleanup
-        return () => {
-            if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
+        // Handle game state updates from Ably - Database is source of truth
+        // When server saves to database, it broadcasts via Ably, and we update here
+        // This is called IMMEDIATELY when any player makes a move - NO REFRESH NEEDED
+        const handleGameStateUpdate = (data) => {
+            console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
+            if (data && data.game_state) {
+                // Always update from server's authoritative state (from database)
+                const state = data.game_state;
+                
+                console.log('📋 Updating game state from Ably - Board:', state.board, 'isXNext:', state.isXNext);
+                
+                // Update all state from Ably message - this is the database state
+                // This happens IMMEDIATELY when X makes a move, so O sees it instantly
+                if (state.board && Array.isArray(state.board)) {
+                    console.log('✅ Setting board to:', state.board);
+                    setBoard(state.board);
+                }
+                
+                if (state.isXNext !== undefined) {
+                    setIsXNext(state.isXNext);
+                }
+                
+                if (state.winner !== undefined) {
+                    setWinner(state.winner);
+                }
+                
+                if (state.gameOver !== undefined) {
+                    setGameOver(state.gameOver);
+                }
+                
+                if (state.scores) {
+                    setScores(state.scores);
+                }
+                
+                // Update player symbol assignment from database
+                if (state.players && state.players.length > 0) {
+                    const playerIndex = state.players.findIndex(p => p.name === playerName);
+                    if (playerIndex >= 0) {
+                        const sym = state.players[playerIndex]?.symbol;
+                        if (sym === 'X' || sym === 'O') {
+                            setAssignedSymbol(sym);
+                        }
+                    } else if (!assignedSymbol && state.players.length === 1) {
+                        // If name not found and only one player, infer the opposite
+                        const onlySym = state.players[0]?.symbol;
+                        if (onlySym === 'X' || onlySym === 'O') {
+                            setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
+                        }
+                    }
+                }
+                
+                // Update hash for change detection
+                lastStateHashRef.current = JSON.stringify(state);
             }
         };
-    }, [isConnected, roomId, playerName, pollGameState]);
+
+        const handleGameReset = (data) => {
+            if (data && data.game_state) {
+                handleGameStateUpdate(data); // Same handler for reset
+            }
+        };
+
+        // Subscribe to game state updates - exactly like messages subscribe
+        // This ensures when Ayman (X) plays, Yahya (O) sees it, and vice versa
+        console.log('🔔 Registering Ably subscriptions for room:', roomId);
+        subscribe('game-state-updated', handleGameStateUpdate);
+        subscribe('game-reset', handleGameReset);
+        console.log('✅ Ably subscriptions registered - ready for live updates');
+
+        return () => {
+            // Cleanup handled by useAblyChannelGames
+        };
+    }, [ablyConnected, roomId, subscribe, playerName, assignedSymbol]);
 
     return (
         <AppLayout>
@@ -606,7 +704,7 @@ export default function TicTacToe() {
                                 >Copy Link</button>
                                 {isConnected && (
                                     <div className="text-sm text-gray-600 self-center">
-                                        Connected as <strong>{assignedSymbol ?? '?'}</strong> — Polling every 100ms
+                                        Connected as <strong>{assignedSymbol ?? '?'}</strong> {ablyConnected ? '— Real-time' : '— Connecting...'}
                                     </div>
                                 )}
                             </div>
@@ -755,3 +853,4 @@ export default function TicTacToe() {
         </AppLayout>
     );
 }
+

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Http\Controllers\UserProjectController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
 use App\Http\Controllers\AdminProjectController;
+use App\Http\Controllers\ReservationsController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -18,7 +19,7 @@ Route::get('/', function () {
 })->name('home');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin,coach,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
@@ -26,6 +27,19 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,studio_responsable'])->
     // Global Analytics (admin)
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
+    Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
+    Route::post('/appointments/book', [ReservationsController::class, 'bookAppointment'])->name('appointments.book');
+});
+
+// Public appointment approval/cancellation routes (no auth required - uses token)
+Route::get('/appointments/{token}/approve', [ReservationsController::class, 'approveAppointment'])->name('appointments.approve');
+Route::get('/appointments/{token}/cancel', [ReservationsController::class, 'cancelAppointment'])->name('appointments.cancel');
+Route::get('/appointments/{token}/suggest', [ReservationsController::class, 'showAppointmentSuggestForm'])->name('appointments.suggest');
+Route::post('/appointments/{token}/suggest', [ReservationsController::class, 'submitAppointmentSuggestForm'])->name('appointments.suggest.submit');
+Route::get('/appointments/suggest/{token}/accept', [ReservationsController::class, 'acceptSuggestedTime'])->name('appointments.suggest.accept');
 
 
 require __DIR__ . '/settings.php';
@@ -45,3 +59,4 @@ require __DIR__ . '/student/students.php';
 require __DIR__ . '/studentProjects.php';
 require __DIR__ . '/admin/project-approvals.php';
 require __DIR__ . '/student/posts.php';
+require __DIR__ . '/chat.php';

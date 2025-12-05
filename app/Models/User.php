@@ -173,6 +173,39 @@ class User extends Authenticatable
     }
 
     /**
+     * Get conversations where this user is user_one
+     */
+    public function conversationsAsUserOne()
+    {
+        return $this->hasMany(Conversation::class, 'user_one_id');
+    }
+
+    /**
+     * Get conversations where this user is user_two
+     */
+    public function conversationsAsUserTwo()
+    {
+        return $this->hasMany(Conversation::class, 'user_two_id');
+    }
+
+    /**
+     * Get all conversations for this user
+     */
+    public function conversations()
+    {
+        return Conversation::where('user_one_id', $this->id)
+            ->orWhere('user_two_id', $this->id);
+    }
+
+    /**
+     * Get all messages sent by this user
+     */
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    /**
      * Send the password reset notification using our custom mailable and layout.
      */
     public function sendPasswordResetNotification($token)

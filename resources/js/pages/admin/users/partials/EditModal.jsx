@@ -9,12 +9,13 @@ import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
+import Rolegard from '../../../../components/rolegard';
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('studio_responsable');
+    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
         name: editedUser?.name,
@@ -213,12 +214,14 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </Select>
                     </div>
                     {/* Right Column - Roles */}
+                    <Rolegard authorized={"admin"}>
                     {isAdminOrStudioResponsable && (
                         <div className="col-span-1">
                             <Label htmlFor="roles">Roles</Label>
                             <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
                         </div>
                     )}
+                    </Rolegard>
                     {/* Left Column - Access Studio */}
                     {isAdminOrStudioResponsable && (
                         <div className="col-span-1">

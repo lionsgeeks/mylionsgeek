@@ -8,16 +8,20 @@ use App\Http\Controllers\ComputersController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-Route::middleware(['auth','role:admin'])->group(function () {
+Route::middleware(['auth','role:admin,super_admin,moderateur,coach'])->group(function () {
     Route::get('/admin/computers', function () {
         $computers = Computer::with('user')->get()->map(function ($c) {
+            $isAssigned = (int) ($c->user_id ?? 0) !== 0;
+            $state = $c->state ?? 'not_working';
+            $isDamaged = strtolower($state) === 'damaged';
             return [
                 'id' => $c->id,
                 'mark' => $c->mark,
                 'reference' => $c->reference,
                 'cpu' => $c->cpu,
                 'gpu' => $c->gpu,
-                'isBroken' => $c->state !== 'working',
+                'state' => $state,
+                'isDamaged' => $isDamaged,
                 'assignedUserId' => $c->user_id,
                 'contractStart' => optional($c->start)->toDateString(),
                 'contractEnd' => optional($c->end)->toDateString(),
@@ -46,7 +50,7 @@ Route::middleware(['auth','role:admin'])->group(function () {
     // Update existing computer
     Route::put('/admin/computers/{computer}', [ComputersController::class, 'update'])
         ->name('admin.computers.update');
-    
+
     Route::get('/admin/computers/{computer}/contract', [ComputersController::class, 'computerStartContract'])
     ->name('computers.contract');
     Route::delete('/admin/computers/{computer}', [ComputersController::class, 'destroy'])->name('admin.computers.destroy');

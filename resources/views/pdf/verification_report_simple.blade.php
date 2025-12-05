@@ -199,9 +199,9 @@
                 <td>{{ $equipment['mark'] ?? 'N/A' }}</td>
                 <td>{{ $equipment['reference'] ?? 'N/A' }}</td>
                 <td>{{ $equipment['type_name'] ?? 'N/A' }}</td>
-                <td>{{ $equipment['goodCondition'] ? '✓' : '' }}</td>
-                <td>{{ $equipment['badCondition'] ? '✓' : '' }}</td>
-                <td>{{ $equipment['notReturned'] ? '✓' : '' }}</td>
+                <td>{{ !empty($equipment['goodCondition']) ? '✓' : 'X' }}</td>
+                <td>{{ !empty($equipment['badCondition']) ? '✓' : 'X' }}</td>
+                <td>{{ !empty($equipment['notReturned']) ? '✓' : 'X' }}</td>
             </tr>
             @empty
             <tr>

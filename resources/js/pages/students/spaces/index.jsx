@@ -8,6 +8,8 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import { Button } from '@headlessui/react';
+import BookAppointment from '@/components/book-appointment';
 
 const PRIVILEGED_ACCESS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
 
@@ -43,6 +45,7 @@ export default function SpacesPage() {
     const [isMobile, setIsMobile] = useState(false);
     const [accessError, setAccessError] = useState('');
     const [selectionError, setSelectionError] = useState('');
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
     const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
@@ -93,7 +96,7 @@ export default function SpacesPage() {
     }, [requireAccess]);
 
     const breadcrumbs = [
-        { title: 'Spaces', href: '/spaces' }
+        { title: 'Spaces', href: '/student/spaces' }
     ];
 
     const showStudios = type === 'all' || type === 'studio';
@@ -149,7 +152,7 @@ export default function SpacesPage() {
         setSelectedEvent(null);
         setBlockedTableIds([]);
         setBlockedStudioIds([]);
-        router.get('/spaces', params, {
+        router.get('/student/spaces', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -256,8 +259,17 @@ export default function SpacesPage() {
         return validateSelectionWindow(selectInfo.start, selectInfo.end);
     }, [validateSelectionWindow]);
 
+    const activeStudioCalendar = calendarFor?.place_type === 'studio'
+        ? calendarFor
+        : (calendarContext?.place_type === 'studio' ? calendarContext : null);
+
     const selectAllowForMainCalendar = useCallback((selectInfo) => {
         if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+
+        if (activeStudioCalendar && overlaps) {
             return false;
         }
         if (type === 'studio') {
@@ -273,10 +285,14 @@ export default function SpacesPage() {
             return canAccessStudio;
         }
         return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [type, calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
+    }, [type, calendarFor, calendarContext, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection, activeStudioCalendar]);
 
     const selectAllowForModal = useCallback((selectInfo) => {
         if (!ensureFutureSelection(selectInfo)) {
+            return false;
+        }
+        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+        if (calendarFor?.place_type === 'studio' && overlaps) {
             return false;
         }
         if (calendarFor?.place_type === 'cowork') {
@@ -506,9 +522,18 @@ export default function SpacesPage() {
                     </div>
                 )}
 
-                <div className="mb-6">
+                <div className="mb-6 flex justify-between">
+                <div>
+
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
+                </div>
+                    <Button
+                        className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
+                        onClick={() => setIsAppointmentModalOpen(true)}
+                    >
+                        Book an appointment
+                    </Button>
                 </div>
 
                 <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
@@ -628,7 +653,7 @@ export default function SpacesPage() {
                                                 }
                                             } else if (type === 'studio') {
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                                    router.visit(`/reservations/${e.id}/details`);
+                                                    router.visit(`/student/reservations/${e.id}/details`);
                                                     return;
                                                 }
                                                 const conflicts = computeBlockedStudios(start, end);
@@ -639,7 +664,7 @@ export default function SpacesPage() {
                                             } else {
                                                 // For studio, navigate to details page only if user owns the reservation
                                                 if (e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                                    router.visit(`/reservations/${e.id}/details`);
+                                                    router.visit(`/student/reservations/${e.id}/details`);
                                                 }
                                             }
                                         }
@@ -692,7 +717,7 @@ export default function SpacesPage() {
 
                             // For studio reservations, navigate to details page only if user owns it
                             if (calendarFor?.place_type === 'studio' && e.extendedProps?.user_id === auth?.user?.id && e.id) {
-                                router.visit(`/reservations/${e.id}/details`);
+                                router.visit(`/student/reservations/${e.id}/details`);
                                 return;
                             }
 
@@ -778,6 +803,16 @@ export default function SpacesPage() {
                         userRouteMode
                     />
                 )}
+
+                {/* Book Appointment Modal */}
+                <BookAppointment
+                    isOpen={isAppointmentModalOpen}
+                    onClose={() => setIsAppointmentModalOpen(false)}
+                    onSuccess={(selectedPerson) => {
+                        console.log('Appointment booked with:', selectedPerson);
+
+                    }}
+                />
             </div>
         </AppLayout>
     );
