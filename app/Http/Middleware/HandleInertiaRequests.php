@@ -78,14 +78,25 @@ class HandleInertiaRequests extends Middleware
                 })(),
             ],
             'attendanceWarning' => function () use ($request) {
-                $today = Carbon::today()->toDateString();
+                $today = Carbon::today();
+                $todayString = $today->toDateString();
                 $user = $request->user();
+
+                // Don't show attendance reminders on weekends (Saturday = 6, Sunday = 0)
+                $dayOfWeek = $today->dayOfWeek;
+                if ($dayOfWeek === Carbon::SATURDAY || $dayOfWeek === Carbon::SUNDAY) {
+                    return [
+                        'hasWarning' => false,
+                        'trainings' => [],
+                        'date' => $todayString,
+                    ];
+                }
 
                 if (! $user) {
                     return [
                         'hasWarning' => false,
                         'trainings' => [],
-                        'date' => $today,
+                        'date' => $todayString,
                     ];
                 }
 
@@ -99,7 +110,7 @@ class HandleInertiaRequests extends Middleware
                     return [
                         'hasWarning' => false,
                         'trainings' => [],
-                        'date' => $today,
+                        'date' => $todayString,
                     ];
                 }
 
@@ -112,7 +123,7 @@ class HandleInertiaRequests extends Middleware
                     return [
                         'hasWarning' => false,
                         'trainings' => [],
-                        'date' => $today,
+                        'date' => $todayString,
                     ];
                 }
 
@@ -121,13 +132,13 @@ class HandleInertiaRequests extends Middleware
                     return [
                         'hasWarning' => false,
                         'trainings' => [],
-                        'date' => $today,
+                        'date' => $todayString,
                     ];
                 }
 
                 $attendedToday = Attendance::query()
                     ->whereIn('formation_id', $trainingIds)
-                    ->whereDate('attendance_day', $today)
+                    ->whereDate('attendance_day', $todayString)
                     ->pluck('formation_id')
                     ->map(fn ($id) => (string) $id)
                     ->all();
@@ -146,30 +157,33 @@ class HandleInertiaRequests extends Middleware
                     }
                 };
 
-                $missingTrainings = $trainings->filter(function ($training) use ($today, $attendedLookup, $parseDate) {
+                $missingTrainings = $trainings->filter(function ($training) use ($todayString, $attendedLookup, $parseDate) {
                     $start = $parseDate($training->start_time ?? null);
                     $end = $parseDate($training->end_time ?? null);
 
-                    if ($start && $start > $today) {
+                    // Only show reminders for active trainings (between start_time and end_time)
+                    if ($start && $start > $todayString) {
                         return false;
                     }
 
-                    if ($end && $end < $today) {
+                    if ($end && $end < $todayString) {
                         return false;
                     }
 
                     return ! array_key_exists((string) $training->id, $attendedLookup);
-                })->map(function ($training) {
+                })->map(function ($training) use ($parseDate) {
                     return [
                         'id' => (string) $training->id,
                         'name' => $training->name,
+                        'start_time' => $parseDate($training->start_time ?? null),
+                        'end_time' => $parseDate($training->end_time ?? null),
                     ];
                 })->values();
 
                 return [
                     'hasWarning' => $missingTrainings->isNotEmpty(),
                     'trainings' => $missingTrainings,
-                    'date' => $today,
+                    'date' => $todayString,
                 ];
             },
             'flash' => [

@@ -58,7 +58,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
             });
-            console.log(formData);
+            // console.log(formData);
         }
     }, [editedUser]);
 

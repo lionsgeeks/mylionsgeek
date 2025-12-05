@@ -3,10 +3,31 @@ import { Link, usePage } from '@inertiajs/react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
+// Same logic as index.jsx - training is active if started and within 6 months
+const getTrainingStatus = (training) => {
+  if (!training.start_time) return null;
+  const start = new Date(training.start_time);
+  const now = new Date();
+  const sixMonthsLater = new Date(start);
+  sixMonthsLater.setMonth(start.getMonth() + 6);
+  if (now < sixMonthsLater && start < now) return 'active';
+  return null;
+};
+
 export default function AttendanceWarning() {
   const { auth, session, attendanceWarning } = usePage().props;
-  const trainings = Array.isArray(attendanceWarning?.trainings) ? attendanceWarning.trainings : [];
+  const allTrainings = Array.isArray(attendanceWarning?.trainings) ? attendanceWarning.trainings : [];
   const todayLabel = attendanceWarning?.date || '';
+  
+  // Filter to only show currently active trainings (same logic as index.jsx)
+
+  const activeTrainings = useMemo(() => {
+    if (!allTrainings.length) return [];
+    return allTrainings.filter((t) => getTrainingStatus(t) === 'active');
+  }, [allTrainings]);
+  
+  // Only show the first active training
+  const trainings = activeTrainings.slice(0, 1);
 
   const isCoach = useMemo(() => {
     const role = auth?.user?.role;
@@ -16,18 +37,25 @@ export default function AttendanceWarning() {
     return role === 'coach';
   }, [auth?.user?.role]);
 
-  const shouldWarn = Boolean(isCoach && attendanceWarning?.hasWarning && trainings.length);
+  // Don't show attendance reminders on weekends (Saturday = 6, Sunday = 0)
+  const isWeekend = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+  }, []);
+
+  const shouldWarn = Boolean(isCoach && attendanceWarning?.hasWarning && trainings.length && !isWeekend);
 
   const trainingKey = useMemo(() => {
-    if (!trainings.length) {
+    if (!activeTrainings.length) {
       return '';
     }
-    return trainings
+    return activeTrainings
       .map((training) => training?.id ?? '')
       .filter(Boolean)
       .sort()
       .join('-');
-  }, [trainings]);
+  }, [activeTrainings]);
 
   const cookieKey = useMemo(() => {
     if (!auth?.user?.id || !session?.id || !todayLabel || !trainingKey) {
@@ -48,10 +76,10 @@ export default function AttendanceWarning() {
     setOpen(!dismissed);
   }, [cookieKey, shouldWarn]);
 
-  const handleDismiss = (days = 1) => {
+  const handleDismiss = (hours = 1) => {
     if (!cookieKey) return;
     const expires = new Date();
-    expires.setDate(expires.getDate() + days);
+    expires.setHours(expires.getHours() + hours);
     document.cookie = `${cookieKey}=1; expires=${expires.toUTCString()}; path=/; SameSite=Lax`;
     setOpen(false);
   };
@@ -91,13 +119,16 @@ export default function AttendanceWarning() {
             </Button>
           ) : null}
           <Button variant="ghost" onClick={() => handleDismiss(1)}>
-            Remind me later
+            Remind me later (1 hour)
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+
+
 
 
 
