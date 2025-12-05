@@ -12,10 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useForm } from '@inertiajs/react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Clipboard, Copy, Plus, X, ChevronDown, Users, PlayCircle, Laptop, Code, Camera } from 'lucide-react';
+import { Clipboard, Copy, Plus, X, ChevronDown, Users, PlayCircle, Laptop, Code, Camera, Mail } from 'lucide-react';
 import { Users2 } from "lucide-react";
 import StatsCard from '../../../../components/StatCard';
 
@@ -34,6 +35,12 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
+    const [emailOpen, setEmailOpen] = useState(false);
+    const [selectedTrainingIds, setSelectedTrainingIds] = useState([]);
+    const [selectAllTrainings, setSelectAllTrainings] = useState(false);
+    const [emailSubject, setEmailSubject] = useState('');
+    const [emailBody, setEmailBody] = useState('');
+    const [emailProcessing, setEmailProcessing] = useState(false);
     const [exportFields, setExportFields] = useState({
         name: true,
         email: true,
@@ -44,6 +51,11 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
         access_cowork: false,
         role: false,
         status: false,
+    });
+    const [emailFeilds, setEmailsFeilds] = useState({
+        name: true,
+        email: true,
+        cin: true,
     });
 
     const rolesInputRef = useRef(null);
@@ -76,13 +88,77 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 setData({
                     name: '',
                     email: '',
-                    access_studio: null,
-                    access_cowork: null,
-                    formation_id: null,
-                    roles: [],
+                    cin: '',
                 })
             }
         });
+    };
+    // Filter users based on selected trainings
+    const selectedTrainingUsers = useMemo(() => {
+        if (selectAllTrainings || selectedTrainingIds.length === 0) {
+            return filteredUsers;
+        }
+        return filteredUsers.filter(user => selectedTrainingIds.includes(user.formation_id));
+    }, [selectedTrainingIds, selectAllTrainings, filteredUsers]);
+
+    // Handle training selection
+    const handleTrainingToggle = (trainingId) => {
+        if (trainingId === 'all') {
+            setSelectAllTrainings(!selectAllTrainings);
+            setSelectedTrainingIds([]);
+        } else {
+            const id = Number(trainingId);
+            if (selectedTrainingIds.includes(id)) {
+                setSelectedTrainingIds(selectedTrainingIds.filter(tid => tid !== id));
+            } else {
+                setSelectedTrainingIds([...selectedTrainingIds, id]);
+            }
+            setSelectAllTrainings(false);
+        }
+    };
+
+    const handleSendEmail = async (e) => {
+        e.preventDefault();
+        if (!emailSubject.trim() || !emailBody.trim()) {
+            return;
+        }
+
+        setEmailProcessing(true);
+        try {
+            const response = await fetch('/admin/users/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    training_ids: selectAllTrainings ? null : selectedTrainingIds,
+                    subject: emailSubject,
+                    body: emailBody,
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(result.message || `Email sent successfully to ${result.sent_count} user(s)!`);
+                setEmailOpen(false);
+                setSelectedTrainingIds([]);
+                setSelectAllTrainings(false);
+                setEmailSubject('');
+                setEmailBody('');
+            } else {
+                const error = await response.json();
+                console.error('Error sending email:', error);
+                alert(error.error || 'Failed to send email. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error sending email:', error);
+            alert('Failed to send email. Please try again.');
+        } finally {
+            setEmailProcessing(false);
+        }
     };
 
     const [copy, setCopy] = useState(true);
@@ -379,6 +455,157 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                                     </DialogClose>
                                     <Button type="submit" disabled={processing}>
                                         {processing ? 'Processing...' : 'Save User'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="bg-alpha hover:bg-alpha hover:text-beta flex gap-2 items-center text-black cursor-pointer rounded-lg px-7 py-4">
+                                <Mail />
+                                Send Email
+                            </Button>
+                        </DialogTrigger>
+
+                        <DialogContent className="w-[90%] max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Send Newsletter Email</DialogTitle>
+                                <DialogDescription>
+                                    Select one or more trainings to send an email to all students in those trainings, or select "All Users" to send to everyone.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form onSubmit={handleSendEmail} className="mt-6 space-y-6">
+                                {/* Training Selection */}
+                                <div className="flex flex-col gap-3">
+                                    <Label>Select Training(s)</Label>
+
+                                    {/* Select All Option */}
+                                    <div className="flex items-center space-x-3 p-3 rounded-lg border border-alpha/20 hover:bg-alpha/5 transition-colors">
+                                        <Checkbox
+                                            id="select-all-trainings"
+                                            checked={selectAllTrainings}
+                                            onCheckedChange={() => handleTrainingToggle('all')}
+                                        />
+                                        <label
+                                            htmlFor="select-all-trainings"
+                                            className="text-sm font-medium cursor-pointer flex-1"
+                                        >
+                                            All Users ({filteredUsers.length} users)
+                                        </label>
+                                    </div>
+
+                                    {/* Training List with Checkboxes */}
+                                    <div className="max-h-60 overflow-y-auto space-y-2 border border-alpha/20 rounded-lg p-3">
+                                        {trainings.map(training => {
+                                            const trainingUsersCount = filteredUsers.filter(u => u.formation_id === training.id).length;
+                                            const isSelected = selectedTrainingIds.includes(training.id);
+                                            return (
+                                                <div
+                                                    key={training.id}
+                                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-alpha/5 transition-colors"
+                                                >
+                                                    <Checkbox
+                                                        id={`training-${training.id}`}
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => handleTrainingToggle(training.id)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`training-${training.id}`}
+                                                        className="text-sm cursor-pointer flex-1"
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">{training.name} ({trainingUsersCount} users)</span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                Coach: {training.coach?.name ?? '—'}
+                                                            </span>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {(selectAllTrainings || selectedTrainingIds.length > 0) && (
+                                        <p className="text-sm text-muted-foreground">
+                                            This email will be sent to <strong>{selectedTrainingUsers.length}</strong> user{selectedTrainingUsers.length !== 1 ? 's' : ''}
+                                            {selectedTrainingIds.length > 0 && !selectAllTrainings && (
+                                                <span> from {selectedTrainingIds.length} training{selectedTrainingIds.length !== 1 ? 's' : ''}</span>
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Email Subject */}
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="email-subject">Subject</Label>
+                                    <Input
+                                        id="email-subject"
+                                        value={emailSubject}
+                                        onChange={(e) => setEmailSubject(e.target.value)}
+                                        placeholder="Enter email subject"
+                                        className={inputClass}
+                                        required
+                                    />
+                                </div>
+
+                                {/* Email Body */}
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="email-body">Message</Label>
+                                    <Textarea
+                                        id="email-body"
+                                        value={emailBody}
+                                        onChange={(e) => setEmailBody(e.target.value)}
+                                        placeholder="Compose your email message here..."
+                                        className={inputClass}
+                                        rows={10}
+                                        required
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        You can use HTML formatting in your email message.
+                                    </p>
+                                </div>
+
+                                {/* Recipients Preview */}
+                                {(selectAllTrainings || selectedTrainingIds.length > 0) && selectedTrainingUsers.length > 0 && (
+                                    <div className="flex flex-col gap-2 p-4 bg-muted rounded-lg">
+                                        <Label className="text-sm font-semibold">Recipients ({selectedTrainingUsers.length}):</Label>
+                                        <div className="max-h-32 overflow-y-auto text-sm text-muted-foreground">
+                                            {selectedTrainingUsers.slice(0, 10).map(user => (
+                                                <div key={user.id} className="flex items-center gap-2 py-1">
+                                                    <span>{user.name}</span>
+                                                    <span className="text-xs">({user.email})</span>
+                                                </div>
+                                            ))}
+                                            {selectedTrainingUsers.length > 10 && (
+                                                <p className="text-xs mt-2">...and {selectedTrainingUsers.length - 10} more</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <DialogFooter className="flex justify-end gap-4 mt-4">
+                                    <DialogClose asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setSelectedTrainingIds([]);
+                                                setSelectAllTrainings(false);
+                                                setEmailSubject('');
+                                                setEmailBody('');
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </DialogClose>
+                                    <Button
+                                        type="submit"
+                                        disabled={emailProcessing || (!selectAllTrainings && selectedTrainingIds.length === 0) || !emailSubject.trim() || !emailBody.trim()}
+                                        className="bg-alpha hover:text-white text-black"
+                                    >
+                                        {emailProcessing ? 'Sending...' : `Send to ${selectedTrainingUsers.length} User${selectedTrainingUsers.length !== 1 ? 's' : ''}`}
                                     </Button>
                                 </DialogFooter>
                             </form>

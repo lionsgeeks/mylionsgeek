@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Mail\CompleteUserProfile;
 use App\Mail\UserWelcomeMail;
+use App\Mail\NewsletterMail;
 use App\Models\AttendanceListe;
 use App\Models\Computer;
 use App\Models\User;
@@ -812,5 +813,56 @@ class UsersController extends Controller
             ->values(); // reset keys
 
         return response()->json($monthlyAbsences);
+    }
+
+    /**
+     * Send newsletter email to users in selected trainings or all users
+     */
+    public function sendEmail(Request $request)
+    {
+        $validated = $request->validate([
+            'training_ids' => 'nullable|array',
+            'training_ids.*' => 'integer|exists:formations,id',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+        ]);
+
+        // Get users based on training_ids
+        if ($validated['training_ids'] && count($validated['training_ids']) > 0) {
+            $users = User::whereIn('formation_id', $validated['training_ids'])
+                ->whereNotNull('email')
+                ->get();
+        } else {
+            // Send to all users
+            $users = User::whereNotNull('email')->get();
+        }
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'error' => 'No users found to send email to.'
+            ], 400);
+        }
+
+        $sentCount = 0;
+        $failedCount = 0;
+
+        foreach ($users as $user) {
+            try {
+                Mail::to($user->email)->send(
+                    new NewsletterMail($user, $validated['subject'], $validated['body'])
+                );
+                $sentCount++;
+            } catch (\Exception $e) {
+                \Log::error("Failed to send newsletter email to {$user->email}: " . $e->getMessage());
+                $failedCount++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Email sent successfully to {$sentCount} user(s)." . ($failedCount > 0 ? " {$failedCount} failed." : ''),
+            'sent_count' => $sentCount,
+            'failed_count' => $failedCount,
+        ]);
     }
 }

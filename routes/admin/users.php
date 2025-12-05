@@ -21,6 +21,7 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach'
     Route::get('/users/{user}/documents/{kind}/{doc}', [UsersController::class, 'viewDocument'])->where(['kind' => 'contract|medical', 'doc' => '[0-9]+'])->name('admin.users.documents.view');
     Route::post('/users/store', [UsersController::class, 'store']);
     Route::put('/users/update/{user}/account-state', [UsersController::class, 'updateAccountStatus']);
+    Route::post('/users/send-email', [UsersController::class, 'sendEmail']);
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
 });
