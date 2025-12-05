@@ -1,50 +1,113 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $subject }}</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
-        <tr>
-            <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background-color: #FACC15; padding: 30px; text-align: center;">
-                            <h1 style="margin: 0; color: #000000; font-size: 24px;">LionsGeek Newsletter</h1>
-                        </td>
-                    </tr>
+@extends('emails.layouts.customMail')
 
-                    <!-- Content -->
-                    <tr>
-                        <td style="padding: 30px;">
-                            <p style="margin: 0 0 15px 0; color: #333333; font-size: 16px;">Hello {{ $user->name }},</p>
+@section('content')
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; background-color: #f9f9f9; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <style>
+            .newsletter-body h2,
+            .newsletter-body h3 {
+                color: #2c3e50;
+                margin-top: 25px;
+                margin-bottom: 15px;
+                font-weight: 600;
+            }
 
-                            <div style="color: #333333; font-size: 16px; line-height: 1.6;">
-                                {!! $body !!}
-                            </div>
+            .newsletter-body h2 {
+                font-size: 20px;
+            }
 
-                            <p style="margin: 20px 0 0 0; color: #666666; font-size: 14px;">
-                                Best regards,<br>
-                                <strong>LionsGeek Team</strong>
-                            </p>
-                        </td>
-                    </tr>
+            .newsletter-body h3 {
+                font-size: 18px;
+            }
 
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f9f9f9; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
-                            <p style="margin: 0; color: #999999; font-size: 12px;">
-                                This is an automated message from LionsGeek("Coding Pro"). Please do not reply to this email.
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
+            .newsletter-body p {
+                margin: 12px 0;
+                line-height: 1.8;
+                color: #333333;
+            }
+
+            .newsletter-body ul,
+            .newsletter-body ol {
+                margin: 15px 0;
+                padding-left: 25px;
+            }
+
+            .newsletter-body li {
+                margin: 8px 0;
+                line-height: 1.8;
+                color: #333333;
+            }
+
+            .newsletter-body hr {
+                border: none;
+                border-top: 2px solid #e0e0e0;
+                margin: 30px 0;
+            }
+
+            .newsletter-body strong {
+                color: #2c3e50;
+                font-weight: 600;
+            }
+
+            .newsletter-body em {
+                font-style: italic;
+            }
+
+            .newsletter-body a {
+                color: #007bff;
+                text-decoration: none;
+            }
+
+            .newsletter-body a:hover {
+                text-decoration: underline;
+            }
+        </style>
+
+        <h2 style="color: #2c3e50; margin-bottom: 20px;">LionsGeek Newsletter</h2>
+
+        <div class="newsletter-body" style="color: #333333; font-size: 16px; line-height: 1.8;">
+            @if(isset($body_fr) || isset($body_ar) || isset($body_en))
+                {{-- Multi-language format --}}
+                @if(!empty($body_fr))
+                    <div class="language-section" style="margin-bottom: 40px;">
+                        <div class="newsletter-body" style="direction: ltr; text-align: left;">
+                            {!! $body_fr !!}
+                        </div>
+                    </div>
+                @endif
+
+                @if(!empty($body_fr) && (!empty($body_ar) || !empty($body_en)))
+                    <hr style="border: none; border-top: 3px solid #e0e0e0; margin: 40px 0;">
+                @endif
+
+                @if(!empty($body_ar))
+                    <div class="language-section" style="margin-bottom: 40px;">
+                        <div class="newsletter-body" style="direction: rtl; text-align: right;">
+                            {!! $body_ar !!}
+                        </div>
+                    </div>
+                @endif
+
+                @if(!empty($body_ar) && !empty($body_en))
+                    <hr style="border: none; border-top: 3px solid #e0e0e0; margin: 40px 0;">
+                @endif
+
+                @if(!empty($body_en))
+                    <div class="language-section" style="margin-bottom: 40px;">
+                        <div class="newsletter-body" style="direction: ltr; text-align: left;">
+                            {!! $body_en !!}
+                        </div>
+                    </div>
+                @endif
+            @else
+                {{-- Legacy single body format --}}
+                {!! $body !!}
+            @endif
+        </div>
+
+        <p style="margin-top: 40px; font-size: 15px; color: #555;">
+            Best regards,<br>
+            The <strong>LionsGeek</strong> Team  / (AB) 🦁
+        </p>
+    </div>
+@endsection
 

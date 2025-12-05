@@ -827,8 +827,18 @@ class UsersController extends Controller
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'integer|exists:users,id',
             'subject' => 'required|string|max:255',
-            'body' => 'required|string',
+            'body' => 'nullable|string',
+            'body_fr' => 'nullable|string',
+            'body_ar' => 'nullable|string',
+            'body_en' => 'nullable|string',
         ]);
+
+        // Ensure at least one body field is provided
+        if (empty($validated['body']) && empty($validated['body_fr']) && empty($validated['body_ar']) && empty($validated['body_en'])) {
+            return response()->json([
+                'error' => 'At least one language content (body, body_fr, body_ar, or body_en) is required.'
+            ], 400);
+        }
 
         $users = collect();
 
@@ -870,7 +880,14 @@ class UsersController extends Controller
         $totalUsers = $users->count();
 
         foreach ($users as $user) {
-            SendNewsletterEmail::dispatch($user, $validated['subject'], $validated['body']);
+            SendNewsletterEmail::dispatch(
+                $user,
+                $validated['subject'],
+                $validated['body'] ?? null,
+                $validated['body_fr'] ?? null,
+                $validated['body_ar'] ?? null,
+                $validated['body_en'] ?? null
+            );
         }
 
         // Send notification email to admins after jobs are queued
