@@ -141,7 +141,7 @@ const AppointmentsIndex = ({ appointments = [], isPerson = false }) => {
                         {appointments.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground">
                                 <Calendar className="mx-auto h-12 w-12 mb-4 opacity-50" />
-                                <p>No appointments found</p>
+                                <p>No appointments found For you </p>
                             </div>
                         ) : (
                             <>

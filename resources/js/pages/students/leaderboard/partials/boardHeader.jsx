@@ -34,7 +34,7 @@ const BoardHeader = ({ fetchLeaderboardData, isRefreshing , fetchPreviousWeekPod
                     <div className="flex justify-end mb-4">
                         <button
                             onClick={fetchPreviousWeekPodium}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-dark text-light hover:bg-dark/90 dark:bg-light dark:text-dark dark:hover:bg-light/90 transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer transition-colors"
                         >
                             <Calendar className="w-4 h-4" />
                             Previous week podium

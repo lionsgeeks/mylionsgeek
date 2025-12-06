@@ -3327,33 +3327,7 @@ class ReservationsController extends Controller
                         ];
                     })
                     ->toArray();
-            } else {
-                // User is admin - show all appointments
-                $appointments = DB::table('appointments as a')
-                    ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
-                    ->select('a.*', 'u.name as requester_name', 'u.email as requester_email')
-                    ->orderByDesc('a.created_at')
-                    ->get()
-                    ->map(function ($apt) {
-                        return [
-                            'id' => $apt->id,
-                            'requester_name' => $apt->requester_name,
-                            'requester_email' => $apt->requester_email,
-                            'person_name' => $apt->person_name,
-                            'day' => $apt->day,
-                            'start' => $apt->start,
-                            'end' => $apt->end,
-                            'status' => $apt->status,
-                            'suggested_day' => $apt->suggested_day,
-                            'suggested_start' => $apt->suggested_start,
-                            'suggested_end' => $apt->suggested_end,
-                            'notes' => $apt->notes,
-                            'created_at' => $apt->created_at,
-                            'updated_at' => $apt->updated_at,
-                        ];
-                    })
-                    ->toArray();
-            }
+            } 
         }
 
         return Inertia::render('admin/appointments/index', [
@@ -3419,7 +3393,7 @@ class ReservationsController extends Controller
             \Log::error('Failed to send appointment approval email: ' . $e->getMessage());
         }
 
-        $message = $timeChanged 
+        $message = $timeChanged
             ? 'Appointment approved and time updated successfully. Email sent to requester.'
             : 'Appointment approved successfully. Email sent to requester.';
 
