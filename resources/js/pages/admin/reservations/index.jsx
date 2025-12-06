@@ -366,8 +366,21 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
     ];
     if (Object.keys(perPlaceDynamic).length === 0) return null;
 
-// export
-const [showExportModal, setShowExportModal] = useState(false);
+    // Convert your data into an array for StatCard
+    const items = [
+        ...Object.entries(perPlaceDynamic).map(([placeName, count]) => ({
+            title: placeName,
+            number: count,
+            icon: ArrowRight,
+        })),
+        {
+            title: "Exterior",
+            number: exteriorCount,
+            icon: ArrowRight,
+        },
+    ];
+    // export
+    const [showExportModal, setShowExportModal] = useState(false);
 
     return (
         <AppLayout>
@@ -442,131 +455,22 @@ const [showExportModal, setShowExportModal] = useState(false);
                 {/* <StatCard items={items} /> */}
 
 
-                <div className="flex items-center justify-between">
-                    <Button variant={tab === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setTab('all')} className={tab === 'all' ? 'bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]' : ''}>All reservations</Button>
-
-                    <Button onClick={() => setShowExportModal(true)}
-                        className="flex items-center gap-2  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer "
-                        >
-                        <Download /> Export
-                    </Button>
-                </div>
 
                 <div className="mt-6">
-                    <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
-                        <table className="min-w-full table-auto divide-y divide-sidebar-border/70">
-                            <thead className="bg-secondary/50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">Time</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                                    {pagedAll.some(r => r.type !== "cowork") && (
-                                        <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
-                                    )}
-
-
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-sidebar-border/70">
-                                {pagedAll.map((r) => (
-                                    <tr key={r.id} className="hover:bg-accent/30 cursor-pointer" onClick={() => setSelected(r)}>
-                                        <td className="px-4 py-3 text-sm truncate">{r.user_name ?? '—'}</td>
-                                        <td className="px-4 py-3 text-sm whitespace-nowrap">{r.date}</td>
-                                        <td className="px-4 py-3 text-sm whitespace-nowrap">{r.start} - {r.end}</td>
-                                        <td className="px-4 py-3 text-sm capitalize">{(r.type || r.place_type)?.replace('_', ' ') ?? '—'}</td>
-                                        <td className="px-4 py-3 text-sm">
-                                            {r.canceled ? (
-                                                <Badge variant="destructive">Canceled</Badge>
-                                            ) : r.approved ? (
-                                                <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
-                                            ) : (
-                                                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
-                                            )}
-                                        </td>
-                                        <td className="py-3 text-center text-sm" onClick={(e) => e.stopPropagation()}>
-                                            <div className="inline-flex items-center justify-center gap-2">
-                                                {/* PDF Download - Only for non-cowork approved reservations */}
-                                                {r.approved && r.type !== 'cowork' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2 cursor-pointer hover:bg-alpha dark:hover:bg-alpha dark:text-white"
-                                                        onClick={() => {
-                                                            window.open(`/admin/reservations/${r.id}/pdf`, '_blank');
-                                                        }}
-                                                        title="Download PDF"
-                                                    >
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-
-                                                {/* Approve Button - Only for non-cowork pending reservations */}
-                                                {!r.canceled && !r.approved && r.type !== 'cowork' && (
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-8 px-2 cursor-pointer bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            setLoadingAction({ id: r.id, type: 'approve' });
-                                                            router.post(`/admin/reservations/${r.id}/approve`, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
-                                                        }}
-                                                        title="Approve reservation"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-
-                                                {/* Cancel Button - For all non-canceled reservations */}
-                                                {!r.canceled && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="destructive"
-                                                        className="h-8 px-2 cursor-pointer disabled:opacity-50"
-                                                        disabled={loadingAction.id === r.id}
-                                                        onClick={() => {
-                                                            const confirmMsg = r.approved ?
-                                                                'Cancel this approved reservation?' :
-                                                                'Cancel this reservation?';
-                                                            if (!window.confirm(confirmMsg)) return;
-                                                            setLoadingAction({ id: r.id, type: 'cancel' });
-
-                                                            // Use different routes for cowork vs regular reservations
-                                                            const cancelRoute = r.type === 'cowork'
-                                                                ? `/admin/reservations/cowork/${r.id}/cancel`
-                                                                : `/admin/reservations/${r.id}/cancel`;
-
-                                                            router.post(cancelRoute, {}, {
-                                                                onFinish: () => setLoadingAction({ id: null, type: null })
-                                                            });
-                                                        }}
-                                                        title="Cancel reservation"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredReservations.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                            No reservations found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                        <div className="flex gap-5 mt-6 w-full items-center justify-center">
-                            <button disabled={pageAll === 1} onClick={() => setPageAll((p) => Math.max(1, p - 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Previous page">{"<<"}</button>
-                            <span>Page {pageAll} of {totalPagesAll}</span>
-                            <button disabled={pageAll === totalPagesAll} onClick={() => setPageAll((p) => Math.min(totalPagesAll, p + 1))} className="dark:bg-light bg-beta text-light dark:text-dark p-2 rounded-lg cursor-pointer disabled:opacity-50" aria-label="Next page">{"»»"}</button>
-                        </div>
-                    </div>
+                    <ReservationsTable
+                        reservations={pagedAll}
+                        loadingAction={loadingAction}
+                        setLoadingAction={setLoadingAction}
+                        onRowClick={(r) => {
+                            // Show modal for all reservations
+                            setSelected(r);
+                        }}
+                    />
+                    <TablePagination
+                        currentPage={pageAll}
+                        lastPage={totalPagesAll}
+                        onPageChange={(page) => setPageAll(page)}
+                    />
                 </div>
 
                 {/* Combined Details & Info Modal with Tabs */}
@@ -592,214 +496,16 @@ const [showExportModal, setShowExportModal] = useState(false);
             <ExportModal
                 open={showExportModal}
                 onClose={() => setShowExportModal(false)}
-                reservations={allReservations}
+                reservations={filteredReservations}
+                fromDate={fromDate}
+                toDate={toDate}
+                searchTerm={searchTerm}
+                filterType={filterType}
+                filterStatus={filterStatus}
             />
         </AppLayout>
     );
 };
-
-function ReservationModal({ reservation, loadingAction, setLoadingAction }) {
-    return (
-        <div className="space-y-4">
-            <DialogHeader>
-                <DialogTitle className="text-lg">Reservation Details</DialogTitle>
-            </DialogHeader>
-
-            <Tabs defaultValue="details" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    {((reservation.type || reservation.place_type) !== 'cowork') && (
-                        <TabsTrigger value="info">Equipment & Team</TabsTrigger>
-                    )}
-                </TabsList>
-
-                <TabsContent value="details" className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <div className="text-muted-foreground">User</div>
-                            <div className="font-medium">{reservation.user_name ?? '—'}</div>
-                        </div>
-                        <div>
-                            <div className="text-muted-foreground">Type</div>
-                            <div className="font-medium capitalize">{(reservation.type || reservation.place_type)?.replace('_', ' ') ?? '—'}</div>
-                        </div>
-                        {((reservation.type || reservation.place_type) === 'studio') && (
-                            <div>
-                                <div className="text-muted-foreground">Studio Name</div>
-                                <div className="font-medium">{reservation.studio_name || '—'}</div>
-                            </div>
-                        )}
-                        {reservation.table && (
-                            <div>
-                                <div className="text-muted-foreground">Table</div>
-                                <div className="font-medium">Table {reservation.table}</div>
-                            </div>
-                        )}
-                        <div>
-                            <div className="text-muted-foreground">Date</div>
-                            <div className="font-medium">{reservation.date}</div>
-                        </div>
-                        <div>
-                            <div className="text-muted-foreground">Time</div>
-                            <div className="font-medium">{reservation.start} - {reservation.end}</div>
-                        </div>
-                        {reservation.type !== 'cowork' && (
-                            <>
-                                <div className="col-span-2">
-                                    <div className="text-muted-foreground">Title</div>
-                                    <div className="font-medium">{reservation.title || '—'}</div>
-                                </div>
-                                <div className="col-span-2">
-                                    <div className="text-muted-foreground">Description</div>
-                                    <div className="font-medium whitespace-pre-wrap break-words">{reservation.description || '—'}</div>
-                                </div>
-                            </>
-                        )}
-                        <div>
-                            <div className="text-muted-foreground">Approved</div>
-                            <div><StatusBadge yes={!!reservation.approved} trueText="Approved" falseText="Pending" /></div>
-                        </div>
-                        <div>
-                            <div className="text-muted-foreground">Status</div>
-                            <div>{reservation.canceled ? <Badge variant="destructive">Canceled</Badge> : reservation.passed ? <Badge>Passed</Badge> : <Badge className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)]">Active</Badge>}</div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                        {reservation.approved && reservation.type !== 'cowork' && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-3 cursor-pointer bg-blue-500 text-white hover:bg-blue-600"
-                                onClick={() => {
-                                    window.open(`/admin/reservations/${reservation.id}/pdf`, '_blank');
-                                }}
-                            >
-                                <Download className="h-4 w-4 mr-1" /> Download PDF
-                            </Button>
-                        )}
-                        {!reservation.approved && !reservation.canceled && (
-                            <Button
-                                size="sm"
-                                className="h-8 px-3 cursor-pointer bg-green-500 text-white hover:bg-green-600"
-                                disabled={loadingAction.id === reservation.id}
-                                onClick={() => {
-                                    setLoadingAction({ id: reservation.id, type: 'approve' });
-                                    router.post(`/admin/reservations/${reservation.id}/approve`, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
-                                }}
-                            >
-                                <Check className="h-4 w-4 mr-1" /> Approve
-                            </Button>
-                        )}
-                        {!reservation.canceled && (
-                            <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-8 px-3 cursor-pointer"
-                                disabled={loadingAction.id === reservation.id}
-                                onClick={() => {
-                                    const confirmMsg = reservation.approved ?
-                                        'Cancel this approved reservation?' :
-                                        'Cancel this reservation?';
-                                    if (!window.confirm(confirmMsg)) return;
-                                    setLoadingAction({ id: reservation.id, type: 'cancel' });
-
-                                    // Use different routes for cowork vs regular reservations
-                                    const cancelRoute = reservation.type === 'cowork'
-                                        ? `/admin/reservations/cowork/${reservation.id}/cancel`
-                                        : `/admin/reservations/${reservation.id}/cancel`;
-
-                                    router.post(cancelRoute, {}, {
-                                        onFinish: () => setLoadingAction({ id: null, type: null })
-                                    });
-                                }}
-                            >
-                                <X className="h-4 w-4 mr-1" /> Cancel
-                            </Button>
-                        )}
-                    </div>
-                </TabsContent>
-
-                {((reservation.type || reservation.place_type) !== 'cowork') && (
-                    <TabsContent value="info" className="space-y-4">
-                        <InfoModalContent reservationId={reservation.id} initial={reservation} />
-                    </TabsContent>
-                )}
-            </Tabs>
-        </div>
-    );
-}
-
-function InfoModalContent({ reservationId, initial }) {
-    const [data, setData] = React.useState({ loading: true, team_name: initial.team_name, team_members: initial.team_members, equipments: initial.equipments });
-
-    React.useEffect(() => {
-        let aborted = false;
-        async function load() {
-            try {
-                const res = await fetch(`/admin/reservations/${reservationId}/info`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
-                const body = await res.json();
-                if (!aborted) {
-                    setData({ loading: false, team_name: body.team_name ?? null, team_members: Array.isArray(body.team_members) ? body.team_members : [], equipments: Array.isArray(body.equipments) ? body.equipments : [] });
-                }
-            } catch (e) {
-                if (!aborted) setData((d) => ({ ...d, loading: false }));
-            }
-        }
-        load();
-        return () => { aborted = true; };
-    }, [reservationId]);
-
-    if (data.loading) {
-        return <div className="text-sm text-muted-foreground">Loading…</div>;
-    }
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <div className="text-muted-foreground mb-2">Equipments</div>
-                {data.equipments.length ? (
-                    <div className="grid grid-cols-1 gap-3">
-                        {data.equipments.map((e, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                                {e?.image ? (
-                                    <img src={e.image} alt={e.reference || e.mark || 'equipment'} className="h-10 w-10 rounded object-cover" />
-                                ) : (
-                                    <div className="h-10 w-10 rounded bg-muted" />)}
-                                <div className="text-sm">
-                                    <div className="font-medium break-words">{e?.reference || '—'}</div>
-                                    <div className="text-muted-foreground break-words">{e?.mark || '—'}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-sm text-muted-foreground">No equipments.</div>
-                )}
-            </div>
-            <div>
-                <div className="text-muted-foreground mb-2">Team {data.team_name ? `— ${data.team_name}` : ''}</div>
-                {data.team_members.length ? (
-                    <div className="grid grid-cols-1 gap-3">
-                        {data.team_members.map((m, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                                {m?.image ? (
-                                    <img src={m.image} alt={m.name || 'member'} className="h-9 w-9 rounded-full object-cover" />
-                                ) : (
-                                    <div className="h-9 w-9 rounded-full bg-muted" />)}
-                                <div className="text-sm font-medium break-words">{m?.name || '—'}</div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-sm text-muted-foreground">No team members.</div>
-                )}
-            </div>
-        </div>
-    );
-}
 
 export default ReservationsIndex;
 
