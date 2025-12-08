@@ -822,23 +822,35 @@ class UsersController extends Controller
             // Send to all users (including those with and without training)
             $users = User::whereNotNull('email')->get();
         } else {
-            // Get users from selected trainings
-            if (isset($validated['training_ids']) && count($validated['training_ids']) > 0) {
-                $trainingUsers = User::whereIn('formation_id', $validated['training_ids'])
+            $hasTrainingFilter = isset($validated['training_ids']) && count($validated['training_ids']) > 0;
+            $hasRoleFilter = isset($validated['role_ids']) && count($validated['role_ids']) > 0;
+
+            // Start with training filter if provided
+            if ($hasTrainingFilter) {
+                $users = User::whereIn('formation_id', $validated['training_ids'])
                     ->whereNotNull('email')
                     ->get();
-                $users = $users->merge($trainingUsers);
             }
 
-            // Get users from selected roles
-            if (isset($validated['role_ids']) && count($validated['role_ids']) > 0) {
+            // Apply role filter: if both filters exist, use intersection (AND logic)
+            // If only roles are selected, use role users
+            if ($hasRoleFilter) {
                 $roleUsers = User::whereNotNull('email')->get()->filter(function ($user) use ($validated) {
                     $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
                     return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
                         collect($validated['role_ids'])->map(fn($r) => strtolower($r))
                     )->isNotEmpty();
                 });
-                $users = $users->merge($roleUsers);
+
+                // If we have training filter, intersect; otherwise use role users
+                if ($hasTrainingFilter && $users->isNotEmpty()) {
+                    $roleUserIds = $roleUsers->pluck('id')->toArray();
+                    $users = $users->filter(function ($user) use ($roleUserIds) {
+                        return in_array($user->id, $roleUserIds);
+                    });
+                } else {
+                    $users = $roleUsers;
+                }
             }
         }
 

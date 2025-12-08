@@ -222,113 +222,94 @@ export default function SendEmailDialog({ open, setOpen, trainings, filteredUser
                     <Input
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
-                        placeholder="Search trainings..."
+                        placeholder="Search for individual users..."
                         className={`${inputClass} text-base  px-4`}
                     />
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Training Selection */}
-                        <div className="space-y-4 p-5 border rounded-xl bg-muted/30">
-                            <Label className="text-base font-semibold flex items-center gap-2">
-                                <span>Select Training(s)</span>
-                            </Label>
+                    {/* Training and Role Selection - Hidden when searching for users */}
+                    {!userSearchQuery.trim() && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Training Selection */}
+                            <div className="space-y-4 p-5 border rounded-xl bg-muted/30">
+                                <Label className="text-base font-semibold flex items-center gap-2">
+                                    <span>Select Training(s)</span>
+                                </Label>
 
-                            {/* Select All */}
-                            <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-alpha/10 transition-colors bg-background cursor-pointer">
-                                <Checkbox
-                                    checked={selectAllTrainings}
-                                    onCheckedChange={() => handleTrainingToggle("all")}
-                                />
-                                <label className="text-sm cursor-pointer flex-1 font-medium">
-                                    All Trainings ({filteredUsers.length} users)
-                                </label>
+                                {/* Select All */}
+                                <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-alpha/10 transition-colors bg-background cursor-pointer">
+                                    <Checkbox
+                                        checked={selectAllTrainings}
+                                        onCheckedChange={() => handleTrainingToggle("all")}
+                                    />
+                                    <label className="text-sm cursor-pointer flex-1 font-medium">
+                                        All Trainings ({filteredUsers.length} users)
+                                    </label>
+                                </div>
+
+                                {/* Training List */}
+                                <div className="space-y-2 border rounded-lg p-3 bg-background max-h-70 overflow-y-auto">
+                                    {/* Trainings */}
+                                    {trainings
+                                        .filter((t) => {
+                                            if (!userSearchQuery.trim()) return true;
+                                            const q = userSearchQuery.toLowerCase();
+                                            return (
+                                                t.name.toLowerCase().includes(q) ||
+                                                (t.coach?.name || "").toLowerCase().includes(q)
+                                            );
+                                        })
+                                        .map((t) => {
+                                            const count = filteredUsers.filter(
+                                                (u) => u.formation_id === t.id
+                                            ).length;
+
+                                            const isSelected = selectedTrainingIds.includes(t.id);
+
+                                            return (
+                                                <div
+                                                    key={t.id}
+                                                    className="flex items-center gap-3 p-2.5 h-[5vh] overflow-y-hidden rounded-md hover:bg-alpha/10 transition-colors cursor-pointer"
+                                                    onClick={() => handleTrainingToggle(t.id)}
+                                                >
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => handleTrainingToggle(t.id)}
+                                                    />
+                                                    <label className="flex flex-col cursor-pointer">
+                                                        <span className="font-medium text-sm line-clamp-1">
+                                                            {t.name} <span className="text-muted-foreground">({count})</span>
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground mt-0.5">
+                                                            Coach: {t.coach?.name || "—"}
+                                                        </span>
+                                                    </label>
+                                                </div>
+                                            );
+                                        })}
+
+                                </div>
                             </div>
 
-                            {/* Training List */}
-                            <div className="space-y-2 border rounded-lg p-3 bg-background max-h-70 overflow-y-auto">
-                                {/* Trainings */}
-                                {trainings
-                                    .filter((t) => {
-                                        if (!userSearchQuery.trim()) return true;
-                                        const q = userSearchQuery.toLowerCase();
-                                        return (
-                                            t.name.toLowerCase().includes(q) ||
-                                            (t.coach?.name || "").toLowerCase().includes(q)
-                                        );
-                                    })
-                                    .map((t) => {
-                                        const count = filteredUsers.filter(
-                                            (u) => u.formation_id === t.id
-                                        ).length;
+                            {/* Role Selection */}
+                            <div className="space-y-4 p-5 border rounded-xl bg-muted/30">
+                                <Label className="text-base font-semibold flex items-center gap-2">
+                                    <span>Select Role(s)</span>
+                                </Label>
 
-                                        const isSelected = selectedTrainingIds.includes(t.id);
+                                {/* Select All Roles */}
+                                <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-alpha/10 transition-colors bg-background cursor-pointer">
+                                    <Checkbox
+                                        checked={selectAllRoles}
+                                        onCheckedChange={() => handleRoleToggle("all")}
+                                    />
+                                    <label className="text-sm cursor-pointer flex-1 font-medium">
+                                        All Roles ({filteredUsers.length} users)
+                                    </label>
+                                </div>
 
-                                        return (
-                                            <div
-                                                key={t.id}
-                                                className="flex items-center gap-3 p-2.5 h-[5vh] overflow-y-hidden rounded-md hover:bg-alpha/10 transition-colors cursor-pointer"
-                                                onClick={() => handleTrainingToggle(t.id)}
-                                            >
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onCheckedChange={() => handleTrainingToggle(t.id)}
-                                                />
-                                                <label className="flex flex-col cursor-pointer">
-                                                    <span className="font-medium text-sm line-clamp-1">
-                                                        {t.name} <span className="text-muted-foreground">({count})</span>
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground mt-0.5">
-                                                        Coach: {t.coach?.name || "—"}
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        );
-                                    })}
-
-                                {/* No results */}
-                                {userSearchQuery.trim() &&
-                                    trainings.filter((t) => {
-                                        const q = userSearchQuery.toLowerCase();
-                                        return (
-                                            t.name.toLowerCase().includes(q) ||
-                                            (t.coach?.name || "")
-                                                .toLowerCase()
-                                                .includes(q)
-                                        );
-                                    }).length === 0 && (
-                                        <p className="text-center text-xs text-muted-foreground py-4">
-                                            No trainings found.
-                                        </p>
-                                    )}
-                            </div>
-                        </div>
-
-                        {/* Role Selection */}
-                        <div className="space-y-4 p-5 border rounded-xl bg-muted/30">
-                            <Label className="text-base font-semibold flex items-center gap-2">
-                                <span>Select Role(s)</span>
-                            </Label>
-
-                            {/* Select All Roles */}
-                            <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-alpha/10 transition-colors bg-background cursor-pointer">
-                                <Checkbox
-                                    checked={selectAllRoles}
-                                    onCheckedChange={() => handleRoleToggle("all")}
-                                />
-                                <label className="text-sm cursor-pointer flex-1 font-medium">
-                                    All Roles ({filteredUsers.length} users)
-                                </label>
-                            </div>
-
-                            {/* Role List */}
-                            <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-3 bg-background">
-                                {roles
-                                    .filter((role) => {
-                                        if (!userSearchQuery.trim()) return true;
-                                        const q = userSearchQuery.toLowerCase();
-                                        return role.toLowerCase().includes(q);
-                                    })
-                                    .map((role) => {
+                                {/* Role List */}
+                                <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-3 bg-background">
+                                    {roles.map((role) => {
                                         const count = filteredUsers.filter((u) => {
                                             const userRoles = Array.isArray(u.role) ? u.role : (u.role ? [u.role] : []);
                                             return userRoles.some(r => r?.toLowerCase() === role.toLowerCase());
@@ -354,52 +335,79 @@ export default function SendEmailDialog({ open, setOpen, trainings, filteredUser
                                             </div>
                                         );
                                     })}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Individual User Selection */}
+                    {/* Individual User Selection - Only shown when searching */}
                     {userSearchQuery.trim() && (
                         <div className="space-y-4 p-5 border rounded-xl bg-muted/30">
-                            <Label className="text-base font-semibold">Individual Users</Label>
+                            <Label className="text-base font-semibold">Select Individual Users</Label>
                             <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-3 bg-background">
-                                {searchedUsers.map((user) => {
-                                    const isSelected = selectedUserIds.includes(user.id);
+                                {searchedUsers && searchedUsers.length > 0 ? (
+                                    searchedUsers.map((user) => {
+                                        const isSelected = selectedUserIds.includes(user.id);
 
-                                    return (
-                                        <div
-                                            key={user.id}
-                                            className="flex items-center gap-3 p-2.5 rounded-md hover:bg-alpha/10 transition-colors cursor-pointer"
-                                            onClick={() => {
-                                                if (isSelected) {
-                                                    setSelectedUserIds(selectedUserIds.filter((id) => id !== user.id));
+                                        const handleToggle = () => {
+                                            setSelectedUserIds((prev) => {
+                                                if (prev.includes(user.id)) {
+                                                    return prev.filter((id) => id !== user.id);
                                                 } else {
-                                                    setSelectedUserIds([...selectedUserIds, user.id]);
+                                                    return [...prev, user.id];
                                                 }
-                                            }}
-                                        >
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onCheckedChange={(checked) => {
-                                                    if (checked) {
-                                                        setSelectedUserIds([...selectedUserIds, user.id]);
-                                                    } else {
-                                                        setSelectedUserIds(selectedUserIds.filter((id) => id !== user.id));
+                                            });
+                                        };
+
+                                        return (
+                                            <div
+                                                key={user.id}
+                                                className="flex items-center gap-3 p-2.5 rounded-md hover:bg-alpha/10 transition-colors cursor-pointer"
+                                                onClick={(e) => {
+                                                    // Prevent double-triggering if clicking directly on checkbox
+                                                    if (e.target.type === 'checkbox' || e.target.closest('[role="checkbox"]')) {
+                                                        return;
                                                     }
+                                                    handleToggle();
                                                 }}
-                                            />
-                                            <label className="flex flex-col cursor-pointer flex-1">
-                                                <span className="font-medium text-sm">
-                                                    {user.name || "No name"}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground mt-0.5">
-                                                    {user.email}
-                                                </span>
-                                            </label>
-                                        </div>
-                                    );
-                                })}
+                                            >
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedUserIds((prev) => {
+                                                            if (checked) {
+                                                                return prev.includes(user.id) ? prev : [...prev, user.id];
+                                                            } else {
+                                                                return prev.filter((id) => id !== user.id);
+                                                            }
+                                                        });
+                                                    }}
+                                                />
+
+                                                <label 
+                                                    className="flex flex-col cursor-pointer flex-1"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggle();
+                                                    }}
+                                                >
+                                                    <span className="font-medium text-sm">
+                                                        {user.name || "No name"}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                                        {user.email}
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                        No user Found
+                                    </span>
+                                )}
                             </div>
+
                             {selectedUserIds.length > 0 && (
                                 <Button
                                     type="button"
