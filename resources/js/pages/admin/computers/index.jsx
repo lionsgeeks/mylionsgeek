@@ -7,11 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash, Monitor, PlugZap, UserCheck, Laptop } from 'lucide-react';
+import { Pencil, Plus, PlusIcon, PlusSquare, PlusSquareIcon, Route, Search, Trash, Monitor, PlugZap, UserCheck, Laptop, Download } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Search engines-amico.png"
 import Rolegard from '../../../components/rolegard';
 import StatCard from '@/components/StatCard';
+import ExportComputersDialog from './components/ExportComputersDialog';
 
 function findUserById(users, id) {
     return users.find(u => u.id === id) || null;
@@ -57,6 +58,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [userHistoryError, setUserHistoryError] = useState('');
     const [selectedUserForHistory, setSelectedUserForHistory] = useState(null);
     const [userAssignmentHistory, setUserAssignmentHistory] = useState([]);
+    const [isExportOpen, setIsExportOpen] = useState(false);
 
     const totalComputers = computers.length;
     const assignedCount = computers.filter((c) => !!c.assignedUserId).length;
@@ -469,9 +471,22 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Computers</h1>
                                 <p className="text-sm text-muted-foreground mt-2">{computers.length} total</p>
                             </div>
-                            <Button className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer" onClick={openAddModal}>
-                                Add Computer
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Rolegard authorized={['admin','moderateur']}>
+
+                                    <Button
+                                        variant="outline"
+                                        className=" bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                        onClick={() => setIsExportOpen(true)}
+                                    >
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Export
+                                    </Button>
+                                <Button className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer" onClick={openAddModal}>
+                                    Add Computer
+                                </Button>
+                                </Rolegard>
+                            </div>
                         </div>
 
                     </Rolegard>
@@ -945,6 +960,9 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             </Dialog>
 
             {/* User Overview Modal removed: navigating to full profile instead */}
+
+            {/* Export Dialog */}
+            <ExportComputersDialog open={isExportOpen} setOpen={setIsExportOpen} computers={computers} />
         </AppLayout>
     );
 }

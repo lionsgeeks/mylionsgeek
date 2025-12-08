@@ -36,6 +36,9 @@ Route::middleware(['auth','role:admin,super_admin,moderateur,coach'])->group(fun
         ]);
     })->name('admin.computers');
 
+    // Export route must come before {id} route to avoid route conflicts
+    Route::get('/admin/computers/export', [ComputersController::class, 'export'])->name('admin.computers.export');
+
     Route::get('/admin/computers/{id}', function (string $id) {
         $computer = Computer::with('user')->findOrFail($id);
         return Inertia::render('admin/computers/[id]', [
