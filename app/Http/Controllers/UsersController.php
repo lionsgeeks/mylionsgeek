@@ -795,6 +795,8 @@ class UsersController extends Controller
         $validated = $request->validate([
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',
+            'role_ids' => 'nullable|array',
+            'role_ids.*' => 'string',
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'integer|exists:users,id',
             'subject' => 'required|string|max:255',
@@ -813,8 +815,8 @@ class UsersController extends Controller
 
         $users = collect();
 
-        // Check if "All Users" is selected (training_ids is null)
-        $isAllUsers = is_null($validated['training_ids']);
+        // Check if "All Users" is selected (training_ids is null and role_ids is null)
+        $isAllUsers = is_null($validated['training_ids']) && is_null($validated['role_ids']);
 
         if ($isAllUsers) {
             // Send to all users (including those with and without training)
@@ -826,6 +828,17 @@ class UsersController extends Controller
                     ->whereNotNull('email')
                     ->get();
                 $users = $users->merge($trainingUsers);
+            }
+
+            // Get users from selected roles
+            if (isset($validated['role_ids']) && count($validated['role_ids']) > 0) {
+                $roleUsers = User::whereNotNull('email')->get()->filter(function ($user) use ($validated) {
+                    $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
+                    return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
+                        collect($validated['role_ids'])->map(fn($r) => strtolower($r))
+                    )->isNotEmpty();
+                });
+                $users = $users->merge($roleUsers);
             }
         }
 

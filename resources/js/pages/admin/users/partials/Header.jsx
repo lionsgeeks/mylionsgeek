@@ -102,6 +102,7 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                         open={isEmailOpen}
                         setOpen={setIsEmailOpen}
                         trainings={trainings}
+                        roles={roles}
                         filteredUsers={filteredUsers}
                     />
 
