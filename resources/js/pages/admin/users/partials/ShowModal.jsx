@@ -192,12 +192,12 @@ const [processingId, setProcessingId] = useState(null);
                                             disabled={processing}
                                             onClick={() => setSusupendAccount(true)}
                                             variant={user.account_state ? 'default' : 'danger'}
-                                            className="w-full"
+                                            className="w-full hover:text-black"
                                             size="sm"
                                         >
                                             {user.account_state ? 'Activate Account' : 'Suspend Account'}
                                         </Button>
-                                        <Button className='hover:bg-alpha/50 cursor-pointer' onClick={() => router.get(`/admin/users/${user.id}`)}>View Full Profile</Button>
+                                        <Button className=' bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer' onClick={() => router.get(`/admin/users/${user.id}`)}>View Full Profile</Button>
                                     </div>
                                 </div>
                             </div>
@@ -310,12 +310,12 @@ const [processingId, setProcessingId] = useState(null);
                 {activeTab === 'projects' && (
                     <div className="p-6 space-y-4">
                         <h3 className="text-lg font-semibold">Projects</h3>
-                        
+
                         {projects && projects.length > 0 ? (
                             <div className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
                                 {projects.map((project) => (
-                                    <div 
-                                        key={project.id} 
+                                    <div
+                                        key={project.id}
                                         className="p-4 border border-neutral-200 dark:border-neutral-700 rounded-lg flex gap-4 flex-col relative"
                                     >
                                         <div className="absolute right-4">
@@ -383,9 +383,9 @@ const [processingId, setProcessingId] = useState(null);
                                                                 setProcessingId(project.id);
                                                                 router.post(`/admin/projects/${project.id}/approve`, {}, {
                                                                     onSuccess: () => {
-                                                                        setProjects(prev => 
-                                                                            prev.map(p => 
-                                                                                p.id === project.id 
+                                                                        setProjects(prev =>
+                                                                            prev.map(p =>
+                                                                                p.id === project.id
                                                                                     ? { ...p, status: 'approved' }
                                                                                     : p
                                                                             )
@@ -614,7 +614,7 @@ const [processingId, setProcessingId] = useState(null);
                                 <div>
                                     <Button
                                         type="submit"
-                                        className="w-full bg-alpha hover:bg-alpha/90 text-white font-medium py-2.5 rounded-lg transition-all"
+                                        className="w-full  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                                     >
                                         Upload
                                     </Button>
