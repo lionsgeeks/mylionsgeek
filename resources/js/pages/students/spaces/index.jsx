@@ -526,7 +526,7 @@ export default function SpacesPage() {
                 <div>
 
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
-                    <p className="text-sm text-muted-foreground mt-1">Browse available studios and cowork tables, or open a calendar to reserve.</p>
+                    <p className="text-sm text-muted-foreground mt-1 hidden md:block">Browse available studios and cowork tables, or open a calendar to reserve.</p>
                 </div>
                     <Button
                         className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
@@ -536,7 +536,7 @@ export default function SpacesPage() {
                     </Button>
                 </div>
 
-                <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
+                <div className="inline-flex items-center rounded-xl border border-neutral-200 justify-center w-[94%] mx-3 md:w-fit dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
                     {TABS.map((tab) => (
                         <button
                             key={tab.key}

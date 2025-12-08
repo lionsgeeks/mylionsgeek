@@ -412,7 +412,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                     <TableCell>
                                         {user ? (
                                             <span className="text-sm font-medium">
-                                                <Button className="text-black hover:text-white dark:hover:text-black" onClick={() => {
+                                                <Button className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer" onClick={() => {
                                                     window.location.href = `/admin/computers/${c.id}/contract`;
                                                 }}>
                                                     Download
@@ -469,7 +469,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                 <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">Computers</h1>
                                 <p className="text-sm text-muted-foreground mt-2">{computers.length} total</p>
                             </div>
-                            <Button className="bg-yellow-400 text-black hover:bg-yellow-500" onClick={openAddModal}>
+                            <Button className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer" onClick={openAddModal}>
                                 Add Computer
                             </Button>
                         </div>
@@ -774,7 +774,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                            <Button onClick={updateComputer}>Update Computer</Button>
+                            <Button className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer" onClick={updateComputer}>Update Computer</Button>
                         </div>
                     </div>
                 </DialogContent>

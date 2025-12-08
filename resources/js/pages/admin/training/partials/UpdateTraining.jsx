@@ -143,7 +143,7 @@ export default function UpdateTraining({ training, coaches }) {
           <div className="flex justify-end">
             <Button
               type="submit"
-              className="bg-yellow-400 hover:bg-yellow-500 cursor-pointer"
+              className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
               disabled={processing}
             >
               {processing ? 'Updating...' : 'Update'}

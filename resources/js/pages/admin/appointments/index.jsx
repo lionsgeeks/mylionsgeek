@@ -145,7 +145,8 @@ const AppointmentsIndex = ({ appointments = [], isPerson = false }) => {
                             </div>
                         ) : (
                             <>
-                                <div className="space-y-4">
+                                {/* Desktop view */}
+                                <div className="hidden md:block space-y-4">
                                     {paginatedAppointments.map((apt) => (
                                     <div
                                         key={apt.id}
@@ -216,6 +217,75 @@ const AppointmentsIndex = ({ appointments = [], isPerson = false }) => {
                                         </div>
                                     </div>
                                     ))}
+                                </div>
+
+                                {/* Mobile view */}
+                                <div className="flex flex-col gap-3 md:hidden">
+                                    {paginatedAppointments.map((apt) => {
+                                        const dateTime = apt.day ? `${apt.day}${apt.start && apt.end ? ` • ${apt.start} - ${apt.end}` : ''}` : '—';
+                                        const actionButtons = apt.status === 'pending' && isPerson ? (
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    className="h-8 px-2"
+                                                    onClick={() => handleAction(apt.id, 'approve')}
+                                                    disabled={loadingAction.id === apt.id && loadingAction.type === 'approve'}
+                                                    title="Approve"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    className="h-8 px-2"
+                                                    onClick={() => handleAction(apt.id, 'cancel')}
+                                                    disabled={loadingAction.id === apt.id && loadingAction.type === 'cancel'}
+                                                    title="Cancel"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-8 px-2"
+                                                    onClick={() => handleSuggest(apt)}
+                                                    disabled={loadingAction.id === apt.id && loadingAction.type === 'suggest'}
+                                                    title="Suggest Time"
+                                                >
+                                                    <Clock className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : null;
+
+                                        return (
+                                            <div
+                                                key={apt.id}
+                                                className="rounded-xl border border-sidebar-border/70 bg-light dark:bg-dark p-4 transition hover:shadow-md"
+                                            >
+                                                <div className="flex flex-col gap-3">
+                                                    {/* Name */}
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs uppercase tracking-wide text-muted-foreground">Name</span>
+                                                        <span className="text-sm font-medium text-foreground">{apt.requester_name ?? '—'}</span>
+                                                    </div>
+
+                                                    {/* Date and Time combined */}
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs uppercase tracking-wide text-muted-foreground">Date & Time</span>
+                                                        <span className="text-sm font-medium text-foreground">{dateTime}</span>
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    {actionButtons && (
+                                                        <div className="flex justify-end gap-2 pt-2 border-t border-sidebar-border/50">
+                                                            {actionButtons}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 {totalPages > 1 && (
                                     <div className="mt-6">
