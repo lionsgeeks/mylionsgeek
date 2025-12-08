@@ -15,6 +15,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Services\ExportService;
 use App\Mail\ReservationApprovedMail;
 use App\Mail\ReservationCanceledMail;
 use App\Mail\ReservationCreatedAdminMail;
@@ -1487,201 +1488,194 @@ class ReservationsController extends Controller
             $filterType = $request->query('type');
             $filterStatus = $request->query('status');
 
-            $query = DB::table('reservations as r')
-                ->leftJoin('users as u', 'u.id', '=', 'r.user_id')
-                ->select('r.*', 'u.name as user_name')
-                ->orderByDesc('r.created_at');
+            // Build query for regular reservations using Eloquent
+            $query = Reservation::query()
+                ->leftJoin('users as u', 'u.id', '=', 'reservations.user_id')
+                ->select('reservations.*', 'u.name as user_name')
+                ->orderByDesc('reservations.created_at');
 
             // Apply date filters if provided
             if ($fromDate) {
-                $query->where('r.day', '>=', $fromDate);
+                $query->where('reservations.day', '>=', $fromDate);
             }
             if ($toDate) {
-                $query->where('r.day', '<=', $toDate);
+                $query->where('reservations.day', '<=', $toDate);
             }
 
             // Apply type filter
             if ($filterType) {
                 if ($filterType === 'exterior') {
-                    // Exterior detection logic
                     $query->where(function ($q) {
-                        $q->where('r.type', 'exterior')
-                          ->orWhere('r.type', 'outside');
+                        $q->where('reservations.type', 'exterior')
+                          ->orWhere('reservations.type', 'outside');
                     });
                 } else {
-                    $query->where('r.type', $filterType);
+                    $query->where('reservations.type', $filterType);
                 }
             }
 
             // Apply status filter
             if ($filterStatus) {
                 if ($filterStatus === 'approved') {
-                    $query->where('r.approved', 1)->where('r.canceled', 0);
+                    $query->where('reservations.approved', 1)->where('reservations.canceled', 0);
                 } elseif ($filterStatus === 'canceled') {
-                    $query->where('r.canceled', 1);
+                    $query->where('reservations.canceled', 1);
                 } elseif ($filterStatus === 'pending') {
-                    $query->where('r.approved', 0)->where('r.canceled', 0);
+                    $query->where('reservations.approved', 0)->where('reservations.canceled', 0);
                 }
             }
 
             // Apply search filter
             if ($searchTerm) {
                 $searchTermLower = strtolower($searchTerm);
-                $query->where(function ($q) use ($searchTermLower) {
+                $query->where(function ($q) use ($searchTermLower, $searchTerm) {
                     $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
-                      ->orWhereRaw('LOWER(r.title) LIKE ?', ['%' . $searchTermLower . '%'])
-                      ->orWhereRaw('LOWER(r.description) LIKE ?', ['%' . $searchTermLower . '%'])
-                      ->orWhereRaw('LOWER(r.type) LIKE ?', ['%' . $searchTermLower . '%'])
-                      ->orWhereRaw('r.day LIKE ?', ['%' . $searchTerm . '%']);
+                      ->orWhereRaw('LOWER(reservations.title) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(reservations.description) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('LOWER(reservations.type) LIKE ?', ['%' . $searchTermLower . '%'])
+                      ->orWhereRaw('reservations.day LIKE ?', ['%' . $searchTerm . '%']);
                 });
             }
 
+            // Get place data if needed
             $needsPlaces = in_array('place_name', $requestedFields) || in_array('place_type', $requestedFields);
             $placeByReservation = [];
-
             if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
                 DB::table('reservation_places as rp')
-                ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
-                ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
-                ->get()
-                ->each(function ($row) use (&$placeByReservation) {
-                    $placeByReservation[$row->reservation_id] = [
-                        'place_name' => $row->place_name,
-                        'place_type' => $row->place_type,
-                    ];
-                });
-        }
+                    ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
+                    ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
+                    ->get()
+                    ->each(function ($row) use (&$placeByReservation) {
+                        $placeByReservation[$row->reservation_id] = [
+                            'place_name' => $row->place_name,
+                            'place_type' => $row->place_type,
+                        ];
+                    });
+            }
 
-            // Also get cowork reservations (always include them, but apply filters if provided)
+            // Build cowork query if needed
             $coworkQuery = null;
             if (Schema::hasTable('reservation_coworks')) {
-                $coworkQuery = DB::table('reservation_coworks as rc')
-                ->leftJoin('users as u', 'u.id', '=', 'rc.user_id')
-                ->select('rc.*', 'u.name as user_name')
-                ->orderByDesc('rc.created_at');
+                if (!$filterType || $filterType === 'cowork') {
+                    $coworkQuery = ReservationCowork::query()
+                        ->leftJoin('users as u', 'u.id', '=', 'reservation_coworks.user_id')
+                        ->select('reservation_coworks.*', 'u.name as user_name')
+                        ->orderByDesc('reservation_coworks.created_at');
 
-                // Apply date filters to cowork reservations if provided
-                if ($fromDate) {
-                    $coworkQuery->where('rc.day', '>=', $fromDate);
-                }
-                if ($toDate) {
-                    $coworkQuery->where('rc.day', '<=', $toDate);
-                }
+                    // Apply date filters
+                    if ($fromDate) {
+                        $coworkQuery->where('reservation_coworks.day', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $coworkQuery->where('reservation_coworks.day', '<=', $toDate);
+                    }
 
-                // Apply type filter (only include cowork if type is 'cowork' or empty)
-                if ($filterType && $filterType !== 'cowork') {
-                    // If filtering by a specific type that's not cowork, exclude cowork reservations
-                    $coworkQuery = null;
-                } elseif ($filterType === 'cowork' || !$filterType) {
-                    // Apply status filter to cowork reservations
+                    // Apply status filter
                     if ($filterStatus) {
                         if ($filterStatus === 'approved') {
-                            $coworkQuery->where('rc.approved', 1)->where('rc.canceled', 0);
+                            $coworkQuery->where('reservation_coworks.approved', 1)->where('reservation_coworks.canceled', 0);
                         } elseif ($filterStatus === 'canceled') {
-                            $coworkQuery->where('rc.canceled', 1);
+                            $coworkQuery->where('reservation_coworks.canceled', 1);
                         } elseif ($filterStatus === 'pending') {
-                            $coworkQuery->where('rc.approved', 0)->where('rc.canceled', 0);
+                            $coworkQuery->where('reservation_coworks.approved', 0)->where('reservation_coworks.canceled', 0);
                         }
                     }
 
-                    // Apply search filter to cowork reservations
-                    if ($searchTerm && $coworkQuery) {
+                    // Apply search filter
+                    if ($searchTerm) {
                         $searchTermLower = strtolower($searchTerm);
                         $coworkQuery->where(function ($q) use ($searchTermLower, $searchTerm) {
                             $q->whereRaw('LOWER(u.name) LIKE ?', ['%' . $searchTermLower . '%'])
-                              ->orWhereRaw('rc.day LIKE ?', ['%' . $searchTerm . '%'])
-                              ->orWhere('rc.table', 'LIKE', '%' . $searchTerm . '%');
+                              ->orWhereRaw('reservation_coworks.day LIKE ?', ['%' . $searchTerm . '%'])
+                              ->orWhere('reservation_coworks.table', 'LIKE', '%' . $searchTerm . '%');
                         });
                     }
                 }
             }
 
-            $filename = 'reservations_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+            // Field map for validation
+            $fieldMap = [
+                'user_name' => 'user_name',
+                'date' => 'date',
+                'day' => 'day',
+                'start' => 'start',
+                'end' => 'end',
+                'type' => 'type',
+                'title' => 'title',
+                'description' => 'description',
+                'approved' => 'approved',
+                'canceled' => 'canceled',
+                'passed' => 'passed',
+                'start_signed' => 'start_signed',
+                'end_signed' => 'end_signed',
+                'created_at' => 'created_at',
+                'updated_at' => 'updated_at',
+                'place_name' => 'place_name',
+                'place_type' => 'place_type',
+                'table' => 'table',
+            ];
 
-            $response = new StreamedResponse(function () use ($query, $coworkQuery, $requestedFields, $placeByReservation) {
-                $handle = fopen('php://output', 'w');
+            // Collect all reservations
+            $allReservations = collect();
+            
+            // Get regular reservations
+            $regularReservations = $query->get();
+            $allReservations = $allReservations->merge($regularReservations);
+            
+            // Get cowork reservations if they exist
+            if ($coworkQuery) {
+                $coworkReservations = $coworkQuery->get();
+                $allReservations = $allReservations->merge($coworkReservations);
+            }
 
-                // Add BOM for Excel UTF-8 compatibility
-                fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-                // Use semicolon delimiter for Excel
-                fputcsv($handle, $requestedFields, ';');
-
-                // Process regular reservations
-                $query->chunk(500, function ($reservations) use ($handle, $requestedFields, $placeByReservation) {
-                    foreach ($reservations as $reservation) {
-                        $row = [];
-
-                        foreach ($requestedFields as $field) {
-                            $value = null;
-
-                            if ($field === 'place_name' || $field === 'place_type') {
-                                $value = $placeByReservation[$reservation->id][$field] ?? '';
-                            } elseif ($field === 'approved' || $field === 'canceled' || $field === 'passed' || $field === 'start_signed' || $field === 'end_signed') {
-                                $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
-                            } elseif ($field === 'created_at' || $field === 'updated_at') {
-                                $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
-                            } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
-                                $value = $reservation->day;
-                            } else {
-                                $value = $reservation->$field ?? '';
-                            }
-
-                            if (is_string($value)) {
-                                $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
-                            }
-
-                            $row[] = $value;
-                        }
-
-                        // Use semicolon delimiter
-                        fputcsv($handle, $row, ';');
+            // Transformers for field values
+            $transformers = [
+                'date' => function($row) {
+                    return $row->date ?? $row->day ?? '';
+                },
+                'approved' => function($row) {
+                    return (isset($row->approved) && $row->approved) ? 'Yes' : 'No';
+                },
+                'canceled' => function($row) {
+                    return (isset($row->canceled) && $row->canceled) ? 'Yes' : 'No';
+                },
+                'passed' => function($row) {
+                    return (isset($row->passed) && $row->passed) ? 'Yes' : 'No';
+                },
+                'start_signed' => function($row) {
+                    return (isset($row->start_signed) && $row->start_signed) ? 'Yes' : 'No';
+                },
+                'end_signed' => function($row) {
+                    return (isset($row->end_signed) && $row->end_signed) ? 'Yes' : 'No';
+                },
+                'created_at' => function($row) {
+                    return isset($row->created_at) ? date('Y-m-d H:i:s', strtotime($row->created_at)) : '';
+                },
+                'updated_at' => function($row) {
+                    return isset($row->updated_at) ? date('Y-m-d H:i:s', strtotime($row->updated_at)) : '';
+                },
+                'place_name' => function($row) use ($placeByReservation) {
+                    return $placeByReservation[$row->id]['place_name'] ?? '';
+                },
+                'place_type' => function($row) use ($placeByReservation) {
+                    return $placeByReservation[$row->id]['place_type'] ?? '';
+                },
+                'type' => function($row) {
+                    // For cowork reservations, ensure type is set
+                    if (isset($row->table) && !isset($row->type)) {
+                        return 'cowork';
                     }
-                });
+                    return $row->type ?? '';
+                },
+            ];
 
-                // Process cowork reservations if they exist
-                if ($coworkQuery) {
-                    $coworkQuery->chunk(500, function ($coworkReservations) use ($handle, $requestedFields) {
-                        foreach ($coworkReservations as $reservation) {
-                            $row = [];
-
-                            foreach ($requestedFields as $field) {
-                                $value = null;
-
-                                if ($field === 'approved' || $field === 'canceled') {
-                                    $value = (isset($reservation->$field) && $reservation->$field) ? 'Yes' : 'No';
-                                } elseif ($field === 'created_at' || $field === 'updated_at') {
-                                    $value = isset($reservation->$field) ? date('Y-m-d H:i:s', strtotime($reservation->$field)) : '';
-                                } elseif ($field === 'date' && empty($reservation->date) && !empty($reservation->day)) {
-                                    $value = $reservation->day;
-                                } elseif ($field === 'type') {
-                                    $value = 'cowork';
-                                } elseif ($field === 'table') {
-                                    $value = $reservation->table ?? '';
-                                } else {
-                                    $value = $reservation->$field ?? '';
-                                }
-
-                                if (is_string($value)) {
-                                    $value = str_replace(["\r\n", "\n", "\r"], ' ', $value);
-                                }
-
-                                $row[] = $value;
-                            }
-
-                            // Use semicolon delimiter
-                            fputcsv($handle, $row, ';');
-                        }
-                    });
-                }
-
-                fclose($handle);
-            });
-
-            $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-            $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-
-            return $response;
+            // Use ExportService with collection
+            return ExportService::exportCollection($allReservations, $requestedFields, [
+                'fieldMap' => $fieldMap,
+                'defaultFields' => ['user_name', 'date', 'start', 'end', 'type'],
+                'filename' => 'reservations_export_' . now()->format('Y-m-d_H-i-s'),
+                'transformers' => $transformers,
+            ]);
         } catch (\Exception $e) {
             \Log::error('Export failed: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
