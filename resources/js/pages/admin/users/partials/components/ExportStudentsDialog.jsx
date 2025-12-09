@@ -69,12 +69,12 @@ export default function ExportStudentsDialog({ open, setOpen }) {
                     <Button onClick={triggerExport} className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
                         Export
                     </Button>
-                    <Button
+                    {/* <Button
                         onClick={() => window.open("/admin/users/export", "_blank")}
                         className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
                     >
                         Export All
-                    </Button>
+                    </Button> */}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
