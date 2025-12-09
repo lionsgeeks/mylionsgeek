@@ -21,7 +21,7 @@ import {
 import { useForm, router } from '@inertiajs/react';
 
 export default function CreatTraining({ coaches }) {
-  const [open, setOpen] = useState(false); 
+  const [open, setOpen] = useState(false);
   const { data, setData, post, processing, reset, errors } = useForm({
     name: '',
     category: '',
@@ -39,7 +39,7 @@ export default function CreatTraining({ coaches }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    
+
     post('/admin/training', {
       onSuccess: () => {
         reset();
@@ -55,7 +55,7 @@ export default function CreatTraining({ coaches }) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2 rounded-md bg-[var(--color-alpha)] dark:hover:text-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent  cursor-pointer">
+        <Button className="flex items-center gap-2 rounded-md  px-4 py-2 text-sm font-medium  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
           <PlusCircle size={20} />
           Add Training
         </Button>

@@ -228,7 +228,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
 
                                     {/* Submit */}
                                     <div>
-                                        <Button type="submit" className="w-full">
+                                        <Button type="submit" className="w-full  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
                                             Upload
                                         </Button>
                                     </div>

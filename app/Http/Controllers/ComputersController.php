@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\ExportService;
 
 class ComputersController extends Controller
 {
@@ -192,5 +193,61 @@ class ComputersController extends Controller
         $computer->delete();
         return redirect()->route('admin.computers');
         // ->with('success', 'Computer deleted');
+    }
+
+    public function export(Request $request)
+    {
+        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'reference,mark,cpu,gpu,state,user_name'))));
+
+        $query = Computer::query()
+            ->leftJoin('users as u', 'u.id', '=', 'computers.user_id')
+            ->select('computers.*', 'u.name as user_name')
+            ->orderByDesc('computers.created_at');
+
+
+        if ($request->filled('state')) {
+            $stateFilter = $request->query('state');
+            $query->where('computers.state', $stateFilter);
+        }
+
+
+        if ($request->filled('gpu')) {
+            $query->where('computers.gpu', $request->query('gpu'));
+        }
+
+
+        $fieldMap = [
+            'reference' => 'reference',
+            'mark' => 'mark',
+            'cpu' => 'cpu',
+            'gpu' => 'gpu',
+            'state' => 'state',
+            'user_name' => 'user_name',
+        ];
+
+        return ExportService::export($query, $requestedFields, [
+            'fieldMap' => $fieldMap,
+            'relationships' => ['user'],
+            'filename' => 'computers_export_' . now()->format('Y_m_d_H_i_s'),
+            'headings' => [
+                'cpu' => 'Serial number',
+                'gpu' => 'GPU/CPU'
+            ],
+            'transformers' => [
+                'state' => function($row) {
+                    $state = $row->state ?? 'not_working';
+                    return ucfirst(str_replace('_', ' ', $state));
+                },
+                'user_name' => function($row) {
+                    return $row->user_name ?? 'Unassigned';
+                },
+                'created_at' => function($row) {
+                    return isset($row->created_at) ? date('Y-m-d H:i:s', strtotime($row->created_at)) : '';
+                },
+                'updated_at' => function($row) {
+                    return isset($row->updated_at) ? date('Y-m-d H:i:s', strtotime($row->updated_at)) : '';
+                },
+            ],
+        ]);
     }
 }

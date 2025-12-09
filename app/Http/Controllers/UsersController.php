@@ -18,7 +18,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
@@ -33,6 +32,7 @@ use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\UserProject;
 use Symfony\Component\HttpFoundation\Response;
+use App\Services\ExportService;
 
 class UsersController extends Controller
 {
@@ -51,10 +51,9 @@ class UsersController extends Controller
     }
 
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request)
     {
         $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'name,email,cin'))));
-
 
         $fieldMap = [
             'id' => 'id',
@@ -69,17 +68,7 @@ class UsersController extends Controller
             'access_cowork' => 'access_cowork',
         ];
 
-        $fields = [];
-        foreach ($requestedFields as $f) {
-            if (isset($fieldMap[$f])) {
-                $fields[] = $f;
-            }
-        }
-        if (empty($fields)) {
-            $fields = ['name', 'email', 'cin'];
-        }
-
-        $query = User::query()->with(['formation']);
+        $query = User::query();
         if ($request->filled('role')) {
             $query->where('role', $request->query('role'));
         }
@@ -90,41 +79,23 @@ class UsersController extends Controller
             $query->where('formation_id', $request->query('formation_id'));
         }
 
-        $filename = 'students_export_' . now()->format('Y_m_d_H_i_s') . '.csv';
-
-        $response = new StreamedResponse(function () use ($query, $fields) {
-            $handle = fopen('php://output', 'w');
-
-
-            fputcsv($handle, $fields);
-
-            $query->chunk(500, function ($users) use ($handle, $fields) {
-                foreach ($users as $user) {
-                    $row = [];
-                    foreach ($fields as $field) {
-                        switch ($field) {
-                            case 'formation':
-                                $row[] = optional($user->formation)->name;
-                                break;
-                            case 'access_studio':
-                            case 'access_cowork':
-                                $row[] = (string) $user->{$field} === '1' || $user->{$field} === 1 ? 'Yes' : 'No';
-                                break;
-                            default:
-                                $row[] = $user->{$field};
-                        }
-                    }
-                    fputcsv($handle, $row);
-                }
-            });
-
-            fclose($handle);
-        });
-
-        $response->headers->set('Content-Type', 'text/csv');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
-
-        return $response;
+        return ExportService::export($query, $requestedFields, [
+            'fieldMap' => $fieldMap,
+            'defaultFields' => ['name', 'email', 'cin'],
+            'relationships' => ['formation'],
+            'filename' => 'students_export_' . now()->format('Y_m_d_H_i_s'),
+            'transformers' => [
+                'formation' => function($user) {
+                    return optional($user->formation)->name ?? '';
+                },
+                'access_studio' => function($user) {
+                    return (string) $user->access_studio === '1' || $user->access_studio === 1 ? 'Yes' : 'No';
+                },
+                'access_cowork' => function($user) {
+                    return (string) $user->access_cowork === '1' || $user->access_cowork === 1 ? 'Yes' : 'No';
+                },
+            ],
+        ]);
     }
     //! edit sunction
     public function show(Request $request, User $user)
@@ -824,6 +795,8 @@ class UsersController extends Controller
         $validated = $request->validate([
             'training_ids' => 'nullable|array',
             'training_ids.*' => 'integer|exists:formations,id',
+            'role_ids' => 'nullable|array',
+            'role_ids.*' => 'string',
             'user_ids' => 'nullable|array',
             'user_ids.*' => 'integer|exists:users,id',
             'subject' => 'required|string|max:255',
@@ -842,19 +815,42 @@ class UsersController extends Controller
 
         $users = collect();
 
-        // Check if "All Users" is selected (training_ids is null)
-        $isAllUsers = is_null($validated['training_ids']);
+        // Check if "All Users" is selected (training_ids is null and role_ids is null)
+        $isAllUsers = is_null($validated['training_ids']) && is_null($validated['role_ids']);
 
         if ($isAllUsers) {
             // Send to all users (including those with and without training)
             $users = User::whereNotNull('email')->get();
         } else {
-            // Get users from selected trainings
-            if (isset($validated['training_ids']) && count($validated['training_ids']) > 0) {
-                $trainingUsers = User::whereIn('formation_id', $validated['training_ids'])
+            $hasTrainingFilter = isset($validated['training_ids']) && count($validated['training_ids']) > 0;
+            $hasRoleFilter = isset($validated['role_ids']) && count($validated['role_ids']) > 0;
+
+            // Start with training filter if provided
+            if ($hasTrainingFilter) {
+                $users = User::whereIn('formation_id', $validated['training_ids'])
                     ->whereNotNull('email')
                     ->get();
-                $users = $users->merge($trainingUsers);
+            }
+
+            // Apply role filter: if both filters exist, use intersection (AND logic)
+            // If only roles are selected, use role users
+            if ($hasRoleFilter) {
+                $roleUsers = User::whereNotNull('email')->get()->filter(function ($user) use ($validated) {
+                    $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
+                    return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
+                        collect($validated['role_ids'])->map(fn($r) => strtolower($r))
+                    )->isNotEmpty();
+                });
+
+                // If we have training filter, intersect; otherwise use role users
+                if ($hasTrainingFilter && $users->isNotEmpty()) {
+                    $roleUserIds = $roleUsers->pluck('id')->toArray();
+                    $users = $users->filter(function ($user) use ($roleUserIds) {
+                        return in_array($user->id, $roleUserIds);
+                    });
+                } else {
+                    $users = $roleUsers;
+                }
             }
         }
 

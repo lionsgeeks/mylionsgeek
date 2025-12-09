@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\ExportService;
 
 class EquipmentController extends Controller
 {
@@ -261,6 +262,70 @@ class EquipmentController extends Controller
     public function notes(Equipment $equipment)
     {
         return response()->json(['notes' => []]);
+    }
+
+    public function export(Request $request)
+    {
+        $requestedFields = array_filter(array_map('trim', explode(',', (string) $request->query('fields', 'reference,mark,equipment_type,state'))));
+
+        $query = Equipment::query()
+            ->leftJoin('equipment_types as et', 'et.id', '=', 'equipment.equipment_type_id')
+            ->select('equipment.*', 'et.name as equipment_type')
+            ->orderByDesc('equipment.created_at');
+
+        // Apply filters if provided
+        if ($request->filled('state')) {
+            $stateFilter = $request->query('state');
+            if ($stateFilter === 'working' || $stateFilter === '1') {
+                $query->where('equipment.state', 1);
+            } elseif ($stateFilter === 'not_working' || $stateFilter === '0') {
+                $query->where('equipment.state', 0);
+            }
+        }
+
+        if ($request->filled('type')) {
+            $query->where('et.name', $request->query('type'));
+        }
+
+        if ($request->filled('search')) {
+            $searchTerm = strtolower($request->query('search'));
+            $query->where(function ($q) use ($searchTerm) {
+                $q->whereRaw('LOWER(equipment.reference) LIKE ?', ['%' . $searchTerm . '%'])
+                  ->orWhereRaw('LOWER(equipment.mark) LIKE ?', ['%' . $searchTerm . '%'])
+                  ->orWhereRaw('LOWER(et.name) LIKE ?', ['%' . $searchTerm . '%']);
+            });
+        }
+
+        $fieldMap = [
+            'id' => 'id',
+            'reference' => 'reference',
+            'mark' => 'mark',
+            'equipment_type' => 'equipment_type',
+            'state' => 'state',
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+        ];
+
+        return ExportService::export($query, $requestedFields, [
+            'fieldMap' => $fieldMap,
+            'defaultFields' => ['reference', 'mark', 'equipment_type', 'state'],
+            'relationships' => ['equipmentType'],
+            'filename' => 'equipment_export_' . now()->format('Y_m_d_H_i_s'),
+            'transformers' => [
+                'equipment_type' => function($row) {
+                    return $row->equipment_type ?? 'other';
+                },
+                'state' => function($row) {
+                    return (isset($row->state) && $row->state) ? 'Working' : 'Not Working';
+                },
+                'created_at' => function($row) {
+                    return isset($row->created_at) ? date('Y-m-d H:i:s', strtotime($row->created_at)) : '';
+                },
+                'updated_at' => function($row) {
+                    return isset($row->updated_at) ? date('Y-m-d H:i:s', strtotime($row->updated_at)) : '';
+                },
+            ],
+        ]);
     }
 }
 

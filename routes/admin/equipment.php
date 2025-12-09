@@ -13,6 +13,7 @@ Route::middleware(['auth','verified','role:admin,moderateur,studio_responsable']
     Route::get('/equipements/{equipment}/history', [EquipmentController::class, 'history'])->name('admin.equipment.history');
     Route::get('/equipements/{equipment}/usage-activities', [EquipmentController::class, 'usageActivities'])->name('admin.equipment.usage');
     Route::get('/equipements/{equipment}/notes', [EquipmentController::class, 'notes'])->name('admin.equipment.notes');
+    Route::get('/equipements/export', [EquipmentController::class, 'export'])->name('admin.equipment.export');
     
     // Equipment Type management routes
     Route::get('/equipment-types', [EquipmentTypeController::class, 'index'])->name('admin.equipment-types.index');

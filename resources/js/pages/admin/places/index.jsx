@@ -99,7 +99,10 @@ const PlaceIndex = ({
     const [deletingPlace, setDeletingPlace] = useState(null);
     const [filterType, setFilterType] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState('table'); // 'table' or 'grid'
+    const [viewMode, setViewMode] = useState(() => {
+        return window.innerWidth < 768 ? "grid" : "table";
+    });
+
     const [events, setEvents] = useState(Array.isArray(calendarEvents) ? calendarEvents : []);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
@@ -225,8 +228,8 @@ const PlaceIndex = ({
                     </div>
                 </div>
                 <StatCard statsData={statsData} />
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                <div className="md:flex-row flex-col flex  items-center gap-4">
+                    <div className="flex  items-center gap-2">
                         <Label htmlFor="search" className="text-sm font-medium">Search:</Label>
                         <Input
                             id="search"

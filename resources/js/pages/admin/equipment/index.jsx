@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash, Settings, History, Plus, MessageSquare, Activity } from 'lucide-react';
+import { Pencil, Trash, Settings, History, Plus, MessageSquare, Activity, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ import { TrendingUp, Package, AlertCircle } from 'lucide-react';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Camera-amico.png"
 import StatCard from '@/components/StatCard';
+import ExportEquipmentDialog from './components/ExportEquipmentDialog';
+import Rolegard from '../../../components/rolegard';
 
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
@@ -40,6 +42,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [historyTab, setHistoryTab] = useState('usage'); // usage, notes
     const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
+    const [isExportOpen, setIsExportOpen] = useState(false);
 
 
     // Type management state
@@ -333,7 +336,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             { title: 'Total Equipment', value: stats.totalAll, icon: Package },
             { title: 'Working Equipment', value: stats.totalWorking, icon: TrendingUp },
             { title: 'Not Working', value: stats.totalNotWorking, icon: AlertCircle },
-          
+
         ];
     }, [stats]);
 
@@ -374,9 +377,21 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                         <h1 className="text-2xl font-medium">Equipment</h1>
                         <p className="text-sm text-muted-foreground">{filteredEquipment.length} items</p>
                     </div>
-                    <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
-                        Add equipment
-                    </button>
+                    <div className="flex items-center gap-2">
+                    <Rolegard authorized={["admin","moderateur"]}>
+                        <Button
+                            variant="outline"
+                            className=" bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                            onClick={() => setIsExportOpen(true)}
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                        </Button>
+                        <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
+                            Add equipment
+                        </button>
+                    </Rolegard>
+                    </div>
                 </div>
 
                 <StatCard statsData={equipmentHighlights} />
@@ -1067,6 +1082,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                     </DialogContent>
                 </Dialog>
 
+                {/* Export Dialog */}
+                <ExportEquipmentDialog open={isExportOpen} setOpen={setIsExportOpen} types={types} />
 
             </div>
         </AppLayout>
