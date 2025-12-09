@@ -8,6 +8,7 @@ use App\Jobs\CreateInvitedUser;
 use App\Models\User;
 use App\Http\Controllers\UserProjectController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\AdminProjectController;
 use App\Http\Controllers\ReservationsController;
 
@@ -20,9 +21,7 @@ Route::get('/', function () {
 
 // Protect admin dashboard
 Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Global Analytics (admin)
     Route::get('analytics/global', [GlobalAnalyticsController::class, 'index'])->name('admin.analytics.global');
