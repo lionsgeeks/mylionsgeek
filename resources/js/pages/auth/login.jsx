@@ -103,4 +103,4 @@ export default function Login({ status, canResetPassword }) {
             </Form>
         </AuthSplitLayout>
     );
-}   
+}

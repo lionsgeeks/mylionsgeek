@@ -39,7 +39,6 @@ class AuthenticatedSessionController extends Controller
         //         'email' => 'This account has been deactivated.',
         //     ]);
         // }
-
         $request->authenticate();
         $user = User::where('email', $request->email)->first();
 
@@ -52,13 +51,17 @@ class AuthenticatedSessionController extends Controller
             ], 403);
         }
 
-        $request->authenticate();
         $request->session()->regenerate();
-         $user->forceFill([
-        'last_online' => now()
-    ])->save();
+        $user->forceFill([
+            'last_online' => now()
+        ])->save();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Role-based redirect + force reload
+        if ($user->role === 'student') {
+            return Inertia::location('/feed');
+        }
+        return Inertia::location('/admin/dashboard');
+
     }
     /**
      * Destroy an authenticated session.
