@@ -90,9 +90,9 @@ function isPlayable(card, topCard, currentColor) {
 
 // Check if player has any card matching current color (for Wild Draw 4 challenge)
 function hasMatchingColor(hand, currentColor) {
-    return hand.some(card => 
-        card !== null && 
-        card.color === currentColor && 
+    return hand.some(card =>
+        card !== null &&
+        card.color === currentColor &&
         card.type !== 'wild'
     );
 }
@@ -513,7 +513,7 @@ export default function Uno() {
             // Store last played card for potential challenge
             setLastPlayedCard({ card, playerIndex: currentPlayerIndex });
         }
-        
+
         // Apply card effect (this handles turn progression and pending draws)
         newState = applyCardEffect(card, newState);
 
@@ -530,7 +530,7 @@ export default function Uno() {
             setTimeout(() => {
                 setLaughAnimation(null);
             }, 3000);
-            
+
             newState = drawCards(newState.pendingDraw, newState.currentPlayerIndex, newState);
             // Skip the player who just drew (official rule: cannot play after drawing Draw 2/4)
             newState.currentPlayerIndex = getNextPlayerIndex(
@@ -550,7 +550,7 @@ export default function Uno() {
                 // Player had 1 card and didn't call UNO before next player played - draw 2 penalty (official rule)
                 newState = drawCards(2, previousPlayerIndex, newState);
             }
-            
+
             // Clear all UNO statuses when turn changes
             setUnoCalled({});
             setNeedsUnoCall({});
@@ -644,7 +644,7 @@ export default function Uno() {
             setPlayers(newState.players);
             setCurrentPlayerIndex(newState.currentPlayerIndex);
             setPendingDraw(0);
-            
+
             // Clear UNO statuses
             setUnoCalled({});
             setNeedsUnoCall({});
@@ -1077,14 +1077,14 @@ export default function Uno() {
     const currentPlayer = players[currentPlayerIndex];
     const myPlayer = players[assignedPlayerIndex];
     const topCard = discardPile[discardPile.length - 1];
-    
+
     // Check if player has 1 card and show UNO button
     // OFFICIAL RULE: Must call UNO when you have 1 card, penalty is applied when next player starts turn
     useEffect(() => {
         if (!gameStarted || !myPlayer || assignedPlayerIndex === null || assignedPlayerIndex === undefined) return;
-        
+
         const handSize = myPlayer.hand.filter(c => c !== null).length;
-        
+
         if (handSize === 1) {
             // Player has 1 card - show UNO button
             setNeedsUnoCall(prev => ({ ...prev, [assignedPlayerIndex]: true }));
@@ -1701,7 +1701,7 @@ export default function Uno() {
                         {gameStarted && (
                             <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-40 pointer-events-none">
                                 <div className="bg-black/40 backdrop-blur-sm text-white/70 text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-white/10">
-                                    Made by <span className="font-semibold text-[#ffc801]">AB</span>
+                                    Made by <span className="font-semibold text-[#ffc801]">Coding Pro</span>
                                 </div>
                             </div>
                         )}
@@ -1716,7 +1716,7 @@ export default function Uno() {
                                 </div>
                             </div>
                         )}
-                        
+
                         {/* Laugh Animation - Shows when player gets +2 or +4 */}
                         {laughAnimation && laughAnimation.playerIndex === assignedPlayerIndex && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -2242,7 +2242,7 @@ export default function Uno() {
                     {gameStarted && (
                         <div className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 z-40 pointer-events-none">
                             <div className="bg-black/40 backdrop-blur-sm text-white/70 text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-white/10">
-                                Made by <span className="font-semibold text-[#ffc801]"> AB</span>
+                                Made by <span className="font-semibold text-[#ffc801]">Coding Pro</span>
                             </div>
                         </div>
                     )}
@@ -2257,7 +2257,7 @@ export default function Uno() {
                             </div>
                         </div>
                     )}
-                    
+
                     {/* Laugh Animation - Shows when player gets +2 or +4 (fullscreen) */}
                     {laughAnimation && laughAnimation.playerIndex === assignedPlayerIndex && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
