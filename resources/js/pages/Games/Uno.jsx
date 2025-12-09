@@ -70,7 +70,7 @@ function dealCards(deck, numPlayers, cardsPerPlayer = 7) {
 
 // Check if a card is playable
 function isPlayable(card, topCard, currentColor) {
-    // Wild cards are always playable
+    // Wild cards are always playable (but Wild Draw 4 has restrictions)
     if (card.type === 'wild') {
         return true;
     }
@@ -86,6 +86,27 @@ function isPlayable(card, topCard, currentColor) {
     }
 
     return false;
+}
+
+// Check if player has any card matching current color (for Wild Draw 4 challenge)
+function hasMatchingColor(hand, currentColor) {
+    return hand.some(card => 
+        card !== null && 
+        card.color === currentColor && 
+        card.type !== 'wild'
+    );
+}
+
+// Calculate card points for scoring
+function getCardPoints(card) {
+    if (card.type === 'number') {
+        return card.value;
+    } else if (card.type === 'action') {
+        return 20; // Skip, Reverse, Draw 2
+    } else if (card.type === 'wild') {
+        return 50; // Wild, Wild Draw 4
+    }
+    return 0;
 }
 
 // Get card image path - matches the actual image files in /public/assets/images/uno-card-images/
@@ -140,6 +161,13 @@ export default function Uno() {
     const [drawnCardIndex, setDrawnCardIndex] = useState(null); // Track if a card was just drawn and can be played
     const [needsUnoCall, setNeedsUnoCall] = useState({}); // Track players who need to call UNO (have 1 card after playing)
     const [unoAnimation, setUnoAnimation] = useState(null); // Track UNO animation: { playerIndex, timestamp }
+    const [laughAnimation, setLaughAnimation] = useState(null); // Track laugh animation: { playerIndex, drawAmount, timestamp }
+    const [scores, setScores] = useState({}); // Track scores for each player: { playerIndex: points }
+    const [roundWinner, setRoundWinner] = useState(null); // Track round winner
+    const [gameWinner, setGameWinner] = useState(null); // Track game winner (500+ points)
+    const [wildDraw4Challenge, setWildDraw4Challenge] = useState(null); // Track Wild Draw 4 challenge: { challengerIndex, targetIndex }
+    const [lastPlayedCard, setLastPlayedCard] = useState(null); // Track last played card for challenge
+    const [illegalPlayDetected, setIllegalPlayDetected] = useState(null); // Track illegal plays
 
     // Online multiplayer state
     const [roomId, setRoomId] = useState('');
@@ -480,13 +508,31 @@ export default function Uno() {
             });
         }
 
+        // Check for Wild Draw 4 challenge before applying effect
+        if (card.value === 'wild_draw4') {
+            // Store last played card for potential challenge
+            setLastPlayedCard({ card, playerIndex: currentPlayerIndex });
+        }
+        
         // Apply card effect (this handles turn progression and pending draws)
         newState = applyCardEffect(card, newState);
 
         // Handle pending draws (after effect is applied, currentPlayerIndex is already the target)
+        // OFFICIAL RULE: Cannot stack Draw 2 or Draw 4
         if (newState.pendingDraw > 0) {
+            // Trigger laugh animation for the player who has to draw
+            setLaughAnimation({
+                playerIndex: newState.currentPlayerIndex,
+                drawAmount: newState.pendingDraw,
+                timestamp: Date.now()
+            });
+            // Clear animation after 3 seconds
+            setTimeout(() => {
+                setLaughAnimation(null);
+            }, 3000);
+            
             newState = drawCards(newState.pendingDraw, newState.currentPlayerIndex, newState);
-            // Skip the player who just drew
+            // Skip the player who just drew (official rule: cannot play after drawing Draw 2/4)
             newState.currentPlayerIndex = getNextPlayerIndex(
                 newState.currentPlayerIndex,
                 newState.playDirection,
@@ -496,8 +542,15 @@ export default function Uno() {
         }
 
         // Clear UNO status when turn changes (someone played or drew)
-        // Once someone plays or draws, all UNO statuses are cleared
+        // OFFICIAL RULE: If player didn't call UNO before next player starts turn, draw 2
         if (newState.currentPlayerIndex !== currentPlayerIndex) {
+            // Check if previous player had UNO button visible but didn't call it
+            const previousPlayerIndex = currentPlayerIndex;
+            if (needsUnoCall[previousPlayerIndex] && !unoCalled[previousPlayerIndex]) {
+                // Player had 1 card and didn't call UNO before next player played - draw 2 penalty (official rule)
+                newState = drawCards(2, previousPlayerIndex, newState);
+            }
+            
             // Clear all UNO statuses when turn changes
             setUnoCalled({});
             setNeedsUnoCall({});
@@ -591,6 +644,10 @@ export default function Uno() {
             setPlayers(newState.players);
             setCurrentPlayerIndex(newState.currentPlayerIndex);
             setPendingDraw(0);
+            
+            // Clear UNO statuses
+            setUnoCalled({});
+            setNeedsUnoCall({});
 
             if (isConnected && roomId) {
                 const gameState = {
@@ -717,7 +774,6 @@ export default function Uno() {
 
     // Call UNO - must be called when you have 2 cards (before playing second-to-last)
     // Call UNO - can only be called when you have exactly 1 card
-    // If called with more than 1 card, draw 5 cards as penalty
     const callUno = useCallback(() => {
         // Check the player who clicked the button (assignedPlayerIndex), not the current player
         if (assignedPlayerIndex === null || assignedPlayerIndex === undefined) return;
@@ -1021,6 +1077,26 @@ export default function Uno() {
     const currentPlayer = players[currentPlayerIndex];
     const myPlayer = players[assignedPlayerIndex];
     const topCard = discardPile[discardPile.length - 1];
+    
+    // Check if player has 1 card and show UNO button
+    // OFFICIAL RULE: Must call UNO when you have 1 card, penalty is applied when next player starts turn
+    useEffect(() => {
+        if (!gameStarted || !myPlayer || assignedPlayerIndex === null || assignedPlayerIndex === undefined) return;
+        
+        const handSize = myPlayer.hand.filter(c => c !== null).length;
+        
+        if (handSize === 1) {
+            // Player has 1 card - show UNO button
+            setNeedsUnoCall(prev => ({ ...prev, [assignedPlayerIndex]: true }));
+        } else if (handSize !== 1) {
+            // Player doesn't have 1 card - clear UNO button
+            setNeedsUnoCall(prev => {
+                const updated = { ...prev };
+                delete updated[assignedPlayerIndex];
+                return updated;
+            });
+        }
+    }, [myPlayer?.hand?.length, gameStarted, assignedPlayerIndex]);
 
     // Fullscreen toggle
     const toggleFullscreen = () => {
@@ -1081,6 +1157,31 @@ export default function Uno() {
                         opacity: 0.9;
                     }
                 }
+                @keyframes laughBounce {
+                    0%, 100% {
+                        transform: translateY(0) rotate(0deg);
+                        opacity: 0;
+                    }
+                    10% {
+                        opacity: 1;
+                    }
+                    25% {
+                        transform: translateY(-30px) rotate(-10deg);
+                    }
+                    50% {
+                        transform: translateY(-50px) rotate(10deg);
+                    }
+                    75% {
+                        transform: translateY(-30px) rotate(-5deg);
+                    }
+                    90% {
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateY(0) rotate(0deg);
+                        opacity: 0;
+                    }
+                }
             `}</style>
             {!gameStarted ? (
                 // Lobby Screen
@@ -1136,7 +1237,7 @@ export default function Uno() {
                                     {!isConnected ? (
                                         <button
                                             onClick={connectRoom}
-                                            className="px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400 font-semibold text-base sm:text-lg transition-colors touch-manipulation"
+                                            className="px-6 py-3 rounded-lg bg-[#ffc801] hover:bg-[#ffd633] text-[#171717] disabled:bg-gray-400 font-semibold text-base sm:text-lg transition-colors touch-manipulation"
                                             disabled={!roomId || !playerName.trim()}
                                         >Join Room</button>
                                     ) : (
@@ -1615,6 +1716,39 @@ export default function Uno() {
                                 </div>
                             </div>
                         )}
+                        
+                        {/* Laugh Animation - Shows when player gets +2 or +4 */}
+                        {laughAnimation && laughAnimation.playerIndex === assignedPlayerIndex && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                                <div className="relative">
+                                    <div className="text-6xl sm:text-8xl md:text-9xl" style={{
+                                        animation: `laughBounce 3s ease-out forwards`
+                                    }}>
+                                        😂
+                                    </div>
+                                    <div className="absolute -top-4 -left-4 text-4xl sm:text-6xl md:text-7xl" style={{
+                                        animation: `laughBounce 3s ease-out 0.2s forwards`
+                                    }}>
+                                        🤣
+                                    </div>
+                                    <div className="absolute -top-4 -right-4 text-4xl sm:text-6xl md:text-7xl" style={{
+                                        animation: `laughBounce 3s ease-out 0.4s forwards`
+                                    }}>
+                                        😆
+                                    </div>
+                                    <div className="absolute top-4 -left-8 text-3xl sm:text-5xl md:text-6xl" style={{
+                                        animation: `laughBounce 3s ease-out 0.1s forwards`
+                                    }}>
+                                        😄
+                                    </div>
+                                    <div className="absolute top-4 -right-8 text-3xl sm:text-5xl md:text-6xl" style={{
+                                        animation: `laughBounce 3s ease-out 0.3s forwards`
+                                    }}>
+                                        😅
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Winner Announcement */}
                         {winner !== null && players[winner] && (
@@ -1627,7 +1761,7 @@ export default function Uno() {
                                             setWinner(null);
                                             setGameStarted(false);
                                         }}
-                                        className="px-6 py-3 sm:px-8 sm:py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 text-base sm:text-lg touch-manipulation w-full sm:w-auto"
+                                        className="px-6 py-3 sm:px-8 sm:py-3 bg-[#ffc801] hover:bg-[#ffd633] text-[#171717] rounded-lg font-semibold text-base sm:text-lg touch-manipulation w-full sm:w-auto"
                                     >
                                         New Game
                                     </button>
@@ -2077,7 +2211,7 @@ export default function Uno() {
                                                         setWinner(null);
                                                         setGameStarted(false);
                                                     }}
-                                                    className="px-6 py-3 sm:px-8 sm:py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 text-base sm:text-lg touch-manipulation w-full sm:w-auto"
+                                                    className="px-6 py-3 sm:px-8 sm:py-3 bg-[#ffc801] hover:bg-[#ffd633] text-[#171717] rounded-lg font-semibold text-base sm:text-lg touch-manipulation w-full sm:w-auto"
                                                 >
                                                     New Game
                                                 </button>
@@ -2120,6 +2254,39 @@ export default function Uno() {
                                 animation: 'unoPulse 2s ease-out forwards'
                             }}>
                                 UNO!
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Laugh Animation - Shows when player gets +2 or +4 (fullscreen) */}
+                    {laughAnimation && laughAnimation.playerIndex === assignedPlayerIndex && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                            <div className="relative">
+                                <div className="text-6xl sm:text-8xl md:text-9xl" style={{
+                                    animation: `laughBounce 3s ease-out forwards`
+                                }}>
+                                    😂
+                                </div>
+                                <div className="absolute -top-4 -left-4 text-4xl sm:text-6xl md:text-7xl" style={{
+                                    animation: `laughBounce 3s ease-out 0.2s forwards`
+                                }}>
+                                    🤣
+                                </div>
+                                <div className="absolute -top-4 -right-4 text-4xl sm:text-6xl md:text-7xl" style={{
+                                    animation: `laughBounce 3s ease-out 0.4s forwards`
+                                }}>
+                                    😆
+                                </div>
+                                <div className="absolute top-4 -left-8 text-3xl sm:text-5xl md:text-6xl" style={{
+                                    animation: `laughBounce 3s ease-out 0.1s forwards`
+                                }}>
+                                    😄
+                                </div>
+                                <div className="absolute top-4 -right-8 text-3xl sm:text-5xl md:text-6xl" style={{
+                                    animation: `laughBounce 3s ease-out 0.3s forwards`
+                                }}>
+                                    😅
+                                </div>
                             </div>
                         </div>
                     )}
