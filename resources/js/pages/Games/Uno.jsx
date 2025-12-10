@@ -467,6 +467,7 @@ export default function Uno() {
                         gameStarted: true,
                         winner: newState.winner,
                         pendingDraw: 0,
+                        unoCalled: unoCalled, // Include UNO calls in state
                     };
 
                     try {
@@ -595,6 +596,7 @@ export default function Uno() {
                 gameStarted: true,
                 winner: newState.winner,
                 pendingDraw: 0,
+                unoCalled: unoCalled, // Include UNO calls in state
             };
 
             try {
@@ -759,6 +761,7 @@ export default function Uno() {
                 gameStarted: true,
                 winner: newState.winner,
                 pendingDraw: 0,
+                unoCalled: unoCalled, // Include UNO calls in state
             };
 
             try {
@@ -786,7 +789,8 @@ export default function Uno() {
         // Player can only call UNO when they have 1 card
         if (handSize === 1) {
             // Mark player as having called UNO
-            setUnoCalled(prev => ({ ...prev, [assignedPlayerIndex]: true }));
+            const newUnoCalled = { ...unoCalled, [assignedPlayerIndex]: true };
+            setUnoCalled(newUnoCalled);
             // Clear the needsUnoCall flag since they called it
             setNeedsUnoCall(prev => {
                 const updated = { ...prev };
@@ -804,8 +808,38 @@ export default function Uno() {
                     return prev;
                 });
             }, 2000);
+
+            // Sync UNO call to server so all players can see it
+            if (isConnected && roomId) {
+                const gameState = {
+                    deck: deck,
+                    discardPile: discardPile,
+                    players: players.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        hand: p.hand,
+                        score: p.score,
+                    })),
+                    currentPlayerIndex: currentPlayerIndex,
+                    playDirection: playDirection,
+                    currentColor: currentColor,
+                    gameStarted: gameStarted,
+                    winner: winner,
+                    pendingDraw: pendingDraw,
+                    unoCalled: newUnoCalled, // Include UNO calls in state
+                };
+
+                try {
+                    axios.post(`/api/games/state/${roomId}`, {
+                        game_type: 'uno',
+                        game_state: gameState,
+                    });
+                } catch (error) {
+                    console.error('Failed to sync UNO call:', error);
+                }
+            }
         }
-    }, [players, assignedPlayerIndex]);
+    }, [players, assignedPlayerIndex, unoCalled, isConnected, roomId, deck, discardPile, currentPlayerIndex, playDirection, currentColor, gameStarted, winner, pendingDraw]);
 
     // Update game state from received data
     // IMPORTANT: Only show current player's own cards, hide other players' cards
@@ -867,11 +901,27 @@ export default function Uno() {
             }
             if (state.playDirection !== undefined) setPlayDirection(state.playDirection);
             if (state.currentColor) setCurrentColor(state.currentColor);
-            if (state.gameStarted !== undefined) setGameStarted(state.gameStarted);
+            if (state.gameStarted !== undefined) {
+                const wasGameStarted = gameStarted;
+                setGameStarted(state.gameStarted);
+                // If game just started (either locally or from server), trigger fullscreen for all players
+                if (state.gameStarted && !wasGameStarted && !isFullscreen && !document.fullscreenElement) {
+                    setTimeout(() => {
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen().then(() => {
+                                setIsFullscreen(true);
+                            }).catch(err => {
+                                console.error('Error attempting to enable fullscreen:', err);
+                            });
+                        }
+                    }, 200);
+                }
+            }
             if (state.winner !== undefined) setWinner(state.winner);
             if (state.pendingDraw !== undefined) setPendingDraw(state.pendingDraw);
+            if (state.unoCalled !== undefined) setUnoCalled(state.unoCalled); // Sync UNO calls from server
         }
-    }, [playerName, assignedPlayerIndex]);
+    }, [playerName, assignedPlayerIndex, gameStarted, isFullscreen]);
 
     // Fetch initial game state
     const fetchInitialGameState = useCallback(async () => {
@@ -926,7 +976,7 @@ export default function Uno() {
                         setIsConnected(false);
                         return;
                     }
-
+                    
                     // New player joining
                     const newPlayerId = state.players?.length || 0;
                     const newPlayer = {
@@ -1001,6 +1051,7 @@ export default function Uno() {
                 gameStarted: true,
                 winner: null,
                 pendingDraw: 0,
+                unoCalled: {}, // Initialize UNO calls
             };
 
             axios.post(`/api/games/state/${roomId}`, {
@@ -1132,6 +1183,39 @@ export default function Uno() {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
+    // Automatically enter fullscreen when game starts (for all players)
+    useEffect(() => {
+        if (gameStarted && !isFullscreen && !document.fullscreenElement) {
+            // Small delay to ensure DOM is ready
+            const timer = setTimeout(() => {
+                document.documentElement.requestFullscreen().then(() => {
+                    setIsFullscreen(true);
+                }).catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [gameStarted, isFullscreen]);
+
+    // Also trigger fullscreen when gameStarted changes from updateGameStateFromData
+    const prevGameStartedRef = useRef(false);
+    useEffect(() => {
+        // If gameStarted just became true (either locally or from server update)
+        if (gameStarted && !prevGameStartedRef.current && !isFullscreen && !document.fullscreenElement) {
+            const timer = setTimeout(() => {
+                document.documentElement.requestFullscreen().then(() => {
+                    setIsFullscreen(true);
+                }).catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            }, 100);
+            
+            return () => clearTimeout(timer);
+        }
+        prevGameStartedRef.current = gameStarted;
+    }, [gameStarted, isFullscreen]);
 
     // Cleanup UNO timers on unmount
     useEffect(() => {
@@ -1386,15 +1470,32 @@ export default function Uno() {
                                 const topPlayer = opponentPlayers[0] || null;
                                 const leftPlayer = opponentPlayers[1] || null;
                                 const rightPlayer = opponentPlayers[2] || null;
-
-                                return (
+                                
+                                // Get player indices for UNO checks
+                                const topPlayerIdx = topPlayer ? actualPlayers.findIndex(p => p.id === topPlayer.id) : null;
+                                const leftPlayerIdx = leftPlayer ? actualPlayers.findIndex(p => p.id === leftPlayer.id) : null;
+                                const rightPlayerIdx = rightPlayer ? actualPlayers.findIndex(p => p.id === rightPlayer.id) : null;
+                                                        
+                                                        return (
                                     <>
                                         {/* Top Player - Compact Horizontal Cards */}
                                         {topPlayer && (
                                             <div className="absolute top-2 sm:top-4 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-2 sm:px-4">
                                                 <div className="flex flex-col items-center">
-                                                    <div className="text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2">
-                                                        {topPlayer.name} ({topPlayer.hand.length} cards)
+                                                    <div className={`text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2 flex items-center gap-2 ${
+                                                        topPlayerIdx === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                    }`}>
+                                                        <span>{topPlayer.name} ({topPlayer.hand.length} cards)</span>
+                                                        {topPlayerIdx === currentPlayerIndex && (
+                                                            <span className="bg-yellow-400 text-black px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                                YOUR TURN!
+                                                            </span>
+                                                        )}
+                                                        {topPlayerIdx !== null && topPlayerIdx !== currentPlayerIndex && unoCalled[topPlayerIdx] && (
+                                                            <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                                UNO!
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="flex gap-1 sm:gap-1.5 justify-center items-center w-full overflow-x-auto pb-2 scrollbar-hide">
                                                         {Array.from({ length: topPlayer.hand.length }).map((_, i) => (
@@ -1418,18 +1519,30 @@ export default function Uno() {
                                                                 }}
                                                             />
                                                         ))}
-                                                    </div>
+                                                                </div>
+                                                            </div>
                                                 </div>
-                                            </div>
                                         )}
 
                                         {/* Left Player - Compact Horizontal Cards (Desktop) */}
                                         {leftPlayer && (
                                             <div className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 hidden md:block">
                                                 <div className="flex flex-col items-center gap-2">
-                                                    <div className="text-white font-bold text-xs sm:text-sm transform -rotate-90 whitespace-nowrap">
-                                                        {leftPlayer.name} ({leftPlayer.hand.length})
-                                                    </div>
+                                                    <div className={`text-white font-bold text-xs sm:text-sm transform -rotate-90 whitespace-nowrap flex items-center gap-1 ${
+                                                        leftPlayerIdx === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                    }`}>
+                                                        <span>{leftPlayer.name} ({leftPlayer.hand.length})</span>
+                                                        {leftPlayerIdx === currentPlayerIndex && (
+                                                            <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                                YOUR TURN!
+                                                            </span>
+                                                        )}
+                                                        {leftPlayerIdx !== null && leftPlayerIdx !== currentPlayerIndex && unoCalled[leftPlayerIdx] && (
+                                                            <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                                UNO!
+                                                            </span>
+                                                        )}
+                                            </div>
                                                     <div className="flex flex-col gap-1 sm:gap-1.5 items-center max-h-[300px] overflow-y-auto scrollbar-hide">
                                                         {Array.from({ length: Math.min(leftPlayer.hand.length, 8) }).map((_, i) => (
                                                             <img
@@ -1455,17 +1568,29 @@ export default function Uno() {
                                                         {leftPlayer.hand.length > 8 && (
                                                             <div className="text-white text-[10px] mt-1">+{leftPlayer.hand.length - 8}</div>
                                                         )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                                )}
 
                                         {/* Left Player - Mobile Horizontal Cards */}
                                         {leftPlayer && (
                                             <div className="block md:hidden absolute left-1 top-1/3 transform -translate-y-1/2">
                                                 <div className="flex flex-col items-center gap-1">
-                                                    <div className="text-white font-bold text-[9px] transform -rotate-90 whitespace-nowrap">
-                                                        {leftPlayer.name}
+                                                    <div className={`text-white font-bold text-[9px] transform -rotate-90 whitespace-nowrap flex items-center gap-1 ${
+                                                        leftPlayerIdx === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                    }`}>
+                                                        <span>{leftPlayer.name}</span>
+                                                        {leftPlayerIdx === currentPlayerIndex && (
+                                                            <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                                YOUR TURN!
+                                                            </span>
+                                                        )}
+                                                        {leftPlayerIdx !== null && leftPlayerIdx !== currentPlayerIndex && unoCalled[leftPlayerIdx] && (
+                                                            <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                                UNO!
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="flex flex-col gap-0.5 items-center max-h-[200px] overflow-y-auto scrollbar-hide">
                                                         {Array.from({ length: Math.min(leftPlayer.hand.length, 5) }).map((_, i) => (
@@ -1487,17 +1612,29 @@ export default function Uno() {
                                                         {leftPlayer.hand.length > 5 && (
                                                             <div className="text-white text-[8px] mt-0.5">+{leftPlayer.hand.length - 5}</div>
                                                         )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                                )}
 
                                         {/* Right Player - Compact Horizontal Cards (Desktop) */}
                                         {rightPlayer && (
                                             <div className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 hidden md:block">
                                                 <div className="flex flex-col items-center gap-2">
-                                                    <div className="text-white font-bold text-xs sm:text-sm transform rotate-90 whitespace-nowrap">
-                                                        {rightPlayer.name} ({rightPlayer.hand.length})
+                                                    <div className={`text-white font-bold text-xs sm:text-sm transform rotate-90 whitespace-nowrap flex items-center gap-1 ${
+                                                        rightPlayerIdx === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                    }`}>
+                                                        <span>{rightPlayer.name} ({rightPlayer.hand.length})</span>
+                                                        {rightPlayerIdx === currentPlayerIndex && (
+                                                            <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                                YOUR TURN!
+                                                            </span>
+                                                        )}
+                                                        {rightPlayerIdx !== null && rightPlayerIdx !== currentPlayerIndex && unoCalled[rightPlayerIdx] && (
+                                                            <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                                UNO!
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="flex flex-col gap-1 sm:gap-1.5 items-center max-h-[300px] overflow-y-auto scrollbar-hide">
                                                         {Array.from({ length: Math.min(rightPlayer.hand.length, 8) }).map((_, i) => (
@@ -1524,18 +1661,30 @@ export default function Uno() {
                                                         {rightPlayer.hand.length > 8 && (
                                                             <div className="text-white text-[10px] mt-1">+{rightPlayer.hand.length - 8}</div>
                                                         )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        )}
+                                                )}
 
                                         {/* Right Player - Mobile Horizontal Cards */}
                                         {rightPlayer && (
                                             <div className="block md:hidden absolute right-1 top-1/3 transform -translate-y-1/2">
                                                 <div className="flex flex-col items-center gap-1">
-                                                    <div className="text-white font-bold text-[9px] transform rotate-90 whitespace-nowrap">
-                                                        {rightPlayer.name}
-                                                    </div>
+                                                    <div className={`text-white font-bold text-[9px] transform rotate-90 whitespace-nowrap flex items-center gap-1 ${
+                                                        rightPlayerIdx === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                    }`}>
+                                                        <span>{rightPlayer.name}</span>
+                                                        {rightPlayerIdx === currentPlayerIndex && (
+                                                            <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                                YOUR TURN!
+                                                            </span>
+                                                        )}
+                                                        {rightPlayerIdx !== null && rightPlayerIdx !== currentPlayerIndex && unoCalled[rightPlayerIdx] && (
+                                                            <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                                UNO!
+                                                            </span>
+                                                        )}
+                                                            </div>
                                                     <div className="flex flex-col gap-0.5 items-center max-h-[200px] overflow-y-auto scrollbar-hide">
                                                         {Array.from({ length: Math.min(rightPlayer.hand.length, 5) }).map((_, i) => (
                                                             <img
@@ -1557,8 +1706,8 @@ export default function Uno() {
                                                             <div className="text-white text-[8px] mt-0.5">+{rightPlayer.hand.length - 5}</div>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </div>
+                                                        </div>
+                                                    </div>
                                         )}
 
                                         {/* Center Game Area - Discard and Draw Piles */}
@@ -1664,8 +1813,20 @@ export default function Uno() {
                         {gameStarted && myPlayer && (
                             <div className="fixed bottom-0 left-0 right-0 pt-2 pb-safe sm:relative sm:pt-0 sm:pb-0 sm:mt-6">
                                 <div className="flex flex-col items-center mb-2 sm:mb-3 px-2 sm:px-4">
-                                    <div className="text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2">
-                                        {myPlayer.name} ({myPlayer.hand.filter(c => c !== null).length} cards)
+                                    <div className={`text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2 flex items-center gap-2 ${
+                                        currentPlayerIndex === assignedPlayerIndex ? 'text-yellow-300' : ''
+                                    }`}>
+                                        <span>{myPlayer.name} ({myPlayer.hand.filter(c => c !== null).length} cards)</span>
+                                        {currentPlayerIndex === assignedPlayerIndex && (
+                                            <span className="bg-yellow-400 text-black px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                YOUR TURN!
+                                            </span>
+                                        )}
+                                        {currentPlayerIndex !== assignedPlayerIndex && unoCalled[assignedPlayerIndex] && (
+                                            <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                UNO!
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1794,7 +1955,7 @@ export default function Uno() {
 
                         {/* Winner Announcement */}
                         {winner !== null && players[winner] && (
-                            <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 px-4">
+                            <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 px-4">
                                 <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl">
                                     <h2 className="text-2xl sm:text-4xl font-bold mb-4">🎉 Winner!</h2>
                                     <p className="text-xl sm:text-2xl mb-6 font-semibold">{players[winner].name} wins!</p>
@@ -1817,9 +1978,9 @@ export default function Uno() {
                                             
                                             // Clear server state if connected
                                             if (isConnected && roomId) {
-                                                try {
-                                                    await axios.delete(`/api/games/state/${roomId}`);
-                                                } catch (error) {
+                                                        try {
+                                                            await axios.delete(`/api/games/state/${roomId}`);
+                                                        } catch (error) {
                                                     console.error('Failed to clear game state:', error);
                                                 }
                                             }
@@ -1837,7 +1998,7 @@ export default function Uno() {
 
                 {/* Color Picker Modal */}
                 {showColorPicker && selectedCard && (
-                    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 px-4">
+                    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 px-4">
                         <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
                             <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Choose a Color</h3>
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -1962,15 +2123,32 @@ export default function Uno() {
                             const topPlayer = opponentPlayers[0] || null;
                             const leftPlayer = opponentPlayers[1] || null;
                             const rightPlayer = opponentPlayers[2] || null;
-
-                            return (
+                            
+                            // Get player indices for UNO checks (fullscreen)
+                            const topPlayerIdxFS = topPlayer ? actualPlayers.findIndex(p => p.id === topPlayer.id) : null;
+                            const leftPlayerIdxFS = leftPlayer ? actualPlayers.findIndex(p => p.id === leftPlayer.id) : null;
+                            const rightPlayerIdxFS = rightPlayer ? actualPlayers.findIndex(p => p.id === rightPlayer.id) : null;
+                                                    
+                                                    return (
                                 <>
                                     {/* Top Player - Fullscreen Desktop: Show ALL cards */}
                                     {topPlayer && (
                                         <div className="absolute top-2 sm:top-4 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-2 sm:px-4 hidden md:block">
                                             <div className="flex flex-col items-center">
-                                                <div className="text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2">
-                                                    {topPlayer.name} ({topPlayer.hand.length} cards)
+                                                <div className={`text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2 flex items-center gap-2 ${
+                                                    topPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{topPlayer.name} ({topPlayer.hand.length} cards)</span>
+                                                    {topPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {topPlayerIdxFS !== null && topPlayerIdxFS !== currentPlayerIndex && unoCalled[topPlayerIdxFS] && (
+                                                        <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex gap-1 sm:gap-1.5 justify-center items-center w-full overflow-x-auto pb-2 scrollbar-hide">
                                                     {Array.from({ length: topPlayer.hand.length }).map((_, i) => (
@@ -1994,17 +2172,24 @@ export default function Uno() {
                                                             }}
                                                         />
                                                     ))}
-                                                </div>
+                                                            </div>
+                                                        </div>
                                             </div>
-                                        </div>
                                     )}
 
                                     {/* Top Player - Mobile Fullscreen: Show only 4 cards + indicator */}
-                                    {topPlayer && (
+                                            {topPlayer && (
                                         <div className="block md:hidden absolute top-1 left-1/2 transform -translate-x-1/2 w-full px-2">
                                             <div className="flex flex-col items-center">
-                                                <div className="text-white font-semibold text-[10px] mb-1">
-                                                    {topPlayer.name} ({topPlayer.hand.length})
+                                                <div className={`text-white font-semibold text-[10px] mb-1 flex items-center gap-1 ${
+                                                    topPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{topPlayer.name} ({topPlayer.hand.length})</span>
+                                                    {topPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex gap-1 justify-center items-center w-full overflow-x-auto pb-1 scrollbar-hide">
                                                     {Array.from({ length: Math.min(topPlayer.hand.length, 4) }).map((_, i) => (
@@ -2026,19 +2211,31 @@ export default function Uno() {
                                                     {topPlayer.hand.length > 4 && (
                                                         <div className="w-9 h-12 bg-gradient-to-br from-gray-800 to-gray-900 rounded border border-white/80 flex items-center justify-center text-white text-[7px] font-semibold shadow-sm flex-shrink-0">
                                                             +{topPlayer.hand.length - 4}
-                                                        </div>
+                                                            </div>
                                                     )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                            )}
 
                                     {/* Left Player - Fullscreen Desktop: Show 7 cards + 1 "+X" card (no scroll) */}
                                     {leftPlayer && (
                                         <div className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 hidden md:block">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="text-white font-bold text-xs sm:text-sm whitespace-nowrap">
-                                                    {leftPlayer.name} ({leftPlayer.hand.length})
+                                                <div className={`text-white font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-1 ${
+                                                    leftPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{leftPlayer.name} ({leftPlayer.hand.length})</span>
+                                                    {leftPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {leftPlayerIdxFS !== null && leftPlayerIdxFS !== currentPlayerIndex && unoCalled[leftPlayerIdxFS] && (
+                                                        <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col gap-1 sm:gap-1.5 items-center">
                                                     {Array.from({ length: Math.min(leftPlayer.hand.length, 7) }).map((_, i) => (
@@ -2069,17 +2266,29 @@ export default function Uno() {
                                                             </div>
                                                         </div>
                                                     )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                            )}
 
                                     {/* Left Player - Mobile Fullscreen: Show exactly 4 cards + 1 "+X" card (no scroll) */}
                                     {leftPlayer && (
                                         <div className="block md:hidden absolute left-0 top-1/2 transform -translate-y-1/2">
                                             <div className="flex flex-col items-center gap-0.5">
-                                                <div className="text-white font-bold text-[9px] whitespace-nowrap">
-                                                    {leftPlayer.name}
+                                                <div className={`text-white font-bold text-[9px] whitespace-nowrap flex items-center gap-1 ${
+                                                    leftPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{leftPlayer.name}</span>
+                                                    {leftPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {leftPlayerIdxFS !== null && leftPlayerIdxFS !== currentPlayerIndex && unoCalled[leftPlayerIdxFS] && (
+                                                        <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col gap-0.5 items-center">
                                                     {Array.from({ length: Math.min(leftPlayer.hand.length, 4) }).map((_, i) => (
@@ -2103,18 +2312,30 @@ export default function Uno() {
                                                             +{leftPlayer.hand.length - 4}
                                                         </div>
                                                     )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                            )}
 
                                     {/* Right Player - Fullscreen Desktop: Show 7 cards + 1 "+X" card (no scroll) */}
                                     {rightPlayer && (
                                         <div className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 hidden md:block">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="text-white font-bold text-xs sm:text-sm whitespace-nowrap">
-                                                    {rightPlayer.name} ({rightPlayer.hand.length})
-                                                </div>
+                                                <div className={`text-white font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-1 ${
+                                                    rightPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{rightPlayer.name} ({rightPlayer.hand.length})</span>
+                                                    {rightPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {rightPlayerIdxFS !== null && rightPlayerIdxFS !== currentPlayerIndex && unoCalled[rightPlayerIdxFS] && (
+                                                        <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[8px] font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
+                                                        </div>
                                                 <div className="flex flex-col gap-1 sm:gap-1.5 items-center">
                                                     {Array.from({ length: Math.min(rightPlayer.hand.length, 7) }).map((_, i) => (
                                                         <img
@@ -2141,9 +2362,9 @@ export default function Uno() {
                                                         <div className="w-10 h-14 sm:w-12 sm:h-16 md:w-14 md:h-20 bg-gradient-to-br from-gray-800 to-gray-900 rounded-md border border-white/90 sm:border-2 shadow-md flex items-center justify-center flex-shrink-0">
                                                             <div className="text-white text-[7px] sm:text-[9px] font-semibold">
                                                                 +{rightPlayer.hand.length - 7}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    </div>
+                                                </div>
+                                            )}
                                                 </div>
                                             </div>
                                         </div>
@@ -2153,8 +2374,20 @@ export default function Uno() {
                                     {rightPlayer && (
                                         <div className="block md:hidden absolute right-0 top-1/2 transform -translate-y-1/2">
                                             <div className="flex flex-col items-center gap-0.5">
-                                                <div className="text-white font-bold text-[9px] whitespace-nowrap">
-                                                    {rightPlayer.name}
+                                                <div className={`text-white font-bold text-[9px] whitespace-nowrap flex items-center gap-1 ${
+                                                    rightPlayerIdxFS === currentPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{rightPlayer.name}</span>
+                                                    {rightPlayerIdxFS === currentPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {rightPlayerIdxFS !== null && rightPlayerIdxFS !== currentPlayerIndex && unoCalled[rightPlayerIdxFS] && (
+                                                        <span className="bg-red-600 text-white px-1 py-0.5 rounded text-[6px] font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col gap-0.5 items-center">
                                                     {Array.from({ length: Math.min(rightPlayer.hand.length, 4) }).map((_, i) => (
@@ -2281,10 +2514,27 @@ export default function Uno() {
                                     {gameStarted && myPlayer && (
                                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-full px-2 sm:px-4">
                                             <div className="flex flex-col items-center mb-2 sm:mb-3">
-                                                <div className="text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2">
-                                                    {myPlayer.name} ({myPlayer.hand.filter(c => c !== null).length} cards)
+                                                <div className={`text-white font-bold text-xs sm:text-sm mb-1 sm:mb-2 flex items-center gap-2 ${
+                                                    currentPlayerIndex === assignedPlayerIndex ? 'text-yellow-300' : ''
+                                                }`}>
+                                                    <span>{myPlayer.name} ({myPlayer.hand.filter(c => c !== null).length} cards)</span>
+                                                    {currentPlayerIndex === assignedPlayerIndex && (
+                                                        <span className="bg-yellow-400 text-black px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                            YOUR TURN!
+                                                        </span>
+                                                    )}
+                                                    {currentPlayerIndex !== assignedPlayerIndex && unoCalled[assignedPlayerIndex] && (
+                                                        <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
+                                                    {unoCalled[assignedPlayerIndex] && (
+                                                        <span className="bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold animate-pulse">
+                                                            UNO!
+                                                        </span>
+                                                    )}
+                                                    </div>
                                                 </div>
-                                            </div>
 
                                             {/* Player's Hand - Desktop: Horizontal Layout, Mobile: Wrapped Layout (Fullscreen) */}
                                             <div className={`hidden md:flex gap-1.5 sm:gap-2 justify-center items-end overflow-x-auto pb-3 sm:pb-6 px-2 sm:px-4 scrollbar-hide`} style={{
@@ -2298,7 +2548,7 @@ export default function Uno() {
                                                     .map(({ card, originalIndex }, displayIndex) => {
                                                         const topCard = discardPile[discardPile.length - 1];
                                                         const playable = isPlayable(card, topCard, currentColor);
-                                                        const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
+                                                    const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
                                                         const isDrawnCard = drawnCardIndex === originalIndex;
                                                         const handSize = myPlayer.hand.filter(c => c !== null).length;
 
@@ -2392,7 +2642,7 @@ export default function Uno() {
 
                                     {/* Winner Announcement */}
                                     {winner !== null && players[winner] && (
-                                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 px-4">
+                                        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 px-4">
                                             <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl">
                                                 <h2 className="text-2xl sm:text-4xl font-bold mb-4">🎉 Winner!</h2>
                                                 <p className="text-xl sm:text-2xl mb-6 font-semibold">{players[winner].name} wins!</p>
@@ -2505,7 +2755,7 @@ export default function Uno() {
 
                     {/* Color Picker Modal */}
                     {showColorPicker && selectedCard && (
-                        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 px-4">
+                        <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50 px-4">
                             <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
                                 <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">Choose a Color</h3>
                                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
