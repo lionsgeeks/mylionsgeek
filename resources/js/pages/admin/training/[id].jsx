@@ -154,65 +154,83 @@ export default function Show({ training, usersNull }) {
 
     async function AddAttendance(dateStr) {
         try {
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const csrf =
+            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
             const res = await fetch('/attendances', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    formation_id: training.id,
-                    attendance_day: dateStr,
-                }),
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                formation_id: training.id,
+                attendance_day: dateStr,
+            }),
             });
-            if (!res.ok) throw new Error(`Failed to create/load attendance (${res.status})`);
+
+            if (!res.ok) {
+            throw new Error(`Failed to create/load attendance (${res.status})`);
+            }
+
             const data = await res.json();
 
             setCurrentAttendanceId(data.attendance_id);
+
             const initialized = {};
             const existing = data.lists || [];
-            const byUserId = new Map(existing.map(l => [l.user_id, l]));
+            const byUserId = new Map(existing.map((l) => [l.user_id, l]));
+
             students.forEach((s) => {
-                const key = `${dateStr}-${s.id}`;
-                const saved = byUserId.get(s.id);
-                initialized[key] = {
-                    morning: saved?.morning ?? 'present',
-                    lunch: saved?.lunch ?? 'present',
-                    evening: saved?.evening ?? 'present',
-                    notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : [],
-                    user_id: s.id,
-                };
+            const key = `${dateStr}-${s.id}`;
+            const saved = byUserId.get(s.id);
+            const base = getDefaultSlots(s);
+
+            initialized[key] = {
+                morning: saved?.morning ?? base.morning,
+                lunch: saved?.lunch ?? base.lunch,
+                evening: saved?.evening ?? base.evening,
+                notes: saved?.note
+                ? String(saved.note).split(' | ').filter(Boolean)
+                : base.notes,
+                user_id: s.id,
+            };
             });
+
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
 
             if (existing.length === 0) {
-                const dataToSave = students.map((s) => ({
-                    user_id: s.id,
-                    attendance_day: dateStr,
-                    attendance_id: Number(data.attendance_id),
-                    morning: 'present',
-                    lunch: 'present',
-                    evening: 'present',
-                    note: null,
-                }));
-                // fire-and-forget initialization; errors will be visible on explicit save
-                fetch('/admin/attendance/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ attendance: dataToSave }),
-                }).catch(() => { });
+            const dataToSave = students.map((s) => {
+                const base = getDefaultSlots(s);
+                return {
+                user_id: s.id,
+                attendance_day: dateStr,
+                attendance_id: Number(data.attendance_id),
+                morning: base.morning,
+                lunch: base.lunch,
+                evening: base.evening,
+                note: null,
+                };
+            });
+
+            fetch('/admin/attendance/save', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ attendance: dataToSave }),
+            }).catch(() => {});
             }
+
             setShowAttendanceList(true);
-        } catch (err) { }
-    }
+        } catch (err) {
+        }
+        }
 
 
     //   atteandacelist
@@ -307,36 +325,58 @@ export default function Show({ training, usersNull }) {
         setShowWinnerModal(false);
     };
 
+    const getDefaultSlots = (student) => {
+    const status = String(student?.status || '').toLowerCase();
+    if (status === 'left') {
+        return { morning: 'absent', lunch: 'absent', evening: 'absent', notes: [] };
+    }
+    return { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+    };
     // Notes helpers: add/remove chip-style notes per student
     const addNote = (studentKey, noteText) => {
-        const text = (noteText || '').trim();
-        if (!text) return;
-        setAttendanceData(prev => {
-            const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
-            const existingNotes = Array.isArray(prevForStudent.notes) ? prevForStudent.notes : (prevForStudent.notes ? [prevForStudent.notes] : []);
-            return {
-                ...prev,
-                [studentKey]: {
-                    ...prevForStudent,
-                    notes: [...existingNotes, text]
-                }
-            };
-        });
+    const text = (noteText || '').trim();
+    if (!text) return;
+
+    setAttendanceData((prev) => {
+        const student = students.find((s) => s.id === studentKey);
+        const base = getDefaultSlots(student);
+        const prevForStudent = prev[studentKey] || base;
+
+        const existingNotes = Array.isArray(prevForStudent.notes)
+        ? prevForStudent.notes
+        : (prevForStudent.notes ? [prevForStudent.notes] : []);
+
+        return {
+        ...prev,
+        [studentKey]: {
+            ...prevForStudent,
+            notes: [...existingNotes, text],
+        },
+        };
+    });
     };
 
+
     const removeNote = (studentKey, index) => {
-        setAttendanceData(prev => {
-            const prevForStudent = prev[studentKey] || { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
-            const existingNotes = Array.isArray(prevForStudent.notes) ? [...prevForStudent.notes] : (prevForStudent.notes ? [prevForStudent.notes] : []);
-            existingNotes.splice(index, 1);
-            return {
-                ...prev,
-                [studentKey]: {
-                    ...prevForStudent,
-                    notes: existingNotes
-                }
-            };
-        });
+    setAttendanceData((prev) => {
+        const student = students.find((s) => s.id === studentKey);
+        const base = getDefaultSlots(student);
+        const prevForStudent = prev[studentKey] || base;
+
+        const existingNotes = Array.isArray(prevForStudent.notes)
+        ? [...prevForStudent.notes]
+        : (prevForStudent.notes ? [prevForStudent.notes] : []);
+
+        existingNotes.splice(index, 1);
+
+        return {
+        ...prev,
+        [studentKey]: {
+            ...prevForStudent,
+            notes: existingNotes,
+        },
+        };
+    });
     };
     // Filter enrolled students
     const filteredStudents = students.filter(
