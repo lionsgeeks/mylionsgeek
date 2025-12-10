@@ -12,6 +12,7 @@ import RolesMultiSelect from './RolesMultiSelect';
 import Rolegard from '../../../../components/rolegard';
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
+    // console.log('status options:', status);
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
