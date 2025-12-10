@@ -92,7 +92,7 @@ class ProjectController extends Controller
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys = OFF');
-            
+
             $project = Project::create($data);
 
             // Add creator as owner - use raw SQL to avoid foreign key issues
@@ -104,7 +104,7 @@ class ProjectController extends Controller
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
-            
+
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys = ON');
 
@@ -133,7 +133,7 @@ class ProjectController extends Controller
 
         $teamMembers = $project->users()->get();
         $tasks = $project->tasks()->with(['assignees', 'creator'])->get();
-        $attachments = $project->attachments()->with('uploader')->get();
+        $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
 
         return Inertia::render('admin/projects/show', [
@@ -163,7 +163,7 @@ class ProjectController extends Controller
             $data = $request->only(['name', 'description', 'status', 'start_date', 'end_date']);
             $data['is_updated'] = true;
             $data['last_activity'] = now();
-            
+
             // Debug: Log what we're receiving
             Log::info('Update request data:', [
                 'all' => $request->all(),
@@ -171,7 +171,7 @@ class ProjectController extends Controller
                 'file' => $request->file('photo'),
                 'data' => $data
             ]);
-            
+
             // Only update photo if a new one is uploaded
             if ($request->hasFile('photo')) {
                 if ($project->photo) {
@@ -278,12 +278,22 @@ class ProjectController extends Controller
      */
     public function inviteUser(Request $request, Project $project)
     {
+    //    dd($request->all());
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'email' => 'nullable|email',
             'role' => 'required|in:admin,member'
         ]);
 
-        $user = User::findOrFail($request->user_id);
+        // Either user_id or email must be provided
+        if (!$request->email) {
+            return back()->with('error', 'Email must be provided.');
+        }
+
+        // Find user by email
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found with the provided email address.');
+        }
 
         // Check if user is already in project
         if ($project->users()->where('user_id', $user->id)->exists()) {
@@ -408,7 +418,7 @@ class ProjectController extends Controller
         ]);
 
         $project = Project::findOrFail($request->project_id);
-        
+
         // Check if user has access to this project
         if (!$project->users()->where('user_id', Auth::id())->exists() && $project->created_by !== Auth::id()) {
             return redirect()->back()->with('error', 'You do not have permission to upload files to this project.');
@@ -419,7 +429,7 @@ class ProjectController extends Controller
             $originalName = $file->getClientOriginalName();
             $mimeType = $file->getMimeType();
             $size = $file->getSize();
-            
+
             // Generate unique filename
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('attachments', $filename, 'public');

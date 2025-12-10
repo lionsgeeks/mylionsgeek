@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, } from '@/components/ui/avatar';
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { router, usePage } from '@inertiajs/react';
+import FlashMessage from '@/components/FlashMessage';
 import {
     MoreHorizontal,
     MessageSquare,
@@ -19,13 +21,28 @@ import {
     UserPlus
 } from 'lucide-react';
 
-const Team = ({ teamMembers = [] }) => {
+const Team = ({ teamMembers = [], projectId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [inviteData, setInviteData] = useState({
         email: '',
         role: 'member'
     });
+    const [flashMessage, setFlashMessage] = useState(null);
+    const [isInviting, setIsInviting] = useState(false);
+
+    // Get flash messages from Inertia
+    const { flash } = usePage().props;
+
+    // Handle flash messages
+    useEffect(() => {
+        if (flash?.success) {
+            setFlashMessage({ message: flash.success, type: 'success' });
+        } else if (flash?.error) {
+            setFlashMessage({ message: flash.error, type: 'error' });
+        }
+    }, [flash]);
+
 
     const filteredMembers = teamMembers.filter(member =>
         member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -33,12 +50,36 @@ const Team = ({ teamMembers = [] }) => {
     );
 
     const handleInvite = () => {
-        //('Inviting member:', inviteData);
-        setInviteData({
-            email: '',
-            role: 'member'
+        if (!inviteData.email.trim()) {
+            setFlashMessage({ message: 'Please enter an email address', type: 'error' });
+            return;
+        }
+
+        setIsInviting(true);
+
+        router.post(`/admin/projects/${projectId}/invite`, {
+            email: inviteData.email.trim(),
+            role: inviteData.role
+        }, {
+            onSuccess: () => {
+                setInviteData({
+                    email: '',
+                    role: 'member'
+                });
+                setIsInviteModalOpen(false);
+                setIsInviting(false);
+            },
+            onError: (errors) => {
+                setIsInviting(false);
+                const errorMessage = errors.email 
+                    ? Array.isArray(errors.email) ? errors.email.join(', ') : errors.email
+                    : errors.message || 'Failed to send invitation. Please try again.';
+                setFlashMessage({
+                    message: errorMessage,
+                    type: 'error'
+                });
+            }
         });
-        setIsInviteModalOpen(false);
     };
 
     const getRoleBadge = (role) => {
@@ -70,6 +111,15 @@ const Team = ({ teamMembers = [] }) => {
 
     return (
         <div className="space-y-6">
+            {/* Flash Messages */}
+            {flashMessage && (
+                <FlashMessage
+                    message={flashMessage.message}
+                    type={flashMessage.type}
+                    onClose={() => setFlashMessage(null)}
+                />
+            )}
+
             {/* Header and Search */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -205,24 +255,22 @@ const Team = ({ teamMembers = [] }) => {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
                                     <SelectItem value="member">Member</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            <p><strong>Viewer:</strong> Can view project content</p>
                             <p><strong>Member:</strong> Can edit and manage tasks</p>
-                            <p><strong>Admin:</strong> Can manage project settings</p>
+                            <p><strong>Admin:</strong> Can manage project settings and team members</p>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsInviteModalOpen(false)}>
+                        <Button variant="outline" onClick={() => setIsInviteModalOpen(false)} disabled={isInviting}>
                             Cancel
                         </Button>
-                        <Button onClick={handleInvite} disabled={!inviteData.email}>
-                            Send Invitation
+                        <Button onClick={handleInvite} disabled={!inviteData.email || isInviting}>
+                            {isInviting ? 'Sending...' : 'Send Invitation'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

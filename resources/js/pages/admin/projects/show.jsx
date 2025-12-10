@@ -96,24 +96,7 @@ const sampleTasks = [
     },
 ];
 
-const notes = [
-    {
-        id: "1",
-        title: "Project Ideas",
-        content: "- Focus on user experience\n- Implement dark mode\n- Add real-time notifications\n- Optimize for mobile",
-        color: "bg-amber-50 dark:bg-amber-950/50",
-        createdAt: "2024-02-15T12:00:00",
-        updatedAt: "2024-02-15T14:30:00",
-    },
-    {
-        id: "2",
-        title: "Meeting Notes: Client Call",
-        content: "- Client wants to emphasize performance\n- Budget concerns for Q1\n- Need to prepare timeline by Friday\n- Follow up with design team",
-        color: "bg-emerald-50 dark:bg-emerald-950/50",
-        createdAt: "2024-02-12T09:00:00",
-        updatedAt: "2024-02-12T10:15:00",
-    },
-];
+
 
 const messages = [
     {
@@ -151,39 +134,11 @@ const messages = [
     },
 ];
 
-const files = [
-    {
-        id: "1",
-        name: "Project Design System.fig",
-        type: "fig",
-        size: "3.8 MB",
-        date: "15 FEB 2024",
-        uploadedBy: {
-            id: "2",
-            name: "Jane Smith",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        modified: "2024-02-15",
-    },
-    {
-        id: "2",
-        name: "Project Requirements.pdf",
-        type: "pdf",
-        size: "1.9 KB",
-        date: "12 FEB 2024",
-        uploadedBy: {
-            id: "1",
-            name: "John Doe",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        modified: "2024-02-12",
-    },
-];
 
-const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
+const ProjectShow = ({ project, teamMembers, tasks, attachments , notes }) => {
     const [activeTab, setActiveTab] = useState("overview");
     const [chatMessages, setChatMessages] = useState(messages);
-
+    console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
         return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
@@ -308,7 +263,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                     {/* Main Content */}
                     <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
                         {/* Calendar Section */}
-                        <Calendar events={events} /> 
+                        <Calendar events={events} />
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
@@ -347,8 +302,8 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                 </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
-                                    <Files 
-                                        projectAttachments={attachments} 
+                                    <Files
+                                        projectAttachments={attachments}
                                         taskAttachments={allTaskAttachments}
                                         projectId={project.id}
                                     />
@@ -367,7 +322,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments }) => {
                                 </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
-                                    <Team teamMembers={teamMembers} />
+                                    <Team teamMembers={teamMembers} projectId={project.id} />
                                 </TabsContent>
                             </Tabs>
                         </div>

@@ -668,6 +668,9 @@ const TaskModal = ({
         setTaskToActOn(selectedTask);
         setIsConfirmTaskArchiveModalOpen(true);
     };
+    const handleProgression = () => {
+
+    };
 
     const confirmArchiveTask = () => {
         if (taskToActOn) {
@@ -748,6 +751,10 @@ const TaskModal = ({
                                 <DropdownMenuItem onClick={() => handleArchiveTask()}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Archive Task
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleProgression()}>
+                                    <Progress className="mr-2 h-4 w-4" />
+                                    progression
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleDeleteTask()} className="text-destructive">
                                     <Trash2 className="mr-2 h-4 w-4" />
@@ -1104,6 +1111,8 @@ const TaskModal = ({
                                                 onClose={() => setShowMembersPopover(false)}
                                             />
                                         )}
+
+
                                     </div>
                                 </div>
 
@@ -1202,6 +1211,8 @@ const TaskModal = ({
 
                                 </div>
                             </ScrollArea>
+
+
                         </div>
                     </div>
                 </div>

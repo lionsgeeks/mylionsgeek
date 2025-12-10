@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm, router } from '@inertiajs/react';
-import { 
-    FileText, 
-    ImageIcon, 
-    MoreHorizontal, 
-    ExternalLink, 
-    ArrowRight, 
-    Trash, 
+import {
+    FileText,
+    ImageIcon,
+    MoreHorizontal,
+    ExternalLink,
+    ArrowRight,
+    Trash,
     Download,
     Upload,
     Plus,
@@ -32,7 +32,6 @@ import {
     Paperclip,
     X
 } from 'lucide-react';
-
 const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -48,12 +47,12 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
 
     const filteredFiles = allAttachments.filter(file => {
         const matchesSearch = file.original_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                             file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
-        
+            file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
+
         if (!matchesSearch) return false;
-        
+
         if (fileFilter === 'all') return true;
-        
+
         const mimeType = file.mime_type || file.type || '';
         switch (fileFilter) {
             case 'images':
@@ -93,25 +92,40 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         }
     };
 
+    const { data, setData, post, processing, reset } = useForm({
+        file: null,
+        project_id: '',
+    });
+
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        setUploadFile(file);
+        setData('file', file);
+        setData('project_id', projectId);
+    };
+
     const handleUpload = () => {
-        if (!uploadFile) return;
+        if (!data.file) {
+            alert('Please select a file first.');
+            return;
+        }
 
-        const formData = new FormData();
-        formData.append('file', uploadFile);
-        formData.append('project_id', projectId);
-
-        router.post('/admin/projects/attachments', formData, {
+        post('/admin/projects/attachments', {
+            forceFormData: true,
             onSuccess: () => {
+                reset();
                 setUploadFile(null);
                 setIsUploadModalOpen(false);
-                // The page will reload with the new attachment
+                alert('hh!');
             },
             onError: (errors) => {
-                console.error('Upload failed:', errors);
-                //alert('Upload failed: ' + (errors.message || 'Unknown error'));
-            }
+                console.error('Upload error:', errors);
+                alert('hhhhhhhh');
+            },
         });
     };
+
 
     const handleDelete = (attachmentId, source) => {
         if (source === 'project') {
@@ -137,15 +151,15 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                 <div className="flex items-center gap-2 flex-wrap">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            type="search" 
-                            placeholder="Search files..." 
+                        <Input
+                            type="search"
+                            placeholder="Search files..."
                             className="pl-8 w-[200px] md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    
+
                     {/* File Type Filter */}
                     <Select value={fileFilter} onValueChange={setFileFilter}>
                         <SelectTrigger className="w-[140px]">
@@ -189,12 +203,11 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                             <CardContent className="p-0">
                                 <div className="bg-muted/30 p-6 flex items-center justify-center relative">
                                     {getFileIcon(file.mime_type, file.original_name || file.name)}
-                                    <Badge 
-                                        variant="outline" 
+                                    <Badge
+                                        variant="outline"
                                         className="absolute top-2 right-2 text-xs"
                                     >
                                         {file.source}
-                          
                                     </Badge>
                                 </div>
                                 <div className="p-4">
@@ -208,10 +221,10 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                         </h3>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-4 bg-white border border-gray-200 shadow-xl rounded-lg">
-                                                        <img 
-                                                            src={`/storage/${file.path}`} 
-                                                            alt={file.original_name || file.name} 
-                                                            className="max-w-sm max-h-sm rounded-lg shadow-sm" 
+                                                        <img
+                                                            src={`/storage/${file.path}`}
+                                                            alt={file.original_name || file.name}
+                                                            className="max-w-sm max-h-sm rounded-lg shadow-sm"
                                                         />
                                                     </PopoverContent>
                                                 </Popover>
@@ -229,9 +242,9 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem asChild>
-                                                    <a 
-                                                        href={`/storage/${file.path}`} 
-                                                        target="_blank" 
+                                                    <a
+                                                        href={`/storage/${file.path}`}
+                                                        target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex items-center w-full"
                                                     >
@@ -240,8 +253,8 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                     </a>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem asChild>
-                                                    <a 
-                                                        href={`/storage/${file.path}`} 
+                                                    <a
+                                                        href={`/storage/${file.path}`}
                                                         download={file.original_name || file.name}
                                                         className="flex items-center w-full"
                                                     >
@@ -251,7 +264,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 {file.source === 'project' && (
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         className="text-destructive"
                                                         onClick={() => handleDelete(file.id, file.source)}
                                                     >
@@ -264,18 +277,18 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <Avatar className="h-6 w-6">
-                                                <AvatarImage 
-                                                    src={file.uploaded_by?.image ? `/storage/${file.uploaded_by.image}` : null} 
-                                                    alt={file.uploaded_by?.name} 
-                                                />
-                                                <AvatarFallback>
-                                                    {file.uploaded_by?.name?.substring(0, 2).toUpperCase() || '??'}
-                                                </AvatarFallback>
-                                            </Avatar>
+
+                                            <Avatar
+                                                className="w-16 h-16"
+                                                image={file.uploader?.image}
+                                                name={file.uploader?.name}
+                                                lastActivity={file.uploader?.last_online || null}
+                                                onlineCircleClass="hidden"
+                                                edit={false}
+                                            />
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-medium text-foreground">
-                                                    {file.uploaded_by?.name || 'Unknown User'}
+                                                    {file.uploader?.name || 'Unknown User'}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">
                                                     {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Unknown size'}
@@ -287,7 +300,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                 {new Date(file.uploaded_at).toLocaleDateString()}
                                             </span>
                                             <span className="text-xs text-muted-foreground">
-                                                {new Date(file.uploaded_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {new Date(file.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
                                         </div>
                                     </div>
@@ -310,10 +323,10 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="file">Select File</Label>
-                            <Input 
-                                id="file" 
+                            <Input
+                                id="file"
                                 type="file"
-                                onChange={(e) => setUploadFile(e.target.files[0])}
+                                onChange={handleFileChange}
                             />
                         </div>
                         {uploadFile && (

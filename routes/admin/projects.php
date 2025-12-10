@@ -11,14 +11,17 @@ use Illuminate\Support\Facades\Route;
 Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join'])->name('projects.join');
 
 Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->name('admin.')->group(function () {
-    // Project routes
-    Route::resource('projects', ProjectController::class);
-    Route::post('projects/{project}', [ProjectController::class, 'update'])->name('projects.update-post');
+    Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
+    Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');
     Route::post('projects/invite', [ProjectController::class, 'invite'])->name('projects.invite');
     Route::post('projects/{project}/invite', [ProjectController::class, 'inviteUser'])->name('projects.invite-user');
+    Route::get('projects-statistics', [ProjectController::class, 'statistics'])->name('projects.statistics');
+
+    // Project resource routes
+    Route::resource('projects', ProjectController::class);
+    Route::post('projects/{project}', [ProjectController::class, 'update'])->name('projects.update-post');
     Route::delete('projects/{project}/users/{user}', [ProjectController::class, 'removeUser'])->name('projects.remove-user');
     Route::put('projects/{project}/users/{user}', [ProjectController::class, 'updateRole'])->name('projects.update-role');
-    Route::get('projects-statistics', [ProjectController::class, 'statistics'])->name('projects.statistics');
 
     // Task routes
     Route::resource('tasks', TaskController::class)->except(['index', 'show', 'create', 'edit']);
@@ -31,8 +34,8 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('
     Route::put('tasks/{task}/subtasks', [TaskController::class, 'updateSubtask'])->name('tasks.update-subtask');
     Route::delete('tasks/{task}/subtasks', [TaskController::class, 'deleteSubtask'])->name('tasks.delete-subtask');
     Route::post('tasks/{task}/comments', [TaskController::class, 'addComment'])->name('tasks.add-comment');
-Route::put('tasks/{task}/comments/{comment}', [TaskController::class, 'updateComment'])->name('tasks.update-comment');
-Route::delete('tasks/{task}/comments/{comment}', [TaskController::class, 'deleteComment'])->name('tasks.delete-comment');
+    Route::put('tasks/{task}/comments/{comment}', [TaskController::class, 'updateComment'])->name('tasks.update-comment');
+    Route::delete('tasks/{task}/comments/{comment}', [TaskController::class, 'deleteComment'])->name('tasks.delete-comment');
     Route::post('tasks/{task}/attachments', [TaskController::class, 'addAttachment'])->name('tasks.add-attachment');
     Route::delete('tasks/{task}/attachments', [TaskController::class, 'removeAttachment'])->name('tasks.remove-attachment');
     Route::post('tasks/{task}/pin', [TaskController::class, 'togglePin'])->name('tasks.toggle-pin');
@@ -47,8 +50,4 @@ Route::delete('tasks/{task}/comments/{comment}', [TaskController::class, 'delete
     // Attachment routes
     Route::resource('attachments', AttachmentController::class)->only(['store', 'destroy']);
     Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
-
-    // Project attachment routes
-    Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
-    Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');
 });
