@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -10,14 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm, router } from '@inertiajs/react';
-import { 
-    Settings, 
-    Share2, 
-    Bookmark, 
-    MoreHorizontal, 
-    Edit, 
-    Trash, 
-    Users, 
+import {
+    Settings,
+    Share2,
+    Bookmark,
+    MoreHorizontal,
+    Edit,
+    Trash,
+    Users,
     Calendar,
     FileText,
     BarChart3,
@@ -32,7 +32,8 @@ import {
     Download,
     Upload,
     Archive,
-    Star
+    Star,
+    Route
 } from 'lucide-react';
 
 const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
@@ -73,7 +74,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     const completedTasks = tasks.filter(task => task.status === 'completed').length;
     const totalTasks = tasks.length;
     const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+
     // Calculate days until deadline
     const getDaysUntilDeadline = () => {
         if (!project.end_date) return null;
@@ -110,13 +111,19 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
         });
     };
 
+    // const handleshareProject = () => {
+    //     router.post("/admin/project/share",{
+
+    //     })
+    // }
+
     return (
         <>
             {/* Project Banner */}
             <div className="relative h-48 bg-gradient-to-r from-[var(--color-alpha)]/70 via-[var(--color-alpha)]/50 to-[var(--color-alpha)]/30 overflow-hidden">
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                
+
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-4 left-4 w-32 h-32 bg-white/20 rounded-full blur-xl"></div>
@@ -128,7 +135,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                 <div className="relative z-10 p-6 h-full flex flex-col justify-between">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                            <Button onClick={() => router.visit("/admin/projects")} variant="ghost" size="sm" className="text-white hover:bg-white/20">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back to Projects
                             </Button>
@@ -145,9 +152,9 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-white hover:bg-white/20"
                                 onClick={() => setIsShareModalOpen(true)}
                             >
@@ -170,7 +177,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                                         Invite Members
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         onClick={() => setIsDeleteModalOpen(true)}
                                         className="text-destructive"
                                     >
@@ -282,16 +289,16 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="name">Project Name</Label>
-                            <Input 
-                                id="name" 
+                            <Input
+                                id="name"
                                 value={editData.name}
                                 onChange={(e) => setEditData('name', e.target.value)}
                             />
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Textarea 
-                                id="description" 
+                            <Textarea
+                                id="description"
                                 value={editData.description}
                                 onChange={(e) => setEditData('description', e.target.value)}
                             />
@@ -299,7 +306,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select 
+                                <Select
                                     value={editData.status}
                                     onValueChange={(value) => setEditData('status', value)}
                                 >
@@ -316,8 +323,8 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                             </div>
                             <div>
                                 <Label htmlFor="start_date">Start Date</Label>
-                                <Input 
-                                    id="start_date" 
+                                <Input
+                                    id="start_date"
                                     type="date"
                                     value={editData.start_date}
                                     onChange={(e) => setEditData('start_date', e.target.value)}
@@ -326,8 +333,8 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                         </div>
                         <div>
                             <Label htmlFor="end_date">End Date</Label>
-                            <Input 
-                                id="end_date" 
+                            <Input
+                                id="end_date"
                                 type="date"
                                 value={editData.end_date}
                                 onChange={(e) => setEditData('end_date', e.target.value)}

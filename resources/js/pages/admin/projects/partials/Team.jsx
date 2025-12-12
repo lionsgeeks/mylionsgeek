@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, } from '@/components/ui/avatar';
@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { router, usePage } from '@inertiajs/react';
+import FlashMessage from '@/components/FlashMessage';
 import {
     MoreHorizontal,
     MessageSquare,
@@ -19,26 +21,84 @@ import {
     UserPlus
 } from 'lucide-react';
 
-const Team = ({ teamMembers = [] }) => {
+const Team = ({ teamMembers = [], projectId, userr }) => {
+    console.log(userr);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [inviteData, setInviteData] = useState({
         email: '',
         role: 'member'
     });
+    const [flashMessage, setFlashMessage] = useState(null);
+    const [isInviting, setIsInviting] = useState(false);
+
+    const isCurrentUserAdmin = userr?.role === 'admin' || userr?.role === 'owner';
+
+    // Get flash messages from Inertia
+    const { flash } = usePage().props;
+
+    // Handle flash messages
+    useEffect(() => {
+        if (flash?.success) {
+            setFlashMessage({ message: flash.success, type: 'success' });
+        } else if (flash?.error) {
+            setFlashMessage({ message: flash.error, type: 'error' });
+        }
+    }, [flash]);
+
 
     const filteredMembers = teamMembers.filter(member =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (member.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (member.user?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
+
     const handleInvite = () => {
-        //('Inviting member:', inviteData);
-        setInviteData({
-            email: '',
-            role: 'member'
+        if (!inviteData.email.trim()) {
+            setFlashMessage({ message: 'Please enter an email address', type: 'error' });
+            return;
+        }
+
+        setIsInviting(true);
+
+        router.post(`/admin/projects/${projectId}/invite`, {
+            email: inviteData.email.trim(),
+            role: inviteData.role
+        }, {
+            onSuccess: () => {
+                setInviteData({
+                    email: '',
+                    role: 'member'
+                });
+                setIsInviteModalOpen(false);
+                setIsInviting(false);
+            },
+            onError: (errors) => {
+                setIsInviting(false);
+                const errorMessage = errors.email
+                    ? Array.isArray(errors.email) ? errors.email.join(', ') : errors.email
+                    : errors.message || 'Failed to send invitation. Please try again.';
+                setFlashMessage({
+                    message: errorMessage,
+                    type: 'error'
+                });
+            }
         });
-        setIsInviteModalOpen(false);
+    };
+
+    const handleDeleteTeamMember = (member) => {
+        router.delete(`/admin/projects/${projectId}/users/${member.id}`, {
+            onSuccess: () => {
+                setFlashMessage({ message: 'Team member removed successfully', type: 'success' });
+                router.reload({ only: ['teamMembers'] });
+            },
+            onError: (errors) => {
+                console.error('Failed to delete team member:', errors);
+                const errorMessage = errors.message || 'Failed to remove team member. Please try again.';
+                setFlashMessage({ message: errorMessage, type: 'error' });
+            }
+        });
     };
 
     const getRoleBadge = (role) => {
@@ -70,6 +130,15 @@ const Team = ({ teamMembers = [] }) => {
 
     return (
         <div className="space-y-6">
+            {/* Flash Messages */}
+            {flashMessage && (
+                <FlashMessage
+                    message={flashMessage.message}
+                    type={flashMessage.type}
+                    onClose={() => setFlashMessage(null)}
+                />
+            )}
+
             {/* Header and Search */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -100,13 +169,15 @@ const Team = ({ teamMembers = [] }) => {
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Last Active</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            {isCurrentUserAdmin && (
+                                <TableHead className="text-right">Actions</TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredMembers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={isCurrentUserAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
                                     {searchTerm ? 'No members match your search' : 'No team members yet'}
                                 </TableCell>
                             </TableRow>
@@ -115,19 +186,15 @@ const Team = ({ teamMembers = [] }) => {
                                 <TableRow key={member.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            {/* <Avatar className="h-8 w-8">
-                                                <AvatarImage src={member.avatar} alt={member.name} />
-                                                <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar> */}
                                             <Avatar
                                                 className="h-8 w-8"
-                                                image={member.avatar}
-                                                name={member.name}
+                                                image={member.user?.avatar}   // safe access user avatar
+                                                name={member.user?.name}      // safe access user name
                                                 onlineCircleClass="hidden"
                                             />
                                             <div>
-                                                <div className="font-medium">{member.name}</div>
-                                                <div className="text-sm text-muted-foreground">{member.email}</div>
+                                                <div className="font-medium">{member.user?.name || 'No Name'}</div>
+                                                <div className="text-sm text-muted-foreground">{member.user?.email || 'No Email'}</div>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -140,34 +207,36 @@ const Team = ({ teamMembers = [] }) => {
                                     <TableCell>
                                         {member.lastActive || 'Just now'}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
-                                                    <MessageSquare className="mr-2 h-4 w-4" />
-                                                    <span>Message</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Mail className="mr-2 h-4 w-4" />
-                                                    <span>Send Email</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Users className="mr-2 h-4 w-4" />
-                                                    <span>Change Role</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive">
-                                                    <Trash className="mr-2 h-4 w-4" />
-                                                    <span>Remove</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
+                                    {isCurrentUserAdmin && (
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>
+                                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                                        <span>Message</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Mail className="mr-2 h-4 w-4" />
+                                                        <span>Send Email</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Users className="mr-2 h-4 w-4" />
+                                                        <span>Change Role</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
+                                                        <Trash className="mr-2 h-4 w-4" />
+                                                        <span>Remove</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}
@@ -205,24 +274,22 @@ const Team = ({ teamMembers = [] }) => {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
                                     <SelectItem value="member">Member</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            <p><strong>Viewer:</strong> Can view project content</p>
                             <p><strong>Member:</strong> Can edit and manage tasks</p>
-                            <p><strong>Admin:</strong> Can manage project settings</p>
+                            <p><strong>Admin:</strong> Can manage project settings and team members</p>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsInviteModalOpen(false)}>
+                        <Button variant="outline" onClick={() => setIsInviteModalOpen(false)} disabled={isInviting}>
                             Cancel
                         </Button>
-                        <Button onClick={handleInvite} disabled={!inviteData.email}>
-                            Send Invitation
+                        <Button onClick={handleInvite} disabled={!inviteData.email || isInviting}>
+                            {isInviting ? 'Sending...' : 'Send Invitation'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

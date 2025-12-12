@@ -424,8 +424,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             filteredTasks.map((task) => (
                                 <TableRow
                                     key={task.id}
-                                    className={`cursor-pointer hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
-                                    onClick={() => handleTaskClick(task)}
+                                    className={`hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
                                 >
                                     <TableCell className="w-[300px]">
                                         <div className='py-2'>
@@ -465,7 +464,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                             //     </AvatarFallback>
                                                             // </Avatar>
                                                             <Avatar
-                                                                className="w-12 h-12 overflow-hidden relative z-50"
+                                                                className="w-10 h-10 ml-3 overflow-hidden relative z-50"
                                                                 image={assignee.image}
                                                                 name={assignee.name}
                                                                 lastActivity={assignee.last_online || null}
@@ -501,7 +500,6 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-8 w-8 p-0"
-                                                        onClick={(e) => e.stopPropagation()} // Prevent row click
                                                     >
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
@@ -524,7 +522,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <span>Mark as Completed</span>
                                                     </DropdownMenuItem>
                                                     {(task.status === 'completed' || task.status === 'review') && (
-                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in-progress')}>
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
                                                             <AlertCircle className="mr-2 h-4 w-4" />
                                                             <span>Mark as Incomplete</span>
                                                         </DropdownMenuItem>

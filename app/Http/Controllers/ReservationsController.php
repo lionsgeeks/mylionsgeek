@@ -1542,16 +1542,16 @@ class ReservationsController extends Controller
             $placeByReservation = [];
             if ($needsPlaces && Schema::hasTable('reservation_places') && Schema::hasTable('places')) {
                 DB::table('reservation_places as rp')
-                    ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
-                    ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
-                    ->get()
-                    ->each(function ($row) use (&$placeByReservation) {
-                        $placeByReservation[$row->reservation_id] = [
-                            'place_name' => $row->place_name,
-                            'place_type' => $row->place_type,
-                        ];
-                    });
-            }
+                ->leftJoin('places as p', 'p.id', '=', 'rp.places_id')
+                ->select('rp.reservation_id', 'p.name as place_name', 'p.place_type')
+                ->get()
+                ->each(function ($row) use (&$placeByReservation) {
+                    $placeByReservation[$row->reservation_id] = [
+                        'place_name' => $row->place_name,
+                        'place_type' => $row->place_type,
+                    ];
+                });
+        }
 
             // Build cowork query if needed
             $coworkQuery = null;
@@ -1563,12 +1563,12 @@ class ReservationsController extends Controller
                         ->orderByDesc('reservation_coworks.created_at');
 
                     // Apply date filters
-                    if ($fromDate) {
+                if ($fromDate) {
                         $coworkQuery->where('reservation_coworks.day', '>=', $fromDate);
-                    }
-                    if ($toDate) {
+                }
+                if ($toDate) {
                         $coworkQuery->where('reservation_coworks.day', '<=', $toDate);
-                    }
+                }
 
                     // Apply status filter
                     if ($filterStatus) {
@@ -1621,9 +1621,9 @@ class ReservationsController extends Controller
             // Get regular reservations
             $regularReservations = $query->get();
             $allReservations = $allReservations->merge($regularReservations);
-            
+
             // Get cowork reservations if they exist
-            if ($coworkQuery) {
+                if ($coworkQuery) {
                 $coworkReservations = $coworkQuery->get();
                 $allReservations = $allReservations->merge($coworkReservations);
             }
@@ -1664,7 +1664,7 @@ class ReservationsController extends Controller
                     // For cowork reservations, ensure type is set
                     if (isset($row->table) && !isset($row->type)) {
                         return 'cowork';
-                    }
+                                }
                     return $row->type ?? '';
                 },
             ];
