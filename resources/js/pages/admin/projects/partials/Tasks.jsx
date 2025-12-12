@@ -464,7 +464,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                             //     </AvatarFallback>
                                                             // </Avatar>
                                                             <Avatar
-                                                                className="w-12 h-12 overflow-hidden relative z-50"
+                                                                className="w-10 h-10 ml-3 overflow-hidden relative z-50"
                                                                 image={assignee.image}
                                                                 name={assignee.name}
                                                                 lastActivity={assignee.last_online || null}

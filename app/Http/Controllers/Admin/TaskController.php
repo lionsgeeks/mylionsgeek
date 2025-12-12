@@ -448,25 +448,37 @@ class TaskController extends Controller
      */
     public function updateAssignees(Request $request, Task $task)
     {
+        // dd($request->all());
         try {
             $request->validate([
                 'assignees' => 'nullable|array',
                 'assignees.*' => 'exists:users,id'
             ]);
 
-            // Temporarily disable foreign key checks for SQLite
-            DB::statement('PRAGMA foreign_keys=OFF');
+            $assignees = $request->assignees ?? [];
 
-            $task->update(['assignees' => $request->assignees ?? []]);
+            DB::table('task_assignees')
+                ->where('task_id', $task->id)
+                ->delete();
 
-            // Re-enable foreign key checks
-            DB::statement('PRAGMA foreign_keys=ON');
+            foreach ($assignees as $userId) {
+                DB::table('task_assignees')->insert([
+                    'task_id' => $task->id,
+                    'user_id' => $userId,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
 
-            return redirect()->back()->with('success', 'Task assignees updated successfully!');
+            return back()->with('success', 'Task assignees updated successfully!');
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Failed to update task assignees: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
+
 
     /**
      * Add comment to task

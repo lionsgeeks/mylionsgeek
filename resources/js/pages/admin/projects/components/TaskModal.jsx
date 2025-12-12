@@ -65,59 +65,206 @@ const SidebarButton = ({ icon: Icon, label, onClick, isActive = false }) => (
     </Button>
 );
 
-// Helper component for member popover
-const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssignee, onClose }) => {
-    const [search, setSearch] = useState('');
-    const filteredMembers = teamMembers.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
+// Helper component for status popover
+const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, getStatusBadgeClass }) => {
+    const statuses = [
+        { value: 'todo', label: 'To Do' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'review', label: 'Review' },
+        { value: 'completed', label: 'Completed' }
+    ];
 
     return (
-        <div className="absolute z-20 w-72 bg-zinc-800 shadow-lg rounded-md border border-zinc-700 p-3 top-0 left-full ml-2">
+        <div className="absolute z-20 w-64 bg-zinc-800 shadow-lg rounded-md border border-zinc-700 p-3 top-7 left-150 ml-2">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-zinc-400">Members</span>
+                <span className="text-sm font-medium text-zinc-400">Change Status</span>
                 <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-zinc-700">
                     <X className="h-4 w-4" />
                 </Button>
             </div>
-            <Input
-                placeholder="Search members"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500 mb-2"
-            />
-            <ScrollArea className="h-48">
-                <div className="space-y-1">
-                    <span className="text-xs font-semibold text-zinc-400 block px-1 py-1">Board members</span>
-                    {filteredMembers.map(member => {
-                        const isSelected = selectedAssignees.includes(member.id);
-                        return (
-                            <div
-                                key={member.id}
-                                onClick={() => onToggleAssignee(member.id)}
-                                className="flex items-center justify-between p-2 rounded-md hover:bg-zinc-700 cursor-pointer"
-                            >
-                                <div className="flex items-center gap-2">
-                                    {/* <Avatar className="h-7 w-7">
-                                        <AvatarImage src={member.image ? `/storage/${member.image}` : null} alt={member.name} />
-                                        <AvatarFallback className="text-xs bg-zinc-600 text-white">{member.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                    </Avatar> */}
-                                    <Avatar
-                                        className="h-7 w-7 overflow-hidden relative z-50"
-                                        image={member.image}
-                                        name={member.name}
-                                        lastActivity={member.last_online || null}
-                                        onlineCircleClass="hidden"
-                                    />
-                                    <span className="text-sm text-white">{member.name}</span>
+            <div className="space-y-1">
+                {statuses.map(status => {
+                    const isSelected = currentStatus === status.value;
+                    return (
+                        <div
+                            key={status.value}
+                            onClick={() => {
+                                onStatusChange(status.value);
+                                onClose();
+                            }}
+                            className={`flex items-center justify-between p-2 rounded-md hover:bg-zinc-700 cursor-pointer ${isSelected ? 'bg-zinc-700/50' : ''}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusBadgeClass(status.value)}`}>
+                                    {getStatusIcon(status.value)}
+                                    {status.label}
                                 </div>
-                                {isSelected && <CheckCircle className="h-4 w-4 text-alpha" />}
                             </div>
-                        );
-                    })}
+                            {isSelected && <CheckCircle className="h-4 w-4 text-alpha" />}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+// Helper component for member popover
+const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssignee, onClose }) => {
+    const [search, setSearch] = useState('');
+    const [hoveredId, setHoveredId] = useState(null);
+
+    const filteredMembers = teamMembers.filter(m =>
+        m.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    // Normalize ID comparison - handle both string and number IDs
+    const isIdEqual = (id1, id2) => {
+        if (id1 == null || id2 == null) return false;
+        return String(id1) === String(id2);
+    };
+
+    // Check if a member is selected - handle array of IDs
+    const isSelected = (memberId) => {
+        if (!selectedAssignees || !Array.isArray(selectedAssignees) || selectedAssignees.length === 0) {
+            return false;
+        }
+        // Allow 0 as a valid ID, but reject null/undefined
+        if (memberId == null) {
+            return false;
+        }
+        
+        // Convert all IDs to strings for comparison to handle both string and number IDs
+        const normalizedMemberId = String(memberId);
+        return selectedAssignees.some(selId => {
+            // Allow 0 as a valid ID, but reject null/undefined
+            if (selId == null) {
+                return false;
+            }
+            return String(selId) === normalizedMemberId;
+        });
+    };
+
+    const handleMemberClick = (memberId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggleAssignee(memberId);
+    };
+
+    return (
+        <div className="absolute z-30 w-80 bg-zinc-900 shadow-2xl rounded-lg border border-zinc-700/50 p-0 top-20 -right-4 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700/50 bg-zinc-800/50">
+                <h3 className="text-sm font-semibold text-zinc-200">Members</h3>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={onClose} 
+                    className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-md transition-colors"
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {/* Search */}
+            <div className="px-3 pt-3 pb-2">
+                <Input
+                    placeholder="Search members"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 h-9"
+                    autoFocus
+                />
+            </div>
+
+            {/* Members List */}
+            <ScrollArea className="h-64">
+                <div className="px-2 py-2">
+                    <div className="px-2 py-1.5 mb-1">
+                        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                            Board members
+                        </span>
+                    </div>
+
+                    <div className="space-y-0.5">
+                        {filteredMembers.length === 0 ? (
+                            <div className="px-3 py-8 text-center">
+                                <p className="text-sm text-zinc-500">No members found</p>
+                            </div>
+                        ) : (
+                            filteredMembers.map((member) => {
+                                const selected = isSelected(member.id);
+                                const isHovered = hoveredId === member.id;
+
+                                return (
+                                    <div
+                                        key={member.id}
+                                        onClick={(e) => handleMemberClick(member.id, e)}
+                                        onMouseEnter={() => setHoveredId(member.id)}
+                                        onMouseLeave={() => setHoveredId(null)}
+                                        className={`
+                                            group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
+                                            transition-all duration-150 ease-out
+                                            ${selected 
+                                                ? 'bg-zinc-700/80 hover:bg-zinc-600/90' 
+                                                : isHovered 
+                                                    ? 'bg-zinc-800/60 hover:bg-zinc-700/70' 
+                                                    : 'hover:bg-zinc-800/40'
+                                            }
+                                        `}
+                                    >
+                                        {/* Avatar */}
+                                        <div className="flex-shrink-0">
+                                            <Avatar
+                                                className="h-8 w-8 overflow-hidden ring-2 ring-transparent transition-all"
+                                                image={member.image}
+                                                name={member.name}
+                                                lastActivity={member.last_online || null}
+                                                onlineCircleClass="hidden"
+                                            />
+                                        </div>
+
+                                        {/* Name */}
+                                        <div className="flex-1 min-w-0">
+                                            <span className={`
+                                                text-sm block truncate transition-all duration-150
+                                                ${selected 
+                                                    ? 'text-white font-semibold' 
+                                                    : isHovered 
+                                                        ? 'text-white font-medium' 
+                                                        : 'text-zinc-300'
+                                                }
+                                            `}>
+                                                {member.name}
+                                            </span>
+                                        </div>
+
+                                        {/* Selection Indicator */}
+                                        <div className="flex-shrink-0 flex items-center justify-center">
+                                            {selected ? (
+                                                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400/20 ring-2 ring-yellow-400/40">
+                                                    <CheckCircle 
+                                                        className="h-4 w-4 text-yellow-400" 
+                                                        strokeWidth={2.5}
+                                                        fill="rgb(250 204 21)"
+                                                        fillOpacity={0.3}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="w-5 h-5 rounded-full border-2 border-zinc-600 group-hover:border-zinc-500 transition-colors" />
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             </ScrollArea>
         </div>
     );
 };
+
 
 // Helper component for attachment popover
 const AttachPopover = ({ onClose, onFileUpload }) => {
@@ -186,6 +333,7 @@ const TaskModal = ({
     const [showAttachments, setShowAttachments] = useState(true);
     const [showMembersPopover, setShowMembersPopover] = useState(false);
     const [showAttachPopover, setShowAttachPopover] = useState(false);
+    const [showStatusPopover, setShowStatusPopover] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [showUserModal, setShowUserModal] = useState(false);
@@ -370,22 +518,40 @@ const TaskModal = ({
     };
 
     const handleToggleAssignee = (memberId) => {
-        const currentAssignees = taskData.assignees;
-        const newAssignees = currentAssignees.includes(memberId)
-            ? currentAssignees.filter(id => id !== memberId)
+        const currentAssignees = taskData.assignees || [];
+
+        // Helper function to compare IDs consistently (handles both string and number IDs)
+        const isIdEqual = (id1, id2) => {
+            if (id1 == null || id2 == null) return false;
+            return String(id1) === String(id2);
+        };
+
+        const isCurrentlySelected = currentAssignees.some(id => isIdEqual(id, memberId));
+
+        const newAssignees = isCurrentlySelected
+            ? currentAssignees.filter(id => !isIdEqual(id, memberId))
             : [...currentAssignees, memberId];
 
+        // Fix: Use correct setTaskData syntax
         setTaskData('assignees', newAssignees);
 
         router.patch(`/admin/tasks/${selectedTask.id}/assignees`, {
             assignees: newAssignees
         }, {
-            onSuccess: () => {
-                updateTask()
+            onSuccess: (page) => {
+                // Ensure taskData stays in sync with the updated assignees
+                setTaskData('assignees', newAssignees);
+                updateTask();
                 onUpdateTask?.();
+            },
+            onError: () => {
+                // Revert on error
+                setTaskData('assignees', currentAssignees);
             }
         });
     };
+
+
 
     const handleTogglePin = () => {
         const newPinnedState = !taskData.is_pinned;
@@ -669,7 +835,7 @@ const TaskModal = ({
         setIsConfirmTaskArchiveModalOpen(true);
     };
     const handleProgression = () => {
-
+        setShowStatusPopover(true);
     };
 
     const confirmArchiveTask = () => {
@@ -722,10 +888,24 @@ const TaskModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-1 border-b border-border bg-light dark:bg-dark">
                     <div className="flex items-center gap-4">
-                        {/* Status Badge */}
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusBadgeClass(taskData.status)}`}>
-                            {getStatusIcon(taskData.status)}
-                            {taskData.status.replace('_', ' ').toUpperCase()}
+                        {/* Status Badge - Clickable */}
+                        <div className="relative">
+                            <div
+                                onClick={() => setShowStatusPopover(true)}
+                                className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${getStatusBadgeClass(taskData.status)}`}
+                            >
+                                {getStatusIcon(taskData.status)}
+                                {taskData.status.replace('_', ' ').toUpperCase()}
+                            </div>
+                            {showStatusPopover && (
+                                <StatusPopover
+                                    currentStatus={taskData.status}
+                                    onStatusChange={handleUpdateStatus}
+                                    onClose={() => setShowStatusPopover(false)}
+                                    getStatusIcon={getStatusIcon}
+                                    getStatusBadgeClass={getStatusBadgeClass}
+                                />
+                            )}
                         </div>
 
                         {/* Priority Badge */}
@@ -1105,25 +1285,15 @@ const TaskModal = ({
 
                                         {showMembersPopover && (
                                             <MemberPopover
+                                                key={`members-${(taskData.assignees || []).join('-')}`}
                                                 teamMembers={teamMembers}
-                                                selectedAssignees={taskData.assignees}
+                                                selectedAssignees={taskData.assignees || []}
                                                 onToggleAssignee={handleToggleAssignee}
                                                 onClose={() => setShowMembersPopover(false)}
                                             />
                                         )}
-
-
                                     </div>
                                 </div>
-
-                                {showMembersPopover && (
-                                    <MemberPopover
-                                        teamMembers={teamMembers}
-                                        selectedAssignees={taskData.assignees}
-                                        onToggleAssignee={handleToggleAssignee}
-                                        onClose={() => setShowMembersPopover(false)}
-                                    />
-                                )}
                             </div>
 
                         </div>
