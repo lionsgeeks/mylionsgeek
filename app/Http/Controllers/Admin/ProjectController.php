@@ -128,7 +128,6 @@ class ProjectController extends Controller
             'users',
             'tasks.assignedTo',
             'tasks.creator',
-            'tasks.comments.user',
             'attachments.uploader'
         ]);
 
