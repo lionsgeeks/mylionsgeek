@@ -135,7 +135,9 @@ const messages = [
 ];
 
 
-const ProjectShow = ({ project, teamMembers, tasks, attachments , notes }) => {
+const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, userr }) => {
+    console.log(userr);
+
     const [activeTab, setActiveTab] = useState("overview");
     const [chatMessages, setChatMessages] = useState(messages);
     console.log(notes)
@@ -290,6 +292,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments , notes }) => {
                                         project={project}
                                         teamMembers={teamMembers}
                                         tasks={tasks}
+
                                     />
                                 </TabsContent>
 
@@ -322,7 +325,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments , notes }) => {
                                 </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
-                                    <Team teamMembers={teamMembers} projectId={project.id} />
+                                    <Team teamMembers={teamMembers} projectId={project.id} userr={userr} />
                                 </TabsContent>
                             </Tabs>
                         </div>

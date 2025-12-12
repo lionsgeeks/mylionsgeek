@@ -133,7 +133,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
         if (memberId == null) {
             return false;
         }
-        
+
         // Convert all IDs to strings for comparison to handle both string and number IDs
         const normalizedMemberId = String(memberId);
         return selectedAssignees.some(selId => {
@@ -146,20 +146,21 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
     };
 
     const handleMemberClick = (memberId, e) => {
+        // Allow clicks anywhere on the div
         e.preventDefault();
         e.stopPropagation();
         onToggleAssignee(memberId);
     };
 
     return (
-        <div className="absolute z-30 w-80 bg-zinc-900 shadow-2xl rounded-lg border border-zinc-700/50 p-0 top-20 -right-4 overflow-hidden">
+        <div className="absolute z-[100] w-80 bg-zinc-900 shadow-2xl rounded-lg border border-zinc-700/50 p-0 top-0 -right-6 overflow-hidden" style={{ marginTop: '0px' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700/50 bg-zinc-800/50">
                 <h3 className="text-sm font-semibold text-zinc-200">Members</h3>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={onClose} 
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
                     className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-md transition-colors"
                 >
                     <X className="h-4 w-4" />
@@ -203,20 +204,21 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
                                         onMouseEnter={() => setHoveredId(member.id)}
                                         onMouseLeave={() => setHoveredId(null)}
                                         className={`
-                                            group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
-                                            transition-all duration-150 ease-out
-                                            ${selected 
-                                                ? 'bg-zinc-700/80 hover:bg-zinc-600/90' 
-                                                : isHovered 
-                                                    ? 'bg-zinc-800/60 hover:bg-zinc-700/70' 
+                                        group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
+                                        transition-all duration-150 ease-out w-full pointer-events-auto
+                                        ${selected
+                                                ? 'bg-zinc-700/80 hover:bg-zinc-600/90'
+                                                : isHovered
+                                                    ? 'bg-zinc-800/60 hover:bg-zinc-700/70'
                                                     : 'hover:bg-zinc-800/40'
                                             }
-                                        `}
+                                    `}
                                     >
+
                                         {/* Avatar */}
-                                        <div className="flex-shrink-0">
+                                        <div className="flex-shrink-0 pointer-events-none">
                                             <Avatar
-                                                className="h-8 w-8 overflow-hidden ring-2 ring-transparent transition-all"
+                                                className="h-8 w-8 overflow-hidden ring-2 ring-transparent transition-all pointer-events-none"
                                                 image={member.image}
                                                 name={member.name}
                                                 lastActivity={member.last_online || null}
@@ -225,13 +227,13 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
                                         </div>
 
                                         {/* Name */}
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1  pointer-events-none">
                                             <span className={`
                                                 text-sm block truncate transition-all duration-150
-                                                ${selected 
-                                                    ? 'text-white font-semibold' 
-                                                    : isHovered 
-                                                        ? 'text-white font-medium' 
+                                                ${selected
+                                                    ? 'text-white font-semibold'
+                                                    : isHovered
+                                                        ? 'text-white font-medium'
                                                         : 'text-zinc-300'
                                                 }
                                             `}>
@@ -240,11 +242,11 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
                                         </div>
 
                                         {/* Selection Indicator */}
-                                        <div className="flex-shrink-0 flex items-center justify-center">
+                                        <div className="flex-shrink-0 flex items-center justify-center pointer-events-none">
                                             {selected ? (
                                                 <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400/20 ring-2 ring-yellow-400/40">
-                                                    <CheckCircle 
-                                                        className="h-4 w-4 text-yellow-400" 
+                                                    <CheckCircle
+                                                        className="h-4 w-4 text-yellow-400"
                                                         strokeWidth={2.5}
                                                         fill="rgb(250 204 21)"
                                                         fillOpacity={0.3}
@@ -1252,7 +1254,7 @@ const TaskModal = ({
                     </div>
 
                     {/* Right Column */}
-                    <div className="w-1/3 p-6 space-y-6 border-l border-alpha/20 bg-light dark:bg-dark">
+                    <div className="w-1/3 p-6 space-y-6 border-l border-alpha/20 bg-light dark:bg-dark relative">
                         {/* Action Buttons */}
                         <div className="space-y-2 pt-6 sticky top-0">
                             <div className="relative">
@@ -1282,16 +1284,6 @@ const TaskModal = ({
                                         >
                                             <Plus className="h-4 w-4" />
                                         </Button>
-
-                                        {showMembersPopover && (
-                                            <MemberPopover
-                                                key={`members-${(taskData.assignees || []).join('-')}`}
-                                                teamMembers={teamMembers}
-                                                selectedAssignees={taskData.assignees || []}
-                                                onToggleAssignee={handleToggleAssignee}
-                                                onClose={() => setShowMembersPopover(false)}
-                                            />
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1299,7 +1291,7 @@ const TaskModal = ({
                         </div>
 
                         {/* Comments & Activity */}
-                        <div className="">
+                        <div className="relative">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-semibold text-dark dark:text-light">Comments</h3>
                             </div>
@@ -1325,6 +1317,17 @@ const TaskModal = ({
                                     </div>
                                 )}
                             </div>
+
+                            {/* MemberPopover - positioned over Comments List */}
+                            {showMembersPopover && (
+                                <MemberPopover
+                                    key={`members-${(taskData.assignees || []).join('-')}`}
+                                    teamMembers={teamMembers}
+                                    selectedAssignees={taskData.assignees || []}
+                                    onToggleAssignee={handleToggleAssignee}
+                                    onClose={() => setShowMembersPopover(false)}
+                                />
+                            )}
 
                             {/* Comments List */}
                             <ScrollArea className="h-[calc(75vh-300px)] pr-4">

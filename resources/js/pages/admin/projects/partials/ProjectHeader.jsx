@@ -111,6 +111,12 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
         });
     };
 
+    // const handleshareProject = () => {
+    //     router.post("/admin/project/share",{
+
+    //     })
+    // }
+
     return (
         <>
             {/* Project Banner */}

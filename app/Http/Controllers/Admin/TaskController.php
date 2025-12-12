@@ -178,7 +178,7 @@ class TaskController extends Controller
                 $hasIncompleteSubtasks = collect($subtasks)->contains(fn($subtask) => !($subtask['completed'] ?? false));
 
                 if ($hasIncompleteSubtasks) {
-                    return response()->json(['success' => false, 'message' => 'Cannot mark task as complete. Please complete all subtasks first.'], 400);
+                    return back()->withErrors(['message' => 'Cannot mark task as complete. Please complete all subtasks first.']);
                 }
             }
 

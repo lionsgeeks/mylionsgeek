@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Task;
 use App\Models\Attachment;
 use App\Models\ProjectInvitation;
+use App\Models\ProjectUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -131,17 +132,25 @@ class ProjectController extends Controller
             'attachments.uploader'
         ]);
 
-        $teamMembers = $project->users()->get();
+        $teamMembers = ProjectUser::with('user')
+            ->where('project_id', $project->id)
+            ->get();
+
         $tasks = $project->tasks()->with(['assignees', 'creator'])->get();
         $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
+        $user = ProjectUser::where('user_id', auth()->id())->first();
 
+
+
+        // dd($teamMembers);
         return Inertia::render('admin/projects/show', [
             'project' => $project,
             'teamMembers' => $teamMembers,
             'tasks' => $tasks,
             'attachments' => $attachments,
-            'notes' => $notes
+            'notes' => $notes,
+            "userr" => $user
         ]);
     }
 
@@ -278,7 +287,7 @@ class ProjectController extends Controller
      */
     public function inviteUser(Request $request, Project $project)
     {
-    //    dd($request->all());
+        //    dd($request->all());
         $request->validate([
             'email' => 'nullable|email',
             'role' => 'required|in:admin,member'
@@ -476,5 +485,10 @@ class ProjectController extends Controller
             Log::error('File deletion failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to delete file: ' . $e->getMessage());
         }
+    }
+
+    public function shareProject(Project $project)
+    {
+        dd($request->all());
     }
 }

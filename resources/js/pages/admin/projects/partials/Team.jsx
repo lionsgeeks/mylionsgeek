@@ -21,7 +21,9 @@ import {
     UserPlus
 } from 'lucide-react';
 
-const Team = ({ teamMembers = [], projectId }) => {
+const Team = ({ teamMembers = [], projectId, userr }) => {
+    console.log(userr);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [inviteData, setInviteData] = useState({
@@ -45,9 +47,10 @@ const Team = ({ teamMembers = [], projectId }) => {
 
 
     const filteredMembers = teamMembers.filter(member =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (member.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (member.user?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
+
 
     const handleInvite = () => {
         if (!inviteData.email.trim()) {
@@ -71,13 +74,27 @@ const Team = ({ teamMembers = [], projectId }) => {
             },
             onError: (errors) => {
                 setIsInviting(false);
-                const errorMessage = errors.email 
+                const errorMessage = errors.email
                     ? Array.isArray(errors.email) ? errors.email.join(', ') : errors.email
                     : errors.message || 'Failed to send invitation. Please try again.';
                 setFlashMessage({
                     message: errorMessage,
                     type: 'error'
                 });
+            }
+        });
+    };
+
+    const handleDeleteTeamMember = (member) => {
+        router.delete(`/admin/projects/${projectId}/users/${member.id}`, {
+            onSuccess: () => {
+                setFlashMessage({ message: 'Team member removed successfully', type: 'success' });
+                router.reload({ only: ['teamMembers'] });
+            },
+            onError: (errors) => {
+                console.error('Failed to delete team member:', errors);
+                const errorMessage = errors.message || 'Failed to remove team member. Please try again.';
+                setFlashMessage({ message: errorMessage, type: 'error' });
             }
         });
     };
@@ -165,19 +182,15 @@ const Team = ({ teamMembers = [], projectId }) => {
                                 <TableRow key={member.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
-                                            {/* <Avatar className="h-8 w-8">
-                                                <AvatarImage src={member.avatar} alt={member.name} />
-                                                <AvatarFallback>{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                            </Avatar> */}
                                             <Avatar
                                                 className="h-8 w-8"
-                                                image={member.avatar}
-                                                name={member.name}
+                                                image={member.user?.avatar}   // safe access user avatar
+                                                name={member.user?.name}      // safe access user name
                                                 onlineCircleClass="hidden"
                                             />
                                             <div>
-                                                <div className="font-medium">{member.name}</div>
-                                                <div className="text-sm text-muted-foreground">{member.email}</div>
+                                                <div className="font-medium">{member.user?.name || 'No Name'}</div>
+                                                <div className="text-sm text-muted-foreground">{member.user?.email || 'No Email'}</div>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -190,6 +203,9 @@ const Team = ({ teamMembers = [], projectId }) => {
                                     <TableCell>
                                         {member.lastActive || 'Just now'}
                                     </TableCell>
+                                    {
+                                       member.role == "admin" && (
+
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -211,13 +227,15 @@ const Team = ({ teamMembers = [], projectId }) => {
                                                     <span>Change Role</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive">
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
                                                     <Trash className="mr-2 h-4 w-4" />
                                                     <span>Remove</span>
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
+                                       )
+                                    }
                                 </TableRow>
                             ))
                         )}
