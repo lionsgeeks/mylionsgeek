@@ -30,7 +30,7 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('
     Route::patch('tasks/{task}/title', [TaskController::class, 'updateTitle'])->name('tasks.update-title');
     Route::patch('tasks/{task}/description', [TaskController::class, 'updateDescription'])->name('tasks.update-description');
     Route::patch('tasks/{task}/priority', [TaskController::class, 'updatePriority'])->name('tasks.update-priority');
-    Route::patch('tasks/{task}/assignees', [TaskController::class, 'updateAssignees'])->name('tasks.update-assignees');
+    Route::patch('tasks/{task}/assigned-to', [TaskController::class, 'updateAssignedTo'])->name('tasks.update-assigned-to');
     Route::post('tasks/{task}/subtasks', [TaskController::class, 'addSubtask'])->name('tasks.add-subtask');
     Route::put('tasks/{task}/subtasks', [TaskController::class, 'updateSubtask'])->name('tasks.update-subtask');
     Route::delete('tasks/{task}/subtasks', [TaskController::class, 'deleteSubtask'])->name('tasks.delete-subtask');

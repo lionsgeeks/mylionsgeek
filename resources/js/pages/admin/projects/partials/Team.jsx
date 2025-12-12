@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 const Team = ({ teamMembers = [], projectId, userr }) => {
-    console.log(userr);
+    // console.log(userr);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -48,10 +48,12 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
     }, [flash]);
 
 
-    const filteredMembers = teamMembers.filter(member =>
-        (member.user?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (member.user?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-    );
+    const filteredMembers = teamMembers.filter(member => {
+        const name = member.name || member.user?.name || '';
+        const email = member.email || member.user?.email || '';
+        return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               email.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
 
     const handleInvite = () => {
@@ -188,13 +190,13 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                                         <div className="flex items-center gap-3">
                                             <Avatar
                                                 className="h-8 w-8"
-                                                image={member.user?.avatar}   // safe access user avatar
-                                                name={member.user?.name}      // safe access user name
+                                                image={member.image || member.user?.image || member.user?.avatar}
+                                                name={member.name || member.user?.name || 'Unknown'}
                                                 onlineCircleClass="hidden"
                                             />
                                             <div>
-                                                <div className="font-medium">{member.user?.name || 'No Name'}</div>
-                                                <div className="text-sm text-muted-foreground">{member.user?.email || 'No Email'}</div>
+                                                <div className="font-medium">{member.name || member.user?.name || 'No Name'}</div>
+                                                <div className="text-sm text-muted-foreground">{member.email || member.user?.email || 'No Email'}</div>
                                             </div>
                                         </div>
                                     </TableCell>

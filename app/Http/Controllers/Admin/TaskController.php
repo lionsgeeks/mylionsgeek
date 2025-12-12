@@ -24,8 +24,7 @@ class TaskController extends Controller
                 'priority' => 'nullable|in:low,medium,high,urgent',
                 'status' => 'nullable|in:todo,in_progress,review,completed',
                 'project_id' => 'required|exists:projects,id',
-                'assignees' => 'nullable|array',
-                'assignees.*' => 'exists:users,id',
+                'assigned_to' => 'nullable|exists:users,id',
                 'due_date' => 'nullable|date',
                 'subtasks' => 'nullable|array',
                 'tags' => 'nullable|array',
@@ -43,7 +42,7 @@ class TaskController extends Controller
             $data['is_editable'] = $data['is_editable'] ?? true;
             $data['subtasks'] = $data['subtasks'] ?? [];
             $data['tags'] = $data['tags'] ?? [];
-            $data['assignees'] = $data['assignees'] ?? [];
+            $data['assigned_to'] = $data['assigned_to'] ?? null;
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
@@ -52,14 +51,6 @@ class TaskController extends Controller
 
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
-
-            // Sync assignees if provided
-            if (!empty($data['assignees'])) {
-                // Temporarily disable foreign key checks for assignees sync
-                DB::statement('PRAGMA foreign_keys=OFF');
-                $task->assignees()->sync($data['assignees']);
-                DB::statement('PRAGMA foreign_keys=ON');
-            }
 
             // Update project last activity
             $project = Project::find($request->project_id);
@@ -87,8 +78,7 @@ class TaskController extends Controller
                 'description' => 'nullable|string',
                 'priority' => 'nullable|in:low,medium,high,urgent',
                 'status' => 'nullable|in:todo,in_progress,review,completed',
-                'assignees' => 'nullable|array',
-                'assignees.*' => 'exists:users,id',
+                'assigned_to' => 'nullable|exists:users,id',
                 'due_date' => 'nullable|date',
                 'subtasks' => 'nullable|array',
                 'tags' => 'nullable|array',
@@ -111,6 +101,11 @@ class TaskController extends Controller
                 }
             }
 
+            // Handle assigned_to - allow null to unassign
+            if (isset($data['assigned_to']) && $data['assigned_to'] === '') {
+                $data['assigned_to'] = null;
+            }
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
@@ -118,14 +113,6 @@ class TaskController extends Controller
 
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
-
-            // Sync assignees if provided
-            if (isset($data['assignees'])) {
-                // Temporarily disable foreign key checks for assignees sync
-                DB::statement('PRAGMA foreign_keys=OFF');
-                $task->assignees()->sync($data['assignees']);
-                DB::statement('PRAGMA foreign_keys=ON');
-            }
 
             // Update project last activity
             $task->project->update([
@@ -444,33 +431,26 @@ class TaskController extends Controller
     }
 
     /**
-     * Update task assignees
+     * Update task assigned_to
      */
-    public function updateAssignees(Request $request, Task $task)
+    public function updateAssignedTo(Request $request, Task $task)
     {
-        // dd($request->all());
         try {
             $request->validate([
-                'assignees' => 'nullable|array',
-                'assignees.*' => 'exists:users,id'
+                'assigned_to' => 'nullable|exists:users,id'
             ]);
 
-            $assignees = $request->assignees ?? [];
+            $assignedTo = $request->assigned_to ?? null;
 
-            DB::table('task_assignees')
-                ->where('task_id', $task->id)
-                ->delete();
+            // Temporarily disable foreign key checks for SQLite
+            DB::statement('PRAGMA foreign_keys=OFF');
 
-            foreach ($assignees as $userId) {
-                DB::table('task_assignees')->insert([
-                    'task_id' => $task->id,
-                    'user_id' => $userId,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
+            $task->update(['assigned_to' => $assignedTo]);
 
-            return back()->with('success', 'Task assignees updated successfully!');
+            // Re-enable foreign key checks
+            DB::statement('PRAGMA foreign_keys=ON');
+
+            return back()->with('success', 'Task assignment updated successfully!');
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

@@ -110,7 +110,7 @@ const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, 
 };
 
 // Helper component for member popover
-const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssignee, onClose }) => {
+const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAssignee, onClose }) => {
     const [search, setSearch] = useState('');
     const [hoveredId, setHoveredId] = useState(null);
 
@@ -124,25 +124,12 @@ const MemberPopover = ({ teamMembers = [], selectedAssignees = [], onToggleAssig
         return String(id1) === String(id2);
     };
 
-    // Check if a member is selected - handle array of IDs
+    // Check if a member is selected - single ID
     const isSelected = (memberId) => {
-        if (!selectedAssignees || !Array.isArray(selectedAssignees) || selectedAssignees.length === 0) {
+        if (memberId == null || selectedAssigneeId == null) {
             return false;
         }
-        // Allow 0 as a valid ID, but reject null/undefined
-        if (memberId == null) {
-            return false;
-        }
-
-        // Convert all IDs to strings for comparison to handle both string and number IDs
-        const normalizedMemberId = String(memberId);
-        return selectedAssignees.some(selId => {
-            // Allow 0 as a valid ID, but reject null/undefined
-            if (selId == null) {
-                return false;
-            }
-            return String(selId) === normalizedMemberId;
-        });
+        return isIdEqual(memberId, selectedAssigneeId);
     };
 
     const handleMemberClick = (memberId, e) => {
@@ -353,7 +340,7 @@ const TaskModal = ({
         description: '',
         priority: 'medium',
         status: 'todo',
-        assignees: [],
+        assigned_to: null,
         subtasks: [],
         tags: [],
         attachments: [],
@@ -373,7 +360,7 @@ const TaskModal = ({
                 description: selectedTask.description || '',
                 priority: selectedTask.priority || 'medium',
                 status: selectedTask.status || 'todo',
-                assignees: selectedTask.assignees?.map(a => a.id) || [],
+                assigned_to: selectedTask.assigned_to?.id || selectedTask.assigned_to || null,
                 subtasks: selectedTask.subtasks || [],
                 tags: selectedTask.tags || [],
                 attachments: selectedTask.attachments || [],
@@ -520,7 +507,7 @@ const TaskModal = ({
     };
 
     const handleToggleAssignee = (memberId) => {
-        const currentAssignees = taskData.assignees || [];
+        const currentAssignedTo = taskData.assigned_to;
 
         // Helper function to compare IDs consistently (handles both string and number IDs)
         const isIdEqual = (id1, id2) => {
@@ -528,27 +515,23 @@ const TaskModal = ({
             return String(id1) === String(id2);
         };
 
-        const isCurrentlySelected = currentAssignees.some(id => isIdEqual(id, memberId));
+        // If clicking the same user, unassign. Otherwise, assign the new user.
+        const newAssignedTo = isIdEqual(currentAssignedTo, memberId) ? null : memberId;
 
-        const newAssignees = isCurrentlySelected
-            ? currentAssignees.filter(id => !isIdEqual(id, memberId))
-            : [...currentAssignees, memberId];
+        setTaskData('assigned_to', newAssignedTo);
 
-        // Fix: Use correct setTaskData syntax
-        setTaskData('assignees', newAssignees);
-
-        router.patch(`/admin/tasks/${selectedTask.id}/assignees`, {
-            assignees: newAssignees
+        router.patch(`/admin/tasks/${selectedTask.id}/assigned-to`, {
+            assigned_to: newAssignedTo
         }, {
             onSuccess: (page) => {
-                // Ensure taskData stays in sync with the updated assignees
-                setTaskData('assignees', newAssignees);
+                // Ensure taskData stays in sync with the updated assigned_to
+                setTaskData('assigned_to', newAssignedTo);
                 updateTask();
                 onUpdateTask?.();
             },
             onError: () => {
                 // Revert on error
-                setTaskData('assignees', currentAssignees);
+                setTaskData('assigned_to', currentAssignedTo);
             }
         });
     };
@@ -1259,23 +1242,20 @@ const TaskModal = ({
                         <div className="space-y-2 pt-6 sticky top-0">
                             <div className="relative">
 
-                                {/* Members */}
+                                {/* Assigned To */}
                                 <div className="mb-6">
-                                    <h3 className="text-sm font-semibold text-dark dark:text-light mb-3">Members</h3>
+                                    <h3 className="text-sm font-semibold text-dark dark:text-light mb-3">Assigned To</h3>
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        {selectedTask.assignees?.map(assignee => (
-                                            // <Avatar key={assignee.id} className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(assignee)}>
-                                            //     <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
-                                            //     <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{assignee.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                                            // </Avatar>
+                                        {selectedTask.assigned_to && (
                                             <Avatar
+                                                key={selectedTask.assigned_to.id || selectedTask.assigned_to}
                                                 className="h-8 w-8 overflow-hidden relative z-50"
-                                                image={assignee.image}
-                                                name={assignee.name}
-                                                lastActivity={assignee.last_online || null}
+                                                image={selectedTask.assigned_to.image}
+                                                name={selectedTask.assigned_to.name}
+                                                lastActivity={selectedTask.assigned_to.last_online || null}
                                                 onlineCircleClass="hidden"
                                             />
-                                        ))}
+                                        )}
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -1321,9 +1301,9 @@ const TaskModal = ({
                             {/* MemberPopover - positioned over Comments List */}
                             {showMembersPopover && (
                                 <MemberPopover
-                                    key={`members-${(taskData.assignees || []).join('-')}`}
+                                    key={`members-${taskData.assigned_to || 'none'}`}
                                     teamMembers={teamMembers}
-                                    selectedAssignees={taskData.assignees || []}
+                                    selectedAssigneeId={taskData.assigned_to}
                                     onToggleAssignee={handleToggleAssignee}
                                     onClose={() => setShowMembersPopover(false)}
                                 />
