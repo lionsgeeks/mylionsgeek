@@ -33,6 +33,8 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
     const [flashMessage, setFlashMessage] = useState(null);
     const [isInviting, setIsInviting] = useState(false);
 
+    const isCurrentUserAdmin = userr?.role === 'admin' || userr?.role === 'owner';
+
     // Get flash messages from Inertia
     const { flash } = usePage().props;
 
@@ -167,13 +169,15 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Last Active</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            {isCurrentUserAdmin && (
+                                <TableHead className="text-right">Actions</TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredMembers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={isCurrentUserAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
                                     {searchTerm ? 'No members match your search' : 'No team members yet'}
                                 </TableCell>
                             </TableRow>
@@ -203,39 +207,36 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                                     <TableCell>
                                         {member.lastActive || 'Just now'}
                                     </TableCell>
-                                    {
-                                       member.role == "admin" && (
-
-                                    <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
-                                                    <MessageSquare className="mr-2 h-4 w-4" />
-                                                    <span>Message</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Mail className="mr-2 h-4 w-4" />
-                                                    <span>Send Email</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Users className="mr-2 h-4 w-4" />
-                                                    <span>Change Role</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
-                                                    <Trash className="mr-2 h-4 w-4" />
-                                                    <span>Remove</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                       )
-                                    }
+                                    {isCurrentUserAdmin && (
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>
+                                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                                        <span>Message</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Mail className="mr-2 h-4 w-4" />
+                                                        <span>Send Email</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Users className="mr-2 h-4 w-4" />
+                                                        <span>Change Role</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
+                                                        <Trash className="mr-2 h-4 w-4" />
+                                                        <span>Remove</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}
