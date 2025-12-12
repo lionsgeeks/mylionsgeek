@@ -88,7 +88,7 @@ const Users = ({ users, trainings }) => {
         return list;
     }, [users, filters]);
 
-    const allStatus = [...new Set(users.map((user) => user.status))];
+    const allStatus = ["Working","Studying","Internship","Unemployed","Freelancing","Left"];
 
     return (
         <AppLayout>
