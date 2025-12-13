@@ -126,17 +126,31 @@ class ProjectController extends Controller
         $project->load([
             'creator',
             'users',
-            'tasks.assignees',
+            'tasks.assignedTo',
             'tasks.creator',
-            'tasks.comments.user',
             'attachments.uploader'
         ]);
 
         $teamMembers = ProjectUser::with('user')
             ->where('project_id', $project->id)
-            ->get();
+            ->get()
+            ->filter(function ($projectUser) {
+                return $projectUser->user !== null && $projectUser->user->id !== null;
+            })
+            ->map(function ($projectUser) {
+                return [
+                    'id' => $projectUser->user->id,
+                    'name' => $projectUser->user->name ?? 'Unknown',
+                    'email' => $projectUser->user->email ?? '',
+                    'image' => $projectUser->user->image ?? null,
+                    'last_online' => $projectUser->user->last_online ?? null,
+                    'role' => $projectUser->role ?? 'member',
+                    'project_user_id' => $projectUser->id,
+                ];
+            })
+            ->values();
 
-        $tasks = $project->tasks()->with(['assignees', 'creator'])->get();
+        $tasks = $project->tasks()->with(['assignedTo', 'creator'])->get();
         $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
         $user = ProjectUser::where('user_id', auth()->id())->first();

@@ -52,7 +52,47 @@ const getTaskOverallProgress = (task) => {
 const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
-    const safeTeamMembers = teamMembers || [];
+    
+    // Transform teamMembers to handle both nested and flat structures
+    const safeTeamMembers = useMemo(() => {
+        if (!teamMembers || teamMembers.length === 0) {
+            return [];
+        }
+        
+        const transformed = teamMembers.map((member) => {
+            // If it's already flat (from backend transformation), use it as is
+            if (member && member.id && member.name) {
+                return member;
+            }
+            // If it's nested (ProjectUser with user relationship), extract the user data
+            if (member && member.user && member.user.id) {
+                return {
+                    id: member.user.id,
+                    name: member.user.name || 'Unknown',
+                    email: member.user.email,
+                    image: member.user.image,
+                    last_online: member.user.last_online,
+                    role: member.role,
+                    project_user_id: member.id,
+                };
+            }
+            // Fallback: try to extract from user_id if available
+            if (member && member.user_id && !member.user) {
+                return {
+                    id: member.user_id,
+                    name: member.name || 'Unknown',
+                    email: member.email,
+                    image: member.image,
+                    last_online: member.last_online,
+                    role: member.role,
+                    project_user_id: member.id,
+                };
+            }
+            return null;
+        }).filter(member => member && member.id && member.name);
+        
+        return transformed;
+    }, [teamMembers]);
     const [searchTerm, setSearchTerm] = useState('');
     const [taskFilter, setTaskFilter] = useState({
         status: "all",
@@ -87,7 +127,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
         description: '',
         priority: 'medium',
         status: 'todo',
-        assignees: [],
+        assigned_to: null,
         due_date: '',
         tags: [],
         progress: 0,
@@ -103,8 +143,14 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             if (taskFilter.status !== "all" && task.status !== taskFilter.status) return false;
             if (taskFilter.priority !== "all" && task.priority !== taskFilter.priority) return false;
             if (taskFilter.assignee !== "all") {
-                const hasAssignee = task.assignees?.some(assignee => assignee.id === taskFilter.assignee);
-                if (!hasAssignee) return false;
+                if (taskFilter.assignee === "unassigned") {
+                    const assignedToId = task.assigned_to?.id || task.assigned_to;
+                    if (assignedToId != null) return false;
+                } else {
+                    const assignedToId = task.assigned_to?.id || task.assigned_to;
+                    // Convert both to strings for comparison
+                    if (String(assignedToId) !== String(taskFilter.assignee)) return false;
+                }
             }
             return true;
         });
@@ -151,7 +197,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                     description: '',
                     priority: 'medium',
                     status: 'todo',
-                    assignees: [],
+                    assigned_to: null,
                     due_date: '',
                     tags: [],
                     progress: 0
@@ -358,11 +404,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Assignees</SelectItem>
-                            {teamMembers.map((member) => (
-                                <SelectItem key={member.id} value={member.id}>
-                                    {member.name}
-                                </SelectItem>
-                            ))}
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {teamMembers.map((member) => {
+                                if (!member?.id) return null;
+                                return (
+                                    <SelectItem key={member.id} value={String(member.id)}>
+                                        {member.name}
+                                    </SelectItem>
+                                );
+                            })}
                         </SelectContent>
                     </Select>
 
@@ -407,7 +457,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             <TableHead className="w-[300px]">Task</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Priority</TableHead>
-                            <TableHead>Assignees</TableHead>
+                            <TableHead>Assigned To</TableHead>
                             <TableHead>Progress</TableHead>
                             <TableHead>Due Date</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -452,36 +502,17 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                         {getPriorityBadge(task.priority)}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            {task.assignees && task.assignees.length > 0 ? (
-                                                <>
-                                                    <div className="flex -space-x-1">
-                                                        {task.assignees.slice(0, 3).map((assignee) => (
-                                                            // <Avatar key={assignee.id} className="h-6 w-6 border border-white dark:border-gray-800">
-                                                            //     <AvatarImage src={assignee.image ? `/storage/${assignee.image}` : null} alt={assignee.name} />
-                                                            //     <AvatarFallback className="text-xs">
-                                                            //         {assignee.name.charAt(0).toUpperCase()}
-                                                            //     </AvatarFallback>
-                                                            // </Avatar>
-                                                            <Avatar
-                                                                className="w-10 h-10 ml-3 overflow-hidden relative z-50"
-                                                                image={assignee.image}
-                                                                name={assignee.name}
-                                                                lastActivity={assignee.last_online || null}
-                                                                onlineCircleClass="hidden"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    {task.assignees.length > 3 && (
-                                                        <span className="text-xs text-muted-foreground ml-1">
-                                                            +{task.assignees.length - 3}
-                                                        </span>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <span className="text-sm text-muted-foreground">Unassigned</span>
-                                            )}
-                                        </div>
+                                        {task.assigned_to ? (
+                                            <Avatar
+                                                className="w-10 h-10 overflow-hidden relative z-50"
+                                                image={task.assigned_to.image || task.assigned_to.user?.image}
+                                                name={task.assigned_to.name || task.assigned_to.user?.name || 'Unknown'}
+                                                lastActivity={task.assigned_to.last_online || task.assigned_to.user?.last_online || null}
+                                                onlineCircleClass="hidden"
+                                            />
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">Unassigned</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -617,43 +648,45 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                             </div>
                         </div>
                         <div>
-                            <Label htmlFor="assignees">Assignees</Label>
+                            <Label htmlFor="assigned_to">Assign To</Label>
                             <Select
-                                value=""
+                                value={taskData.assigned_to ? String(taskData.assigned_to) : "unassigned"}
                                 onValueChange={(value) => {
-                                    if (value && !taskData.assignees.includes(value)) {
-                                        setTaskData('assignees', [...taskData.assignees, value]);
-                                    }
+                                    setTaskData('assigned_to', value === "unassigned" ? null : (value ? parseInt(value) : null));
                                 }}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select assignees" />
+                                    <SelectValue placeholder="Select assignee" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {safeTeamMembers.map((member) => (
-                                        <SelectItem key={member?.id || Math.random()} value={member?.id || ''}>
-                                            {member?.name || 'Unknown'}
-                                        </SelectItem>
-                                    ))}
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                    {safeTeamMembers.map((member) => {
+                                        if (!member?.id) return null;
+                                        return (
+                                            <SelectItem key={member.id} value={String(member.id)}>
+                                                {member.name || 'Unknown'}
+                                            </SelectItem>
+                                        );
+                                    })}
                                 </SelectContent>
                             </Select>
-                            {taskData.assignees.length > 0 && (
+                            {taskData.assigned_to && (
                                 <div className="flex flex-wrap gap-1 mt-2">
-                                    {taskData.assignees.map((assigneeId) => {
-                                        const member = safeTeamMembers.find(m => m.id === assigneeId);
-                                        return (
-                                            <Badge key={assigneeId} variant="outline" className="flex items-center gap-1">
-                                                {member?.name || 'Unknown'}
+                                    {(() => {
+                                        const member = safeTeamMembers.find(m => m.id === taskData.assigned_to);
+                                        return member ? (
+                                            <Badge variant="outline" className="flex items-center gap-1">
+                                                {member.name}
                                                 <button
                                                     type="button"
-                                                    onClick={() => setTaskData('assignees', taskData.assignees.filter(id => id !== assigneeId))}
+                                                    onClick={() => setTaskData('assigned_to', null)}
                                                     className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
                                                 >
                                                     ×
                                                 </button>
                                             </Badge>
-                                        );
-                                    })}
+                                        ) : null;
+                                    })()}
                                 </div>
                             )}
                         </div>

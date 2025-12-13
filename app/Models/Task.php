@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Task extends Model
 {
@@ -16,10 +14,10 @@ class Task extends Model
         'status',
         'project_id',
         'created_by',
+        'assigned_to',
         'due_date',
         'sort_order',
         'subtasks',
-        'assignees',
         'is_pinned',
         'is_editable',
         'tags',
@@ -35,7 +33,6 @@ class Task extends Model
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'subtasks' => 'array',
-        'assignees' => 'array',
         'is_pinned' => 'boolean',
         'is_editable' => 'boolean',
         'tags' => 'array',
@@ -48,24 +45,14 @@ class Task extends Model
         return $this->belongsTo(Project::class);
     }
 
-    public function assignees(): BelongsToMany
+    public function assignedTo(): BelongsTo
     {
-        return $this->belongsToMany(User::class, 'task_assignees');
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function comments(): HasMany
-    {
-        return $this->hasMany(TaskComment::class);
-    }
-
-    public function attachments(): HasMany
-    {
-        return $this->hasMany(Attachment::class);
     }
 
     public function getPriorityColorAttribute()

@@ -136,11 +136,11 @@ const messages = [
 
 
 const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, userr }) => {
-    console.log(userr);
+    // console.log(userr);
 
     const [activeTab, setActiveTab] = useState("overview");
     const [chatMessages, setChatMessages] = useState(messages);
-    console.log(notes)
+    // console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
         return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
