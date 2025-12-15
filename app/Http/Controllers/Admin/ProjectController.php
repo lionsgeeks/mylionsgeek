@@ -9,11 +9,13 @@ use App\Models\Task;
 use App\Models\Attachment;
 use App\Models\ProjectInvitation;
 use App\Models\ProjectUser;
+use App\Mail\ProjectInvitationMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -77,7 +79,7 @@ class ProjectController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif',
                 'start_date' => 'nullable|date',
                 'end_date' => 'nullable|date|after:start_date',
                 'status' => 'nullable|in:active,completed,on_hold,cancelled'
@@ -137,7 +139,10 @@ class ProjectController extends Controller
             ->filter(function ($projectUser) {
                 return $projectUser->user !== null && $projectUser->user->id !== null;
             })
-            ->map(function ($projectUser) {
+            ->map(function ($projectUser) use ($project) {
+                // Check if this user is the project owner (created_by or has owner role)
+                $isOwner = $project->created_by === $projectUser->user_id || $projectUser->role === 'owner';
+                
                 return [
                     'id' => $projectUser->user->id,
                     'name' => $projectUser->user->name ?? 'Unknown',
@@ -146,6 +151,7 @@ class ProjectController extends Controller
                     'last_online' => $projectUser->user->last_online ?? null,
                     'role' => $projectUser->role ?? 'member',
                     'project_user_id' => $projectUser->id,
+                    'isOwner' => $isOwner,
                 ];
             })
             ->values();
@@ -153,18 +159,26 @@ class ProjectController extends Controller
         $tasks = $project->tasks()->with(['assignedTo', 'creator'])->get();
         $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
-        $user = ProjectUser::where('user_id', auth()->id())->first();
+        
+        // Get current user's role in this project
+        $currentUserProjectRole = ProjectUser::where('project_id', $project->id)
+            ->where('user_id', Auth::id())
+            ->first();
+        
+        // Check if user is project owner or has admin/owner role
+        $isProjectOwner = $project->created_by === Auth::id();
+        $isProjectAdmin = $currentUserProjectRole && in_array($currentUserProjectRole->role, ['owner', 'admin']);
+        $canManageTeam = $isProjectOwner || $isProjectAdmin;
 
-
-
-        // dd($teamMembers);
         return Inertia::render('admin/projects/show', [
             'project' => $project,
             'teamMembers' => $teamMembers,
             'tasks' => $tasks,
             'attachments' => $attachments,
             'notes' => $notes,
-            "userr" => $user
+            'currentUserProjectRole' => $currentUserProjectRole ? $currentUserProjectRole->role : null,
+            'canManageTeam' => $canManageTeam,
+            'isProjectOwner' => $isProjectOwner
         ]);
     }
 
@@ -243,57 +257,214 @@ class ProjectController extends Controller
      */
     public function invite(Request $request)
     {
-        $request->validate([
-            'emails' => 'nullable|array',
-            'emails.*' => 'required|email',
-            'usernames' => 'nullable|array',
-            'usernames.*' => 'required|string',
-            'role' => 'required|in:admin,member',
-            'message' => 'nullable|string|max:500',
-            'project_id' => 'required|exists:projects,id'
-        ]);
+        try {
+            Log::info('Invite request received:', [
+                'project_id' => $request->project_id,
+                'emails' => $request->emails ?? [],
+                'usernames' => $request->usernames ?? [],
+                'emails_count' => count($request->emails ?? []),
+                'usernames_count' => count($request->usernames ?? []),
+                'role' => $request->role,
+                'all_request_data' => $request->all()
+            ]);
 
-        $project = Project::findOrFail($request->project_id);
-        $emails = $request->emails ?? [];
-        $usernames = $request->usernames ?? [];
-        $role = $request->role;
-        $message = $request->message;
+            $request->validate([
+                'emails' => 'nullable|array',
+                'emails.*' => 'required|email',
+                'usernames' => 'nullable|array',
+                'usernames.*' => 'required|string',
+                'role' => 'required|in:admin,member',
+                'message' => 'nullable|string|max:500',
+                'project_id' => 'required|exists:projects,id'
+            ]);
 
-        $invitedUsers = [];
+            $project = Project::findOrFail($request->project_id);
+            $emails = $request->emails ?? [];
+            $usernames = $request->usernames ?? [];
+            $role = $request->role;
+            $message = $request->message;
 
-        // Process email invitations
+            // Validate that at least one email or username is provided
+            if (empty($emails) && empty($usernames)) {
+                return back()->with('error', 'Please provide at least one email address or username to invite.');
+            }
+
+        $invitationsSent = 0;
+        $invitationsCreated = 0;
+        $emailsLogged = 0;
+        $errors = [];
+        $mailDriver = config('mail.default');
+
+        // Process email invitations - always create invitations, never add directly
         foreach ($emails as $email) {
+            // Check if user is already in project
             $user = User::where('email', $email)->first();
-            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
-                $project->users()->attach($user->id, [
-                    'role' => $role,
-                    'invited_at' => now(),
-                    'joined_at' => now()
-                ]);
-                $invitedUsers[] = $user->name;
-            } else {
-                // Create invitation token for non-existing users
-                ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+            if ($user && $project->users()->where('user_id', $user->id)->exists()) {
+                $errors[] = "{$email} is already a member of this project.";
+                continue;
+            }
+
+            // Check if invitation already exists and is still valid
+            $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+                ->where('email', $email)
+                ->where('is_used', false)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if ($existingInvitation) {
+                $errors[] = "An invitation has already been sent to {$email}.";
+                continue;
+            }
+
+            // Create invitation
+            $invitation = ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+            $invitationsCreated++;
+
+            // Send email invitation
+            try {
+                $mailHost = config('mail.mailers.smtp.host');
+                $mailPort = config('mail.mailers.smtp.port');
+                $mailEncryption = config('mail.mailers.smtp.encryption');
+                $mailFrom = config('mail.from.address');
+
+                Log::info("Attempting to send project invitation email to: {$email}");
+                Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}, From: {$mailFrom}");
+
+                Mail::to($email)->send(new ProjectInvitationMail($project, $invitation, $message));
+
+                if ($mailDriver === 'log') {
+                    Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
+                    $emailsLogged++;
+                } else {
+                    Log::info("✅ Project invitation email sent successfully to: {$email}");
+                    $invitationsSent++;
+                }
+            } catch (\Exception $e) {
+                $errorMessage = $e->getMessage();
+                Log::error("❌ Failed to send project invitation email to {$email}: {$errorMessage}");
+                Log::error('Exception class: ' . get_class($e));
+                Log::error('Exception trace: ' . $e->getTraceAsString());
+
+                // Provide more helpful error messages
+                if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
+                    $errors[] = "Failed to connect to mail server. Check your SMTP settings in .env file.";
+                } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
+                    $errors[] = "SMTP authentication failed. Check your MAIL_USERNAME and MAIL_PASSWORD in .env file.";
+                } else {
+                    $errors[] = "Failed to send invitation to {$email}: {$errorMessage}";
+                }
             }
         }
 
-        // Process username invitations
+        // Process username invitations - always create invitations, never add directly
         foreach ($usernames as $username) {
             $user = User::where('name', $username)->first();
-            if ($user && !$project->users()->where('user_id', $user->id)->exists()) {
-                $project->users()->attach($user->id, [
-                    'role' => $role,
-                    'invited_at' => now(),
-                    'joined_at' => now()
-                ]);
-                $invitedUsers[] = $user->name;
-            } else {
-                // Create invitation token for non-existing users
-                ProjectInvitation::createInvitation($project->id, null, $username, $role, $message);
+
+            if (!$user) {
+                $errors[] = "User @{$username} not found.";
+                continue;
+            }
+
+            // Check if user is already in project
+            if ($project->users()->where('user_id', $user->id)->exists()) {
+                $errors[] = "@{$username} is already a member of this project.";
+                continue;
+            }
+
+            // Check if invitation already exists and is still valid
+            $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+                ->where('username', $username)
+                ->where('is_used', false)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if ($existingInvitation) {
+                $errors[] = "An invitation has already been sent to @{$username}.";
+                continue;
+            }
+
+            // Create invitation
+            $invitation = ProjectInvitation::createInvitation($project->id, $user->email, $username, $role, $message);
+            $invitationsCreated++;
+
+            // Send email invitation
+            try {
+                $mailHost = config('mail.mailers.smtp.host');
+                $mailPort = config('mail.mailers.smtp.port');
+                $mailEncryption = config('mail.mailers.smtp.encryption');
+
+                Log::info("Attempting to send project invitation email to: {$user->email} (@{$username})");
+                Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}");
+
+                Mail::to($user->email)->send(new ProjectInvitationMail($project, $invitation, $message));
+
+                if ($mailDriver === 'log') {
+                    Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
+                    $emailsLogged++;
+                } else {
+                    Log::info("✅ Project invitation email sent successfully to: {$user->email} (@{$username})");
+                    $invitationsSent++;
+                }
+            } catch (\Exception $e) {
+                $errorMessage = $e->getMessage();
+                Log::error("❌ Failed to send project invitation email to {$user->email}: {$errorMessage}");
+                Log::error('Exception class: ' . get_class($e));
+                Log::error('Exception trace: ' . $e->getTraceAsString());
+
+                // Provide more helpful error messages
+                if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
+                    $errors[] = "Failed to connect to mail server for @{$username}. Check your SMTP settings.";
+                } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
+                    $errors[] = "SMTP authentication failed for @{$username}. Check your mail credentials.";
+                } else {
+                    $errors[] = "Failed to send invitation to @{$username}: {$errorMessage}";
+                }
             }
         }
 
-        return back()->with('success', 'Invitations sent successfully.');
+            // Build response message
+            if ($invitationsCreated > 0) {
+                $messages = [];
+
+                if ($invitationsSent > 0) {
+                    $messages[] = "{$invitationsSent} invitation email(s) sent successfully.";
+                }
+
+            if ($emailsLogged > 0) {
+                $logPath = storage_path('logs/laravel.log');
+                $messages[] = "⚠️ {$emailsLogged} invitation(s) created but emails were NOT sent (logged only). Mail driver is set to 'log'. To actually send emails, configure SMTP in your .env file. Check {$logPath} to see the email content.";
+            }
+
+                if (!empty($errors)) {
+                    $messages[] = implode(' ', $errors);
+                }
+
+                $message = implode(' ', $messages);
+
+                // Use warning if emails were only logged, success if actually sent
+                if ($invitationsSent > 0 && $emailsLogged === 0) {
+                    return back()->with('success', $message);
+                } else if ($emailsLogged > 0) {
+                    return back()->with('warning', $message);
+                } else {
+                    return back()->with('success', $message);
+                }
+            } else {
+                return back()->with('error', !empty($errors) ? implode(' ', $errors) : 'No invitations were created.');
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed for project invitation:', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            Log::error('Failed to process project invitation: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+            return back()->with('error', 'Failed to process invitation: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -301,34 +472,62 @@ class ProjectController extends Controller
      */
     public function inviteUser(Request $request, Project $project)
     {
-        //    dd($request->all());
         $request->validate([
-            'email' => 'nullable|email',
-            'role' => 'required|in:admin,member'
+            'email' => 'required|email',
+            'role' => 'required|in:admin,member',
+            'message' => 'nullable|string|max:500'
         ]);
 
-        // Either user_id or email must be provided
-        if (!$request->email) {
-            return back()->with('error', 'Email must be provided.');
-        }
+        $email = $request->email;
+        $role = $request->role;
+        $message = $request->message;
 
         // Find user by email
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return back()->with('error', 'User not found with the provided email address.');
-        }
+        $user = User::where('email', $email)->first();
 
         // Check if user is already in project
-        if ($project->users()->where('user_id', $user->id)->exists()) {
-            return back()->with('error', 'User is already in this project.');
+        if ($user && $project->users()->where('user_id', $user->id)->exists()) {
+            return back()->with('error', 'User is already a member of this project.');
         }
 
-        $project->users()->attach($user->id, [
-            'role' => $request->role,
-            'invited_at' => now()
-        ]);
+        // Check if invitation already exists and is still valid
+        $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+            ->where('email', $email)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->first();
 
-        return back()->with('success', 'User invited to project successfully.');
+        if ($existingInvitation) {
+            return back()->with('error', 'An invitation has already been sent to this email address.');
+        }
+
+        // Create invitation
+        $invitation = ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+
+        // Send email invitation
+        try {
+            $mailDriver = config('mail.default');
+            Log::info("Attempting to send project invitation email to: {$email} (Mail driver: {$mailDriver})");
+
+            // Check mail configuration
+            if ($mailDriver === 'log') {
+                Log::warning("Mail driver is set to 'log'. Emails will be logged to storage/logs/laravel.log instead of being sent.");
+            }
+
+            Mail::to($email)->send(new ProjectInvitationMail($project, $invitation, $message));
+
+            if ($mailDriver === 'log') {
+                Log::info("Email logged to storage/logs/laravel.log (driver: log)");
+                return back()->with('success', 'Invitation created. Email logged (mail driver is set to "log"). Check storage/logs/laravel.log for the email content.');
+            } else {
+                Log::info("Project invitation email sent successfully to: {$email}");
+                return back()->with('success', 'Invitation sent successfully via email.');
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send project invitation email to ' . $email . ': ' . $e->getMessage());
+            Log::error('Exception trace: ' . $e->getTraceAsString());
+            return back()->with('error', 'Failed to send invitation email: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -336,6 +535,20 @@ class ProjectController extends Controller
      */
     public function removeUser(Project $project, User $user)
     {
+        // Check if user is the project owner
+        $isProjectOwner = $project->created_by === $user->id;
+        
+        // Check if user has owner role in project
+        $projectUser = ProjectUser::where('project_id', $project->id)
+            ->where('user_id', $user->id)
+            ->first();
+        
+        $hasOwnerRole = $projectUser && $projectUser->role === 'owner';
+        
+        if ($isProjectOwner || $hasOwnerRole) {
+            return back()->with('error', 'Cannot remove the project owner from the project.');
+        }
+
         $project->users()->detach($user->id);
 
         return back()->with('success', 'User removed from project successfully.');
@@ -349,6 +562,20 @@ class ProjectController extends Controller
         $request->validate([
             'role' => 'required|in:admin,member'
         ]);
+
+        // Check if user is the project owner
+        $isProjectOwner = $project->created_by === $user->id;
+        
+        // Check if user has owner role in project
+        $projectUser = ProjectUser::where('project_id', $project->id)
+            ->where('user_id', $user->id)
+            ->first();
+        
+        $hasOwnerRole = $projectUser && $projectUser->role === 'owner';
+        
+        if ($isProjectOwner || $hasOwnerRole) {
+            return back()->with('error', 'Cannot change the role of the project owner.');
+        }
 
         $project->users()->updateExistingPivot($user->id, [
             'role' => $request->role
@@ -501,8 +728,58 @@ class ProjectController extends Controller
         }
     }
 
-    public function shareProject(Project $project)
+    /**
+     * Generate share link for project (creates a general invitation)
+     */
+    public function shareProject(Request $request, Project $project)
     {
-        dd($request->all());
+        $request->validate([
+            'email' => 'required|email',
+            'role' => 'required|in:admin,member',
+            'message' => 'nullable|string|max:500'
+        ]);
+
+        $email = $request->email;
+        $role = $request->role;
+        $message = $request->message;
+
+        // Check if user is already in project
+        $user = User::where('email', $email)->first();
+        if ($user && $project->users()->where('user_id', $user->id)->exists()) {
+            return back()->with('error', 'User is already a member of this project.');
+        }
+
+        // Check if invitation already exists and is still valid
+        $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+            ->where('email', $email)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($existingInvitation) {
+            $inviteUrl = route('projects.join', [
+                'project' => $project->id,
+                'token' => $existingInvitation->token
+            ]);
+            return back()->with('info', "An invitation already exists. Share this link: {$inviteUrl}");
+        }
+
+        // Create invitation
+        $invitation = ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+
+        // Generate invitation URL
+        $inviteUrl = route('projects.join', [
+            'project' => $project->id,
+            'token' => $invitation->token
+        ]);
+
+        // Send email invitation
+        try {
+            Mail::to($email)->send(new ProjectInvitationMail($project, $invitation, $message));
+            return back()->with('success', "Invitation sent successfully. Share link: {$inviteUrl}");
+        } catch (\Exception $e) {
+            Log::error('Failed to send project invitation email: ' . $e->getMessage());
+            return back()->with('info', "Invitation created. Share this link: {$inviteUrl}");
+        }
     }
 }

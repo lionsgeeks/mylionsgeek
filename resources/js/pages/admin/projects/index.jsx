@@ -427,13 +427,13 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                             className="flex items-center gap-1 text-xs h-6 px-2"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                const inviteLink = `${window.location.origin}/projects/${project.id}/join`;
-                                                navigator.clipboard.writeText(inviteLink);
-                                                // You could add a toast notification here
+                                                // Open invite modal to create invitation link
+                                                setInvitingProject(project);
+                                                setIsInviteModalOpen(true);
                                             }}
                                         >
                                             <Share2 className="h-3 w-3" />
-                                            Copy Link
+                                            Share
                                         </Button>
                                     </div>
                                     <div className="flex items-center gap-2">

@@ -12,7 +12,7 @@ Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join']
 
 Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
-    Route::post('projects/share', [ProjectController::class, 'shareProject'])->name('projects.share');
+    Route::post('projects/share/{project}', [ProjectController::class, 'shareProject'])->name('projects.share');
     Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');
     Route::post('projects/invite', [ProjectController::class, 'invite'])->name('projects.invite');
     Route::post('projects/{project}/invite', [ProjectController::class, 'inviteUser'])->name('projects.invite-user');

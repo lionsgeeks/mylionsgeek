@@ -21,9 +21,7 @@ import {
     UserPlus
 } from 'lucide-react';
 
-const Team = ({ teamMembers = [], projectId, userr }) => {
-    // console.log(userr);
-
+const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwner = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [inviteData, setInviteData] = useState({
@@ -32,8 +30,6 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
     });
     const [flashMessage, setFlashMessage] = useState(null);
     const [isInviting, setIsInviting] = useState(false);
-
-    const isCurrentUserAdmin = userr?.role === 'admin' || userr?.role === 'owner';
 
     // Get flash messages from Inertia
     const { flash } = usePage().props;
@@ -156,10 +152,12 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                     </div>
                 </div>
 
-                <Button onClick={() => setIsInviteModalOpen(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invite Member
-                </Button>
+                {canManageTeam && (
+                    <Button onClick={() => setIsInviteModalOpen(true)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Member
+                    </Button>
+                )}
             </div>
 
             {/* Team Members Table */}
@@ -171,15 +169,15 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Last Active</TableHead>
-                            {isCurrentUserAdmin && (
-                            <TableHead className="text-right">Actions</TableHead>
+                            {canManageTeam && (
+                                <TableHead className="text-right">Actions</TableHead>
                             )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredMembers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isCurrentUserAdmin ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={canManageTeam ? 5 : 4} className="text-center py-8 text-muted-foreground">
                                     {searchTerm ? 'No members match your search' : 'No team members yet'}
                                 </TableCell>
                             </TableRow>
@@ -209,8 +207,8 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                                     <TableCell>
                                         {member.lastActive || 'Just now'}
                                     </TableCell>
-                                    {isCurrentUserAdmin && (
-                                    <TableCell className="text-right">
+                                    {canManageTeam && (
+                                        <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -226,12 +224,21 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                                                     <Mail className="mr-2 h-4 w-4" />
                                                     <span>Send Email</span>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                    disabled={member.isOwner}
+                                                    className={member.isOwner ? 'opacity-50 cursor-not-allowed' : ''}
+                                                    title={member.isOwner ? 'Cannot change the role of the project owner' : ''}
+                                                >
                                                     <Users className="mr-2 h-4 w-4" />
                                                     <span>Change Role</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
+                                                <DropdownMenuItem 
+                                                    className={`${member.isOwner ? 'opacity-50 cursor-not-allowed' : 'text-destructive'}`}
+                                                    onClick={() => !member.isOwner && handleDeleteTeamMember(member)}
+                                                    disabled={member.isOwner}
+                                                    title={member.isOwner ? 'Cannot remove the project owner from the project' : ''}
+                                                >
                                                     <Trash className="mr-2 h-4 w-4" />
                                                     <span>Remove</span>
                                                 </DropdownMenuItem>
