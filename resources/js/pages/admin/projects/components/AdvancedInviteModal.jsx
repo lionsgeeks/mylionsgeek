@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { useForm } from '@inertiajs/react';
-import { Mail, UserPlus, X, Check, User, AtSign } from 'lucide-react';
+import { useForm, usePage, router } from '@inertiajs/react';
+import { Mail, UserPlus, X, Check, User, AtSign, AlertCircle } from 'lucide-react';
 import { Avatar, } from '@/components/ui/avatar';
+import FlashMessage from '@/components/FlashMessage';
 
 const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = [] }) => {
     const [inputValue, setInputValue] = useState('');
@@ -18,16 +19,28 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
     const [showUsernameSuggestions, setShowUsernameSuggestions] = useState(false);
     const [usernameSuggestions, setUsernameSuggestions] = useState([]);
     const [atPosition, setAtPosition] = useState(-1);
+    const [flashMessage, setFlashMessage] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const inputRef = useRef(null);
     const suggestionRef = useRef(null);
+    
+    // Get flash messages from Inertia
+    const { flash } = usePage().props;
 
     const { data, setData, post, processing, errors, reset } = useForm({
         emails: [],
         usernames: [],
         role: 'member',
         message: '',
-        project_id: projectId
+        project_id: projectId || null
     });
+
+    // Update project_id when projectId prop changes
+    useEffect(() => {
+        if (projectId) {
+            setData('project_id', projectId);
+        }
+    }, [projectId]);
 
     // Email validation regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -181,22 +194,143 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
         setSelectedItems(prev => prev.filter(item => item.id !== id));
     };
 
+    // Handle flash messages from Inertia
+    useEffect(() => {
+        if (flash?.success) {
+            // Check if success message contains warning about log driver
+            if (flash.success.includes('logged') || flash.success.includes('NOT sent')) {
+                setFlashMessage({ message: flash.success, type: 'warning' });
+                // Don't auto-close for warnings - user needs to read the message
+            } else {
+                setFlashMessage({ message: flash.success, type: 'success' });
+                // Auto-close after success
+                setTimeout(() => {
+                    reset();
+                    setSelectedItems([]);
+                    setInputValue('');
+                    setFlashMessage(null);
+                    onClose();
+                }, 3000);
+            }
+        } else if (flash?.warning) {
+            setFlashMessage({ message: flash.warning, type: 'warning' });
+            // Don't auto-close for warnings - user needs to read the message
+        } else if (flash?.error) {
+            setFlashMessage({ message: flash.error, type: 'error' });
+        }
+    }, [flash]);
+
     // Handle submit
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        if (selectedItems.length === 0) {
+            setFlashMessage({ 
+                message: 'Please add at least one email address or username to invite.', 
+                type: 'error' 
+            });
+            return;
+        }
+
         const emails = selectedItems.filter(item => item.type === 'email').map(item => item.value);
         const usernames = selectedItems.filter(item => item.type === 'username').map(item => item.value);
 
-        setData('emails', emails);
-        setData('usernames', usernames);
+        // Validate emails
+        const invalidEmails = emails.filter(email => !emailRegex.test(email));
+        if (invalidEmails.length > 0) {
+            setFlashMessage({ 
+                message: `Invalid email addresses: ${invalidEmails.join(', ')}`, 
+                type: 'error' 
+            });
+            return;
+        }
 
-        post('/admin/projects/invite', {
-            onSuccess: () => {
-                reset();
-                setSelectedItems([]);
-                setInputValue('');
-                onClose();
+        // Prepare the data to send - ensure all data is included
+        const submissionData = {
+            project_id: projectId,
+            emails: emails,
+            usernames: usernames,
+            role: data.role || 'member',
+            message: data.message || ''
+        };
+
+        console.log('Submitting invitation:', submissionData);
+        console.log('Current form data:', data);
+
+        setIsSubmitting(true);
+
+        // Use router.post directly with the data to ensure it's sent correctly
+        router.post('/admin/projects/invite', submissionData, {
+            preserveScroll: true,
+            onStart: () => {
+                setIsSubmitting(true);
+            },
+            onFinish: () => {
+                setIsSubmitting(false);
+            },
+            onSuccess: (page) => {
+                setIsSubmitting(false);
+                // Flash messages (success/warning/error) will be handled by useEffect
+                // Only auto-close if it's a success (not warning)
+                if (page.props.flash?.success && !page.props.flash?.warning) {
+                    // Don't reset here, let the useEffect handle it
+                } else if (!page.props.flash?.warning && !page.props.flash?.error) {
+                    // Fallback success message
+                    setFlashMessage({ 
+                        message: `${emails.length + usernames.length} invitation(s) sent successfully!`, 
+                        type: 'success' 
+                    });
+                    setTimeout(() => {
+                        reset();
+                        setSelectedItems([]);
+                        setInputValue('');
+                        setFlashMessage(null);
+                        onClose();
+                    }, 3000);
+                }
+            },
+            onError: (errors) => {
+                setIsSubmitting(false);
+                console.error('Invitation errors:', errors);
+                const errorMessages = [];
+                
+                if (errors.project_id) {
+                    const projectErrors = Array.isArray(errors.project_id) ? errors.project_id : [errors.project_id];
+                    errorMessages.push(`Project: ${projectErrors.join(', ')}`);
+                }
+                
+                if (errors.emails) {
+                    const emailErrors = Array.isArray(errors.emails) ? errors.emails : [errors.emails];
+                    errorMessages.push(`Emails: ${emailErrors.join(', ')}`);
+                }
+                
+                if (errors.usernames) {
+                    const usernameErrors = Array.isArray(errors.usernames) ? errors.usernames : [errors.usernames];
+                    errorMessages.push(`Usernames: ${usernameErrors.join(', ')}`);
+                }
+                
+                if (errors.role) {
+                    const roleErrors = Array.isArray(errors.role) ? errors.role : [errors.role];
+                    errorMessages.push(`Role: ${roleErrors.join(', ')}`);
+                }
+                
+                if (errors.message) {
+                    errorMessages.push(errors.message);
+                }
+                
+                // Check for general error message
+                if (Object.keys(errors).length > 0 && errorMessages.length === 0) {
+                    errorMessages.push('Validation failed. Please check your input.');
+                }
+                
+                if (errorMessages.length === 0) {
+                    errorMessages.push('Failed to send invitations. Please try again.');
+                }
+                
+                setFlashMessage({ 
+                    message: errorMessages.join('. '), 
+                    type: 'error' 
+                });
             }
         });
     };
@@ -233,6 +367,15 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                         Invite to {projectName}
                     </DialogTitle>
                 </DialogHeader>
+
+                {/* Flash Messages */}
+                {flashMessage && (
+                    <FlashMessage
+                        message={flashMessage.message}
+                        type={flashMessage.type}
+                        onClose={() => setFlashMessage(null)}
+                    />
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -367,7 +510,18 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                         <p className="text-xs text-muted-foreground">
                             Type email addresses or @usernames. Press Enter or comma to add.
                         </p>
-                        {errors.emails && <p className="text-sm text-red-600">{errors.emails}</p>}
+                        {errors.emails && (
+                            <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>{Array.isArray(errors.emails) ? errors.emails.join(', ') : errors.emails}</span>
+                            </div>
+                        )}
+                        {errors.project_id && (
+                            <div className="flex items-center gap-2 text-sm text-red-600">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Project ID: {Array.isArray(errors.project_id) ? errors.project_id.join(', ') : errors.project_id}</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -387,11 +541,14 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                         <Label htmlFor="message">Personal Message (Optional)</Label>
                         <Textarea
                             id="message"
-                            placeholder="Add a personal message to the invitation..."
+                            placeholder="Add a personal message to the invitation email..."
                             value={data.message}
                             onChange={(e) => setData('message', e.target.value)}
                             className="min-h-[80px]"
                         />
+                        <p className="text-xs text-muted-foreground">
+                            This message will be included in the invitation email sent to recipients.
+                        </p>
                     </div>
 
                     <DialogFooter>
@@ -400,11 +557,24 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                         </Button>
                         <Button
                             type="submit"
-                            disabled={processing || selectedItems.length === 0}
+                            disabled={isSubmitting || selectedItems.length === 0 || !projectId}
                             className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
                         >
-                            {processing ? 'Sending...' : `Send ${selectedItems.length} Invitation${selectedItems.length !== 1 ? 's' : ''}`}
+                            {isSubmitting ? (
+                                <>
+                                    <Mail className="h-4 w-4 mr-2 animate-pulse" />
+                                    Sending Invitations...
+                                </>
+                            ) : (
+                                <>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Send {selectedItems.length} Invitation{selectedItems.length !== 1 ? 's' : ''} via Email
+                                </>
+                            )}
                         </Button>
+                        {!projectId && (
+                            <p className="text-xs text-red-600 mt-1">Project ID is missing. Please close and try again.</p>
+                        )}
                     </DialogFooter>
                 </form>
             </DialogContent>

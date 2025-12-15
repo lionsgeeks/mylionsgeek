@@ -17,29 +17,16 @@ import Sidebar from './partials/Sidebar';
 import Chat from './partials/Chat';
 import ProjectAttachments from './partials/ProjectAttachments';
 
-// Sample data
-const events = [
-    {
-        title: "Project Meeting",
-        start: "2024-02-15T10:00:00",
-        end: "2024-02-15T12:00:00",
-        progress: 75,
-        backgroundColor: "#3b82f6",
-    },
-    {
-        title: "Code Review",
-        start: "2024-02-16T14:00:00",
-        end: "2024-02-16T16:00:00",
-        backgroundColor: "#10b981",
-        progress: 50,
-    },
-    {
-        title: "Sprint Planning",
-        start: "2024-02-17T09:00:00",
-        end: "2024-02-17T11:00:00",
-        backgroundColor: "#f59e0b",
-    },
-];
+// Helper function to get priority color
+const getPriorityColor = (priority) => {
+    const colorMap = {
+        urgent: "#ef4444", // red
+        high: "#f59e0b",   // amber
+        medium: "#3b82f6", // blue
+        low: "#10b981"     // green
+    };
+    return colorMap[priority] || "#6b7280"; // default gray
+};
 
 const sampleTasks = [
     {
@@ -135,15 +122,75 @@ const messages = [
 ];
 
 
-const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, userr }) => {
-    // console.log(userr);
-
+const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManageTeam = false, isProjectOwner = false }) => {
     const [activeTab, setActiveTab] = useState("overview");
     const [chatMessages, setChatMessages] = useState(messages);
     // console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
         return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
+    }, [tasks]);
+
+    // Transform tasks with started_at into calendar events
+    const calendarEvents = useMemo(() => {
+        if (!tasks || tasks.length === 0) return [];
+        
+        return tasks
+            .filter(task => task.started_at) // Only include tasks with started_at
+            .map(task => {
+                const startDate = new Date(task.started_at);
+                
+                // Calculate end time: use due_date if available, otherwise add 1 hour to started_at
+                let endDate;
+                if (task.due_date) {
+                    endDate = new Date(task.due_date);
+                    const startDay = startDate.toDateString();
+                    const dueDay = endDate.toDateString();
+                    
+                    // If due_date is just a date (no time component)
+                    if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && endDate.getSeconds() === 0) {
+                        if (startDay === dueDay) {
+                            // Same day: add 2 hours to started_at for reasonable duration
+                            endDate = new Date(startDate);
+                            endDate.setHours(endDate.getHours() + 2);
+                        } else {
+                            // Different day: use end of due_date day
+                            endDate.setHours(23, 59, 59);
+                        }
+                    }
+                } else {
+                    // Default to 1 hour duration if no due_date
+                    endDate = new Date(startDate);
+                    endDate.setHours(endDate.getHours() + 1);
+                }
+                
+                // Ensure end is after start
+                if (endDate <= startDate) {
+                    endDate = new Date(startDate);
+                    endDate.setHours(endDate.getHours() + 1);
+                }
+
+                // Calculate progress from task
+                const progress = task.progress || (task.subtasks && task.subtasks.length > 0
+                    ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
+                    : task.status === 'completed' ? 100 : 0);
+
+                return {
+                    id: task.id,
+                    title: task.title || 'Untitled Task',
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString(),
+                    backgroundColor: '#ffc801', // alpha color
+                    borderColor: '#ffc801', // alpha color
+                    extendedProps: {
+                        progress: progress,
+                        taskId: task.id,
+                        status: task.status,
+                        priority: task.priority,
+                        description: task.description
+                    }
+                };
+            });
     }, [tasks]);
 
     // Collect all task attachments
@@ -265,7 +312,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, userr })
                     {/* Main Content */}
                     <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
                         {/* Calendar Section */}
-                        <Calendar events={events} />
+                        <Calendar events={calendarEvents} />
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
@@ -325,7 +372,12 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, userr })
                                 </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
-                                    <Team teamMembers={teamMembers} projectId={project.id} userr={userr} />
+                                    <Team 
+                                        teamMembers={teamMembers} 
+                                        projectId={project.id} 
+                                        canManageTeam={canManageTeam}
+                                        isProjectOwner={isProjectOwner}
+                                    />
                                 </TabsContent>
                             </Tabs>
                         </div>

@@ -50,6 +50,12 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
         end_date: project.end_date || ''
     });
 
+    const { data: shareData, setData: setShareData, post: shareProject, processing: isSharing, reset: resetShare } = useForm({
+        email: '',
+        role: 'member',
+        message: ''
+    });
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'active': return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300';
@@ -351,39 +357,78 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             </Dialog>
 
             {/* Share Project Modal */}
-            <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+            <Dialog open={isShareModalOpen} onOpenChange={(open) => {
+                setIsShareModalOpen(open);
+                if (!open) {
+                    resetShare();
+                }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Share Project</DialogTitle>
                         <DialogDescription>
-                            Invite team members to collaborate on this project
+                            Invite team members to collaborate on this project. An invitation email will be sent.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <form onSubmit={(e) => {
+                        e.preventDefault();
+                        shareProject(`/admin/projects/share/${project.id}`, {
+                            onSuccess: () => {
+                                setIsShareModalOpen(false);
+                                resetShare();
+                            }
+                        });
+                    }} className="space-y-4">
                         <div>
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input id="email" placeholder="Enter email address" />
+                            <Label htmlFor="share-email">Email Address</Label>
+                            <Input 
+                                id="share-email" 
+                                type="email"
+                                placeholder="Enter email address" 
+                                value={shareData.email}
+                                onChange={(e) => setShareData('email', e.target.value)}
+                                required
+                            />
                         </div>
                         <div>
-                            <Label htmlFor="role">Role</Label>
-                            <Select>
+                            <Label htmlFor="share-role">Role</Label>
+                            <Select value={shareData.role} onValueChange={(value) => setShareData('role', value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="viewer">Viewer</SelectItem>
-                                    <SelectItem value="editor">Editor</SelectItem>
+                                    <SelectItem value="member">Member</SelectItem>
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsShareModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button>Send Invitation</Button>
-                    </DialogFooter>
+                        <div>
+                            <Label htmlFor="share-message">Personal Message (Optional)</Label>
+                            <Textarea
+                                id="share-message"
+                                placeholder="Add a personal message to the invitation..."
+                                value={shareData.message}
+                                onChange={(e) => setShareData('message', e.target.value)}
+                                rows={3}
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button 
+                                type="button"
+                                variant="outline" 
+                                onClick={() => {
+                                    setIsShareModalOpen(false);
+                                    resetShare();
+                                }}
+                                disabled={isSharing}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSharing || !shareData.email}>
+                                {isSharing ? 'Sending...' : 'Send Invitation'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 
