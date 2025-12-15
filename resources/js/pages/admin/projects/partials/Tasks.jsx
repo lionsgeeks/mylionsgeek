@@ -409,8 +409,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                 if (!member?.id) return null;
                                 return (
                                     <SelectItem key={member.id} value={String(member.id)}>
-                                        {member.name}
-                                    </SelectItem>
+                                    {member.name}
+                                </SelectItem>
                                 );
                             })}
                         </SelectContent>
@@ -503,16 +503,16 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                     </TableCell>
                                     <TableCell>
                                         {task.assigned_to ? (
-                                            <Avatar
+                                                            <Avatar
                                                 className="w-10 h-10 overflow-hidden relative z-50"
                                                 image={task.assigned_to.image || task.assigned_to.user?.image}
                                                 name={task.assigned_to.name || task.assigned_to.user?.name || 'Unknown'}
                                                 lastActivity={task.assigned_to.last_online || task.assigned_to.user?.last_online || null}
-                                                onlineCircleClass="hidden"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground">Unassigned</span>
-                                        )}
+                                                                onlineCircleClass="hidden"
+                                                            />
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground">Unassigned</span>
+                                            )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -665,7 +665,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                         return (
                                             <SelectItem key={member.id} value={String(member.id)}>
                                                 {member.name || 'Unknown'}
-                                            </SelectItem>
+                                        </SelectItem>
                                         );
                                     })}
                                 </SelectContent>

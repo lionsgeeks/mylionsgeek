@@ -76,9 +76,9 @@ return new class extends Migration
                 $table->dropColumn('assigned_to');
             });
             
-            Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table) {
                 $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null')->after('project_id');
-            });
+        });
         }
     }
 
@@ -138,9 +138,9 @@ return new class extends Migration
                 $table->dropColumn('assigned_to');
             });
             
-            Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table) {
                 $table->unsignedBigInteger('assigned_to')->nullable()->after('project_id');
-            });
+        });
         }
     }
 };

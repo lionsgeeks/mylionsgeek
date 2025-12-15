@@ -172,7 +172,7 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                             <TableHead>Status</TableHead>
                             <TableHead>Last Active</TableHead>
                             {isCurrentUserAdmin && (
-                                <TableHead className="text-right">Actions</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                             )}
                         </TableRow>
                     </TableHeader>
@@ -210,34 +210,34 @@ const Team = ({ teamMembers = [], projectId, userr }) => {
                                         {member.lastActive || 'Just now'}
                                     </TableCell>
                                     {isCurrentUserAdmin && (
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem>
-                                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                                        <span>Message</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Mail className="mr-2 h-4 w-4" />
-                                                        <span>Send Email</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <Users className="mr-2 h-4 w-4" />
-                                                        <span>Change Role</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        <span>Remove</span>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem>
+                                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                                    <span>Message</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    <span>Send Email</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <Users className="mr-2 h-4 w-4" />
+                                                    <span>Change Role</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTeamMember(member)}>
+                                                    <Trash className="mr-2 h-4 w-4" />
+                                                    <span>Remove</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
                                     )}
                                 </TableRow>
                             ))
