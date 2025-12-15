@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -56,8 +57,16 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
         photo: null,
         start_date: '',
         end_date: '',
-        status: 'active'
+        status: 'active',
+        predefined_tasks: []
     });
+
+    // Predefined tasks options
+    const predefinedTasksOptions = [
+        { value: 'creation_du_site_web', label: 'Creation du site web' },
+        { value: 'creation_de_contenue_reseaux_sociaux', label: 'Creation de contenue sur les reseau sociaux' },
+        { value: 'shooting_images_videos', label: 'Shooting and images and videos' }
+    ];
 
     const handleCreate = useCallback((e) => {
         e.preventDefault();
@@ -69,6 +78,13 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
         formData.append('status', data.status);
         formData.append('start_date', data.start_date || '');
         formData.append('end_date', data.end_date || '');
+
+        // Append predefined tasks as array (Laravel handles arrays in FormData natively)
+        if (data.predefined_tasks && data.predefined_tasks.length > 0) {
+            data.predefined_tasks.forEach((task, index) => {
+                formData.append(`predefined_tasks[${index}]`, task);
+            });
+        }
 
         if (data.photo) {
             formData.append('photo', data.photo);
@@ -83,7 +99,8 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                     photo: null,
                     start_date: '',
                     end_date: '',
-                    status: 'active'
+                    status: 'active',
+                    predefined_tasks: []
                 });
             }
         });
@@ -661,6 +678,35 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 placeholder="Enter project description"
                                 className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md"
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Predefined Tasks</Label>
+                            <div className="space-y-3 border border-input rounded-md p-4">
+                                {predefinedTasksOptions.map((task) => (
+                                    <div key={task.value} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={task.value}
+                                            checked={data.predefined_tasks?.includes(task.value) || false}
+                                            onCheckedChange={(checked) => {
+                                                const currentTasks = data.predefined_tasks || [];
+                                                if (checked) {
+                                                    setData('predefined_tasks', [...currentTasks, task.value]);
+                                                } else {
+                                                    setData('predefined_tasks', currentTasks.filter(t => t !== task.value));
+                                                }
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor={task.value}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                            {task.label}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Select tasks to automatically add to this project</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

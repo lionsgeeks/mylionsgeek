@@ -111,6 +111,50 @@ class ProjectController extends Controller
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys = ON');
 
+            // Create predefined tasks if any were selected
+            if ($request->has('predefined_tasks')) {
+                $predefinedTasks = $request->predefined_tasks;
+                
+                // Handle different input types: string (JSON), array, or null/empty
+                if (is_string($predefinedTasks) && !empty($predefinedTasks)) {
+                    $decoded = json_decode($predefinedTasks, true);
+                    $predefinedTasks = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
+                } elseif (!is_array($predefinedTasks)) {
+                    $predefinedTasks = [];
+                }
+                
+                // Ensure we have a valid array with items
+                if (is_array($predefinedTasks) && count($predefinedTasks) > 0) {
+                    // Map task values to their titles
+                    $taskTitles = [
+                        'creation_du_site_web' => 'Creation du site web',
+                        'creation_de_contenue_reseaux_sociaux' => 'Creation de contenue sur les reseau sociaux',
+                        'shooting_images_videos' => 'Shooting and images and videos'
+                    ];
+
+                    // Temporarily disable foreign key checks for SQLite
+                    DB::statement('PRAGMA foreign_keys = OFF');
+
+                    foreach ($predefinedTasks as $taskValue) {
+                        if (isset($taskTitles[$taskValue])) {
+                            Task::create([
+                                'title' => $taskTitles[$taskValue],
+                                'description' => null,
+                                'project_id' => $project->id,
+                                'created_by' => Auth::id(),
+                                'priority' => 'medium',
+                                'status' => 'todo',
+                                'progress' => 0,
+                                'sort_order' => 0
+                            ]);
+                        }
+                    }
+
+                    // Re-enable foreign key checks
+                    DB::statement('PRAGMA foreign_keys = ON');
+                }
+            }
+
             return redirect()->route('admin.projects.index')
                 ->with('success', 'Project created successfully.');
         } catch (\Exception $e) {
