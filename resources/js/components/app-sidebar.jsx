@@ -1,10 +1,11 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen, Gamepad2, User, Calendar } from 'lucide-react';
 import AppLogo from './app-logo';
+import { useMemo } from 'react';
 
-const mainNavItems = [
+const getAllNavItems = () => [
     {
         id: 'dashboard',
         title: 'Dashboard',
@@ -56,7 +57,48 @@ const mainNavItems = [
 
 // Footer links removed per request
 
+// Check if user is one of the appointment persons
+const isAppointmentPerson = (user) => {
+    if (!user) return false;
+    
+    const personNames = ['Mahdi Bouziane', 'Hamid Boumehraz', 'Amina Khabab', 'Ayman Boujjar'];
+    const emailMapping = {
+        'mahdi.bouziane@lionsgeek.com': true,
+        'hamid.boumehraz@lionsgeek.com': true,
+        'amina.khabab@lionsgeek.com': true,
+        'aymenboujjar12@gmail.com': true,
+    };
+
+    // Check by name
+    if (personNames.includes(user.name)) {
+        return true;
+    }
+
+    // Check by email
+    if (user.email && emailMapping[user.email.toLowerCase()]) {
+        return true;
+    }
+
+    return false;
+};
+
 export function AppSidebar() {
+    const { auth } = usePage().props;
+    const user = auth?.user;
+
+    // Filter nav items based on user permissions
+    const mainNavItems = useMemo(() => {
+        const allItems = getAllNavItems();
+        
+        return allItems.filter((item) => {
+            // Filter out appointments if user is not an appointment person
+            if (item.id === 'appointments') {
+                return isAppointmentPerson(user);
+            }
+            return true;
+        });
+    }, [user]);
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>

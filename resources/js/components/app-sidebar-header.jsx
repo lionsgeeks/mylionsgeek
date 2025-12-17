@@ -7,10 +7,11 @@ import { useEffect, useState } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SearchDialog from '@/components/search-dialog';
 import ChatIcon from '@/components/chat/ChatIcon';
+import NotificationIcon from '@/components/NotificationIcon';
 
 import { NavUser } from '@/components/nav-user';
-import { Bell, Home } from 'lucide-react';
-import { Button } from '@headlessui/react';
+import { Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function AppSidebarHeader({ breadcrumbs = [] }) {
     const { auth } = usePage().props;
@@ -39,13 +40,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                 <div className="flex items-center gap-4 ">
 
                     <ChatIcon />
-                    <Button variant="ghost" size="icon" className="relative flex h-9 w-9 items-center justify-center rounded-md" aria-label="Notifications">
-                        <Bell className="h-5 w-5 flex-shrink-0" />
-                        {/* Unread notification badge - you can add state management for unread count later */}
-                        {/* <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border border-white dark:border-dark">
-                                    3
-                                </span> */}
-                    </Button>
+                    <NotificationIcon />
                     <Link href="/feed" prefetch className="flex items-center">
                         <Button variant="ghost" size="icon" className="flex h-9 w-9 items-center justify-center rounded-md" aria-label="Home">
                             <Home className="h-5 w-5 flex-shrink-0" />

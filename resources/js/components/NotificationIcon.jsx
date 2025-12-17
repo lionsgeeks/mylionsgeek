@@ -1,0 +1,256 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { usePage, Link } from '@inertiajs/react';
+import { Bell, Clock, Calendar, User, Briefcase } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
+
+export default function NotificationIcon() {
+    const page = usePage();
+    const { auth, attendanceWarning } = page.props;
+    const [notifications, setNotifications] = useState([]);
+    const [isOpen, setIsOpen] = useState(false);
+
+    const userRoles = useMemo(() => {
+        const role = auth?.user?.role;
+        if (Array.isArray(role)) return role;
+        return role ? [role] : [];
+    }, [auth?.user?.role]);
+
+    const isCoach = userRoles.includes('coach');
+    const isAdmin = userRoles.includes('admin');
+    const isStudioResponsable = userRoles.includes('studio_responsable');
+
+    // Fetch notifications function
+    const fetchNotifications = React.useCallback(async () => {
+        const notificationList = [];
+
+        try {
+            // Fetch all notifications from API
+            const response = await fetch('/api/notifications', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const apiNotifications = data.notifications || [];
+                
+                console.log('Fetched notifications:', apiNotifications.length, apiNotifications);
+                
+                apiNotifications.forEach((notif) => {
+                    try {
+                        notificationList.push({
+                            id: notif.id,
+                            type: notif.type,
+                            senderName: notif.sender_name || 'Unknown',
+                            senderImage: notif.sender_image || null,
+                            message: notif.message || 'No message',
+                            link: notif.link || '#',
+                            iconType: notif.icon_type || 'user',
+                            timestamp: notif.created_at ? new Date(notif.created_at) : new Date(),
+                        });
+                    } catch (e) {
+                        console.error('Error processing notification:', e, notif);
+                    }
+                });
+            } else {
+                console.error('Failed to fetch notifications:', response.status, response.statusText);
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+            }
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        }
+
+        // Add attendance alerts for coaches - only show active trainings
+        if (isCoach && attendanceWarning?.hasWarning) {
+            const allTrainings = Array.isArray(attendanceWarning.trainings) 
+                ? attendanceWarning.trainings 
+                : [];
+            
+            // Filter to only show active trainings (same logic as attendance-warning.jsx)
+            const getTrainingStatus = (training) => {
+                if (!training.start_time) return null;
+                const start = new Date(training.start_time);
+                const now = new Date();
+                const sixMonthsLater = new Date(start);
+                sixMonthsLater.setMonth(start.getMonth() + 6);
+                if (now < sixMonthsLater && start < now) return 'active';
+                return null;
+            };
+            
+            const activeTrainings = allTrainings.filter((t) => getTrainingStatus(t) === 'active');
+            
+            activeTrainings.forEach((training) => {
+                notificationList.push({
+                    id: `attendance-${training.id}`,
+                    type: 'attendance',
+                    senderName: 'System',
+                    senderImage: null,
+                    message: `Don't forget to mark attendance for "${training.name}"`,
+                    link: `/trainings/${training.id}`,
+                    iconType: 'clock',
+                    timestamp: new Date(),
+                });
+            });
+        }
+
+        // Sort by timestamp (newest first)
+        notificationList.sort((a, b) => b.timestamp - a.timestamp);
+        setNotifications(notificationList);
+    }, [isCoach, isAdmin, isStudioResponsable, attendanceWarning]);
+
+    // Fetch notifications on mount and when dependencies change
+    useEffect(() => {
+        fetchNotifications();
+        
+        // Refresh notifications every 30 seconds
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, [fetchNotifications]);
+
+    // Fetch notifications when dropdown opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchNotifications();
+        }
+    }, [isOpen, fetchNotifications]);
+
+    const unreadCount = notifications.length;
+
+    const formatTimestamp = (date) => {
+        if (!date) return '';
+        try {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            const seconds = String(d.getSeconds()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        } catch (e) {
+            return '';
+        }
+    };
+
+    const getIcon = (iconType) => {
+        switch (iconType) {
+            case 'briefcase':
+                return Briefcase;
+            case 'calendar':
+                return Calendar;
+            case 'clock':
+                return Clock;
+            case 'user':
+            default:
+                return User;
+        }
+    };
+
+    const getIconColor = (iconType) => {
+        switch (iconType) {
+            case 'briefcase':
+                return 'text-green-600';
+            case 'calendar':
+                return 'text-blue-600';
+            case 'clock':
+                return 'text-amber-600';
+            case 'user':
+            default:
+                return 'text-sky-600';
+        }
+    };
+
+    return (
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenuTrigger asChild>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="relative h-9 w-9 rounded-md"
+                    aria-label="Notifications"
+                >
+                    <Bell className="h-5 w-5 flex-shrink-0" />
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border border-white dark:border-dark">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+                className="w-96 p-0 max-h-[600px] flex flex-col" 
+                align="end"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+                <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-dark flex-shrink-0">
+                    <h3 className="font-semibold text-sm">
+                        Notifications {unreadCount > 0 && `(${unreadCount})`}
+                    </h3>
+                </div>
+                <ScrollArea className="flex-1 max-h-[500px]">
+                    <div className="max-h-[500px] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-8 text-center">
+                                <Bell className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                                <p className="text-sm text-muted-foreground">No notifications</p>
+                                <p className="text-xs text-muted-foreground mt-1">You're all caught up!</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-border">
+                            {notifications.map((notification) => {
+                                const IconComponent = getIcon(notification.iconType);
+                                const iconColor = getIconColor(notification.iconType);
+                                
+                                return (
+                                    <Link
+                                        key={notification.id}
+                                        href={notification.link}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block"
+                                    >
+                                        <div className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                                            <div className="flex-shrink-0 mt-1">
+                                                {notification.senderImage ? (
+                                                    <Avatar 
+                                                        className="h-10 w-10 rounded-full"
+                                                        image={notification.senderImage}
+                                                        name={notification.senderName}
+                                                    />
+                                                ) : (
+                                                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
+                                                        <IconComponent className={cn("h-5 w-5", iconColor)} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold text-foreground mb-1">
+                                                    {notification.senderName}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                                    {notification.message}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatTimestamp(notification.timestamp)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
