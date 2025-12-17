@@ -7,8 +7,11 @@ import { useEffect, useState } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
 import SearchDialog from '@/components/search-dialog';
 import ChatIcon from '@/components/chat/ChatIcon';
+import NotificationIcon from '@/components/NotificationIcon';
 
 import { NavUser } from '@/components/nav-user';
+import { Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function AppSidebarHeader({ breadcrumbs = [] }) {
     const { auth } = usePage().props;
@@ -35,7 +38,14 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                 </div>
                 <SearchDialog className="hidden sm:flex" />
                 <div className="flex items-center gap-4 ">
+
                     <ChatIcon />
+                    <NotificationIcon />
+                    <Link href="/feed" prefetch className="flex items-center">
+                        <Button variant="ghost" size="icon" className="flex h-9 w-9 items-center justify-center rounded-md" aria-label="Home">
+                            <Home className="h-5 w-5 flex-shrink-0" />
+                        </Button>
+                    </Link>
                     <NavUser />
                     <div className="">
                         {/* component change mode */}

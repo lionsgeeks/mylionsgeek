@@ -10,12 +10,13 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
-import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2, Building2, Timer, Home } from 'lucide-react';
+import { Award, BookOpen, Folder, LayoutGrid, LibraryBig, Medal, Menu, Search, Workflow, Gamepad2, Building2, Timer, Home, Bell } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 import ThemeToggle from './ThemeToggle';
 import SearchDialog from './search-dialog';
 import ChatIcon from './chat/ChatIcon';
+import NotificationIcon from './NotificationIcon';
 
 
 
@@ -47,9 +48,9 @@ export function AppHeader({ breadcrumbs = [] }) {
         { title: 'Reservations', url: '/student/reservations', icon: Timer },
 
         {
-            title: 'Projects', 
-            url: '/projects', 
-            icon: Folder  
+            title: 'Projects',
+            url: '/projects',
+            icon: Folder
         },
         // {
         //     title: 'Games',
@@ -134,6 +135,8 @@ export function AppHeader({ breadcrumbs = [] }) {
                     <div className="ml-auto flex items-center space-x-2">
                         <div className="flex items-center gap-4">
                             <ChatIcon />
+                            <NotificationIcon />
+                    
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="size-10 rounded-full p-1">

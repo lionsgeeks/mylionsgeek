@@ -27,8 +27,6 @@ const MainDashboard = ({
     equipmentStats = {},
     projectStats = {},
     recentReservations = [],
-    pendingAppointments = [],
-    recentUsers = [],
     recentProjects = [],
     todayReservations = 0,
     weekReservations = 0,
@@ -186,93 +184,6 @@ const MainDashboard = ({
                     </div>
                 </div>
             </Rolegard>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                            <Clock className="h-5 w-5 text-yellow-600" />
-                            Pending Appointments
-                        </h3>
-                        <Link
-                            href="/admin/appointments"
-                            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                        >
-                            View all <ArrowRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                    <div className="space-y-3">
-                        {pendingAppointments.length > 0 ? (
-                            pendingAppointments.map((appointment) => (
-                                <Link
-                                    key={appointment.id}
-                                    href={`/admin/appointments`}
-                                    className="block p-4 rounded-lg border border-yellow-200 dark:border-yellow-900/30 bg-yellow-50/50 dark:bg-yellow-900/10 hover:bg-yellow-100/50 dark:hover:bg-yellow-900/20 transition-colors"
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <p className="font-medium text-foreground">{appointment.title}</p>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                {appointment.user_name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {appointment.date} • {appointment.time}
-                                            </p>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">{appointment.created_at}</span>
-                                    </div>
-                                </Link>
-                            ))
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">No pending appointments</p>
-                        )}
-                    </div>
-                </div>
-
-                <Rolegard except={['studio_responsable']}>
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                                <Users className="h-5 w-5" />
-                                Recent Users
-                            </h3>
-                            <Link
-                                href="/admin/users"
-                                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            >
-                                View all <ArrowRight className="h-4 w-4" />
-                            </Link>
-                        </div>
-                        <div className="space-y-3">
-                            {recentUsers.length > 0 ? (
-                                recentUsers.map((user) => (
-                                    <Link
-                                        key={user.id}
-                                        href={`/admin/users/${user.id}`}
-                                        className="flex items-center gap-3 p-4 rounded-lg border border-sidebar-border/50 hover:bg-muted/50 transition-colors"
-                                    >
-                                        <Avatar
-                                            className="w-10 h-10"
-                                            image={user.image ? user.image.split('/').pop() : undefined}
-                                            name={user.name || 'Unknown'}
-                                            lastActivity={user.last_activity || null}
-                                            onlineCircleClass="hidden"
-                                            edit={false}
-                                        />
-                                        <div className="flex-1">
-                                            <p className="font-medium text-foreground">{user.name}</p>
-                                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">{user.created_at}</span>
-                                    </Link>
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No recent users</p>
-                            )}
-                        </div>
-                    </div>
-                </Rolegard>
-            </div>
 
 
             {/* hadi ma3ajbatniche */}
