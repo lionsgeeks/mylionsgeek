@@ -11,13 +11,6 @@ const mainNavItems = [
         href: "/admin/dashboard",
         icon: LayoutGrid,
     },
-    {
-        id: 'feed',
-        title: 'Feed',
-        href: "/feed",
-        icon: User,
-
-    },
 
     {
         id: 'members',

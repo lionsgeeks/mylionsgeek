@@ -11,9 +11,15 @@ const formatRoleLabel = (role) => {
     return role === 'studio_responsable' ? 'Responsable Studio' : role;
 };
 
-export function UserInfo({ user, showEmail = false }) {
+export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
     const roles = normalizeRoles(user.role);
     const displayRoles = roles.length ? roles.map(formatRoleLabel).join(', ') : null;
+
+    if (avatarOnly) {
+        return (
+            <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="hidden" />
+        );
+    }
 
     return (
         <>
