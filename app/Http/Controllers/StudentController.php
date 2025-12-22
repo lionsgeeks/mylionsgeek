@@ -35,28 +35,18 @@ class StudentController extends Controller
     public function getUserInfo($id)
     {
         $user = User::find($id);
-        // $followers = User::whereIn('id', function ($query) use ($id) {
-        //     $query->select('follower_id')
-        //         ->from('followers')
-        //         ->where('followed_id', $id);
-        // })->get();
-        // $following = User::whereIn('id', function ($query) use ($id) {
-        //     $query->select('followed_id')
-        //         ->from('followers')
-        //         ->where('follower_id', $id);
-        // })->get();
-        // $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
         $isFollowing = Auth::user()
             ->following()
             ->where('followed_id', $id)
             ->exists();
         $followers = User::find($id)
             ->followers()
-            ->pluck('users.name');
+            ->select('users.id', 'users.name', 'users.image')
+            ->get();
         $following = User::find($id)
             ->following()
-            ->pluck('users.name');
-        // dd($followers);
+            ->select('users.id', 'users.name', 'users.image')
+            ->get();
         return  [
             'user' => [
                 'id' => $user->id,
@@ -79,9 +69,9 @@ class StudentController extends Controller
                 'access_studio' => $user->access_studio,
                 'access_cowork' => $user->access_cowork,
                 'role' => $user->role,
-                // 'followers' => $followers,
-                // 'following' => $following,
-                // 'is_Following' => $isFollowing,
+                'followers' => $followers,
+                'following' => $following,
+                'isFFollowing' => $isFollowing,
             ],
         ];
     }
@@ -128,20 +118,28 @@ class StudentController extends Controller
     }
     public function addToFollow($id)
     {
-        $follower = Auth::user();
-        $followed = User::find($id);
-        Follower::create([
-            'follower_id' => $follower->id,
-            'followed_id' => $followed->id,
-        ]);
-        return back()->with('success', 'Your now follow something');
+        $follower = Auth::user();      // the logged-in user
+        $followed = User::findOrFail($id);  // the user to follow
+
+        // Prevent self-follow
+        if ($follower->id === $followed->id) {
+            return back()->with('error', "You can't follow yourself.");
+        }
+
+        // Attach the followed user without duplicates
+        $follower->following()->syncWithoutDetaching([$followed->id]);
+
+        return back()->with('success', 'You are now following this user.');
     }
+
     public function unFollow($id)
     {
-        $follower = Auth::user();
-        $followed = User::findOrFail($id);
-        $followeRecord = Follower::where('follower_id', $follower->id)->where('followed_id', $followed->id)->first();
-        $followeRecord->delete();
-        return back()->with('success', 'Your now unfollow something');
+        $follower = Auth::user();               // logged-in user
+        $followed = User::findOrFail($id);     // user to unfollow
+
+        // Detach the followed user from the pivot table
+        $follower->following()->detach($followed->id);
+
+        return back()->with('success', 'You have unfollowed this user.');
     }
 }

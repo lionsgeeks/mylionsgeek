@@ -238,7 +238,7 @@ const Header = ({ user, userFunctionality }) => {
                 </div>
             </div>
             {openEdit && <EditUserModal open={openEdit} editedUser={user} onClose={() => setOpenEdit(false)} />}
-            {openFollowModal[0] && <FollowModal followers={user?.followers} following={user?.following} onOpenChange={setOpenFollowModal} onChange={openFollowModal} />}
+            {openFollowModal[0] && <FollowModal student={user} onOpenChange={setOpenFollowModal} openChange={openFollowModal} />}
         </>
     );
 };
