@@ -35,9 +35,28 @@ class StudentController extends Controller
     public function getUserInfo($id)
     {
         $user = User::find($id);
-        $userFollowers = Follower::where('followed_id', $id)->count();
-        $userFollowing = Follower::where('follower_id', $id)->count();
-        $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
+        // $followers = User::whereIn('id', function ($query) use ($id) {
+        //     $query->select('follower_id')
+        //         ->from('followers')
+        //         ->where('followed_id', $id);
+        // })->get();
+        // $following = User::whereIn('id', function ($query) use ($id) {
+        //     $query->select('followed_id')
+        //         ->from('followers')
+        //         ->where('follower_id', $id);
+        // })->get();
+        // $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
+        $isFollowing = Auth::user()
+            ->following()
+            ->where('followed_id', $id)
+            ->exists();
+        $followers = User::find($id)
+            ->followers()
+            ->pluck('users.name');
+        $following = User::find($id)
+            ->following()
+            ->pluck('users.name');
+        // dd($followers);
         return  [
             'user' => [
                 'id' => $user->id,
@@ -60,9 +79,9 @@ class StudentController extends Controller
                 'access_studio' => $user->access_studio,
                 'access_cowork' => $user->access_cowork,
                 'role' => $user->role,
-                'followers' => $userFollowers,
-                'following' => $userFollowing,
-                'is_Following' => $isFollowing,
+                // 'followers' => $followers,
+                // 'following' => $following,
+                // 'is_Following' => $isFollowing,
             ],
         ];
     }
@@ -125,5 +144,4 @@ class StudentController extends Controller
         $followeRecord->delete();
         return back()->with('success', 'Your now unfollow something');
     }
-    
 }

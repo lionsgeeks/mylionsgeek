@@ -97,7 +97,7 @@ class User extends Authenticatable
     // {
     //     return $this->hasMany(UserProject::class, 'user_id');
     // }
-    
+
     public function studentProjects(): HasMany
     {
         return $this->hasMany(StudentProject::class, 'user_id');
@@ -213,5 +213,26 @@ class User extends Authenticatable
         $resetUrl = url(route('password.reset', ['token' => $token, 'email' => $this->email], false));
 
         Mail::to($this->email)->send(new ForgotPasswordLinkMail($this, $resetUrl));
+    }
+    //! Followers relationship
+    public function followers()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'followers',
+            'followed_id',
+            'follower_id'
+        )->withTimestamps();
+    }
+
+    // People I follow
+    public function following()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'followers',
+            'follower_id',
+            'followed_id'
+        )->withTimestamps();
     }
 }

@@ -85,13 +85,13 @@ class UsersController extends Controller
             'relationships' => ['formation'],
             'filename' => 'students_export_' . now()->format('Y_m_d_H_i_s'),
             'transformers' => [
-                'formation' => function($user) {
+                'formation' => function ($user) {
                     return optional($user->formation)->name ?? '';
                 },
-                'access_studio' => function($user) {
+                'access_studio' => function ($user) {
                     return (string) $user->access_studio === '1' || $user->access_studio === 1 ? 'Yes' : 'No';
                 },
-                'access_cowork' => function($user) {
+                'access_cowork' => function ($user) {
                     return (string) $user->access_cowork === '1' || $user->access_cowork === 1 ? 'Yes' : 'No';
                 },
             ],
@@ -233,9 +233,7 @@ class UsersController extends Controller
 
                 'created_at' => $post->created_at,
 
-                'is_following' => Follower::where('followed_id', $post->user_id)
-                    ->where('follower_id', $authUser->id)
-                    ->exists(),
+                'is_following' =>  Auth::user()->following()->where('followed_id', $post->user_id)->exists()
             ];
         });
 
@@ -900,7 +898,7 @@ class UsersController extends Controller
             foreach ($notificationEmails as $email) {
                 Mail::raw($notificationBody, function ($message) use ($email, $notificationSubject) {
                     $message->to($email)
-                            ->subject($notificationSubject);
+                        ->subject($notificationSubject);
                 });
             }
         } catch (\Exception $e) {

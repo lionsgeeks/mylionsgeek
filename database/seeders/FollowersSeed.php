@@ -17,12 +17,14 @@ class FollowersSeed extends Seeder
         //
         $users = User::all();
 
-        foreach (range(0, $users->count()) as $i) {
-            # code...
-            Follower::create([
-                'follower_id' => $users->random()->id,
-                'followed_id' => $users->random()->id,
-            ]);
+        foreach ($users as $user) {
+            // Pick random users except himself
+            $toFollow = $users
+                ->where('id', '!=', $user->id)
+                ->random(rand(0, 5))
+                ->pluck('id')
+                ->toArray();
+            $user->following()->syncWithoutDetaching($toFollow);
         }
     }
 }

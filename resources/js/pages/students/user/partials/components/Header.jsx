@@ -6,18 +6,20 @@ import EditUserModal from '../../../../admin/users/partials/EditModal';
 import { helpers } from '../../../../../components/utils/helpers';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Rolegard from '../../../../../components/rolegard';
+import FollowModal from '../../../../../components/FollowModal';
 
 const Header = ({ user, userFunctionality }) => {
     const [openEdit, setOpenEdit] = useState(false);
+    const [openFollowModal, setOpenFollowModal] = useState([]);
     const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
 
     const handleMessageClick = () => {
         // 7al chat w 3tiw conversation dyal had user
-        window.dispatchEvent(new CustomEvent('open-chat', { 
-            detail: { userId: user?.id } 
+        window.dispatchEvent(new CustomEvent('open-chat', {
+            detail: { userId: user?.id }
         }));
-        
+
         // 7al chat dialog
         const chatButton = document.querySelector('[aria-label="Chat"]');
         if (chatButton) {
@@ -158,12 +160,12 @@ const Header = ({ user, userFunctionality }) => {
 
                             {/* Stats */}
                             <div className="flex gap-4 mt-4 text-sm">
-                                <div>
-                                    <span className="font-semibold text-beta dark:text-light">{user?.followers}</span>
+                                <div className='cursor-pointer' onClick={() => setOpenFollowModal([true, 'followers'])}  >
+                                    <span className="font-semibold text-beta dark:text-light">{user?.followers?.length}</span>
                                     <span className="text-beta/70 dark:text-light/70 ml-1">Followers</span>
                                 </div>
-                                <div>
-                                    <span className="font-semibold text-beta dark:text-light">{user?.following}</span>
+                                <div className='cursor-pointer' onClick={() => setOpenFollowModal([true, 'following'])}>
+                                    <span className="font-semibold text-beta dark:text-light">{user?.following?.length}</span>
                                     <span className="text-beta/70 dark:text-light/70 ml-1">Following</span>
                                 </div>
                             </div>
@@ -236,6 +238,7 @@ const Header = ({ user, userFunctionality }) => {
                 </div>
             </div>
             {openEdit && <EditUserModal open={openEdit} editedUser={user} onClose={() => setOpenEdit(false)} />}
+            {openFollowModal[0] && <FollowModal followers={user?.followers} following={user?.following} onOpenChange={setOpenFollowModal} onChange={openFollowModal} />}
         </>
     );
 };
