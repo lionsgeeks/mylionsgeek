@@ -148,11 +148,11 @@ class StudentController extends Controller
         if (Auth::user()->id == $id) {
             $user = User::find($id);
             $request->validate([
-                'about' => 'nullable|string'
+                'about' => 'nullable|string|max:500|min:100'
             ]);
 
             $user->update([
-                'about' => $request->about  
+                'about' => $request->about
             ]);
             return redirect()->back()->with('success', 'About updated succefully');
         }

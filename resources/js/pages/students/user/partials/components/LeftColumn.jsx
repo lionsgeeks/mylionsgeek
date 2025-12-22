@@ -20,7 +20,7 @@ const LeftColumn = ({ user }) => {
                             }
                         </button>
                     </div>
-                    <p className="text-sm text-beta/80 dark:text-light/80 leading-relaxed">
+                    <p className="text-sm break-words whitespace-pre-wrap text-beta/80 dark:text-light/80">
                         {user.about}
                     </p>
                 </div>

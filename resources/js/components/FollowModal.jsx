@@ -54,7 +54,7 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                 <div className="flex border-b dark:border-beta">
                     <button
                         onClick={() => setActiveTab('followers')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'followers' ? 'text-beta dark:text-light' : 'text-b dark:text-alpha'}`}
+                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'followers' ? 'text-beta dark:text-light' : 'text-beta dark:text-alpha'}`}
                     >
                         Followers ({student?.followers?.length || 0})
                         {activeTab === 'followers' && (
