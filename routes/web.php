@@ -216,6 +216,8 @@ require __DIR__ . '/admin/users.php';
 require __DIR__ . '/admin/computers.php';
 require __DIR__ . '/admin/leaderboard.php';
 require __DIR__ . '/admin/training.php';
+require __DIR__ . '/admin/models.php';
+require __DIR__ . '/admin/exercices.php';
 require __DIR__ . '/admin/geeko.php';
 require __DIR__ . '/admin/equipment.php';
 require __DIR__ . '/admin/places.php';

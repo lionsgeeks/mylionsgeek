@@ -16,8 +16,9 @@ import GeekyWheel from './partials/geekyWheel';
 import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import ExercicesModal from "@/components/EXP'S/exersices_modal";
 
-export default function Show({ training, usersNull }) {
+export default function Show({ training, usersNull, models = [] }) {
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const isCoachRole = userRoles.includes('coach');
@@ -452,6 +453,7 @@ export default function Show({ training, usersNull }) {
                         <p className="text-dark/70 mt-1 sm:mt-2 dark:text-light/70">{training.category}</p>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <ExercicesModal trainingId={training.id} models={models} />
                         <Button
                             onClick={() => setIsModalOpen(true)}
                             className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
