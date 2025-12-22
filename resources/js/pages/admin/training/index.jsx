@@ -124,7 +124,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                         </div>
                         <div className="flex items-center gap-3">
                             <ModelsModal />
-                            <CreatTraining coaches={coaches} />
+                        <CreatTraining coaches={coaches} />
                         </div>
                     </div>
                 </div>

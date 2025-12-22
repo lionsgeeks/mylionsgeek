@@ -41,13 +41,11 @@ class ModelsController extends Controller
             'description' => $validated['description'] ?? null,
         ];
 
-        // Ensure directory exists
         $modelsDir = public_path('/storage/img/models');
         if (!file_exists($modelsDir)) {
             mkdir($modelsDir, 0755, true);
         }
 
-        // Handle badge1 upload
         if ($request->hasFile('badge1')) {
             $file = $request->file('badge1');
             $filename = time() . '_badge1_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -55,7 +53,6 @@ class ModelsController extends Controller
             $data['badge1'] = $filename;
         }
 
-        // Handle badge2 upload
         if ($request->hasFile('badge2')) {
             $file = $request->file('badge2');
             $filename = time() . '_badge2_' . uniqid() . '.' . $file->getClientOriginalExtension();
@@ -63,7 +60,6 @@ class ModelsController extends Controller
             $data['badge2'] = $filename;
         }
 
-        // Handle badge3 upload
         if ($request->hasFile('badge3')) {
             $file = $request->file('badge3');
             $filename = time() . '_badge3_' . uniqid() . '.' . $file->getClientOriginalExtension();

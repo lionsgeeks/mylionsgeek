@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Exercices;
+use App\Models\ExerciseSubmission;
 use App\Models\Formation;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ExercicesController extends Controller
@@ -14,7 +16,7 @@ class ExercicesController extends Controller
     public function index(Request $request)
     {
         $trainingId = $request->query('training_id');
-        
+
         $exercices = Exercices::with(['model', 'submissions.user'])
             ->when($trainingId, function ($query) use ($trainingId) {
                 $query->where('training_id', $trainingId);
@@ -33,9 +35,10 @@ class ExercicesController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'file' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,pdf,mp4,avi,mov,wmv', // 10MB max
+            'file' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,pdf,mp4,avi,mov,wmv',
             'training_id' => 'required|exists:formations,id',
             'model_id' => 'required|exists:models,id',
+            'xp' => 'nullable|integer|min:0',
         ]);
 
         $data = [
@@ -43,14 +46,13 @@ class ExercicesController extends Controller
             'description' => $validated['description'] ?? null,
             'training_id' => $validated['training_id'],
             'model_id' => $validated['model_id'] ?? null,
+            'xp' => $validated['xp'] ?? 0,
         ];
 
-        // Handle file upload
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $mimeType = $file->getMimeType();
-            
-            // Determine file type
+
             if (str_starts_with($mimeType, 'image/')) {
                 $fileType = 'image';
                 $directory = 'exercices/images';
@@ -65,7 +67,6 @@ class ExercicesController extends Controller
                 $directory = 'exercices/files';
             }
 
-            // Ensure directory exists
             $exercicesDir = public_path('/storage/' . $directory);
             if (!file_exists($exercicesDir)) {
                 mkdir($exercicesDir, 0755, true);
@@ -73,7 +74,7 @@ class ExercicesController extends Controller
 
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $file->move($exercicesDir, $filename);
-            
+
             $data['file'] = $directory . '/' . $filename;
             $data['file_type'] = $fileType;
         }
@@ -120,5 +121,64 @@ class ExercicesController extends Controller
         $exercices->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Rate a submission
+     */
+    public function rateSubmission(Request $request, $submissionId)
+    {
+        $validated = $request->validate([
+            'rating' => 'required|numeric|min:0|max:100',
+            'rating_comment' => 'nullable|string|max:1000',
+        ]);
+
+        $submission = ExerciseSubmission::with('exercice', 'user')->findOrFail($submissionId);
+        $exercice = $submission->exercice;
+        $user = $submission->user;
+
+        // Check if rating was already set (to avoid awarding XP multiple times)
+        $previousRating = $submission->rating;
+        $isNewRating = $previousRating === null;
+
+        $submission->update([
+            'rating' => $validated['rating'],
+            'rating_comment' => $validated['rating_comment'] ?? null,
+        ]);
+
+        // Award XP only if this is a new rating and exercise has XP
+        if ($isNewRating && $exercice->xp > 0 && $user) {
+            // Calculate XP based on rating percentage
+            // If rating is 100%, student gets full XP
+            // Otherwise, student gets XP proportional to rating
+            $xpToAward = ($validated['rating'] / 100) * $exercice->xp;
+
+            // Award XP to the user (XP column is uppercase)
+            $user->increment('XP', (int)round($xpToAward));
+        } elseif (!$isNewRating && $previousRating !== null && $exercice->xp > 0 && $user) {
+            // If rating is being updated, adjust XP based on the difference
+            // Calculate previous XP awarded
+            $previousXpAwarded = ($previousRating / 100) * $exercice->xp;
+            // Calculate new XP to award
+            $newXpToAward = ($validated['rating'] / 100) * $exercice->xp;
+            // Calculate difference
+            $xpDifference = $newXpToAward - $previousXpAwarded;
+
+            // Only update if there's a difference
+            if (abs($xpDifference) > 0.01) {
+                if ($xpDifference > 0) {
+                    // Award additional XP
+                    $user->increment('XP', (int)round($xpDifference));
+                } else {
+                    // Remove XP (if rating decreased)
+                    $user->decrement('XP', (int)round(abs($xpDifference)));
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'submission' => $submission->load('user'),
+        ]);
     }
 }

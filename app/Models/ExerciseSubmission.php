@@ -11,6 +11,12 @@ class ExerciseSubmission extends Model
         'user_id',
         'submission_link',
         'notes',
+        'rating',
+        'rating_comment',
+    ];
+
+    protected $casts = [
+        'rating' => 'decimal:2',
     ];
 
     public function exercice()

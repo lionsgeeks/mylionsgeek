@@ -7,5 +7,6 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(fu
     Route::get('/admin/exercices', [ExercicesController::class, 'index'])->name('exercices.index');
     Route::post('/admin/exercices', [ExercicesController::class, 'store'])->name('exercices.store');
     Route::delete('/admin/exercices/{exercices}', [ExercicesController::class, 'destroy'])->name('exercices.destroy');
+    Route::post('/admin/exercices/submissions/{submissionId}/rate', [ExercicesController::class, 'rateSubmission'])->name('exercices.submissions.rate');
 });
 

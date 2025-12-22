@@ -13,6 +13,7 @@ class Exercices extends Model
         'file_type',
         'training_id',
         'model_id',
+        'xp',
     ];
 
     public function training()
