@@ -10,15 +10,12 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
     const { stopScrolling, addOrRemoveFollow } = helpers();
 
     useEffect(() => {
-        if (openChange[0]) {
-            stopScrolling(true);
-        }
-        stopScrolling(false)
-    }, [openChange]);
+        stopScrolling(openChange[0])
+        return () => stopScrolling(false);
+    }, [openChange[0]]);
 
     const closeModal = () => {
         onOpenChange([false, 'followers']);
-        onOpenChange([false, 'hello']);
     };
 
     const rawList = activeTab === 'followers' ? student?.followers || [] : student?.following || [];
