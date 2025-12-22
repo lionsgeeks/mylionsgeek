@@ -1,7 +1,9 @@
 import React from 'react';
 import { Edit2, ExternalLink } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
 
 const LeftColumn = ({ user }) => {
+    const { auth } = usePage().props
     return (
         <>
             <div className="lg:col-span-1 space-y-4">
@@ -10,7 +12,9 @@ const LeftColumn = ({ user }) => {
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">About</h2>
                         <button className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
-                            <Edit2 className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                            {
+                                auth?.user.id == user?.id && <Edit2 className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                            }
                         </button>
                     </div>
                     <p className="text-sm text-beta/80 dark:text-light/80 leading-relaxed">

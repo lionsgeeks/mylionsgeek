@@ -185,13 +185,13 @@ const Header = ({ user, userFunctionality }) => {
                             {auth.user?.id != user?.id && (
                                 <>
                                     <button
-                                        onClick={() => addOrRemoveFollow(user?.id, user?.is_Following)}
-                                        className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.id_Following ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'
+                                        onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
+                                        className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.isFollowing ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'
                                             }`}
                                     >
-                                        <span className="text-sm font-medium">{user?.is_Following ? 'Unfollow' : 'Follow'}</span>
+                                        <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>
                                     </button>
-                                    {user?.is_Following && (
+                                    {user?.isFollowing && (
                                         <button
                                             onClick={handleMessageClick}
                                             className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"

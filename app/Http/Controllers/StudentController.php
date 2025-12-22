@@ -39,6 +39,7 @@ class StudentController extends Controller
             ->following()
             ->where('followed_id', $id)
             ->exists();
+        // dd($isFollowing);
         $followers = User::find($id)
             ->followers()
             ->select('users.id', 'users.name', 'users.image')
@@ -71,7 +72,7 @@ class StudentController extends Controller
                 'role' => $user->role,
                 'followers' => $followers,
                 'following' => $following,
-                'isFFollowing' => $isFollowing,
+                'isFollowing' => $isFollowing,
             ],
         ];
     }
