@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PlusCircle, FileText, ImageIcon, FileVideo, File, X, Eye, Trash2, Calendar, Tag, Download } from 'lucide-react';
+import { PlusCircle, FileText, ImageIcon, FileVideo, File, X, Eye, Trash2, Calendar, Tag, Download, Users, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -472,6 +472,67 @@ export default function ExercicesModal({ trainingId, models = [] }) {
                         </a>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Submissions */}
+              {selectedExercice.submissions && selectedExercice.submissions.length > 0 && (
+                <div className="pt-4 border-t border-alpha/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Users className="text-[var(--color-alpha)]" size={20} />
+                    <h3 className="text-lg font-semibold text-dark dark:text-light">
+                      Student Submissions ({selectedExercice.submissions.length})
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedExercice.submissions.map((submission) => (
+                      <div
+                        key={submission.id}
+                        className="p-4 bg-white dark:bg-[#1f1f1f] rounded-lg border border-alpha/20 hover:border-[var(--color-alpha)]/40 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-full bg-[var(--color-alpha)] text-black flex items-center justify-center font-bold text-sm">
+                                {submission.user?.name?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-dark dark:text-light">
+                                  {submission.user?.name || 'Unknown User'}
+                                </p>
+                                <p className="text-xs text-dark/60 dark:text-light/60">
+                                  {submission.user?.email || ''}
+                                </p>
+                              </div>
+                            </div>
+                            <a
+                              href={submission.submission_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-[var(--color-alpha)] hover:underline mt-2"
+                            >
+                              <ExternalLink size={14} />
+                              {submission.submission_link}
+                            </a>
+                            {submission.notes && (
+                              <p className="text-sm text-dark/70 dark:text-light/70 mt-2 italic">
+                                "{submission.notes}"
+                              </p>
+                            )}
+                            <p className="text-xs text-dark/50 dark:text-light/50 mt-2">
+                              Submitted on {new Date(submission.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

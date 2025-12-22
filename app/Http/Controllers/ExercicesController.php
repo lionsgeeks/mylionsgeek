@@ -15,7 +15,7 @@ class ExercicesController extends Controller
     {
         $trainingId = $request->query('training_id');
         
-        $exercices = Exercices::with(['model'])
+        $exercices = Exercices::with(['model', 'submissions.user'])
             ->when($trainingId, function ($query) use ($trainingId) {
                 $query->where('training_id', $trainingId);
             })

@@ -24,4 +24,9 @@ class Exercices extends Model
     {
         return $this->belongsTo(Models::class, 'model_id');
     }
+
+    public function submissions()
+    {
+        return $this->hasMany(ExerciseSubmission::class, 'exercice_id');
+    }
 }
