@@ -14,4 +14,5 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
     Route::post('/users/follow/{user}', [StudentController::class, 'addToFollow']);
     Route::delete('/users/unfollow/{user}', [StudentController::class, 'unFollow']);
+    Route::post('/users/about/{id}', [StudentController::class, 'updateAbout']);
 });

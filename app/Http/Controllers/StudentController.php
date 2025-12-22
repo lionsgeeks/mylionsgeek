@@ -143,4 +143,18 @@ class StudentController extends Controller
 
         return back()->with('success', 'You have unfollowed this user.');
     }
+    public function updateAbout(Request $request, $id)
+    {
+        if (Auth::user()->id == $id) {
+            $user = User::find($id);
+            $request->validate([
+                'about' => 'nullable|string'
+            ]);
+
+            $user->update([
+                'about' => $request->about  
+            ]);
+            return redirect()->back()->with('success', 'About updated succefully');
+        }
+    }
 }
