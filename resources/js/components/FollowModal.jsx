@@ -5,128 +5,126 @@ import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
 
 const FollowModal = ({ openChange, onOpenChange, student }) => {
-    const [isOpen, setIsOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState('student?.followers');
-    const { stopScrolling, addOrRemoveFollow } = helpers()
+    const [activeTab, setActiveTab] = useState(openChange[1]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const { stopScrolling, addOrRemoveFollow } = helpers();
+
     useEffect(() => {
-        stopScrolling(openChange[0])
-    }, [])
-    console.log(student?.following);
+        if (openChange[0]) {
+            stopScrolling(true);
+        }
+        stopScrolling(false)
+    }, [openChange]);
 
-    // const toggleFollow = (studentId) => {
-    //     setstudent?.followers(student?.followers.map(student =>
-    //         student.id === studentId ? { ...student, following: !student.following } : student
-    //     ));
-    // };
+    const closeModal = () => {
+        onOpenChange([false, 'followers']);
+        onOpenChange([false, 'hello']);
+    };
 
-    const displayList = activeTab === 'student?.followers' ? student?.followers : student?.following;
+    const rawList = activeTab === 'followers' ? student?.followers || [] : student?.following || [];
 
-    if (!isOpen) return null;
+    const displayList = rawList.filter((user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    if (!openChange[0]) return null;
 
     return (
         <>
+            {/* Overlay */}
+            <div
+                onClick={closeModal}
+                className="fixed inset-0 h-full z-30 bg-b/50 dark:bg-beta/60 backdrop-blur-md transition-all duration-300"
+            />
 
-            <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-[var(--color-dark)]/50 dark:bg-[var(--color-beta)]/60 backdrop-blur-md transition-all duration-300"
-            >
-            </div>
+            {/* Modal */}
+            <div className="bg-light dark:bg-dark rounded-2xl z-50 fixed inset-0 mx-auto top-1/2 -translate-y-1/2 w-full max-w-md shadow-2xl flex flex-col h-[90vh]">
 
-            <div className="bg-white z-50 fixed inset-0 mx-auto top-1/2 -translate-y-1/2 rounded-2xl w-full max-w-md shadow-2xl flex flex-col h-[90vh]">
                 {/* Header */}
-                <div className="border-b border-gray-200 flex items-center justify-between p-4">
-                    <div className="w-6"></div>
-                    <h2 className="text-base font-semibold">{student?.name.toLowerCase()}</h2>
+                <div className="border-b dark:border-beta flex items-center justify-between p-4">
+                    <div className="w-6" />
+                    <h2 className="text-base font-semibold text-beta dark:text-light">{student?.name?.toLowerCase()}</h2>
                     <button
-                        onClick={() => setIsOpen(false)}
-                        className="text-gray-500 hover:text-gray-700"
+                        onClick={closeModal}
+                        className="text-beta dark:text-light hover:text-alpha transition-colors"
                     >
-                        <X size={24} onClick={() => {
-                            onOpenChange([false, 'hello'])
-                            console.log(openChange);
-                        }} />
+                        <X size={24} />
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-gray-200">
+                <div className="flex border-b dark:border-beta">
                     <button
-                        onClick={() => setActiveTab('student?.followers')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'student?.followers' ? 'text-gray-900' : 'text-gray-400'
-                            }`}
+                        onClick={() => setActiveTab('followers')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'followers' ? 'text-beta dark:text-light' : 'text-b dark:text-alpha'}`}
                     >
-                        {student?.followers?.length}
-                        {activeTab === 'student?.followers' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
+                        Followers ({student?.followers?.length || 0})
+                        {activeTab === 'followers' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-alpha" />
                         )}
                     </button>
                     <button
-                        onClick={() => setActiveTab('student?.following')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'student?.following' ? 'text-gray-900' : 'text-gray-400'
-                            }`}
+                        onClick={() => setActiveTab('following')}
+                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'following' ? 'text-beta dark:text-light' : 'text-b dark:text-alpha'}`}
                     >
-                        {student?.following?.length}
-                        {activeTab === 'student?.following' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
+                        Following ({student?.following?.length || 0})
+                        {activeTab === 'following' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-alpha" />
                         )}
                     </button>
                 </div>
 
                 {/* Search Bar */}
-                <div className="p-3 border-b border-gray-200">
+                <div className="p-3 border-b dark:border-beta">
                     <input
                         type="text"
                         placeholder="Search"
-                        className="w-full bg-gray-100 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
+                        className="w-full bg-light dark:bg-dark_gray text-beta dark:text-light rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-alpha"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
 
-                {/* student List */}
+                {/* User List */}
                 <div className="flex-1 overflow-y-auto">
-                    {displayList.map((user) => (
-                        <div
-                            key={user.id}
-                            className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-                        >
-                            <Link href={`/user/${user?.id}`} className="flex items-center gap-3 flex-1 z-20">
-                                <Avatar
-                                    className="w-14 h-14 overflow-hidden ring-2 ring-[var(--color-light)] dark:ring-[var(--color-dark_gray)]"
-                                    image={user?.image}
-                                    name={user?.name}
-                                    lastActivity={user?.last_online || null}
-                                    onlineCircleClass="hidden"
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
-                                        {user.username}
-                                    </p>
-                                    <p className="text-sm text-gray-500 truncate">{user.name}</p>
-                                </div>
-                            </Link>
-
-                            {activeTab === 'student?.followers' && (
-                                <button
-                                    onClick={() => addOrRemoveFollow(user?.id, user?.following)}
-                                    className={`px-6 py-1.5 z-50 rounded-lg text-sm font-semibold transition-colors ${user.following
-                                        ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                    {displayList.length === 0 ? (
+                        <p className="p-4 text-center text-b dark:text-light">No users found.</p>
+                    ) : (
+                        displayList.map((user) => (
+                            <div
+                                key={user.id}
+                                className="flex items-center justify-between p-3 hover:bg-alpha/10 dark:hover:bg-alpha/20 transition-colors rounded-lg"
+                            >
+                                <Link href={`/student/${user.id}`} className="flex items-center gap-3 flex-1 z-20">
+                                    <Avatar
+                                        className="w-14 h-14 overflow-hidden ring-2 ring-light dark:ring-dark_gray"
+                                        image={user.image}
+                                        name={user.name}
+                                        lastActivity={user.last_online || null}
+                                        onlineCircleClass="hidden"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-beta dark:text-light truncate">
+                                            {user.username || user.name}
+                                        </p>
+                                    </div>
+                                </Link>
+                                {/* <button
+                                    onClick={() => addOrRemoveFollow(user.id, user?.isFollowing)}
+                                    className={`px-6 py-1.5 z-50 rounded-lg text-sm font-semibold transition-colors ${user.isFollowing
+                                        ? 'bg-light dark:bg-dark text-beta dark:text-light hover:bg-alpha/20'
+                                        : 'bg-alpha text-b hover:bg-alpha/80'
                                         }`}
                                 >
-                                    {user?.following ? 'student?.following' : 'Follow'}
-                                </button>
-                            )}
-
-                            {activeTab === 'student?.following' && (
-                                <button
-                                    className="px-6 py-1.5 rounded-lg text-sm font-semibold bg-gray-200 text-gray-900 hover:bg-gray-300 transition-colors"
-                                >
-                                    following
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                                    {user.isFollowing ? 'Following' : 'Follow'}
+                                </button> */}
+                            </div>
+                        ))
+                    )}
                 </div>
-            </div >
+            </div>
         </>
-
     );
 };
 
