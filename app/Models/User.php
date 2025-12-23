@@ -235,4 +235,8 @@ class User extends Authenticatable
             'followed_id'
         )->withTimestamps();
     }
+    public function experiences()
+    {
+        return $this->belongsToMany(Experience::class)->withTimestamps();
+    }
 }
