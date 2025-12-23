@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Badges;
 use App\Models\Exercices;
 use App\Models\ExerciseSubmission;
 use App\Models\Formation;
@@ -146,32 +147,44 @@ class ExercicesController extends Controller
             'rating_comment' => $validated['rating_comment'] ?? null,
         ]);
 
-        // Award XP only if this is a new rating and exercise has XP
-        if ($isNewRating && $exercice->xp > 0 && $user) {
+        // Award XP to badges table if exercise has XP and model_id
+        if ($exercice->xp > 0 && $user && $exercice->model_id) {
             // Calculate XP based on rating percentage
             // If rating is 100%, student gets full XP
             // Otherwise, student gets XP proportional to rating
             $xpToAward = ($validated['rating'] / 100) * $exercice->xp;
 
-            // Award XP to the user (XP column is uppercase)
-            $user->increment('XP', (int)round($xpToAward));
-        } elseif (!$isNewRating && $previousRating !== null && $exercice->xp > 0 && $user) {
-            // If rating is being updated, adjust XP based on the difference
-            // Calculate previous XP awarded
-            $previousXpAwarded = ($previousRating / 100) * $exercice->xp;
-            // Calculate new XP to award
-            $newXpToAward = ($validated['rating'] / 100) * $exercice->xp;
-            // Calculate difference
-            $xpDifference = $newXpToAward - $previousXpAwarded;
+            // Use updateOrCreate to ensure badge exists
+            // Check if it was just created to handle exp correctly
+            $wasJustCreated = !Badges::where('user_id', $user->id)
+                ->where('model_id', $exercice->model_id)
+                ->exists();
 
-            // Only update if there's a difference
-            if (abs($xpDifference) > 0.01) {
-                if ($xpDifference > 0) {
-                    // Award additional XP
-                    $user->increment('XP', (int)round($xpDifference));
-                } else {
-                    // Remove XP (if rating decreased)
-                    $user->decrement('XP', (int)round(abs($xpDifference)));
+            $badge = Badges::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'model_id' => $exercice->model_id,
+                ],
+                $wasJustCreated ? ['exp' => 0] : [] // Only set exp when creating new record
+            );
+
+            if ($isNewRating) {
+                // First time rating: add XP to existing exp value (add to old value, don't replace)
+                $badge->exp = ($badge->exp ?? 0) + (int)round($xpToAward);
+                $badge->save();
+            } else {
+                // Rating updated: adjust XP based on difference
+                $previousXpAwarded = ($previousRating / 100) * $exercice->xp;
+                $newXpToAward = ($validated['rating'] / 100) * $exercice->xp;
+                $xpDifference = $newXpToAward - $previousXpAwarded;
+
+                // Only update if there's a significant difference
+                if (abs($xpDifference) > 0.01) {
+                    // Add/subtract the difference to existing exp value (add to old value)
+                    $badge->exp = ($badge->exp ?? 0) + (int)round($xpDifference);
+                    // Ensure exp doesn't go negative
+                    $badge->exp = max(0, $badge->exp);
+                    $badge->save();
                 }
             }
         }
