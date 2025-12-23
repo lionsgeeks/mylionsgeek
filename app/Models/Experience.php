@@ -12,8 +12,10 @@ class Experience extends Model
         'description',
         'employement_type',
         'company',
-        'start_date',
-        'end_date',
+        'start_month',
+        'start_year',
+        'end_month',
+        'end_year',
         'location',
     ];
 

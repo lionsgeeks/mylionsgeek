@@ -49,6 +49,7 @@ class StudentController extends Controller
             ->following()
             ->select('users.id', 'users.name', 'users.image')
             ->get();
+
         return  [
             'user' => [
                 'id' => $user->id,
@@ -168,12 +169,12 @@ class StudentController extends Controller
         $user = Auth::user();
         if ($user->id = $id) {
             $request->validate([
-                'title' => 'string|nullable',
-                'description' => 'string|nullable',
-                'employmentType' => 'string|nullable',
+                'title' => 'string|required',
+                'description' => 'string|required',
+                'employmentType' => 'string|required',
                 'company' => 'string|nullable',
-                'startMonth' => 'string|nullable',
-                'startYear' => 'string|nullable',
+                'startMonth' => 'string|required',
+                'startYear' => 'string|required',
                 'endMonth' => 'string|nullable',
                 'endYear' => 'string|nullable',
                 'location' => 'string|nullable',
@@ -189,6 +190,7 @@ class StudentController extends Controller
                 'end_year' => $request->endYear,
                 'location' => $request->location,
             ]);
+            dd($experience);
 
             $user->experiences()->attach($experience->id);
             return redirect()->back()->with('success', 'Experience created successfuly');

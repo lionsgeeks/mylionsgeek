@@ -1,13 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { helpers } from './utils/helpers';
-import { router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
+import InputError from '@/components/input-error';
+
+// Constants for form options
+const EMPLOYMENT_TYPES = [
+    { value: '', label: 'Please select' },
+    { value: 'full-time', label: 'Full-time' },
+    { value: 'part-time', label: 'Part-time' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'freelance', label: 'Freelance' },
+    { value: 'internship', label: 'Internship' },
+];
+
+const MONTHS = [
+    { value: '', label: 'Month' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+];
+
+// Generate years array (50 years back from current year)
+const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    return [
+        { value: '', label: 'Year' },
+        ...Array.from({ length: 50 }, (_, i) => ({
+            value: String(currentYear - i),
+            label: String(currentYear - i)
+        }))
+    ];
+};
+
+const YEARS = generateYears();
 
 const ExperienceModal = ({ onChange, onOpenChange, id }) => {
     const [currentlyWorking, setCurrentlyWorking] = useState(false);
     const [remotePosition, setRemotePosition] = useState(false);
+    const [dateError, setDateError] = useState('');
     const { stopScrolling } = helpers()
-    const [formData, setFormData] = useState({
+    const { data, setData, processing, errors } = useForm({
         title: '',
         description: '',
         employmentType: '',
@@ -17,22 +59,42 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
         endMonth: '',
         endYear: '',
         location: '',
-    });
+    })
 
     useEffect(() => {
         stopScrolling(onChange)
         return () => stopScrolling(false);
     }, [onChange])
 
+    // Validate date range
+    useEffect(() => {
+        if (!currentlyWorking && data.startMonth && data.startYear && data.endMonth && data.endYear) {
+            const startDate = new Date(parseInt(data.startYear), parseInt(data.startMonth) - 1);
+            const endDate = new Date(parseInt(data.endYear), parseInt(data.endMonth) - 1);
+
+            if (startDate > endDate) {
+                setDateError('End date must be after start date');
+            } else {
+                setDateError('');
+            }
+        } else {
+            setDateError('');
+        }
+    }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyWorking]);
+
     const createExperience = (id) => {
+        // Check if there's a date validation error
+        if (dateError) {
+            return;
+        }
+
         try {
-            router.post(`/users/experience/${id}`, formData, {
+            router.post(`/users/experience/${id}`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
                 },
                 onError: (error) => {
                     console.log(error);
-
                 }
             })
         } catch (error) {
@@ -41,17 +103,18 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
     }
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
+        setData({
+            ...data,
             [e.target.name]: e.target.value
         });
     };
+
     return (
         <>
             <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-all duration-300">
             </div>
             <div className="fixed inset-0 h-fit mx-auto w-[50%] bg-light dark:bg-beta rounded-lg top-1/2 -translate-y-1/2 z-50 overflow-hidden flex flex-col">
-                <div className="bg-light dark:bg-dark w-full  rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
                         <h2 className="text-xl font-semibold text-beta dark:text-light">Add experience</h2>
@@ -65,25 +128,6 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
 
                     {/* Content */}
                     <div className="p-6 space-y-6">
-                        {/* Notify Network */}
-                        {/* <div className="flex items-start justify-between gap-4 pb-6 border-b border-beta/20 dark:border-light/10">
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-beta dark:text-light mb-1">Notify network</p>
-                            <p className="text-xs text-beta/70 dark:text-light/70">
-                                Turn on to notify your network of key profile changes (such as new job) and work anniversaries. Updates can take up to 2 hours. Learn more about sharing profile changes.
-                            </p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={notify}
-                                onChange={(e) => setNotify(e.target.checked)}
-                                className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-beta/30 dark:bg-light/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-light dark:after:bg-dark after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-alpha"></div>
-                        </label>
-                    </div> */}
-
                         {/* Title */}
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
@@ -92,11 +136,12 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                             <input
                                 type="text"
                                 name="title"
-                                value={formData.title}
+                                value={data.title}
                                 onChange={handleChange}
                                 placeholder="Ex: Retail Sales Manager"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
+                            <InputError message={errors.title} className="mt-1" />
                         </div>
 
                         {/* Employment Type */}
@@ -106,17 +151,17 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                             </label>
                             <select
                                 name="employmentType"
-                                value={formData.employmentType}
+                                value={data.employmentType}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             >
-                                <option value="">Please select</option>
-                                <option value="full-time">Full-time</option>
-                                <option value="part-time">Part-time</option>
-                                <option value="contract">Contract</option>
-                                <option value="freelance">Freelance</option>
-                                <option value="internship">Internship</option>
+                                {EMPLOYMENT_TYPES.map((type) => (
+                                    <option key={type.value} value={type.value}>
+                                        {type.label}
+                                    </option>
+                                ))}
                             </select>
+                            <InputError message={errors.employmentType} className="mt-1" />
                             <p className="text-xs text-beta/70 dark:text-light/70 mt-1">Learn more about employment types.</p>
                         </div>
 
@@ -128,11 +173,12 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                             <input
                                 type="text"
                                 name="company"
-                                value={formData.company}
+                                value={data.company}
                                 onChange={handleChange}
                                 placeholder="Ex: Microsoft"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
+                            <InputError message={errors.company} className="mt-1" />
                         </div>
 
                         {/* Currently Working Checkbox */}
@@ -157,24 +203,17 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                                 </label>
                                 <select
                                     name="startMonth"
-                                    value={formData.startMonth}
+                                    value={data.startMonth}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
-                                    <option value="">Month</option>
-                                    <option value="1">January</option>
-                                    <option value="2">February</option>
-                                    <option value="3">March</option>
-                                    <option value="4">April</option>
-                                    <option value="5">May</option>
-                                    <option value="6">June</option>
-                                    <option value="7">July</option>
-                                    <option value="8">August</option>
-                                    <option value="9">September</option>
-                                    <option value="10">October</option>
-                                    <option value="11">November</option>
-                                    <option value="12">December</option>
+                                    {MONTHS.map((month) => (
+                                        <option key={month.value} value={month.value}>
+                                            {month.label}
+                                        </option>
+                                    ))}
                                 </select>
+                                <InputError message={errors.startMonth} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -182,15 +221,17 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                                 </label>
                                 <select
                                     name="startYear"
-                                    value={formData.startYear}
+                                    value={data.startYear}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
-                                    <option value="">Year</option>
-                                    {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                                        <option key={year} value={year}>{year}</option>
+                                    {YEARS.map((year) => (
+                                        <option key={year.value} value={year.value}>
+                                            {year.label}
+                                        </option>
                                     ))}
                                 </select>
+                                <InputError message={errors.startYear} className="mt-1" />
                             </div>
                         </div>
 
@@ -203,24 +244,17 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                                     </label>
                                     <select
                                         name="endMonth"
-                                        value={formData.endMonth}
+                                        value={data.endMonth}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
-                                        <option value="">Month</option>
-                                        <option value="1">January</option>
-                                        <option value="2">February</option>
-                                        <option value="3">March</option>
-                                        <option value="4">April</option>
-                                        <option value="5">May</option>
-                                        <option value="6">June</option>
-                                        <option value="7">July</option>
-                                        <option value="8">August</option>
-                                        <option value="9">September</option>
-                                        <option value="10">October</option>
-                                        <option value="11">November</option>
-                                        <option value="12">December</option>
+                                        {MONTHS.map((month) => (
+                                            <option key={month.value} value={month.value}>
+                                                {month.label}
+                                            </option>
+                                        ))}
                                     </select>
+                                    <InputError message={errors.endMonth} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -228,16 +262,28 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                                     </label>
                                     <select
                                         name="endYear"
-                                        value={formData.endYear}
+                                        value={data.endYear}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
-                                        <option value="">Year</option>
-                                        {Array.from({ length: 50 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                                            <option key={year} value={year}>{year}</option>
+                                        {YEARS.map((year) => (
+                                            <option key={year.value} value={year.value}>
+                                                {year.label}
+                                            </option>
                                         ))}
                                     </select>
+                                    <InputError message={errors.endYear} className="mt-1" />
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Date Validation Error */}
+                        {dateError && (
+                            <div className="flex items-center gap-2 p-3 bg-error/10 border border-error/30 rounded">
+                                <svg className="w-5 h-5 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm text-error font-medium">{dateError}</span>
                             </div>
                         )}
 
@@ -263,11 +309,12 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                             <input
                                 type="text"
                                 name="location"
-                                value={formData.location}
+                                value={data.location}
                                 onChange={handleChange}
                                 placeholder="Ex: London, United Kingdom"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
+                            <InputError message={errors.location} className="mt-1" />
                         </div>
 
                         {/* Description */}
@@ -277,43 +324,30 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
                             </label>
                             <textarea
                                 name="description"
-                                value={formData.description}
+                                value={data.description}
                                 onChange={handleChange}
                                 rows={4}
                                 placeholder="Tell your major duties and successes, highlighting specific projects."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
+                            <InputError message={errors.description} className="mt-1" />
                         </div>
-                        {/* Skills */}
-                        {/* <div>
-                        <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                            Skills
-                        </label>
-                        <p className="text-xs text-beta/70 dark:text-light/70 mb-2">
-                            We recommend adding your top 5 used in this role. They'll also appear in your Skills section.
-                        </p>
-                        <button className="px-4 py-2 border border-alpha text-alpha rounded-full text-sm font-medium hover:bg-alpha hover:text-beta dark:hover:text-dark transition-colors">
-                            + Add skill
-                        </button>
-                    </div> */}
-                        {/* Media */}
-                        {/* <div>
-                        <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                            Media
-                        </label>
-                        <p className="text-xs text-beta/70 dark:text-light/70 mb-2">
-                            Add media like images, documents, sites or presentations.{' '}
-                            <span className="text-alpha cursor-pointer">Learn more about media file types supported</span>
-                        </p>
-                        <button className="px-4 py-2 border border-alpha text-alpha rounded-full text-sm font-medium hover:bg-alpha hover:text-beta dark:hover:text-dark transition-colors">
-                            + Add media
-                        </button>
-                    </div> */}
                     </div>
+
                     {/* Footer */}
-                    <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end">
-                        <button onClick={() => createExperience(id)} className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors">
-                            Save
+                    <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end gap-3">
+                        <button
+                            onClick={() => onOpenChange(false)}
+                            className="px-6 py-2 border border-beta/30 dark:border-light/30 text-beta dark:text-light rounded-full font-medium hover:bg-beta/5 dark:hover:bg-light/5 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => createExperience(id)}
+                            disabled={processing || dateError}
+                            className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {processing ? 'Saving...' : 'Save'}
                         </button>
                     </div>
                 </div>
@@ -321,5 +355,4 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
         </>
     );
 }
-
 export default ExperienceModal;
