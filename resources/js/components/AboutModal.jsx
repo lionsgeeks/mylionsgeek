@@ -1,10 +1,10 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 
 export default function AboutModal({ onOpen, onOpenChange, user }) {
-    const { stopScrolling, updateAbout } = helpers()
+    const { stopScrolling } = helpers()
     const { data, setData, post, processing, errors } = useForm({
         about: user?.about || '',
     });
@@ -14,6 +14,18 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
         stopScrolling(onOpen)
         return () => stopScrolling(false);
     }, [onOpen]);
+    //! update about
+    const updateAbout = (id) => {
+        try {
+            router.post(`/users/about/${id}`, data, {
+                onSuccess: () => {
+                    onOpenChange(false)
+                }
+            })
+        } catch (error) {
+            console.log(error);
+        }
+    }
     const maxChars = 500;
 
     const handleAboutChange = (e) => {
@@ -49,13 +61,20 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                     <div className="mb-2">
                         <textarea
                             value={data.about}
-                            onChange={handleAboutChange}
-                            className="w-full p-3 border border-gray-300 dark:border-dark_gray rounded-md outline-none focus:border-alpha focus:ring-1 focus:ring-alpha text-sm text-beta dark:text-light bg-white dark:bg-dark resize-none"
+                            onChange={(e) => setData('about', e.target.value)}
+                            className={`w-full p-3 rounded-md outline-none resize-none text-sm
+        border
+        ${errors.about
+                                    ? 'border-error focus:border-error focus:ring-error'
+                                    : 'border-gray-300 dark:border-dark_gray focus:border-alpha focus:ring-alpha'
+                                }
+        text-beta dark:text-light bg-white dark:bg-dark
+    `}
                             rows="10"
                             placeholder="Write about yourself..."
                         />
                         {errors.about && (
-                            <p className="text-error text-xs">
+                            <p className="text-error text-xs mt-1">
                                 {errors.about}
                             </p>
                         )}
@@ -69,11 +88,23 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
 
                 {/* Footer */}
                 <div className="bg-light dark:bg-beta border-t border-gray-300 dark:border-dark_gray px-6 py-4 flex justify-end">
+                    {/* <button
+                        className="px-6 py-2 bg-alpha text-beta rounded-lg hover:bg-alpha/90 transition font-medium disabled"
+                        >
+                        Save
+                        </button> */}
                     <button
                         onClick={() => updateAbout(user?.id, data.about, onOpenChange)}
-                        className="px-6 py-2 bg-alpha text-beta rounded-full hover:bg-alpha/90 transition font-medium"
+                        type="submit"
+                        disabled={processing}
+                        className={`px-6 py-2 rounded-lg font-semibold transition
+        ${processing
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-alpha text-beta hover:opacity-90'
+                            }
+    `}
                     >
-                        Save
+                        {processing ? 'Saving...' : 'Save'}
                     </button>
                 </div>
             </div>

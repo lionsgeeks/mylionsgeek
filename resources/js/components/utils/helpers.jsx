@@ -43,21 +43,6 @@ const normalizePostImagePath = (rawPath = '') => {
 
     return `/storage/img/posts/${sanitized}`;
 };
-
-//! update about
-const updateAbout = (id, content, onOpenChange) => {
-    try {
-        router.post(`/users/about/${id}`, {
-            about: content
-        }, {
-            onSuccess: () => {
-                onOpenChange(false)
-            }
-        })
-    } catch (error) {
-        console.log(error);
-    }
-}
 const addOrRemoveFollow = (userId, isFollowing) => {
     if (isFollowing) {
         try {
@@ -214,7 +199,6 @@ const createImageRemovalHandler = (options = {}) => (image) => {
 };
 
 const helperApi = Object.freeze({
-    updateAbout,
     addOrRemoveFollow,
     stopScrolling,
     mapExistingImages,

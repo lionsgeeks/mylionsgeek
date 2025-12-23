@@ -145,16 +145,20 @@ class StudentController extends Controller
     }
     public function updateAbout(Request $request, $id)
     {
-        if (Auth::user()->id == $id) {
-            $user = User::find($id);
-            $request->validate([
-                'about' => 'nullable|string|max:500|min:100'
-            ]);
-
-            $user->update([
-                'about' => $request->about
-            ]);
-            return redirect()->back()->with('success', 'About updated succefully');
+        if (Auth::id() !== (int) $id) {
+            abort(403);
         }
+
+        $request->validate([
+            'about' => 'nullable|string|max:500',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $user->update([
+            'about' => $request->about,
+        ]);
+
+        return back()->with('success', 'About updated successfully');
     }
 }
