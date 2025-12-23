@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Image } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
-import PostCard from '../../../../components/post/PostCard';
-import CreatePostModal from '../../../../components/post/CreatePostModal';
+import PostCard from '../../../../../components/post/PostCard';
+import CreatePostModal from '../../../../../components/post/CreatePostModal';
 import { Link } from '@inertiajs/react';
 
 export default function CenterFeed({ user, posts }) {
