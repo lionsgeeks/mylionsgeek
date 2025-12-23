@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Experience;
 use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Post;
@@ -160,5 +161,37 @@ class StudentController extends Controller
         ]);
 
         return back()->with('success', 'About updated successfully');
+    }
+    //! create experience
+    public function createExperience(Request $request, $id)
+    {
+        $user = Auth::user();
+        if ($user->id = $id) {
+            $request->validate([
+                'title' => 'string|nullable',
+                'description' => 'string|nullable',
+                'employmentType' => 'string|nullable',
+                'company' => 'string|nullable',
+                'startMonth' => 'string|nullable',
+                'startYear' => 'string|nullable',
+                'endMonth' => 'string|nullable',
+                'endYear' => 'string|nullable',
+                'location' => 'string|nullable',
+            ]);
+            $experience = Experience::create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'employement_type' => $request->employmentType,
+                'company' => $request->company,
+                'start_month' => $request->startMonth,
+                'start_year' => $request->startYear,
+                'end_month' => $request->endMonth,
+                'end_year' => $request->endYear,
+                'location' => $request->location,
+            ]);
+
+            $user->experiences()->attach($experience->id);
+            return redirect()->back()->with('success', 'Experience created successfuly');
+        };
     }
 }

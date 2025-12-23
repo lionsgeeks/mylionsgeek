@@ -17,8 +17,10 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('employement_type')->nullable();
             $table->string('company')->nullable();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
+            $table->string('start_month')->nullable();
+            $table->string('start_year')->nullable();
+            $table->string('end_month')->nullable();
+            $table->string('end_year')->nullable();
             $table->string('location')->nullable();
             $table->timestamps();
         });

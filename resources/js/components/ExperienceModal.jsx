@@ -1,31 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { helpers } from './utils/helpers';
+import { router } from '@inertiajs/react';
 
-const ExperienceModal = ({ onChange, onOpenChange }) => {
+const ExperienceModal = ({ onChange, onOpenChange, id }) => {
     const [currentlyWorking, setCurrentlyWorking] = useState(false);
     const [remotePosition, setRemotePosition] = useState(false);
     const { stopScrolling } = helpers()
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        employmentType: '',
+        company: '',
+        startMonth: '',
+        startYear: '',
+        endMonth: '',
+        endYear: '',
+        location: '',
+    });
 
     useEffect(() => {
         stopScrolling(onChange)
         return () => stopScrolling(false);
     }, [onChange])
 
+    const createExperience = (id) => {
+        try {
+            router.post(`/users/experience/${id}`, formData, {
+                onSuccess: () => {
+                    onOpenChange(false)
+                },
+                onError: (error) => {
+                    console.log(error);
 
-    const [formData, setFormData] = useState({
-        title: '',
-        employmentType: '',
-        company: '',
-        location: '',
-        startMonth: '',
-        startYear: '',
-        endMonth: '',
-        endYear: '',
-        industry: '',
-        description: '',
-        profileHeadline: ''
-    });
+                }
+            })
+        } catch (error) {
+            console.log(error);
+        }
+    }
 
     const handleChange = (e) => {
         setFormData({
@@ -299,7 +312,7 @@ const ExperienceModal = ({ onChange, onOpenChange }) => {
                     </div>
                     {/* Footer */}
                     <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end">
-                        <button className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors">
+                        <button onClick={() => createExperience(id)} className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors">
                             Save
                         </button>
                     </div>

@@ -1,17 +1,22 @@
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import ExperienceModal from '../../../../../../components/ExperienceModal';
+import { usePage } from '@inertiajs/react';
 
-const Experience = () => {
+const Experience = ({ user }) => {
+    const { auth } = usePage().props
     const [openModal, setOpenModal] = useState()
     return (
         <>
             <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-beta dark:text-light">Experience</h2>
-                    <button onClick={() => setOpenModal(true)} className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
-                        <Plus className="w-4 h-4 text-beta/70 dark:text-light/70" />
-                    </button>
+                    {
+                        auth.user.id == user.id &&
+                        <button onClick={() => setOpenModal(true)} className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
+                            <Plus className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                        </button>
+                    }
                 </div>
 
                 <div className="space-y-4">
@@ -32,7 +37,7 @@ const Experience = () => {
                     </div>
                 </div>
             </div>
-            {openModal && <ExperienceModal onChange={openModal} onOpenChange={setOpenModal} />}
+            {openModal && <ExperienceModal id={user.id} onChange={openModal} onOpenChange={setOpenModal} />}
         </>
     );
 };

@@ -6,7 +6,7 @@ const RightColumn = ({ user }) => {
     return (
         <>
             <div className="lg:col-span-2 space-y-4">
-                <Experience />
+                <Experience user={user} />
 
 
                 {/* Education Card */}
