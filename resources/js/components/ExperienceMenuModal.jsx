@@ -24,7 +24,6 @@ export function ExperienceMenuModal({ experience }) {
             // Update existing experience
             router.delete(`/users/experience/${id}`, {
                 onSuccess: () => {
-                    setOpenDelete(false)
                 },
                 onError: (error) => {
                     console.log(error);
@@ -54,7 +53,7 @@ export function ExperienceMenuModal({ experience }) {
                 </DropdownMenuContent>
             </DropdownMenu>
             {openEdit && <EditExperienceModal onOpen={openEdit} onOpenChange={setOpenEdit} item={experience} />}
-            {openDelete && <DeleteModal open={openDelete} onOpenChange={setOpenDelete} title='Delete this experience' description="Are you sure want To delete this Experience" onConfirm={()=>deleteExperience(experience?.id)} />}
+            {openDelete && <DeleteModal open={openDelete} onOpenChange={setOpenDelete} title='Delete this experience' description="Are you sure want To delete this Experience" onConfirm={() => deleteExperience(experience?.id)} />}
         </>
     )
 }
