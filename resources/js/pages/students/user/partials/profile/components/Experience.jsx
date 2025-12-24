@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { helpers } from '../../../../../../components/utils/helpers';
 import CreateExperienceModal from '../../../../../../components/CreateExperienceModal';
 import { ExperienceMenuModal } from '../../../../../../components/ExperienceMenuModal';
@@ -45,23 +45,28 @@ const Experience = ({ user }) => {
                 <div className="space-y-4">
                     {/* Experience Item 1 */}
                     {
-                        user?.experiences?.map((experience, index) =>
-                            <div key={index} className='w-full flex justify-between items-start'>
-                                <div className="flex gap-3">
-                                    <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
-                                        {experience?.company?.slice(0, 1)}
+                        user.experiences.length == 0 ?
+                            <h2 className="py-5 w-full text-center text-beta dark:text-light">this user dont has any experiences</h2>
+                            :
+                            user?.experiences?.map((experience, index) =>
+                                <div key={index} className='w-full flex justify-between items-start'>
+                                    <div className="flex gap-3">
+                                        <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
+                                            {experience?.company?.slice(0, 1)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h2 className="font-semibold text-beta dark:text-light">{experience?.title}</h2>
+                                            <p className="text-[0.9rem] text-beta dark:text-light">{experience?.company} - {experience?.employement_type}</p>
+                                            {/* <p className="text-sm text-beta/70 dark:text-light/70"></p> */}
+                                            <p className="text-xs text-beta/60 dark:text-light/60 mt-1">{experienceDurationFormat(experience)} · {calculateDuration(experience)} - {experience?.location}</p>
+                                            <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{experience?.description}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h2 className="font-semibold text-beta dark:text-light">{experience?.title}</h2>
-                                        <p className="text-[0.9rem] text-beta dark:text-light">{experience?.company} - {experience?.employement_type}</p>
-                                        {/* <p className="text-sm text-beta/70 dark:text-light/70"></p> */}
-                                        <p className="text-xs text-beta/60 dark:text-light/60 mt-1">{experienceDurationFormat(experience)} · {calculateDuration(experience)} - {experience?.location}</p>
-                                        <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{experience?.description}</p>
-                                    </div>
+                                    {
+                                        auth.user && <ExperienceMenuModal experience={experience} />
+                                    }
                                 </div>
-                                <ExperienceMenuModal experience={experience} />
-                            </div>
-                        )
+                            )
                     }
                 </div>
             </div>

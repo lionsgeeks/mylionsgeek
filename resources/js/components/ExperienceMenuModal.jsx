@@ -13,11 +13,27 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import EditExperienceModal from "./EditExperienceModal"
+import { router } from "@inertiajs/react"
+import DeleteModal from "./DeleteModal"
 
 export function ExperienceMenuModal({ experience }) {
     const [openEdit, setOpenEdit] = useState(false)
     const [openDelete, setOpenDelete] = useState(false)
-
+    const deleteExperience = (id) => {
+        try {
+            // Update existing experience
+            router.delete(`/users/experience/${id}`, {
+                onSuccess: () => {
+                    setOpenDelete(false)
+                },
+                onError: (error) => {
+                    console.log(error);
+                }
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    }
     return (
         <>
             <DropdownMenu modal={false}>
@@ -38,6 +54,7 @@ export function ExperienceMenuModal({ experience }) {
                 </DropdownMenuContent>
             </DropdownMenu>
             {openEdit && <EditExperienceModal onOpen={openEdit} onOpenChange={setOpenEdit} item={experience} />}
+            {openDelete && <DeleteModal open={openDelete} onOpenChange={setOpenDelete} title='Delete this experience' description="Are you sure want To delete this Experience" onConfirm={()=>deleteExperience(experience?.id)} />}
         </>
     )
 }

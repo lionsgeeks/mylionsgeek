@@ -219,6 +219,12 @@ class StudentController extends Controller
             'end_year' => $request->endYear,
             'location' => $request->location,
         ]);
-        return redirect()->back()->with('success', 'Experience created successfuly');
+        return redirect()->back()->with('success', 'Experience Updated successfuly');
+    }
+    public function deleteExperience($id)
+    {
+        $experience = Experience::find($id);
+        $experience->delete();
+        return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
 }
