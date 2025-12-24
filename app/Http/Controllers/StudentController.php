@@ -35,7 +35,7 @@ class StudentController extends Controller
     }
     public function getUserInfo($id)
     {
-        $user = User::find($id);
+        $user = User::with('experiences')->findOrFail($id);
         $isFollowing = Auth::user()
             ->following()
             ->where('followed_id', $id)
@@ -75,6 +75,7 @@ class StudentController extends Controller
                 'followers' => $followers,
                 'following' => $following,
                 'isFollowing' => $isFollowing,
+                'experiences' => $user->experiences,
             ],
         ];
     }
@@ -167,33 +168,57 @@ class StudentController extends Controller
     public function createExperience(Request $request, $id)
     {
         $user = Auth::user();
-        if ($user->id = $id) {
-            $request->validate([
-                'title' => 'string|required',
-                'description' => 'string|required',
-                'employmentType' => 'string|required',
-                'company' => 'string|nullable',
-                'startMonth' => 'string|required',
-                'startYear' => 'string|required',
-                'endMonth' => 'string|nullable',
-                'endYear' => 'string|nullable',
-                'location' => 'string|nullable',
-            ]);
-            $experience = Experience::create([
-                'title' => $request->title,
-                'description' => $request->description,
-                'employement_type' => $request->employmentType,
-                'company' => $request->company,
-                'start_month' => $request->startMonth,
-                'start_year' => $request->startYear,
-                'end_month' => $request->endMonth,
-                'end_year' => $request->endYear,
-                'location' => $request->location,
-            ]);
-            dd($experience);
+        $request->validate([
+            'title' => 'string|required',
+            'description' => 'string|required',
+            'employmentType' => 'string|required',
+            'company' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'location' => 'string|nullable',
+        ]);
+        $experience = Experience::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'employement_type' => $request->employmentType,
+            'company' => $request->company,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'location' => $request->location,
+        ]);
 
-            $user->experiences()->attach($experience->id);
-            return redirect()->back()->with('success', 'Experience created successfuly');
-        };
+        $user->experiences()->attach($experience->id);
+        return redirect()->back()->with('success', 'Experience created successfuly');
+    }
+    public function editExperience(Request $request, $id)
+    {
+        $experience = Experience::find($id);
+        $request->validate([
+            'title' => 'string|required',
+            'description' => 'string|required',
+            'employmentType' => 'string|required',
+            'company' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'location' => 'string|nullable',
+        ]);
+        $experience->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'employement_type' => $request->employmentType,
+            'company' => $request->company,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'location' => $request->location,
+        ]);
+        return redirect()->back()->with('success', 'Experience created successfuly');
     }
 }

@@ -197,6 +197,29 @@ const removeImageEntry = (image, {
 const createImageRemovalHandler = (options = {}) => (image) => {
     removeImageEntry(image, options);
 };
+const calculateDuration = (parent) => {
+    const startDate = new Date(parent?.start_year, parent?.start_month - 1);
+    const endDate = parent?.end_year
+        ? new Date(parent?.end_year, parent?.end_month - 1)
+        : new Date(); // Present
+
+    let months =
+        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+
+    if (months < 0) return '0 mos';
+
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+
+    let result = [];
+    if (years) result.push(`${years} yr${years > 1 ? 's' : ''}`);
+    if (remainingMonths)
+        result.push(`${remainingMonths} mo${remainingMonths > 1 ? 's' : ''}`);
+
+    return result.join(' ');
+};
+
 
 const helperApi = Object.freeze({
     addOrRemoveFollow,
@@ -206,6 +229,7 @@ const helperApi = Object.freeze({
     buildImageEntries,
     removeImageEntry,
     resolvePostImageUrl,
+    calculateDuration,
     createImageRemovalHandler,
 });
 

@@ -1,11 +1,34 @@
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
-import ExperienceModal from '../../../../../../components/ExperienceModal';
 import { usePage } from '@inertiajs/react';
+import { helpers } from '../../../../../../components/utils/helpers';
+import CreateExperienceModal from '../../../../../../components/CreateExperienceModal';
+import { ExperienceMenuModal } from '../../../../../../components/ExperienceMenuModal';
+
+
 
 const Experience = ({ user }) => {
     const { auth } = usePage().props
     const [openModal, setOpenModal] = useState()
+    const { calculateDuration } = helpers()
+    const getMonthName = (monthNumber) => {
+        const date = new Date(2000, monthNumber - 1)
+        return date.toLocaleString('en-US', { month: 'long' });
+    }
+    const experienceDurationFormat = (experience) => {
+        console.log(experience);
+
+        if (!experience) return '';
+
+        const start = `${getMonthName(experience.start_month)} ${experience.start_year}`;
+
+        if (!experience.end_month || !experience.end_year) {
+            return `${start} - Present`;
+        }
+
+        const end = `${getMonthName(experience.end_month)} ${experience.end_year}`;
+        return `${start} - ${end}`;
+    };
     return (
         <>
             <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
@@ -21,23 +44,28 @@ const Experience = ({ user }) => {
 
                 <div className="space-y-4">
                     {/* Experience Item 1 */}
-                    <div className="flex gap-3">
-                        <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
-                            FL
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-beta dark:text-light">Freelance Web Developer</h3>
-                            <p className="text-sm text-beta/70 dark:text-light/70">Self-employed</p>
-                            <p className="text-xs text-beta/60 dark:text-light/60 mt-1">Jan 2023 - Present · 1 yr 10 mos</p>
-                            <p className="text-sm text-beta/80 dark:text-light/80 mt-2">
-                                Building custom web applications for clients using React, Node.js, and modern web technologies.
-                                Delivered 15+ projects ranging from e-commerce platforms to business management systems.
-                            </p>
-                        </div>
-                    </div>
+                    {
+                        user?.experiences?.map((experience, index) =>
+                            <div key={index} className='w-full flex justify-between items-start'>
+                                <div className="flex gap-3">
+                                    <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
+                                        {experience?.company?.slice(0, 1)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="font-semibold text-beta dark:text-light">{experience?.title}</h2>
+                                        <p className="text-[0.9rem] text-beta dark:text-light">{experience?.company} - {experience?.employement_type}</p>
+                                        {/* <p className="text-sm text-beta/70 dark:text-light/70"></p> */}
+                                        <p className="text-xs text-beta/60 dark:text-light/60 mt-1">{experienceDurationFormat(experience)} · {calculateDuration(experience)} - {experience?.location}</p>
+                                        <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{experience?.description}</p>
+                                    </div>
+                                </div>
+                                <ExperienceMenuModal experience={experience} />
+                            </div>
+                        )
+                    }
                 </div>
             </div>
-            {openModal && <ExperienceModal id={user.id} onChange={openModal} onOpenChange={setOpenModal} />}
+            {openModal && <CreateExperienceModal id={user} onChange={openModal} onOpenChange={setOpenModal} />}
         </>
     );
 };

@@ -44,7 +44,7 @@ const generateYears = () => {
 
 const YEARS = generateYears();
 
-const ExperienceModal = ({ onChange, onOpenChange, id }) => {
+const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
     const [currentlyWorking, setCurrentlyWorking] = useState(false);
     const [remotePosition, setRemotePosition] = useState(false);
     const [dateError, setDateError] = useState('');
@@ -355,4 +355,4 @@ const ExperienceModal = ({ onChange, onOpenChange, id }) => {
         </>
     );
 }
-export default ExperienceModal;
+export default CreateExperienceModal;
