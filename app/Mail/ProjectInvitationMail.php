@@ -46,3 +46,4 @@ class ProjectInvitationMail extends Mailable
 
 
 
+
