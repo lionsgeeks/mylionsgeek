@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { FileText, ImageIcon, FileVideo, File, Link2, CheckCircle2, X, ExternalLink, Plus, Edit, Trash2, MessageCircle } from 'lucide-react';
+import { FileText, ImageIcon, FileVideo, File, Link2, CheckCircle2, X, ExternalLink, Plus, Edit, Trash2, MessageCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -236,16 +236,28 @@ export default function StudentExercises({ training, exercices }) {
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRequestReview(submission)}
-                                disabled={requestingReview}
-                                className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10"
-                              >
-                                <MessageCircle size={14} className="mr-1" />
-                                {requestingReview ? 'Requesting...' : 'Ask for Review'}
-                              </Button>
+                              {submission.review_requested ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled
+                                  className="text-green-600 border-green-600 bg-green-50 dark:bg-green-900/20 cursor-not-allowed"
+                                >
+                                  <CheckCircle size={14} className="mr-1" />
+                                  Review Requested
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRequestReview(submission)}
+                                  disabled={requestingReview}
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10"
+                                >
+                                  <MessageCircle size={14} className="mr-1" />
+                                  {requestingReview ? 'Requesting...' : 'Ask for Review'}
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"

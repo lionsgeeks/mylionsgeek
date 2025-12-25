@@ -281,7 +281,7 @@ Route::get('/api/notifications', function (Request $request) {
         // Exercise Review Notifications (Coach) - Show for all coaches regardless of other roles
         if ($isCoach) {
             try {
-                $exerciseReviewNotifications = \App\Models\ExerciseReviewNotification::with(['user', 'exercice'])
+                $exerciseReviewNotifications = \App\Models\ExerciseReviewNotification::with(['user', 'exercice.training'])
                     ->where('coach_id', $user->id)
                     ->whereNull('read_at')
                     ->orderByDesc('created_at')
@@ -296,13 +296,28 @@ Route::get('/api/notifications', function (Request $request) {
                 foreach ($exerciseReviewNotifications as $notif) {
                     // Only add if user relationship exists
                     if ($notif->user) {
+                        // Get training_id from exercice if path doesn't have it
+                        $link = $notif->path;
+                        if (!$link || $link === "/admin/exercices" || $link === "/trainings") {
+                            // Get training_id from exercice
+                            $trainingId = null;
+                            if ($notif->exercice) {
+                                $trainingId = $notif->exercice->training_id ?? ($notif->exercice->training->id ?? null);
+                            }
+                            if ($trainingId) {
+                                $link = "/trainings/{$trainingId}";
+                            } else {
+                                $link = "/trainings";
+                            }
+                        }
+                        
                         $notifications[] = [
                             'id' => 'exercise-review-' . $notif->id,
                             'type' => 'exercise_review',
                             'sender_name' => $notif->user->name ?? 'Unknown',
                             'sender_image' => $notif->user->image ?? null,
                             'message' => $notif->message_notification ?? 'Student asked you to review his exercise',
-                            'link' => $notif->path ?? "/trainings",
+                            'link' => $link,
                             'icon_type' => 'file-text',
                             'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
                         ];

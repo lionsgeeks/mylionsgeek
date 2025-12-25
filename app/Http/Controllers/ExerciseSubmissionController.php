@@ -42,6 +42,25 @@ class ExerciseSubmissionController extends Controller
             $query->where('user_id', $user->id);
         }])->latest()->get();
 
+        // Get review request status for each submission
+        $submissionIds = $exercices->flatMap(function($exercice) {
+            return $exercice->submissions->pluck('id');
+        })->toArray();
+
+        $reviewRequests = \App\Models\ExerciseReviewNotification::whereIn('submission_id', $submissionIds)
+            ->whereNull('read_at')
+            ->pluck('submission_id')
+            ->toArray();
+
+        // Add review_requested flag to each exercice's submission
+        $exercices->each(function($exercice) use ($reviewRequests) {
+            if ($exercice->submissions) {
+                $exercice->submissions->each(function($submission) use ($reviewRequests) {
+                    $submission->review_requested = in_array($submission->id, $reviewRequests);
+                });
+            }
+        });
+
         return Inertia::render('students/exercises/index', [
             'training' => $training,
             'exercices' => $exercices,
@@ -133,14 +152,14 @@ class ExerciseSubmissionController extends Controller
             return back()->with('info', 'You have already requested a review for this submission.');
         }
 
-        // Create the notification
+        // Create the notification with link to the training
         ExerciseReviewNotification::create([
             'submission_id' => $submission->id,
             'user_id' => $user->id,
             'coach_id' => $coach->id,
             'exercice_id' => $exercice->id,
             'message_notification' => "{$user->name} asked you to review his exercise: {$exercice->title}",
-            'path' => "/admin/exercices",
+            'path' => "/trainings/{$training->id}",
         ]);
 
         return back()->with('success', 'Review request sent to your coach!');
