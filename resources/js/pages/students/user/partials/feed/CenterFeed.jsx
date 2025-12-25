@@ -15,7 +15,7 @@ export default function CenterFeed({ user, posts }) {
                 {/* Create Post Box */}
                 <div className="bg-white dark:bg-dark_gray shadow-alpha/10 rounded-lg shadow  p-4">
                     <div className="flex items-center gap-3 mb-4">
-                        <Link href={'/student/' + user.id}>
+                        <Link href={'/students/' + user.id}>
                             <Avatar
                                 className="w-12 h-12 rounded-full overflow-hidden"
                                 image={user?.image}

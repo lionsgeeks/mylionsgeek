@@ -46,7 +46,7 @@ const Experience = ({ user }) => {
                     {/* Experience Item 1 */}
                     {
                         user.experiences.length == 0 ?
-                            <h2 className="py-5 w-full text-center text-beta dark:text-light">this user dont has any experiences</h2>
+                            <h2 className="py-5 w-full text-center text-beta dark:text-light">This user doesn't have any education</h2>
                             :
                             user?.experiences?.map((experience, index) =>
                                 <div key={index} className='w-full flex justify-between items-start'>

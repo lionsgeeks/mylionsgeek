@@ -8,7 +8,7 @@ use Inertia\Inertia;
 
 Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable'])->group(function () {
     Route::get('/feed', [StudentController::class, 'index'])->name('student.feed');
-    Route::get('/student/{id}', [StudentController::class, 'userProfile'])->name('student.feed');
+    Route::get('/students/{id}', [StudentController::class, 'userProfile']);
     Route::post('/users/changeCover/{id}', [StudentController::class, 'changeCover']);
     Route::post('/users/changeProfileImage/{id}', [StudentController::class, 'changeProfileImage']);
     Route::put('/users/update/{user}', [UsersController::class, 'update']);
