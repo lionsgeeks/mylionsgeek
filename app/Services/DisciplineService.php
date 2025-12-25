@@ -224,8 +224,7 @@ class DisciplineService
         $direction = $type === 'increase' ? 'increased' : 'decreased';
 
         // Message with user name: from THRESHOLD to actual value
-        $message = "{$user->name} - discipline {$direction} from {$fromThreshold}% to " . 
-                   number_format($newDiscipline, 2) . "%";
+        $message = "{$user->name} - discipline {$direction} 5%";
 
         if ($newDiscipline <= 0) {
             $message = "{$user->name} - discipline reached 0%";
