@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ExercicesController;
+use App\Http\Controllers\ExerciseReviewNotificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(function () {
@@ -8,5 +9,6 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(fu
     Route::post('/admin/exercices', [ExercicesController::class, 'store'])->name('exercices.store');
     Route::delete('/admin/exercices/{exercices}', [ExercicesController::class, 'destroy'])->name('exercices.destroy');
     Route::post('/admin/exercices/submissions/{submissionId}/rate', [ExercicesController::class, 'rateSubmission'])->name('exercices.submissions.rate');
+    Route::post('/api/exercise-review-notifications/{id}/read', [ExerciseReviewNotificationController::class, 'markAsRead'])->name('exercise-review-notifications.mark-read');
 });
 

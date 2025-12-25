@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Exercices;
 use App\Models\ExerciseSubmission;
+use App\Models\ExerciseReviewNotification;
 use App\Models\Formation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,6 +41,25 @@ class ExerciseSubmissionController extends Controller
         $exercices = $training->exercices()->with(['model', 'submissions' => function($query) use ($user) {
             $query->where('user_id', $user->id);
         }])->latest()->get();
+
+        // Get review request status for each submission
+        $submissionIds = $exercices->flatMap(function($exercice) {
+            return $exercice->submissions->pluck('id');
+        })->toArray();
+
+        $reviewRequests = \App\Models\ExerciseReviewNotification::whereIn('submission_id', $submissionIds)
+            ->whereNull('read_at')
+            ->pluck('submission_id')
+            ->toArray();
+
+        // Add review_requested flag to each exercice's submission
+        $exercices->each(function($exercice) use ($reviewRequests) {
+            if ($exercice->submissions) {
+                $exercice->submissions->each(function($submission) use ($reviewRequests) {
+                    $submission->review_requested = in_array($submission->id, $reviewRequests);
+                });
+            }
+        });
 
         return Inertia::render('students/exercises/index', [
             'training' => $training,
@@ -94,5 +114,54 @@ class ExerciseSubmissionController extends Controller
         $submission->delete();
 
         return back()->with('success', 'Submission deleted successfully!');
+    }
+
+    /**
+     * Request review for a submission
+     */
+    public function requestReview($submissionId)
+    {
+        $user = Auth::user();
+        
+        // Get the submission and verify it belongs to the user
+        $submission = ExerciseSubmission::with(['exercice.training.coach', 'user'])
+            ->where('id', $submissionId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        // Get the training and coach
+        $exercice = $submission->exercice;
+        $training = $exercice->training;
+        
+        if (!$training) {
+            return back()->withErrors(['error' => 'No training found for this exercise.']);
+        }
+
+        $coach = $training->coach;
+        
+        if (!$coach) {
+            return back()->withErrors(['error' => 'No coach assigned to this training.']);
+        }
+
+        // Check if a review request already exists for this submission
+        $existingNotification = ExerciseReviewNotification::where('submission_id', $submission->id)
+            ->where('coach_id', $coach->id)
+            ->first();
+
+        if ($existingNotification) {
+            return back()->with('info', 'You have already requested a review for this submission.');
+        }
+
+        // Create the notification with link to the training
+        ExerciseReviewNotification::create([
+            'submission_id' => $submission->id,
+            'user_id' => $user->id,
+            'coach_id' => $coach->id,
+            'exercice_id' => $exercice->id,
+            'message_notification' => "{$user->name} asked you to review his exercise: {$exercice->title}",
+            'path' => "/trainings/{$training->id}",
+        ]);
+
+        return back()->with('success', 'Review request sent to your coach!');
     }
 }
