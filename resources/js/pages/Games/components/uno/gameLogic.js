@@ -67,8 +67,6 @@ export function playCard({ cardIndex, chosenColor, gameState }) {
         discardPile,
         currentColor,
         deck,
-        playDirection: _playDirection,
-        pendingDraw: _pendingDraw,
         unoCalled,
         needsUnoCall,
     } = gameState;
