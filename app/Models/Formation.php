@@ -40,4 +40,12 @@ class Formation extends Model
         return $this->hasMany(Geeko::class, 'formation_id');
     }
 
+    /**
+     * Get Exercises for this formation.
+     */
+    public function exercices()
+    {
+        return $this->hasMany(Exercices::class, 'training_id');
+    }
+
 }
