@@ -2,34 +2,77 @@ import { usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import React, { useState } from 'react';
 import CreateEducationModal from '../../../../../../components/CreateEducationModal';
+import { helpers } from '../../../../../../components/utils/helpers';
+import { EducationMenuModal } from '../../../../../../components/EducationMenuModal';
 
 const Education = ({ user }) => {
+    console.log(user);
+
     const { auth } = usePage().props
     const [openModal, setOpenModal] = useState(false)
+    const { calculateDuration } = helpers()
+    const getMonthName = (monthNumber) => {
+        const date = new Date(2000, monthNumber - 1)
+        return date.toLocaleString('en-US', { month: 'long' });
+    }
+    const educationDurationFormat = (education) => {
+
+        if (!education) return '';
+
+        const start = `${getMonthName(education.start_month)} ${education.start_year}`;
+
+        if (!education.end_month || !education.end_year) {
+            return `${start} - Present`;
+        }
+
+        const end = `${getMonthName(education.end_month)} ${education.end_year}`;
+        return `${start} - ${end}`;
+    };
     return (
         <>
             <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-beta dark:text-light">Education</h2>
-                    {auth.user.id == user.id &&
+                    {
+                        auth.user.id == user.id &&
                         <button onClick={() => setOpenModal(true)} className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
                             <Plus className="w-4 h-4 text-beta/70 dark:text-light/70" />
-                        </button>}
+                        </button>
+                    }
                 </div>
 
-                <div className="flex gap-3">
-                    <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
-                        UM
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="font-semibold text-beta dark:text-light">Bachelor's Degree in Computer Science</h3>
-                        <p className="text-sm text-beta/70 dark:text-light/70">University of Morocco</p>
-                        <p className="text-xs text-beta/60 dark:text-light/60 mt-1">2019 - 2022</p>
-                        <p className="text-sm text-beta/80 dark:text-light/80 mt-2">
-                            Focused on web development, software engineering, and database management.
-                            Graduated with honors.
-                        </p>
-                    </div>
+                <div className="space-y-4">
+                    {/* Education Items */}
+                    {
+                        user.educations.length == 0 ?
+                            <h2 className="py-5 w-full text-center text-beta dark:text-light">This user doesn't have any education</h2>
+                            :
+                            user?.educations?.map((education, index) =>
+                                <div key={index} className='w-full flex justify-between items-start'>
+                                    <div className="flex gap-3">
+                                        <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
+                                            {education?.school?.slice(0, 1)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h2 className="font-semibold text-beta dark:text-light">{education?.school}</h2>
+                                            <p className="text-[0.9rem] text-beta dark:text-light">
+                                                {education?.degree}
+                                                {education?.field_of_study && ` - ${education?.field_of_study}`}
+                                            </p>
+                                            <p className="text-xs text-beta/60 dark:text-light/60 mt-1">
+                                                {educationDurationFormat(education)} · {calculateDuration(education)}
+                                            </p>
+                                            {education?.description && (
+                                                <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{education?.description}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {
+                                        auth.user && <EducationMenuModal education={education} />
+                                    }
+                                </div>
+                            )
+                    }
                 </div>
             </div>
             {openModal && <CreateEducationModal onOpen={openModal} onOpenChange={setOpenModal} />}

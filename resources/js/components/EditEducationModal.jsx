@@ -4,7 +4,6 @@ import { helpers } from './utils/helpers';
 import { router, useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 
-// Constants for form options
 const MONTHS = [
     { value: '', label: 'Month' },
     { value: '1', label: 'January' },
@@ -35,25 +34,27 @@ const generateYears = () => {
 
 const YEARS = generateYears();
 
-const CreateEducationModal = ({ onChange, onOpenChange }) => {
-    const [currentlyStudying, setCurrentlyStudying] = useState(false);
+const EditEducationModal = ({ onChange, onOpenChange, item }) => {
+    const isEditMode = !!item?.id;
+    const [currentlyStudying, setCurrentlyStudying] = useState(!item?.end_month && !item?.end_year);
     const [dateError, setDateError] = useState('');
-    const { stopScrolling } = helpers()
+    const { stopScrolling } = helpers();
+
     const { data, setData, processing, errors } = useForm({
-        school: '',
-        degree: '',
-        fieldOfStudy: '',
-        startMonth: '',
-        startYear: '',
-        endMonth: '',
-        endYear: '',
-        description: '',
-    })
+        school: item?.school || '',
+        degree: item?.degree || '',
+        fieldOfStudy: item?.field_of_study || '',
+        startMonth: item?.start_month || '',
+        startYear: item?.start_year || '',
+        endMonth: item?.end_month || '',
+        endYear: item?.end_year || '',
+        description: item?.description || '',
+    });
 
     useEffect(() => {
-        stopScrolling(onChange)
+        stopScrolling(onChange);
         return () => stopScrolling(false);
-    }, [onChange])
+    }, [onChange]);
 
     // Validate date range
     useEffect(() => {
@@ -71,25 +72,49 @@ const CreateEducationModal = ({ onChange, onOpenChange }) => {
         }
     }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyStudying]);
 
-    const createEducation = (id) => {
+    // Clear end date when currently studying is checked
+    useEffect(() => {
+        if (currentlyStudying) {
+            setData({
+                ...data,
+                endMonth: '',
+                endYear: ''
+            });
+        }
+    }, [currentlyStudying]);
+
+    const editEducation = () => {
         // Check if there's a date validation error
         if (dateError) {
             return;
         }
 
         try {
-            router.post(`/users/education`, data, {
-                onSuccess: () => {
-                    onOpenChange(false)
-                },
-                onError: (error) => {
-                    console.log(error);
-                }
-            })
+            if (isEditMode) {
+                // Update existing education
+                router.put(`/users/education/${item.id}`, data, {
+                    onSuccess: () => {
+                        onOpenChange(false);
+                    },
+                    onError: (error) => {
+                        console.log(error);
+                    }
+                });
+            } else {
+                // Create new education
+                router.post('/users/education', data, {
+                    onSuccess: () => {
+                        onOpenChange(false);
+                    },
+                    onError: (error) => {
+                        console.log(error);
+                    }
+                });
+            }
         } catch (error) {
             console.log(error);
         }
-    }
+    };
 
     const handleChange = (e) => {
         setData({
@@ -106,7 +131,9 @@ const CreateEducationModal = ({ onChange, onOpenChange }) => {
                 <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-beta dark:text-light">Add education</h2>
+                        <h2 className="text-xl font-semibold text-beta dark:text-light">
+                            {isEditMode ? 'Edit education' : 'Add education'}
+                        </h2>
                         <button
                             onClick={() => onOpenChange(false)}
                             className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors"
@@ -297,7 +324,7 @@ const CreateEducationModal = ({ onChange, onOpenChange }) => {
                             Cancel
                         </button>
                         <button
-                            onClick={() => createEducation()}
+                            onClick={editEducation}
                             disabled={processing || dateError}
                             className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -309,4 +336,4 @@ const CreateEducationModal = ({ onChange, onOpenChange }) => {
         </>
     );
 }
-export default CreateEducationModal;
+export default EditEducationModal;

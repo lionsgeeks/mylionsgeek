@@ -36,7 +36,9 @@ class StudentController extends Controller
     }
     public function getUserInfo($id)
     {
-        $user = User::with('experiences')->findOrFail($id);
+        $user = User::find($id);
+        $userExperience = User::with('experiences')->findOrFail($id);
+        $userEducation = User::with('educations')->findOrFail($id);
         $isFollowing = Auth::user()
             ->following()
             ->where('followed_id', $id)
@@ -76,7 +78,8 @@ class StudentController extends Controller
                 'followers' => $followers,
                 'following' => $following,
                 'isFollowing' => $isFollowing,
-                'experiences' => $user->experiences,
+                'experiences' => $userExperience->experiences,
+                'educations' => $userEducation->educations,
             ],
         ];
     }
@@ -255,5 +258,38 @@ class StudentController extends Controller
         ]);
         $user->educations()->attach($education->id);
         return redirect()->back()->with('success', 'Experience created successfuly');
+    }
+    public function editEducation(Request $request, $id)
+    {
+        $user = Auth::user();
+        $education = Education::find($id);
+        $request->validate([
+            'school' => 'string|required',
+            'degree' => 'string|nullable',
+            'fieldOfStudy' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'description' => 'string|nullable',
+        ]);
+
+        $education->update([
+            'school' => $request->school,
+            'degree' => $request->degree,
+            'field_of_study' => $request->fieldOfStudy,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'description' => $request->description,
+        ]);
+        return redirect()->back()->with('success', 'Experience Updated successfuly');
+    }
+    public function deleteEducation($id)
+    {
+        $education = Education::find($id);
+        $education->delete();
+        return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
 }

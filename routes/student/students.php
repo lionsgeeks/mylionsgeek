@@ -19,4 +19,6 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::put('/users/experience/{id}', [StudentController::class, 'editExperience']);
     Route::delete('/users/experience/{id}', [StudentController::class, 'deleteExperience']);
     Route::post('/users/education', [StudentController::class, 'createEducation']);
+    Route::put('/users/education/{id}', [StudentController::class, 'editEducation']);
+    Route::delete('/users/education/{id}', [StudentController::class, 'deleteEducation']);
 });
