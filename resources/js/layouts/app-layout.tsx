@@ -24,7 +24,6 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
 
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const isStudentRoute =
-        currentPath.startsWith('/feed') ||
         currentPath.startsWith('/games') ||
         currentPath.startsWith('/game') ||
         currentPath.startsWith('/student') ||

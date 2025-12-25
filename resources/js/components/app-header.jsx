@@ -49,7 +49,7 @@ export function AppHeader({ breadcrumbs = [] }) {
 
         {
             title: 'Projects',
-            url: '/projects',
+            url: '/student/projects',
             icon: Folder
         },
         // {
