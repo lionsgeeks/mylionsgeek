@@ -91,6 +91,95 @@ const [processingId, setProcessingId] = useState(null);
         }
     }
 
+    React.useEffect(() => {
+        if (!open) return;
+        
+        // Fetch attendance summary
+        fetch(`/admin/users/${user.id}/attendance-summary`)
+            .then(r => r.json())
+            .then(async (data) => {
+                const newDiscipline = data?.discipline ?? null;
+                console.log(' NEW DISCIPLINE:', newDiscipline);
+                // Set summary state
+                setSummary({
+                    discipline: newDiscipline,
+                    recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
+                    monthlyFullDayAbsences: Array.isArray(data?.monthlyFullDayAbsences) ? data.monthlyFullDayAbsences : [],
+                });
+                
+                if (newDiscipline !== null) {
+                    // Get old discipline from localStorage
+                    const storageKey = `discipline_${user.id}`;
+                    const oldDiscipline = localStorage.getItem(storageKey);
+                    
+                    if (oldDiscipline !== null) {
+                        const oldValue = parseInt(oldDiscipline);
+                        const change = newDiscipline - oldValue;
+                        
+                        // If change >= 5% or <= -5%, send notification
+                        if (Math.abs(change) >= 5) {
+                            
+                            try {
+                                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                
+                                await fetch('/api/discipline-change-notification', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrf,
+                                        'Accept': 'application/json',
+                                    },
+                                    credentials: 'same-origin',
+                                    body: JSON.stringify({
+                                        user_id: user.id,
+                                        user_name: user.name,
+                                        old_discipline: oldValue,
+                                        new_discipline: newDiscipline,
+                                        change: change,
+                                        promo: user.promo || 'N/A',
+                                    }),
+                                });
+
+                            const result = await response.json();
+                           
+                            } catch (error) {
+                                console.error('Failed to send discipline notification:', error);
+                            }
+                            } else {
+                        console.log(' Change too small:', change);
+                    }
+                } else {
+                    console.log(' No old discipline in localStorage (first time)');
+                        
+                    }
+                    
+                    // Update localStorage with new discipline
+                    localStorage.setItem(storageKey, newDiscipline.toString());
+                }
+            })
+            .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
+        
+        // ... rest of fetches (notes, docs, projects)
+        fetch(`/admin/users/${user.id}/notes`)
+            .then(r => r.json())
+            .then((data) => setNotes(Array.isArray(data?.notes) ? data.notes : []))
+            .catch(() => setNotes([]));
+
+        fetch(`/admin/users/${user.id}/documents`)
+            .then(r => r.json())
+            .then((data) => setDocs({
+                contracts: Array.isArray(data?.contracts) ? data.contracts : [],
+                medicals: Array.isArray(data?.medicals) ? data.medicals : [],
+            }))
+            .catch(() => setDocs({ contracts: [], medicals: [] }));
+
+        fetch(`/admin/users/${user.id}/projects`)
+            .then(r => r.json())
+            .then((data) => setProjects(Array.isArray(data?.projects) ? data.projects : []))
+            .catch(() => setProjects([]));
+            
+    }, [open, user.id]);
+
     return (
         <Dialog open={open} onOpenChange={close}>
             <DialogContent className="sm:max-w-[900px]  max-h-[90vh] overflow-y-auto overflow-x-visible bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">

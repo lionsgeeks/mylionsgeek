@@ -8,6 +8,7 @@ import UpdateTraining from './partials/UpdateTraining';
 import Banner from "@/components/banner"
 import illustration from "../../../../../public/assets/images/banner/Lesson-bro.png"
 import StatCard from "@/components/StatCard";
+import ModelsModal from "@/components/EXP'S/models_modal";
 
 export default function Training({ trainings, coaches, filters = {}, tracks = [], promos = [] }) {
     const [selectedCoach, setSelectedCoach] = useState(filters.coach || '');
@@ -121,7 +122,10 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                 <p className=" dark:text-white/40 text-black/40 text-lg font-medium">Discover amazing coding and media courses</p>
                             </div>
                         </div>
+                        <div className="flex items-center gap-3">
+                            <ModelsModal />
                         <CreatTraining coaches={coaches} />
+                        </div>
                     </div>
                 </div>
 

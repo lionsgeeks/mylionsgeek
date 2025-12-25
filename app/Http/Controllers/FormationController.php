@@ -7,6 +7,7 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
+use App\Services\DisciplineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -60,9 +61,11 @@ class FormationController extends Controller
     public function show(Formation $training)
 {
    $usersNull = User::whereNull('formation_id')->get();
+   $models = \App\Models\Models::latest()->get();
     return inertia('admin/training/[id]', [
         'training' => $training->load('coach', 'users'),
-        'usersNull'=>$usersNull
+        'usersNull'=>$usersNull,
+        'models' => $models
     ]);
 }
 
@@ -190,65 +193,83 @@ public function attendance(Request $request)
     // attendance list
 public function save(Request $request)
 {
+    $request->validate([
+        'attendance' => 'required|array|min:1',
+        'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
+        'attendance.*.user_id' => 'required|exists:users,id',
+        'attendance.*.attendance_day' => 'required|date',
+        'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
+        'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused',
+        'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused',
+        'attendance.*.note' => 'nullable|string',
+    ]);
 
-        $request->validate([
-            'attendance' => 'required|array|min:1',
-            'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
-            'attendance.*.user_id' => 'required|exists:users,id',
-            'attendance.*.attendance_day' => 'required|date',
-            'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
-            'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused',
-            'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused',
-            'attendance.*.note' => 'nullable|string',
-        ]);
+    $lastAttendanceId = null;
+    $disciplineService = new DisciplineService();
 
-        foreach ($request->attendance as $data) {
-        // Update existing or create a new record per user/day/attendance
+    foreach ($request->attendance as $data) {
         $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
             ? (int) $data['attendance_id']
             : null;
-            if ($attendanceId === null) {
-                // cannot safely insert without valid attendance FK; skip this row
-                continue;
-            }
 
-            $payload = [
-                'attendance_day' => $data['attendance_day'],
-                'morning' => $data['morning'] ?? 'present',
-                'lunch' => $data['lunch'] ?? 'present',
-                'evening' => $data['evening'] ?? 'present',
-            ];
-            AttendanceListe::updateOrCreate(
-                [
-                    'attendance_id' => $attendanceId,
-                    'user_id' => $data['user_id'],
-                ],
-                $payload
-            );
+        if ($attendanceId === null) {
+            continue;
+        }
 
-            if (!empty($data['note'])) {
-                $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
-                foreach ($notes as $noteText) {
-                    try {
-                        Note::create([
-                            'user_id'       => $data['user_id'],
-                            'attendance_id' => $attendanceId,
-                            'note'          => $noteText,
-                            'author'        => Auth::user()->name,
-                        ]);
-                    } catch (\Throwable $e) {
-                        // Do not block attendance save if a note insert fails
-                        // Optionally log: \Log::warning('Note insert failed', ['error' => $e->getMessage()]);
-                    }
+        $lastAttendanceId = $attendanceId;
+
+        //  GET OLD DISCIPLINE BEFORE UPDATE
+        $user = User::find($data['user_id']);
+        if (!$user) {
+            continue;
+        }
+
+        // Calculate discipline BEFORE updating attendance
+        $oldDiscipline = $disciplineService->calculateDisciplineScore($user);
+
+        $payload = [
+            'attendance_day' => $data['attendance_day'],
+            'morning' => $data['morning'] ?? 'present',
+            'lunch' => $data['lunch'] ?? 'present',
+            'evening' => $data['evening'] ?? 'present',
+        ];
+
+        AttendanceListe::updateOrCreate(
+            [
+                'attendance_id' => $attendanceId,
+                'user_id' => $data['user_id'],
+            ],
+            $payload
+        );
+
+        //  Process discipline change and create notification if threshold crossed
+        // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
+        $disciplineService->processDisciplineChange($user, $oldDiscipline);
+
+        // Notes dyal absence (existing code)
+        if (!empty($data['note'])) {
+            $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
+            foreach ($notes as $noteText) {
+                try {
+                    Note::create([
+                        'user_id' => $data['user_id'],
+                        'attendance_id' => $attendanceId,
+                        'note' => $noteText,
+                        'author' => Auth::user()->name,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Do not block attendance save if a note insert fails
                 }
             }
         }
+    }
 
-        // Tag latest editor name on attendance row
-        if (!empty($attendanceId)) {
-            Attendance::where('id', $attendanceId)->update(['staff_name' => Auth::user()->name]);
-        }
-        return response()->json(['status' => 'ok']);
+    // Tag latest editor name on attendance row
+    if (!empty($lastAttendanceId)) {
+        Attendance::where('id', $lastAttendanceId)->update(['staff_name' => Auth::user()->name]);
+    }
+
+    return response()->json(['status' => 'ok']);
 }
 
 // Update formation
