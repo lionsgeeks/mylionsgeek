@@ -31,7 +31,7 @@ const Experience = ({ user }) => {
     };
     return (
         <>
-            <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+            <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-beta dark:text-light">Experience</h2>
                     {

@@ -18,7 +18,7 @@ const LeftSideBar = ({ user }) => {
             {/* Left Sidebar - Fixed */}
             <div className="lg:col-span-3  h-fit sticky top-0 space-y-4">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-[#101112] rounded-lg  overflow-hidden">
+                <div className="bg-white dark:bg-dark_gray rounded-lg  overflow-hidden">
                     <div className="h-16 dark:bg-light bg-dark">
                         <img src={`/storage/${user.cover}`} alt={user.name} className="w-full h-full object-cover bg" />
                     </div>
@@ -56,7 +56,7 @@ const LeftSideBar = ({ user }) => {
                 </div>
 
                 {/* Quick Links */}
-                <div className="bg-white dark:bg-[#101112] shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
+                <div className="bg-white dark:bg-dark_gray shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
                     <div className="space-y-3">
                         <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <BookOpen className="w-4 h-4" />
