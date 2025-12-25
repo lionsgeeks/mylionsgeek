@@ -34,7 +34,7 @@ const generateYears = () => {
 
 const YEARS = generateYears();
 
-const EditEducationModal = ({ onChange, onOpenChange, item }) => {
+const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
     const isEditMode = !!item?.id;
     const [currentlyStudying, setCurrentlyStudying] = useState(!item?.end_month && !item?.end_year);
     const [dateError, setDateError] = useState('');
@@ -52,9 +52,9 @@ const EditEducationModal = ({ onChange, onOpenChange, item }) => {
     });
 
     useEffect(() => {
-        stopScrolling(onChange);
+        stopScrolling(onOpen);
         return () => stopScrolling(false);
-    }, [onChange]);
+    }, [onOpen]);
 
     // Validate date range
     useEffect(() => {

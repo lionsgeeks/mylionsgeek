@@ -35,7 +35,7 @@ const generateYears = () => {
 
 const YEARS = generateYears();
 
-const CreateEducationModal = ({ onChange, onOpenChange }) => {
+const CreateEducationModal = ({ onOpen, onOpenChange }) => {
     const [currentlyStudying, setCurrentlyStudying] = useState(false);
     const [dateError, setDateError] = useState('');
     const { stopScrolling } = helpers()
@@ -51,9 +51,9 @@ const CreateEducationModal = ({ onChange, onOpenChange }) => {
     })
 
     useEffect(() => {
-        stopScrolling(onChange)
+        stopScrolling(onOpen)
         return () => stopScrolling(false);
-    }, [onChange])
+    }, [onOpen])
 
     // Validate date range
     useEffect(() => {
