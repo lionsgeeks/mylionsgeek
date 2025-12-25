@@ -32,7 +32,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
     Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
     Route::post('/appointments/book', [ReservationsController::class, 'bookAppointment'])->name('appointments.book');
-    
+
     // Notifications API - Get all notifications
     // Route::get('/api/notifications', function (Request $request) {
     //     $user = $request->user();
@@ -77,7 +77,7 @@ Route::middleware(['auth'])->group(function () {
     //                 if ($reservation->type) {
     //                     $message .= " ({$reservation->type})";
     //                 }
-                    
+
     //                 $notifications[] = [
     //                     'id' => 'reservation-' . $reservation->id,
     //                     'type' => 'reservation',
@@ -95,7 +95,7 @@ Route::middleware(['auth'])->group(function () {
     //         if ($isAdmin && \Schema::hasTable('appointments')) {
     //             // Get person email for current user (check if user email matches person_email in appointments)
     //             $userEmail = strtolower($user->email ?? '');
-                
+
     //             if ($userEmail) {
     //                 $pendingAppointments = \DB::table('appointments as a')
     //                     ->leftJoin('users as u', 'u.id', '=', 'a.user_id')
@@ -119,7 +119,7 @@ Route::middleware(['auth'])->group(function () {
     //                     if ($appointment->day && $appointment->start && $appointment->end) {
     //                         $message .= " - {$appointment->day} {$appointment->start}-{$appointment->end}";
     //                     }
-                        
+
     //                     $notifications[] = [
     //                         'id' => 'appointment-' . $appointment->id,
     //                         'type' => 'appointment',
@@ -214,13 +214,13 @@ Route::get('/appointments/suggest/{token}/accept', [ReservationsController::clas
 // Notifications API - Get all notifications (MERGED)
 Route::get('/api/notifications', function (Request $request) {
     $user = $request->user();
-    
+
     if (!$user) {
         return response()->json(['notifications' => []]);
     }
 
     $notifications = [];
-    
+
     try {
         $roles = is_array($user->role) ? $user->role : [$user->role];
         $isAdmin = in_array('admin', $roles);
@@ -236,7 +236,7 @@ Route::get('/api/notifications', function (Request $request) {
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get();
-                
+
             foreach ($disciplineNotifications as $notif) {
                 $notifications[] = [
                     'id' => 'discipline-' . $notif->id,
@@ -255,13 +255,13 @@ Route::get('/api/notifications', function (Request $request) {
             // Coaches get only their students' discipline notifications
             $coachFormations = \App\Models\Formation::where('user_id', $user->id)->pluck('id');
             $studentIds = \App\Models\User::whereIn('formation_id', $coachFormations)->pluck('id');
-            
+
             $disciplineNotifications = \App\Models\DisciplineNotification::with('user')
                 ->whereIn('user_id', $studentIds)
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get();
-                
+
             foreach ($disciplineNotifications as $notif) {
                 $notifications[] = [
                     'id' => 'discipline-' . $notif->id,
@@ -275,6 +275,41 @@ Route::get('/api/notifications', function (Request $request) {
                     'change_type' => $notif->type,
                     'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
                 ];
+            }
+        }
+
+        // Exercise Review Notifications (Coach) - Show for all coaches regardless of other roles
+        if ($isCoach) {
+            try {
+                $exerciseReviewNotifications = \App\Models\ExerciseReviewNotification::with(['user', 'exercice'])
+                    ->where('coach_id', $user->id)
+                    ->whereNull('read_at')
+                    ->orderByDesc('created_at')
+                    ->limit(20)
+                    ->get();
+
+                \Log::info('Exercise review notifications query', [
+                    'coach_id' => $user->id,
+                    'found_count' => $exerciseReviewNotifications->count()
+                ]);
+
+                foreach ($exerciseReviewNotifications as $notif) {
+                    // Only add if user relationship exists
+                    if ($notif->user) {
+                        $notifications[] = [
+                            'id' => 'exercise-review-' . $notif->id,
+                            'type' => 'exercise_review',
+                            'sender_name' => $notif->user->name ?? 'Unknown',
+                            'sender_image' => $notif->user->image ?? null,
+                            'message' => $notif->message_notification ?? 'Student asked you to review his exercise',
+                            'link' => $notif->path ?? "/trainings",
+                            'icon_type' => 'file-text',
+                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error fetching exercise review notifications: ' . $e->getMessage());
             }
         }
 
@@ -298,7 +333,7 @@ Route::get('/api/notifications', function (Request $request) {
                 ->orderByDesc('reservations.created_at')
                 ->limit(5)
                 ->get();
-                
+
             foreach ($pendingReservations as $reservation) {
                 $message = $reservation->title ?? "Reservation #{$reservation->id}";
                 if ($reservation->day && $reservation->start && $reservation->end) {
@@ -307,7 +342,7 @@ Route::get('/api/notifications', function (Request $request) {
                 if ($reservation->type) {
                     $message .= " ({$reservation->type})";
                 }
-                
+
                 $notifications[] = [
                     'id' => 'reservation-' . $reservation->id,
                     'type' => 'reservation',
@@ -341,13 +376,13 @@ Route::get('/api/notifications', function (Request $request) {
                     ->orderByDesc('a.created_at')
                     ->limit(10)
                     ->get();
-                    
+
                 foreach ($pendingAppointments as $appointment) {
                     $message = "Appointment request";
                     if ($appointment->day && $appointment->start && $appointment->end) {
                         $message .= " - {$appointment->day} {$appointment->start}-{$appointment->end}";
                     }
-                    
+
                     $notifications[] = [
                         'id' => 'appointment-' . $appointment->id,
                         'type' => 'appointment',
@@ -366,9 +401,9 @@ Route::get('/api/notifications', function (Request $request) {
         usort($notifications, function ($a, $b) {
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
-        
+
         return response()->json(['notifications' => array_slice($notifications, 0, 50)]);
-        
+
     } catch (\Exception $e) {
         \Log::error('Failed to fetch notifications: ' . $e->getMessage());
         return response()->json(['notifications' => []], 500);
