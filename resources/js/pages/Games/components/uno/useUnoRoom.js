@@ -28,7 +28,8 @@ export function useUnoRoom(auth, updateGameStateFromData) {
         if (r && n && !isConnected) {
             setTimeout(() => connectRoom(), 100);
         }
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
 
     // Fetch initial game state
     const fetchInitialGameState = useCallback(async (roomId) => {

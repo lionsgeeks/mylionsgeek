@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import useAblyChannelGames from '@/hooks/useAblyChannelGames';
+import { COLORS } from './constants';
 import {
     initializeDeck,
     shuffleDeck,
@@ -267,8 +268,8 @@ export function useUnoGame(auth, roomId, playerName) {
     }, [playerName, assignedPlayerIndex, gameStarted, isFullscreen, currentPlayerIndex, deck, discardPile, players, playDirection, currentColor]);
 
     // Fetch initial game state
-    const fetchInitialGameState = useCallback(async (isConnected, roomId) => {
-        if (!isConnected || !roomId) return;
+    const fetchInitialGameState = useCallback(async (roomId) => {
+        if (!ablyConnected || !roomId) return;
 
         try {
             console.log('🔄 Fetching game state from server...');
@@ -282,7 +283,7 @@ export function useUnoGame(auth, roomId, playerName) {
         } catch (error) {
             console.error('❌ Failed to fetch game state:', error);
         }
-    }, [isConnected, roomId, updateGameStateFromData]);
+    }, [ablyConnected, updateGameStateFromData]);
 
     // Periodic sync will be handled by parent component
     // This hook doesn't manage connection state
