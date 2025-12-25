@@ -1,9 +1,5 @@
 import React from 'react';
 import Card from './Card';
-import { isPlayable } from './utils';
-
-import React from 'react';
-import Card from './Card';
 import { isPlayable, getCardImage } from './utils';
 
 export default function PlayerHand({ 
