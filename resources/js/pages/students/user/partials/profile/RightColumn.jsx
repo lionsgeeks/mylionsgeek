@@ -1,38 +1,17 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import Experience from './components/Experience';
+import Education from './components/Education';
 
 const RightColumn = ({ user }) => {
     return (
         <>
             <div className="lg:col-span-2 space-y-4">
-                <Experience user={user} />
 
 
                 {/* Education Card */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-beta dark:text-light">Education</h2>
-                        <button className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
-                            <Plus className="w-4 h-4 text-beta/70 dark:text-light/70" />
-                        </button>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
-                            UM
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-beta dark:text-light">Bachelor's Degree in Computer Science</h3>
-                            <p className="text-sm text-beta/70 dark:text-light/70">University of Morocco</p>
-                            <p className="text-xs text-beta/60 dark:text-light/60 mt-1">2019 - 2022</p>
-                            <p className="text-sm text-beta/80 dark:text-light/80 mt-2">
-                                Focused on web development, software engineering, and database management.
-                                Graduated with honors.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                <Education user={user} />
+                <Experience user={user} />
 
                 {/* Projects Card */}
                 <div className="bg-white dark:bg-beta rounded-lg shadow p-4">

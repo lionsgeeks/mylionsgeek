@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Follower;
 use App\Models\Like;
@@ -165,7 +166,7 @@ class StudentController extends Controller
         return back()->with('success', 'About updated successfully');
     }
     //! create experience
-    public function createExperience(Request $request, $id)
+    public function createExperience(Request $request)
     {
         $user = Auth::user();
         $request->validate([
@@ -226,5 +227,33 @@ class StudentController extends Controller
         $experience = Experience::find($id);
         $experience->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
+    }
+    public function createEducation(Request $request)
+    {
+        $user = Auth::user();
+        $request->validate([
+            'school' => 'string|required',
+            'degree' => 'string|nullable',
+            'fieldOfStudy' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'description' => 'string|nullable',
+        ]);
+
+        $education = Education::create([
+            'user_id' => $user->id,
+            'school' => $request->school,
+            'degree' => $request->degree,
+            'field_of_study' => $request->fieldOfStudy,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'description' => $request->description,
+        ]);
+        $user->educations()->attach($education->id);
+        return redirect()->back()->with('success', 'Experience created successfuly');
     }
 }

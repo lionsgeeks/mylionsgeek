@@ -5,15 +5,6 @@ import { router, useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 
 // Constants for form options
-const EMPLOYMENT_TYPES = [
-    { value: '', label: 'Please select' },
-    { value: 'full-time', label: 'Full-time' },
-    { value: 'part-time', label: 'Part-time' },
-    { value: 'contract', label: 'Contract' },
-    { value: 'freelance', label: 'Freelance' },
-    { value: 'internship', label: 'Internship' },
-];
-
 const MONTHS = [
     { value: '', label: 'Month' },
     { value: '1', label: 'January' },
@@ -44,21 +35,19 @@ const generateYears = () => {
 
 const YEARS = generateYears();
 
-const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
-    const [currentlyWorking, setCurrentlyWorking] = useState(false);
-    const [remotePosition, setRemotePosition] = useState(false);
+const CreateEducationModal = ({ onChange, onOpenChange, id }) => {
+    const [currentlyStudying, setCurrentlyStudying] = useState(false);
     const [dateError, setDateError] = useState('');
     const { stopScrolling } = helpers()
     const { data, setData, processing, errors } = useForm({
-        title: '',
-        description: '',
-        employmentType: '',
-        company: '',
+        school: '',
+        degree: '',
+        fieldOfStudy: '',
         startMonth: '',
         startYear: '',
         endMonth: '',
         endYear: '',
-        location: '',
+        description: '',
     })
 
     useEffect(() => {
@@ -68,7 +57,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
 
     // Validate date range
     useEffect(() => {
-        if (!currentlyWorking && data.startMonth && data.startYear && data.endMonth && data.endYear) {
+        if (!currentlyStudying && data.startMonth && data.startYear && data.endMonth && data.endYear) {
             const startDate = new Date(parseInt(data.startYear), parseInt(data.startMonth) - 1);
             const endDate = new Date(parseInt(data.endYear), parseInt(data.endMonth) - 1);
 
@@ -80,16 +69,16 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
         } else {
             setDateError('');
         }
-    }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyWorking]);
+    }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyStudying]);
 
-    const createExperience = () => {
+    const createEducation = (id) => {
         // Check if there's a date validation error
         if (dateError) {
             return;
         }
 
         try {
-            router.post(`/users/experience`, data, {
+            router.post(`/users/education`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
                 },
@@ -117,7 +106,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                 <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-beta dark:text-light">Add experience</h2>
+                        <h2 className="text-xl font-semibold text-beta dark:text-light">Add education</h2>
                         <button
                             onClick={() => onOpenChange(false)}
                             className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors"
@@ -128,70 +117,65 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
 
                     {/* Content */}
                     <div className="p-6 space-y-6">
-                        {/* Title */}
+                        {/* School */}
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Title*
+                                School*
                             </label>
                             <input
                                 type="text"
-                                name="title"
-                                value={data.title}
+                                name="school"
+                                value={data.school}
                                 onChange={handleChange}
-                                placeholder="Ex: Retail Sales Manager"
+                                placeholder="Ex: Harvard University"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.title} className="mt-1" />
+                            <InputError message={errors.school} className="mt-1" />
                         </div>
 
-                        {/* Employment Type */}
+                        {/* Degree */}
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Employment type
-                            </label>
-                            <select
-                                name="employmentType"
-                                value={data.employmentType}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
-                            >
-                                {EMPLOYMENT_TYPES.map((type) => (
-                                    <option key={type.value} value={type.value}>
-                                        {type.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <InputError message={errors.employmentType} className="mt-1" />
-                            <p className="text-xs text-beta/70 dark:text-light/70 mt-1">Learn more about employment types.</p>
-                        </div>
-
-                        {/* Company */}
-                        <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Company or organization*
+                                Degree
                             </label>
                             <input
                                 type="text"
-                                name="company"
-                                value={data.company}
+                                name="degree"
+                                value={data.degree}
                                 onChange={handleChange}
-                                placeholder="Ex: Microsoft"
+                                placeholder="Ex: Bachelor's"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.company} className="mt-1" />
+                            <InputError message={errors.degree} className="mt-1" />
                         </div>
 
-                        {/* Currently Working Checkbox */}
+                        {/* Field of Study */}
+                        <div>
+                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
+                                Field of study
+                            </label>
+                            <input
+                                type="text"
+                                name="fieldOfStudy"
+                                value={data.fieldOfStudy}
+                                onChange={handleChange}
+                                placeholder="Ex: Computer Science"
+                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                            />
+                            <InputError message={errors.fieldOfStudy} className="mt-1" />
+                        </div>
+
+                        {/* Currently Studying Checkbox */}
                         <div className="flex items-center gap-2">
                             <input
                                 type="checkbox"
-                                id="currently-working"
-                                checked={currentlyWorking}
-                                onChange={(e) => setCurrentlyWorking(e.target.checked)}
+                                id="currently-studying"
+                                checked={currentlyStudying}
+                                onChange={(e) => setCurrentlyStudying(e.target.checked)}
                                 className="w-4 h-4 text-alpha bg-light dark:bg-dark_gray border-beta/30 dark:border-light/20 rounded focus:ring-alpha focus:ring-2"
                             />
-                            <label htmlFor="currently-working" className="text-sm text-beta dark:text-light cursor-pointer">
-                                I am currently working in this role
+                            <label htmlFor="currently-studying" className="text-sm text-beta dark:text-light cursor-pointer">
+                                I am currently studying here
                             </label>
                         </div>
 
@@ -236,11 +220,11 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                         </div>
 
                         {/* End Date */}
-                        {!currentlyWorking && (
+                        {!currentlyStudying && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                        End date*
+                                        End date (or expected)*
                                     </label>
                                     <select
                                         name="endMonth"
@@ -287,36 +271,6 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                             </div>
                         )}
 
-                        {/* Remote Position Checkbox */}
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="remote-position"
-                                checked={remotePosition}
-                                onChange={(e) => setRemotePosition(e.target.checked)}
-                                className="w-4 h-4 text-alpha bg-light dark:bg-dark_gray border-beta/30 dark:border-light/20 rounded focus:ring-alpha focus:ring-2"
-                            />
-                            <label htmlFor="remote-position" className="text-sm text-beta dark:text-light cursor-pointer">
-                                End current position at next role - Software Developer at CamelCase
-                            </label>
-                        </div>
-
-                        {/* Location */}
-                        <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Location
-                            </label>
-                            <input
-                                type="text"
-                                name="location"
-                                value={data.location}
-                                onChange={handleChange}
-                                placeholder="Ex: London, United Kingdom"
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
-                            />
-                            <InputError message={errors.location} className="mt-1" />
-                        </div>
-
                         {/* Description */}
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
@@ -327,7 +281,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 value={data.description}
                                 onChange={handleChange}
                                 rows={4}
-                                placeholder="Tell your major duties and successes, highlighting specific projects."
+                                placeholder="Describe your academic achievements, activities, honors, or relevant coursework."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
                             <InputError message={errors.description} className="mt-1" />
@@ -343,7 +297,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                             Cancel
                         </button>
                         <button
-                            onClick={() => createExperience()}
+                            onClick={() => createEducation()}
                             disabled={processing || dateError}
                             className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -355,4 +309,4 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
         </>
     );
 }
-export default CreateExperienceModal;
+export default CreateEducationModal;
