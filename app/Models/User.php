@@ -239,4 +239,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Experience::class)->withTimestamps();
     }
+    public function educations()
+    {
+        return $this->belongsToMany(Education::class)->withTimestamps();
+    }
 }

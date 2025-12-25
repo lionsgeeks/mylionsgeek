@@ -73,7 +73,7 @@ const Header = ({ user, userFunctionality }) => {
 
     return (
         <>
-            <div className="bg-white dark:bg-beta rounded-lg shadow overflow-hidden mb-4">
+            <div className="bg-white dark:bg-dark_gray rounded-lg shadow overflow-hidden mb-4">
                 {/* Cover Photo */}
                 <div className="relative h-64 md:h-80 overflow-hidden">
                     <img
@@ -186,7 +186,7 @@ const Header = ({ user, userFunctionality }) => {
                                 <>
                                     <button
                                         onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
-                                        className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.isFollowing ? 'bg-dark/5 text-light hover:bg-dark/20' : 'bg-alpha text-beta hover:bg-alpha/90'
+                                        className={`cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${user?.isFollowing ? 'bg-dark text-light dark:text-beta dark:bg-alpha hover:bg-dark/90' : 'bg-alpha text-beta hover:bg-alpha/90'
                                             }`}
                                     >
                                         <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>

@@ -11,7 +11,7 @@ const LeftColumn = ({ user }) => {
         <>
             <div className="lg:col-span-1 space-y-4">
                 {/* About Card */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">About</h2>
                         <button className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
@@ -26,7 +26,7 @@ const LeftColumn = ({ user }) => {
                 </div>
 
                 {/* Skills Card */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">Badges</h2>
                     </div>
@@ -36,7 +36,7 @@ const LeftColumn = ({ user }) => {
                 </div>
 
                 {/* Contact Info Card */}
-                <div className="bg-white dark:bg-beta rounded-lg shadow p-4">
+                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
                     <h2 className="text-lg font-semibold text-beta dark:text-light mb-3">Contact Info</h2>
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">

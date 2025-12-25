@@ -44,7 +44,7 @@ const PostCard = ({ user, posts }) => {
     }, []);
 
     const takeToUserProfile = (post) => {
-        return '/student/' + post?.user_id
+        return '/students/' + post?.user_id
     }
 
     const handleDeletePost = useCallback((postId) => {

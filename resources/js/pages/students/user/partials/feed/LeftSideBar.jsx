@@ -18,13 +18,13 @@ const LeftSideBar = ({ user }) => {
             {/* Left Sidebar - Fixed */}
             <div className="lg:col-span-3  h-fit sticky top-0 space-y-4">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-[#101112] rounded-lg  overflow-hidden">
+                <div className="bg-white dark:bg-dark_gray rounded-lg  overflow-hidden">
                     <div className="h-16 dark:bg-light bg-dark">
                         <img src={`/storage/${user.cover}`} alt={user.name} className="w-full h-full object-cover bg" />
                     </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">
-                            <Link href={'/student/' + user.id}>
+                            <Link href={'/students/' + user.id}>
                                 <Avatar
                                     className="w-20 h-20 rounded-full overflow-hidden"
                                     image={user?.image}
@@ -34,7 +34,7 @@ const LeftSideBar = ({ user }) => {
                                 />
                             </Link>
                         </div>
-                        <Link href={'/student/' + user.id}>
+                        <Link href={'/students/' + user.id}>
                             <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
                                 {user?.name}
                             </h3>
@@ -56,7 +56,7 @@ const LeftSideBar = ({ user }) => {
                 </div>
 
                 {/* Quick Links */}
-                <div className="bg-white dark:bg-[#101112] shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
+                <div className="bg-white dark:bg-dark_gray shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
                     <div className="space-y-3">
                         <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <BookOpen className="w-4 h-4" />
