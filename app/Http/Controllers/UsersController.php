@@ -33,6 +33,7 @@ use App\Models\Reservation;
 use App\Models\UserProject;
 use Symfony\Component\HttpFoundation\Response;
 use App\Services\ExportService;
+use App\Services\DisciplineService;
 
 class UsersController extends Controller
 {
@@ -121,8 +122,9 @@ class UsersController extends Controller
         $posts = $this->getPosts($user);
         $absences = $this->getAbsences($user, $request);
 
-        // Calculate discipline score
-        $discipline = $this->calculateDisciplineScore($user);
+        // Calculate discipline score using DisciplineService
+        $disciplineService = new DisciplineService();
+        $discipline = $disciplineService->calculateDisciplineScore($user);
 
         // Get all formations
         $allFormations = Formation::latest()->get();
@@ -288,31 +290,7 @@ class UsersController extends Controller
         ];
     }
 
-    private function calculateDisciplineScore(User $user)
-    {
-        $attendance = AttendanceListe::where('user_id', $user->id)
-            ->get(['morning', 'lunch', 'evening']);
-
-        if ($attendance->isEmpty()) {
-            return 100;
-        }
-
-        $weightMap = [
-            'present' => 1.0,
-            'excused' => 0.9,
-            'late' => 0.7,
-            'absent' => 0.0,
-        ];
-
-        $score = $attendance->sum(function ($row) use ($weightMap) {
-            return ($weightMap[strtolower($row->morning)] ?? 0.7)
-                + ($weightMap[strtolower($row->lunch)] ?? 0.7)
-                + ($weightMap[strtolower($row->evening)] ?? 0.7);
-        });
-
-        $totalSlots = $attendance->count() * 3;
-        return round(($score / $totalSlots) * 100);
-    }
+    // Discipline calculation is now handled by DisciplineService
 
     private function formatUserPayload(User $user, bool $isOnline)
     {
@@ -731,27 +709,9 @@ class UsersController extends Controller
             ->sortBy('month')
             ->values();
 
-        $allForDiscipline = AttendanceListe::where('user_id', $user->id)->get(['morning', 'lunch', 'evening']);
-        $totalSlots = max(1, $allForDiscipline->count() * 3);
-        $score = 0;
-        $weight = function ($status) {
-            switch (strtolower((string) $status)) {
-                case 'present':
-                    return 1.0;
-                case 'excused':
-                    return 0.9;
-                case 'late':
-                    return 0.7;
-                case 'absent':
-                    return 0.0;
-                default:
-                    return 0.7;
-            }
-        };
-        foreach ($allForDiscipline as $row) {
-            $score += $weight($row->morning) + $weight($row->lunch) + $weight($row->evening);
-        }
-        $discipline = round(($score / $totalSlots) * 100);
+        // Use DisciplineService for consistent calculation
+        $disciplineService = new DisciplineService();
+        $discipline = $disciplineService->calculateDisciplineScore($user);
 
         return response()->json([
             'discipline' => $discipline,
