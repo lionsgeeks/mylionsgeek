@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import LeftSideBar from './partials/LeftSideBar';
-import CenterFeed from './partials/CenterFeed';
-import RightSideBar from './partials/RightSideBar';
+import LeftSideBar from './partials/feed/LeftSideBar';
+import CenterFeed from './partials/feed/CenterFeed';
+// import RightSideBar from './partials/RightSideBar';
 
 
 export default function StudentFeed({ user, posts }) {

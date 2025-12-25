@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import Header from './components/Header';
-import LeftColumn from './components/LeftColumn';
-import RightColumn from './components/RightColumn';
+import Header from './profile/Header';
+import LeftColumn from './profile/LeftColumn';
+import RightColumn from './profile/RightColumn';
 
 const StudentProfile = ({ user }) => {
     const currentUser = user.user

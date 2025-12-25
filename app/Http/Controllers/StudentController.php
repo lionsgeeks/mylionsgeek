@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Experience;
 use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Post;
@@ -34,10 +35,21 @@ class StudentController extends Controller
     }
     public function getUserInfo($id)
     {
-        $user = User::find($id);
-        $userFollowers = Follower::where('followed_id', $id)->count();
-        $userFollowing = Follower::where('follower_id', $id)->count();
-        $isFollowing = Follower::where('followed_id', $id)->where('follower_id', Auth::user()->id)->exists();
+        $user = User::with('experiences')->findOrFail($id);
+        $isFollowing = Auth::user()
+            ->following()
+            ->where('followed_id', $id)
+            ->exists();
+        // dd($isFollowing);
+        $followers = User::find($id)
+            ->followers()
+            ->select('users.id', 'users.name', 'users.image')
+            ->get();
+        $following = User::find($id)
+            ->following()
+            ->select('users.id', 'users.name', 'users.image')
+            ->get();
+
         return  [
             'user' => [
                 'id' => $user->id,
@@ -60,9 +72,10 @@ class StudentController extends Controller
                 'access_studio' => $user->access_studio,
                 'access_cowork' => $user->access_cowork,
                 'role' => $user->role,
-                'followers' => $userFollowers,
-                'following' => $userFollowing,
-                'is_Following' => $isFollowing,
+                'followers' => $followers,
+                'following' => $following,
+                'isFollowing' => $isFollowing,
+                'experiences' => $user->experiences,
             ],
         ];
     }
@@ -109,21 +122,109 @@ class StudentController extends Controller
     }
     public function addToFollow($id)
     {
-        $follower = Auth::user();
-        $followed = User::find($id);
-        Follower::create([
-            'follower_id' => $follower->id,
-            'followed_id' => $followed->id,
-        ]);
-        return back()->with('success', 'Your now follow something');
+        $follower = Auth::user();      // the logged-in user
+        $followed = User::findOrFail($id);  // the user to follow
+
+        // Prevent self-follow
+        if ($follower->id === $followed->id) {
+            return back()->with('error', "You can't follow yourself.");
+        }
+
+        // Attach the followed user without duplicates
+        $follower->following()->syncWithoutDetaching([$followed->id]);
+
+        return back()->with('success', 'You are now following this user.');
     }
+
     public function unFollow($id)
     {
-        $follower = Auth::user();
-        $followed = User::findOrFail($id);
-        $followeRecord = Follower::where('follower_id', $follower->id)->where('followed_id', $followed->id)->first();
-        $followeRecord->delete();
-        return back()->with('success', 'Your now unfollow something');
+        $follower = Auth::user();               // logged-in user
+        $followed = User::findOrFail($id);     // user to unfollow
+
+        // Detach the followed user from the pivot table
+        $follower->following()->detach($followed->id);
+
+        return back()->with('success', 'You have unfollowed this user.');
     }
-    
+    public function updateAbout(Request $request, $id)
+    {
+        if (Auth::id() !== (int) $id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'about' => 'nullable|string|max:500',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        $user->update([
+            'about' => $request->about,
+        ]);
+
+        return back()->with('success', 'About updated successfully');
+    }
+    //! create experience
+    public function createExperience(Request $request, $id)
+    {
+        $user = Auth::user();
+        $request->validate([
+            'title' => 'string|required',
+            'description' => 'string|required',
+            'employmentType' => 'string|required',
+            'company' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'location' => 'string|nullable',
+        ]);
+        $experience = Experience::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'employement_type' => $request->employmentType,
+            'company' => $request->company,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'location' => $request->location,
+        ]);
+
+        $user->experiences()->attach($experience->id);
+        return redirect()->back()->with('success', 'Experience created successfuly');
+    }
+    public function editExperience(Request $request, $id)
+    {
+        $experience = Experience::find($id);
+        $request->validate([
+            'title' => 'string|required',
+            'description' => 'string|required',
+            'employmentType' => 'string|required',
+            'company' => 'string|nullable',
+            'startMonth' => 'string|required',
+            'startYear' => 'string|required',
+            'endMonth' => 'string|nullable',
+            'endYear' => 'string|nullable',
+            'location' => 'string|nullable',
+        ]);
+        $experience->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'employement_type' => $request->employmentType,
+            'company' => $request->company,
+            'start_month' => $request->startMonth,
+            'start_year' => $request->startYear,
+            'end_month' => $request->endMonth,
+            'end_year' => $request->endYear,
+            'location' => $request->location,
+        ]);
+        return redirect()->back()->with('success', 'Experience Updated successfuly');
+    }
+    public function deleteExperience($id)
+    {
+        $experience = Experience::find($id);
+        $experience->delete();
+        return redirect()->back()->with('success', 'Experience Deleted successfuly');
+    }
 }

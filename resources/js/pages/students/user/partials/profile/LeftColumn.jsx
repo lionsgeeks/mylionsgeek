@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Edit2, ExternalLink } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { helpers } from '../../../../../components/utils/helpers';
+import AboutModal from '../../../../../components/AboutModal';
 
 const LeftColumn = ({ user }) => {
+    const [openAbout, setOpenAbout] = useState(false)
+    const { auth } = usePage().props
     return (
         <>
             <div className="lg:col-span-1 space-y-4">
@@ -10,10 +15,12 @@ const LeftColumn = ({ user }) => {
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">About</h2>
                         <button className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
-                            <Edit2 className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                            {
+                                auth?.user.id == user?.id && <Edit2 onClick={() => setOpenAbout(true)} className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                            }
                         </button>
                     </div>
-                    <p className="text-sm text-beta/80 dark:text-light/80 leading-relaxed">
+                    <p className="text-sm break-words whitespace-pre-wrap text-beta/80 dark:text-light/80">
                         {user.about}
                     </p>
                 </div>
@@ -47,6 +54,7 @@ const LeftColumn = ({ user }) => {
                     </div>
                 </div>
             </div>
+            {openAbout && <AboutModal onOpen={openAbout} onOpenChange={setOpenAbout} user={user} />}
         </>
     );
 };
