@@ -230,6 +230,7 @@ class ChatController extends Controller
             $tokenRequest = [
                 'capability' => json_encode([
                     'chat:conversation:*' => ['subscribe', 'publish'], // Access l kolchi conversations
+                    'feed:*' => ['subscribe'],
                     'project:*' => ['subscribe', 'publish'], // Access l kolchi project channels
                 ]),
                 'clientId' => (string) $user->id,

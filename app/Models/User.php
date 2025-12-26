@@ -243,4 +243,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Education::class)->withTimestamps();
     }
+
+    public function socialLinks()
+    {
+        return $this->hasMany(UserSocialLink::class);
+    }
 }

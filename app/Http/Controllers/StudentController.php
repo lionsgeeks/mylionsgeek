@@ -7,6 +7,7 @@ use App\Models\Experience;
 use App\Models\Follower;
 use App\Models\Like;
 use App\Models\Post;
+use App\Models\UserSocialLink;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,7 @@ class StudentController extends Controller
         $user = User::find($id);
         $userExperience = User::with('experiences')->findOrFail($id);
         $userEducation = User::with('educations')->findOrFail($id);
+        $userSocialLinks = User::with('socialLinks')->findOrFail($id);
         $isFollowing = Auth::user()
             ->following()
             ->where('followed_id', $id)
@@ -80,8 +82,68 @@ class StudentController extends Controller
                 'isFollowing' => $isFollowing,
                 'experiences' => $userExperience->experiences,
                 'educations' => $userEducation->educations,
+                'social_links' => $userSocialLinks->socialLinks,
             ],
         ];
+    }
+
+    public function createSocialLink(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return back()->with('error', 'Unauthorized');
+        }
+
+        $data = $request->validate([
+            'title' => 'required|string|max:80',
+            'url' => 'required|string|max:2048',
+        ]);
+
+        UserSocialLink::create([
+            'user_id' => $user->id,
+            'title' => $data['title'],
+            'url' => $data['url'],
+        ]);
+
+        return redirect()->back()->with('success', 'Social link added');
+    }
+
+    public function updateSocialLink(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return back()->with('error', 'Unauthorized');
+        }
+
+        $link = UserSocialLink::findOrFail($id);
+        if ((int) $link->user_id !== (int) $user->id) {
+            return back()->with('error', "You can't edit this link");
+        }
+
+        $data = $request->validate([
+            'title' => 'required|string|max:80',
+            'url' => 'required|string|max:2048',
+        ]);
+
+        $link->update($data);
+
+        return redirect()->back()->with('success', 'Social link updated');
+    }
+
+    public function deleteSocialLink($id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return back()->with('error', 'Unauthorized');
+        }
+
+        $link = UserSocialLink::findOrFail($id);
+        if ((int) $link->user_id !== (int) $user->id) {
+            return back()->with('error', "You can't delete this link");
+        }
+
+        $link->delete();
+        return redirect()->back()->with('success', 'Social link deleted');
     }
     public function changeProfileImage(Request $request, $id)
     {

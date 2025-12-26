@@ -2,25 +2,79 @@
 
 namespace App\Http\Controllers;
 
+use Ably\AblyRest;
 use App\Models\Comment;
+use App\Models\CommentLike;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Throwable;
 
 class PostController extends Controller
 {
+    private const COMMENT_IMAGES_DIR = 'img/comments';
+
+    private function publishFeedEvent(string $channelName, string $eventName, array $data): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get($channelName);
+            $channel->publish($eventName, $data);
+        } catch (Throwable $e) {
+            \Log::error('Failed to broadcast feed event via Ably: ' . $e->getMessage());
+        }
+    }
+
+    private function broadcastPostStats(Post $post): void
+    {
+        $this->publishFeedEvent('feed:global', 'post-stats-updated', [
+            'post_id' => (int) $post->id,
+            'likes_count' => (int) $post->likes()->count(),
+            'comments_count' => (int) $post->comments()->count(),
+        ]);
+    }
+
     public function getPostComments($postId)
     {
         $post = Post::findOrFail($postId);
-        $comments = $post->comments()
+        $userId = Auth::id();
+
+        $rawComments = $post->comments()
             ->with(['user:id,name,image'])
             ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($c) {
+            ->get();
+
+        $commentIds = $rawComments->pluck('id')->all();
+
+        $likesCountMap = collect();
+        $likedIds = [];
+
+        if (!empty($commentIds) && Schema::hasTable('comment_likes')) {
+            $likesCountMap = CommentLike::query()
+                ->selectRaw('comment_id, COUNT(*) as likes_count')
+                ->whereIn('comment_id', $commentIds)
+                ->groupBy('comment_id')
+                ->pluck('likes_count', 'comment_id');
+
+            if ($userId) {
+                $likedIds = CommentLike::query()
+                    ->whereIn('comment_id', $commentIds)
+                    ->where('user_id', $userId)
+                    ->pluck('comment_id')
+                    ->all();
+            }
+        }
+
+        $comments = $rawComments->map(function ($c) use ($likesCountMap, $likedIds) {
                 return [
                     'id' => $c->id,
                     'user_id' => $c->user_id,
@@ -28,6 +82,9 @@ class PostController extends Controller
                     'user_lastActivity' => $c->user->last_online,
                     'user_image' => $c->user->image,
                     'comment' => $c->comment,
+                    'comment_image' => $c->image,
+                    'likes_count' => (int) ($likesCountMap[$c->id] ?? 0),
+                    'liked' => in_array($c->id, $likedIds, true),
                     'created_at' => $c->created_at->toDateTimeString(),
                 ];
             });
@@ -57,24 +114,76 @@ class PostController extends Controller
     {
         $request->validate([
             'comment' => 'required|string|max:2000',
+            'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
         $post = Post::findOrFail($postId);
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $comment = $post->comments()->create([
+
+        $storedImage = null;
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            try {
+                $disk = $this->postImagesDisk();
+                $this->ensurePostImagesDirectoryExists($disk, self::COMMENT_IMAGES_DIR);
+                $path = $request->file('image')->store(self::COMMENT_IMAGES_DIR, $disk);
+                $storedImage = $path ? basename($path) : null;
+            } catch (Throwable $e) {
+                \Log::error("Failed to store comment image: " . $e->getMessage());
+                report($e);
+            }
+        }
+
+        $payload = [
             'user_id' => $user->id,
             'comment' => $request->comment,
-        ]);
+        ];
+
+        if (Schema::hasColumn('comments', 'image')) {
+            $payload['image'] = $storedImage;
+        } elseif ($storedImage) {
+            \Log::warning('Comment image uploaded but comments.image column is missing. Did you run migrations?');
+        }
+
+        $comment = $post->comments()->create($payload);
         $comment->load('user:id,name,image');
-        return response()->json([
+
+        $commentPayload = [
             'id' => $comment->id,
             'user_id' => $comment->user_id,
             'user_name' => $comment->user->name,
             'user_image' => $comment->user->image ?? null,
             'comment' => $comment->comment,
+            'comment_image' => Schema::hasColumn('comments', 'image') ? $comment->image : null,
+            'likes_count' => 0,
+            'liked' => false,
             'created_at' => $comment->created_at->toDateTimeString(),
+        ];
+
+        $this->publishFeedEvent("feed:post:{$post->id}", 'comment-created', $commentPayload);
+        $this->broadcastPostStats($post);
+
+        return response()->json([
+            ...$commentPayload,
+        ]);
+    }
+
+    public function getPostStats($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $user = Auth::user();
+        $liked = false;
+
+        if ($user) {
+            $liked = $post->likes()->where('user_id', $user->id)->exists();
+        }
+
+        return response()->json([
+            'post_id' => $post->id,
+            'likes_count' => $post->likes()->count(),
+            'comments_count' => $post->comments()->count(),
+            'liked' => $liked,
         ]);
     }
 
@@ -97,6 +206,8 @@ class PostController extends Controller
 
         $count = $post->likes()->count();
 
+        $this->broadcastPostStats($post);
+
         return response()->json([
             'liked' => $liked,
             'likes_count' => $count,
@@ -106,21 +217,176 @@ class PostController extends Controller
     public function deleteComment($id)
     {
         $comment = Comment::find($id);
-        $comment->delete();
+        $postId = $comment?->post_id;
+        $commentId = $comment?->id;
+        $comment?->delete();
+
+        if ($postId && $commentId) {
+            $this->publishFeedEvent("feed:post:{$postId}", 'comment-deleted', [
+                'comment_id' => (int) $commentId,
+            ]);
+
+            $post = Post::find($postId);
+            if ($post) {
+                $this->broadcastPostStats($post);
+            }
+        }
         return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
 
     public function updateComment(Request $request, $id)
     {
         $request->validate([
-            'comment' => 'required|string',
+            'comment' => 'required|string|max:2000',
+            'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
+            'remove_image' => 'nullable|boolean',
         ]);
 
-        $comment = Comment::find($id);
-        $comment->update([
-            'comment' => $request->comment
+        $comment = Comment::findOrFail($id);
+
+        $disk = $this->postImagesDisk();
+        $removeImage = (bool) $request->boolean('remove_image');
+        $newImageName = null;
+
+        if ($removeImage && Schema::hasColumn('comments', 'image')) {
+            if ($comment->image) {
+                $this->deleteFileFromDisk(self::COMMENT_IMAGES_DIR . '/' . $comment->image, $disk);
+            }
+            $comment->image = null;
+        }
+
+        if ($request->hasFile('image') && $request->file('image')->isValid() && Schema::hasColumn('comments', 'image')) {
+            try {
+                $this->ensurePostImagesDirectoryExists($disk, self::COMMENT_IMAGES_DIR);
+                $path = $request->file('image')->store(self::COMMENT_IMAGES_DIR, $disk);
+                $newImageName = $path ? basename($path) : null;
+
+                if ($newImageName) {
+                    if ($comment->image) {
+                        $this->deleteFileFromDisk(self::COMMENT_IMAGES_DIR . '/' . $comment->image, $disk);
+                    }
+                    $comment->image = $newImageName;
+                }
+            } catch (Throwable $e) {
+                \Log::error("Failed to update comment image: " . $e->getMessage());
+                report($e);
+            }
+        }
+
+        $comment->comment = $request->comment;
+        $comment->save();
+
+        $likesCount = 0;
+        $liked = false;
+        if (Schema::hasTable('comment_likes')) {
+            $likesCount = CommentLike::where('comment_id', $comment->id)->count();
+            $userId = Auth::id();
+            if ($userId) {
+                $liked = CommentLike::where('comment_id', $comment->id)->where('user_id', $userId)->exists();
+            }
+        }
+
+        $payload = [
+            'id' => $comment->id,
+            'comment' => $comment->comment,
+            'comment_image' => Schema::hasColumn('comments', 'image') ? $comment->image : null,
+            'likes_count' => (int) $likesCount,
+            'liked' => $liked,
+        ];
+
+        $this->publishFeedEvent("feed:post:{$comment->post_id}", 'comment-updated', [
+            'id' => (int) $comment->id,
+            'comment' => $payload['comment'],
+            'comment_image' => $payload['comment_image'],
         ]);
-        return response()->json(['message' => 'Comment edited succesfully']);
+
+        return response()->json($payload);
+    }
+
+    public function toggleCommentLike($commentId)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if (!Schema::hasTable('comment_likes')) {
+            return response()->json(['error' => 'Comment likes not available'], 400);
+        }
+
+        $comment = Comment::findOrFail($commentId);
+
+        $existing = CommentLike::where('comment_id', $comment->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+            $liked = false;
+        } else {
+            CommentLike::create([
+                'comment_id' => $comment->id,
+                'user_id' => $user->id,
+            ]);
+            $liked = true;
+        }
+
+        $count = CommentLike::where('comment_id', $comment->id)->count();
+
+        $this->publishFeedEvent("feed:post:{$comment->post_id}", 'comment-like-updated', [
+            'comment_id' => (int) $comment->id,
+            'likes_count' => (int) $count,
+        ]);
+
+        return response()->json([
+            'comment_id' => $comment->id,
+            'liked' => $liked,
+            'likes_count' => (int) $count,
+        ]);
+    }
+
+    public function getPostCommentStats($postId)
+    {
+        if (!Schema::hasTable('comment_likes')) {
+            return response()->json(['post_id' => (int) $postId, 'stats' => []]);
+        }
+
+        $post = Post::findOrFail($postId);
+        $userId = Auth::id();
+
+        $commentIds = $post->comments()->pluck('id')->all();
+        if (empty($commentIds)) {
+            return response()->json(['post_id' => (int) $postId, 'stats' => []]);
+        }
+
+        $likesCountMap = CommentLike::query()
+            ->selectRaw('comment_id, COUNT(*) as likes_count')
+            ->whereIn('comment_id', $commentIds)
+            ->groupBy('comment_id')
+            ->pluck('likes_count', 'comment_id');
+
+        $likedIds = [];
+        if ($userId) {
+            $likedIds = CommentLike::query()
+                ->whereIn('comment_id', $commentIds)
+                ->where('user_id', $userId)
+                ->pluck('comment_id')
+                ->all();
+        }
+
+        $stats = collect($commentIds)->mapWithKeys(function ($id) use ($likesCountMap, $likedIds) {
+            return [
+                (string) $id => [
+                    'likes_count' => (int) ($likesCountMap[$id] ?? 0),
+                    'liked' => in_array($id, $likedIds, true),
+                ],
+            ];
+        });
+
+        return response()->json([
+            'post_id' => (int) $postId,
+            'stats' => $stats,
+        ]);
     }
 
     public function deletePost(Request $request, $id)
@@ -245,7 +511,7 @@ class PostController extends Controller
     {
         $stored = [];
         $disk = $this->postImagesDisk();
-        $this->ensurePostImagesDirectoryExists($disk);
+        $this->ensurePostImagesDirectoryExists($disk, 'img/posts');
 
         foreach ($files as $image) {
             if (!$image || !$image->isValid()) continue;
@@ -509,9 +775,8 @@ class PostController extends Controller
         return array_key_exists($configured, $disks) ? $configured : 'public';
     }
 
-    private function ensurePostImagesDirectoryExists(string $disk): void
+    private function ensurePostImagesDirectoryExists(string $disk, string $directory = 'img/posts'): void
     {
-        $directory = 'img/posts';
         $storage = Storage::disk($disk);
 
         // Make directory if it doesn't exist
