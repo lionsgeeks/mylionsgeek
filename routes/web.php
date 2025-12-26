@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\GlobalAnalyticsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\AdminProjectController;
 use App\Http\Controllers\ReservationsController;
+use App\Http\Controllers\API\SearchController as ApiSearchController;
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -32,6 +33,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
     Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
     Route::post('/appointments/book', [ReservationsController::class, 'bookAppointment'])->name('appointments.book');
+
+    Route::get('/api/search', [ApiSearchController::class, 'index']);
 
     // Notifications API - Get all notifications
     // Route::get('/api/notifications', function (Request $request) {
