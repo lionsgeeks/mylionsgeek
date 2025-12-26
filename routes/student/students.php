@@ -15,6 +15,9 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::post('/users/follow/{user}', [StudentController::class, 'addToFollow']);
     Route::delete('/users/unfollow/{user}', [StudentController::class, 'unFollow']);
     Route::post('/users/about/{id}', [StudentController::class, 'updateAbout']);
+    Route::post('/users/social-links', [StudentController::class, 'createSocialLink']);
+    Route::put('/users/social-links/{id}', [StudentController::class, 'updateSocialLink']);
+    Route::delete('/users/social-links/{id}', [StudentController::class, 'deleteSocialLink']);
     Route::post('/users/experience', [StudentController::class, 'createExperience']);
     Route::put('/users/experience/{id}', [StudentController::class, 'editExperience']);
     Route::delete('/users/experience/{id}', [StudentController::class, 'deleteExperience']);
