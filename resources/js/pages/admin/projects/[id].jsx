@@ -347,3 +347,4 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
 };
 
 export default ProjectShow;
+

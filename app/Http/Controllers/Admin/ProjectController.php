@@ -216,7 +216,7 @@ class ProjectController extends Controller
         $isProjectAdmin = $currentUserProjectRole && in_array($currentUserProjectRole->role, ['owner', 'admin']);
         $canManageTeam = $isProjectOwner || $isProjectAdmin;
 
-        return Inertia::render('admin/projects/show', [
+        return Inertia::render('admin/projects/[id]', [
             'project' => $project,
             'teamMembers' => $teamMembers,
             'tasks' => $tasks,
