@@ -1,14 +1,49 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { router } from '@inertiajs/react';
-import { Search, Keyboard, ArrowRight } from 'lucide-react';
+import { router, usePage } from '@inertiajs/react';
+import { Search, Keyboard, ArrowRight, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSearchItems } from '@/hooks/use-search-items';
-import { usePage } from '@inertiajs/react';
 import Rolegard from '@/components/rolegard';
 import { Avatar } from '@/components/ui/avatar';
+
+const RolegardAny = Rolegard as any;
+
+type PageSearchItem = {
+    title: string;
+    href?: string;
+    category: string;
+    icon?: LucideIcon;
+    description?: string;
+    keywords?: string[];
+    onSelect?: () => void;
+};
+
+type UserSearchApiItem = {
+    id: number | string;
+    type: 'user';
+    name: string;
+    email?: string | null;
+    promo?: string | null;
+    field?: string | null;
+    roles?: string[];
+    image?: string | null;
+};
+
+type UserSearchItem = UserSearchApiItem & {
+    category: 'Users';
+    title: string;
+    description?: string;
+    href: string;
+};
+
+type SearchResultItem = PageSearchItem | UserSearchItem;
+
+type SearchApiResponse = {
+    results?: UserSearchApiItem[];
+};
 
 interface SearchDialogProps {
     open?: boolean;
@@ -21,7 +56,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const [internalOpen, setInternalOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [userResults, setUserResults] = useState<any[]>([]);
+    const [userResults, setUserResults] = useState<UserSearchApiItem[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const resultsRef = useRef<HTMLDivElement>(null);
@@ -37,7 +72,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const isStudent = userRoles.includes('student');
 
     const { search } = useSearchItems();
-    const pageResults = useMemo(() => search(query), [query, search]);
+    const pageResults = useMemo(() => search(query) as PageSearchItem[], [query, search]);
 
     const visibleUserResults = useMemo(() => {
         if (!isStudent) return userResults;
@@ -48,8 +83,8 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         return isStudent ? [] : pageResults;
     }, [isStudent, pageResults]);
 
-    const combinedResults = useMemo(() => {
-        const users = visibleUserResults.map((u) => ({
+    const combinedResults = useMemo<SearchResultItem[]>(() => {
+        const users: UserSearchItem[] = visibleUserResults.map((u) => ({
             ...u,
             category: 'Users',
             title: u.name,
@@ -85,7 +120,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         }
     }, [open]);
 
-    const handleSelect = useCallback((item: any) => {
+    const handleSelect = useCallback((item: SearchResultItem) => {
         setOpen(false);
         setQuery('');
         setSelectedIndex(0);
@@ -117,7 +152,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                     signal: controller.signal,
                 });
                 if (!res.ok) throw new Error('Failed to search');
-                const data = await res.json();
+                const data = (await res.json()) as SearchApiResponse;
                 if (!active) return;
                 setUserResults(Array.isArray(data?.results) ? data.results : []);
             } catch (e) {
@@ -253,8 +288,9 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                     const isSelected = index === selectedIndex;
                                     const isPageItem = item.category !== 'Users' && !!item.href;
                                     const isUserItem = item.category === 'Users';
+                                    const PageIcon = (!isUserItem ? (item as PageSearchItem).icon : undefined) as LucideIcon | undefined;
                                     return (
-                                        <Rolegard key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
+                                        <RolegardAny key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
                                             <button
                                                 onClick={() => handleSelect(item)}
                                                 onMouseEnter={() => setSelectedIndex(index)}
@@ -272,15 +308,15 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                                         <Avatar
                                                             className="size-9"
                                                             name={item.title}
-                                                            image={item.image ?? undefined}
+                                                            image={(item as UserSearchItem).image ?? undefined}
                                                             onlineCircleClass="hidden"
                                                             lastActivity={null}
                                                         />
                                                     </div>
                                                 ) : (
-                                                    item.icon && (
+                                                    PageIcon ? (
                                                         <div className="shrink-0">
-                                                            <item.icon
+                                                            <PageIcon
                                                                 className={cn(
                                                                     'size-5 transition-colors',
                                                                     isSelected
@@ -289,7 +325,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                                                 )}
                                                             />
                                                         </div>
-                                                    )
+                                                    ) : null
                                                 )}
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-sm font-medium truncate">{item.title}</div>
@@ -311,7 +347,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                                     )}
                                                 />
                                             </button>
-                                        </Rolegard>
+                                        </RolegardAny>
                                     );
                                 })}
                             </div>
