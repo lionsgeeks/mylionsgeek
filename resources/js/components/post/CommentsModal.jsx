@@ -6,6 +6,7 @@ import { timeAgo } from '../../lib/utils'
 import DeleteModal from "../DeleteModal";
 import { CheckIcon, Pencil, Trash, Paperclip, ThumbsUp } from "lucide-react";
 import imageCompression from 'browser-image-compression';
+import { subscribeToChannel } from '../../lib/ablyManager'
 
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved, takeToUserProfile }) {
   //(postId);
@@ -93,33 +94,98 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
   useEffect(() => {
     if (!open || !postId) return;
-    let mounted = true;
 
-    const interval = window.setInterval(async () => {
-      try {
-        const res = await axios.get(`/posts/comments/${postId}/stats`);
-        if (!mounted) return;
-        const stats = res?.data?.stats || {};
+    let mounted = true;
+    let unsubscribeLike = null;
+    let unsubscribeCreated = null;
+    let unsubscribeUpdated = null;
+    let unsubscribeDeleted = null;
+    let interval = null;
+
+    const setup = async () => {
+      const channelName = `feed:post:${postId}`;
+
+      unsubscribeLike = await subscribeToChannel(channelName, 'comment-like-updated', (data) => {
+        if (!mounted || !data) return;
+        const commentId = Number(data.comment_id);
+        if (!commentId) return;
 
         setComments((prev) =>
-          prev.map((c) => {
-            const s = stats?.[String(c.id)];
-            if (!s) return c;
-            return {
-              ...c,
-              likes_count: typeof s.likes_count === 'number' ? s.likes_count : c.likes_count,
-              liked: typeof s.liked === 'boolean' ? s.liked : c.liked,
-            };
-          })
+          prev.map((c) => c.id === commentId ? {
+            ...c,
+            likes_count: typeof data.likes_count === 'number' ? data.likes_count : c.likes_count,
+          } : c)
         );
-      } catch {
-        // ignore polling errors
+      });
+
+      unsubscribeCreated = await subscribeToChannel(channelName, 'comment-created', (data) => {
+        if (!mounted || !data) return;
+        setComments((prev) => {
+          const exists = prev.some((c) => Number(c.id) === Number(data.id));
+          if (exists) return prev;
+          return [...prev, data];
+        });
+        setTimeout(
+          () => commentsEndRef.current?.scrollIntoView({ behavior: "smooth" }),
+          120
+        );
+      });
+
+      unsubscribeUpdated = await subscribeToChannel(channelName, 'comment-updated', (data) => {
+        if (!mounted || !data) return;
+        const id = Number(data.id);
+        if (!id) return;
+        setComments((prev) =>
+          prev.map((c) => c.id === id ? {
+            ...c,
+            comment: typeof data.comment === 'string' ? data.comment : c.comment,
+            comment_image: typeof data.comment_image !== 'undefined' ? data.comment_image : c.comment_image,
+          } : c)
+        );
+      });
+
+      unsubscribeDeleted = await subscribeToChannel(channelName, 'comment-deleted', (data) => {
+        if (!mounted || !data) return;
+        const id = Number(data.comment_id);
+        if (!id) return;
+        setComments((prev) => prev.filter((c) => c.id !== id));
+      });
+
+      const anySubscribed = !!(unsubscribeLike || unsubscribeCreated || unsubscribeUpdated || unsubscribeDeleted);
+      if (!anySubscribed) {
+        interval = window.setInterval(async () => {
+          try {
+            const res = await axios.get(`/posts/comments/${postId}/stats`);
+            if (!mounted) return;
+            const stats = res?.data?.stats || {};
+
+            setComments((prev) =>
+              prev.map((c) => {
+                const s = stats?.[String(c.id)];
+                if (!s) return c;
+                return {
+                  ...c,
+                  likes_count: typeof s.likes_count === 'number' ? s.likes_count : c.likes_count,
+                  liked: typeof s.liked === 'boolean' ? s.liked : c.liked,
+                };
+              })
+            );
+          } catch {
+            // ignore polling errors
+          }
+        }, 5000);
       }
-    }, 5000);
+    };
+
+    setup();
 
     return () => {
       mounted = false;
-      window.clearInterval(interval);
+      if (typeof unsubscribeLike === 'function') unsubscribeLike();
+      if (typeof unsubscribeCreated === 'function') unsubscribeCreated();
+      if (typeof unsubscribeUpdated === 'function') unsubscribeUpdated();
+      if (typeof unsubscribeDeleted === 'function') unsubscribeDeleted();
+      if (interval) window.clearInterval(interval);
     };
   }, [open, postId]);
 

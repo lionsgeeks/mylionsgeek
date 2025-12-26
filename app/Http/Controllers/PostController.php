@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Ably\AblyRest;
 use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Post;
@@ -16,6 +17,31 @@ use Throwable;
 class PostController extends Controller
 {
     private const COMMENT_IMAGES_DIR = 'img/comments';
+
+    private function publishFeedEvent(string $channelName, string $eventName, array $data): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get($channelName);
+            $channel->publish($eventName, $data);
+        } catch (Throwable $e) {
+            \Log::error('Failed to broadcast feed event via Ably: ' . $e->getMessage());
+        }
+    }
+
+    private function broadcastPostStats(Post $post): void
+    {
+        $this->publishFeedEvent('feed:global', 'post-stats-updated', [
+            'post_id' => (int) $post->id,
+            'likes_count' => (int) $post->likes()->count(),
+            'comments_count' => (int) $post->comments()->count(),
+        ]);
+    }
 
     public function getPostComments($postId)
     {
@@ -122,14 +148,24 @@ class PostController extends Controller
 
         $comment = $post->comments()->create($payload);
         $comment->load('user:id,name,image');
-        return response()->json([
+
+        $commentPayload = [
             'id' => $comment->id,
             'user_id' => $comment->user_id,
             'user_name' => $comment->user->name,
             'user_image' => $comment->user->image ?? null,
             'comment' => $comment->comment,
             'comment_image' => Schema::hasColumn('comments', 'image') ? $comment->image : null,
+            'likes_count' => 0,
+            'liked' => false,
             'created_at' => $comment->created_at->toDateTimeString(),
+        ];
+
+        $this->publishFeedEvent("feed:post:{$post->id}", 'comment-created', $commentPayload);
+        $this->broadcastPostStats($post);
+
+        return response()->json([
+            ...$commentPayload,
         ]);
     }
 
@@ -170,6 +206,8 @@ class PostController extends Controller
 
         $count = $post->likes()->count();
 
+        $this->broadcastPostStats($post);
+
         return response()->json([
             'liked' => $liked,
             'likes_count' => $count,
@@ -179,7 +217,20 @@ class PostController extends Controller
     public function deleteComment($id)
     {
         $comment = Comment::find($id);
-        $comment->delete();
+        $postId = $comment?->post_id;
+        $commentId = $comment?->id;
+        $comment?->delete();
+
+        if ($postId && $commentId) {
+            $this->publishFeedEvent("feed:post:{$postId}", 'comment-deleted', [
+                'comment_id' => (int) $commentId,
+            ]);
+
+            $post = Post::find($postId);
+            if ($post) {
+                $this->broadcastPostStats($post);
+            }
+        }
         return response()->json(['message' => 'Comment Deleted Succesfully']);
     }
 
@@ -235,13 +286,21 @@ class PostController extends Controller
             }
         }
 
-        return response()->json([
+        $payload = [
             'id' => $comment->id,
             'comment' => $comment->comment,
             'comment_image' => Schema::hasColumn('comments', 'image') ? $comment->image : null,
             'likes_count' => (int) $likesCount,
             'liked' => $liked,
+        ];
+
+        $this->publishFeedEvent("feed:post:{$comment->post_id}", 'comment-updated', [
+            'id' => (int) $comment->id,
+            'comment' => $payload['comment'],
+            'comment_image' => $payload['comment_image'],
         ]);
+
+        return response()->json($payload);
     }
 
     public function toggleCommentLike($commentId)
@@ -273,6 +332,11 @@ class PostController extends Controller
         }
 
         $count = CommentLike::where('comment_id', $comment->id)->count();
+
+        $this->publishFeedEvent("feed:post:{$comment->post_id}", 'comment-like-updated', [
+            'comment_id' => (int) $comment->id,
+            'likes_count' => (int) $count,
+        ]);
 
         return response()->json([
             'comment_id' => $comment->id,

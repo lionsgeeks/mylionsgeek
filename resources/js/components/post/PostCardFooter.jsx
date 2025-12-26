@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import CommentsModal from './CommentsModal';
 import LikesModal from './LikesModal';
+import { subscribeToChannel } from '../../lib/ablyManager';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => {
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -24,34 +25,60 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
         if (!post?.id) return;
 
         let mounted = true;
-        const interval = window.setInterval(async () => {
-            try {
-                const res = await axios.get(`/posts/stats/${post.id}`);
-                if (!mounted) return;
-                const { likes_count, comments_count, liked } = res.data || {};
+        let interval = null;
+        let unsubscribe = null;
 
-                if (typeof likes_count === 'number') {
-                    setLikesCountMap(prev => ({ ...prev, [post.id]: likes_count }));
+        const setup = async () => {
+            unsubscribe = await subscribeToChannel('feed:global', 'post-stats-updated', (data) => {
+                if (!mounted) return;
+                if (!data || Number(data.post_id) !== Number(post.id)) return;
+
+                if (typeof data.likes_count === 'number') {
+                    setLikesCountMap((prev) => ({ ...prev, [post.id]: data.likes_count }));
                 }
-                if (typeof comments_count === 'number') {
-                    setCommentsCountMap(prev => ({ ...prev, [post.id]: comments_count }));
+                if (typeof data.comments_count === 'number') {
+                    setCommentsCountMap((prev) => ({ ...prev, [post.id]: data.comments_count }));
                 }
-                if (typeof liked === 'boolean') {
-                    setLikedPostIds(prev => {
-                        const has = prev.includes(post.id);
-                        if (liked && !has) return [...prev, post.id];
-                        if (!liked && has) return prev.filter(id => id !== post.id);
-                        return prev;
-                    });
-                }
-            } catch {
-                // ignore polling errors
+            });
+
+            if (!unsubscribe) {
+                interval = window.setInterval(async () => {
+                    try {
+                        const res = await axios.get(`/posts/stats/${post.id}`);
+                        if (!mounted) return;
+                        const { likes_count, comments_count, liked } = res.data || {};
+
+                        if (typeof likes_count === 'number') {
+                            setLikesCountMap(prev => ({ ...prev, [post.id]: likes_count }));
+                        }
+                        if (typeof comments_count === 'number') {
+                            setCommentsCountMap(prev => ({ ...prev, [post.id]: comments_count }));
+                        }
+                        if (typeof liked === 'boolean') {
+                            setLikedPostIds(prev => {
+                                const has = prev.includes(post.id);
+                                if (liked && !has) return [...prev, post.id];
+                                if (!liked && has) return prev.filter(id => id !== post.id);
+                                return prev;
+                            });
+                        }
+                    } catch {
+                        // ignore polling errors
+                    }
+                }, 5000);
             }
-        }, 5000);
+        };
+
+        setup();
 
         return () => {
             mounted = false;
-            window.clearInterval(interval);
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+            if (interval) {
+                window.clearInterval(interval);
+            }
         };
     }, [post?.id]);
 
