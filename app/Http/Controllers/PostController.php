@@ -7,12 +7,15 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Throwable;
 
 class PostController extends Controller
 {
+    private const COMMENT_IMAGES_DIR = 'img/comments';
+
     public function getPostComments($postId)
     {
         $post = Post::findOrFail($postId);
@@ -28,6 +31,7 @@ class PostController extends Controller
                     'user_lastActivity' => $c->user->last_online,
                     'user_image' => $c->user->image,
                     'comment' => $c->comment,
+                    'comment_image' => $c->image,
                     'created_at' => $c->created_at->toDateTimeString(),
                 ];
             });
@@ -57,16 +61,39 @@ class PostController extends Controller
     {
         $request->validate([
             'comment' => 'required|string|max:2000',
+            'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
         $post = Post::findOrFail($postId);
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $comment = $post->comments()->create([
+
+        $storedImage = null;
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
+            try {
+                $disk = $this->postImagesDisk();
+                $this->ensurePostImagesDirectoryExists($disk, self::COMMENT_IMAGES_DIR);
+                $path = $request->file('image')->store(self::COMMENT_IMAGES_DIR, $disk);
+                $storedImage = $path ? basename($path) : null;
+            } catch (Throwable $e) {
+                \Log::error("Failed to store comment image: " . $e->getMessage());
+                report($e);
+            }
+        }
+
+        $payload = [
             'user_id' => $user->id,
             'comment' => $request->comment,
-        ]);
+        ];
+
+        if (Schema::hasColumn('comments', 'image')) {
+            $payload['image'] = $storedImage;
+        } elseif ($storedImage) {
+            \Log::warning('Comment image uploaded but comments.image column is missing. Did you run migrations?');
+        }
+
+        $comment = $post->comments()->create($payload);
         $comment->load('user:id,name,image');
         return response()->json([
             'id' => $comment->id,
@@ -74,7 +101,26 @@ class PostController extends Controller
             'user_name' => $comment->user->name,
             'user_image' => $comment->user->image ?? null,
             'comment' => $comment->comment,
+            'comment_image' => Schema::hasColumn('comments', 'image') ? $comment->image : null,
             'created_at' => $comment->created_at->toDateTimeString(),
+        ]);
+    }
+
+    public function getPostStats($postId)
+    {
+        $post = Post::findOrFail($postId);
+        $user = Auth::user();
+        $liked = false;
+
+        if ($user) {
+            $liked = $post->likes()->where('user_id', $user->id)->exists();
+        }
+
+        return response()->json([
+            'post_id' => $post->id,
+            'likes_count' => $post->likes()->count(),
+            'comments_count' => $post->comments()->count(),
+            'liked' => $liked,
         ]);
     }
 
@@ -245,7 +291,7 @@ class PostController extends Controller
     {
         $stored = [];
         $disk = $this->postImagesDisk();
-        $this->ensurePostImagesDirectoryExists($disk);
+        $this->ensurePostImagesDirectoryExists($disk, 'img/posts');
 
         foreach ($files as $image) {
             if (!$image || !$image->isValid()) continue;
@@ -509,9 +555,8 @@ class PostController extends Controller
         return array_key_exists($configured, $disks) ? $configured : 'public';
     }
 
-    private function ensurePostImagesDirectoryExists(string $disk): void
+    private function ensurePostImagesDirectoryExists(string $disk, string $directory = 'img/posts'): void
     {
-        $directory = 'img/posts';
         $storage = Storage::disk($disk);
 
         // Make directory if it doesn't exist

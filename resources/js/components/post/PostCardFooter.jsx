@@ -20,6 +20,41 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
         }
     }, [post.id, post.likes_count, post.comments_count, post.is_liked_by_current_user]);
 
+    useEffect(() => {
+        if (!post?.id) return;
+
+        let mounted = true;
+        const interval = window.setInterval(async () => {
+            try {
+                const res = await axios.get(`/posts/stats/${post.id}`);
+                if (!mounted) return;
+                const { likes_count, comments_count, liked } = res.data || {};
+
+                if (typeof likes_count === 'number') {
+                    setLikesCountMap(prev => ({ ...prev, [post.id]: likes_count }));
+                }
+                if (typeof comments_count === 'number') {
+                    setCommentsCountMap(prev => ({ ...prev, [post.id]: comments_count }));
+                }
+                if (typeof liked === 'boolean') {
+                    setLikedPostIds(prev => {
+                        const has = prev.includes(post.id);
+                        if (liked && !has) return [...prev, post.id];
+                        if (!liked && has) return prev.filter(id => id !== post.id);
+                        return prev;
+                    });
+                }
+            } catch {
+                // ignore polling errors
+            }
+        }, 5000);
+
+        return () => {
+            mounted = false;
+            window.clearInterval(interval);
+        };
+    }, [post?.id]);
+
     const toggleLike = async (postId) => {
         try {
             const response = await axios.post(`/posts/likes/${postId}`);

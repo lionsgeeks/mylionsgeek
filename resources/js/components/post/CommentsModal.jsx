@@ -4,7 +4,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Link, usePage } from "@inertiajs/react";
 import { timeAgo } from '../../lib/utils'
 import DeleteModal from "../DeleteModal";
-import { CheckIcon, Pencil, Trash } from "lucide-react";
+import { CheckIcon, Pencil, Trash, Paperclip } from "lucide-react";
+import imageCompression from 'browser-image-compression';
 
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved, takeToUserProfile }) {
   //(postId);
@@ -12,12 +13,16 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [newCommentImage, setNewCommentImage] = useState(null);
+  const [newCommentImagePreview, setNewCommentImagePreview] = useState(null);
+  const [compressingImage, setCompressingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openUpdatedComment, setOpenUpdatedComment] = useState(null);
   const [editedComment, setEditedComment] = useState('');
   const [deletedCommentId, setDeletedCommentId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [openImageUrl, setOpenImageUrl] = useState(null);
   const commentsEndRef = useRef(null);
   const { auth } = usePage().props;
 
@@ -52,24 +57,48 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       // Reset when closed
       setComments([]);
       setNewComment("");
+      setNewCommentImage(null);
+      setNewCommentImagePreview(null);
+      setOpenImageUrl(null);
       setLoading(false);
     }
   }, [open, postId]);
 
+  useEffect(() => {
+    if (!newCommentImage) {
+      setNewCommentImagePreview(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(newCommentImage);
+    setNewCommentImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [newCommentImage]);
+
   // ✅ Handle new comment submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newComment.trim()) return;
+    if (!newComment.trim() && !newCommentImage) return;
     setSubmitting(true);
 
     try {
-      const res = await axios.post(`/posts/comments/${postId}`, {
-        comment: newComment.trim(),
+      const formData = new FormData();
+      formData.append('comment', newComment.trim() || '');
+      if (newCommentImage) {
+        formData.append('image', newCommentImage);
+      }
+
+      const res = await axios.post(`/posts/comments/${postId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       // Add new comment locally
       setComments((prev) => [...prev, res.data]);
       setNewComment("");
+      setNewCommentImage(null);
+      setNewCommentImagePreview(null);
 
       // Notify parent (PostCard) to increment count
       if (typeof onCommentAdded === "function") {
@@ -130,6 +159,36 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
   return (
     <>
+      {openImageUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          onClick={() => setOpenImageUrl(null)}
+          role="button"
+          tabIndex={-1}
+        >
+          <div className="absolute inset-0 bg-black/80" />
+          <div className="relative max-w-[95vw] max-h-[90vh]">
+            <img
+              src={openImageUrl}
+              alt="Comment"
+              className="max-w-[95vw] max-h-[90vh] object-contain rounded-xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              type="button"
+              className="absolute -top-3 -right-3 bg-black/70 text-white rounded-full w-9 h-9 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenImageUrl(null);
+              }}
+              aria-label="Close image"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Overlay */}
         <div
@@ -268,9 +327,27 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                         autoFocus
                       />
                     ) : (
-                      <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full">
-                        {c.comment}
-                      </p>
+                      <>
+                        <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full">
+                          {c.comment}
+                        </p>
+                        {c.comment_image && (
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              className="block"
+                              onClick={() => setOpenImageUrl(`/storage/img/comments/${c.comment_image}`)}
+                            >
+                              <img
+                                src={`/storage/img/comments/${c.comment_image}`}
+                                alt="Comment"
+                                className="max-h-64 w-full sm:max-w-[320px] rounded-2xl object-cover border border-alpha/20 cursor-zoom-in"
+                                loading="lazy"
+                              />
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -293,30 +370,94 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
               onlineCircleClass='hidden'
             />
 
-            <div className="flex-1 flex gap-2">
-              <input
-                type="text"
-                autoFocus
-                placeholder="Write a comment..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                disabled={submitting}
-                maxLength={2000}
-                className="flex-1 px-4 py-2.5 rounded-lg border border-alpha/40 focus:ring-2 focus:ring-alpha focus:border-alpha/40 transition bg-white dark:bg-dark text-neutral-800 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm focus:outline-0"
-              />
-              <button
-                type="submit"
-                disabled={submitting || !newComment.trim()}
-                className="bg-alpha text-black hover:bg-yellow-300 transition-all duration-200 px-5 font-semibold rounded-lg shadow-md hover:shadow-lg py-2.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-alpha/50 active:scale-95"
-              >
-                {submitting ? (
-                  <div className="flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : (
-                  "Send"
-                )}
-              </button>
+            <div className="flex-1 flex flex-col gap-2">
+              {newCommentImagePreview && (
+                <div className="relative">
+                  <img
+                    src={newCommentImagePreview}
+                    alt="Selected"
+                    className="max-h-48 w-full rounded-xl object-cover border border-alpha/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewCommentImage(null);
+                      setNewCommentImagePreview(null);
+                    }}
+                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                    aria-label="Remove image"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Write a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    disabled={submitting}
+                    maxLength={2000}
+                    className="w-full px-4 py-2.5 rounded-lg border border-alpha/40 focus:ring-2 focus:ring-alpha focus:border-alpha/40 transition bg-white dark:bg-dark text-neutral-800 dark:text-neutral-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm shadow-sm focus:outline-0"
+                  />
+                </div>
+
+                <label className="px-3 py-2.5 rounded-lg border border-alpha/30 bg-white dark:bg-dark text-sm cursor-pointer select-none">
+                  <span className="inline-flex items-center gap-2">
+                    <Paperclip size={16} />
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    disabled={submitting || compressingImage}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (!file) {
+                        setNewCommentImage(null);
+                        return;
+                      }
+
+                      setCompressingImage(true);
+                      try {
+                        const compressed = await imageCompression(file, {
+                          maxSizeMB: 1,
+                          maxWidthOrHeight: 1500,
+                          useWebWorker: true,
+                        });
+                        setNewCommentImage(compressed);
+                      } catch {
+                        // fallback to original file
+                        setNewCommentImage(file);
+                      } finally {
+                        setCompressingImage(false);
+                      }
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={submitting || compressingImage || (!newComment.trim() && !newCommentImage)}
+                  className="bg-alpha text-black hover:bg-yellow-300 transition-all duration-200 px-5 font-semibold rounded-lg shadow-md hover:shadow-lg py-2.5 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-alpha/50 active:scale-95"
+                >
+                  {submitting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : compressingImage ? (
+                    <div className="flex items-center justify-center">
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    "Send"
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         </div>
