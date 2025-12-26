@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// Removed ScrollArea import - using native scroll with hidden scrollbar
 import { MessageSquare, Send, Smile, Reply, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useAblyChannel from '@/hooks/useAblyChannel';
@@ -279,13 +279,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                         <MessageSquare className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="lg:h-screen lg:w-1/4 p-4">
+                <SheetContent side="right" className="lg:h-screen lg:w-1/3 xl:w-1/4 p-4">
                     <SheetHeader>
                         <SheetTitle>Team Chat</SheetTitle>
                         <SheetDescription>Chat with your team members</SheetDescription>
                     </SheetHeader>
-                    <ScrollArea className="flex-1 mt-4 mb-4 lg:h-[calc(60vh-180px)]" ref={scrollAreaRef}>
-                        <div className="space-y-4">
+                    <div className="flex-1 mt-4 mb-4 lg:h-[calc(100vh-200px)] overflow-y-auto scrollbar-hide" ref={scrollAreaRef}>
+                        <div className="space-y-4 pr-2">
                             {messages.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     No messages yet. Start the conversation!
@@ -445,7 +445,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                             )}
                             <div ref={messagesEndRef} />
                         </div>
-                    </ScrollArea>
+                    </div>
                     <SheetFooter className="flex-col gap-2">
                         {replyingTo && (
                             <div className="w-full p-2 bg-muted rounded-lg flex items-center justify-between">
