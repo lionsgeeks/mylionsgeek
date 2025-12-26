@@ -4,12 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, ExternalLink, Plus, Pencil, Trash } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 import Rolegard from '../../../../components/rolegard';
+import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
+import DeleteModal from '@/components/DeleteModal';
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     // console.log('status options:', status);
@@ -18,6 +20,12 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
+    const [openSocialModal, setOpenSocialModal] = useState(false)
+    const [editingSocial, setEditingSocial] = useState(null)
+    const [openDeleteSocial, setOpenDeleteSocial] = useState(false)
+    const [deletingSocial, setDeletingSocial] = useState(null)
+    const canManageSocials = auth?.user?.id === editedUser?.id
+    const socialLinks = auth?.user?.social_links || []
     const [formData, setFormData] = useState({
         name: editedUser?.name,
         email: editedUser?.status,
@@ -154,6 +162,86 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 />
                             </label>
                         </div>
+
+                    {canManageSocials && (
+                        <div className="col-span-1 md:col-span-2">
+                            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                <div className="flex items-center justify-between">
+                                    <Label>Contact info</Label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEditingSocial(null)
+                                            setOpenSocialModal(true)
+                                        }}
+                                        className="p-2 rounded-lg hover:bg-beta/5 dark:hover:bg-light/5"
+                                        aria-label="Add link"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="mt-3 space-y-2">
+                                    {socialLinks.length === 0 ? (
+                                        <p className="text-sm text-neutral-500">No links added.</p>
+                                    ) : (
+                                        socialLinks.map((link) => (
+                                            <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
+                                                        <ExternalLink className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
+                                                        >
+                                                            {link.title}
+                                                        </a>
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                        >
+                                                            {link.url}
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setEditingSocial(link)
+                                                            setOpenSocialModal(true)
+                                                        }}
+                                                        className="text-alpha"
+                                                        aria-label="Edit link"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDeletingSocial(link)
+                                                            setOpenDeleteSocial(true)
+                                                        }}
+                                                        className="text-error"
+                                                        aria-label="Delete link"
+                                                    >
+                                                        <Trash size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     </div>
 
                     {/* Form Fields - Left Column */}
@@ -317,6 +405,26 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     </div>
                 </form>
+
+                {openSocialModal && (
+                    <CreateSocialLinkModal
+                        onOpen={openSocialModal}
+                        onOpenChange={setOpenSocialModal}
+                        initialLink={editingSocial}
+                    />
+                )}
+                {openDeleteSocial && (
+                    <DeleteModal
+                        open={openDeleteSocial}
+                        onOpenChange={setOpenDeleteSocial}
+                        title="Delete link"
+                        description="This action cannot be undone. This will permanently delete this link."
+                        onConfirm={() => {
+                            if (!deletingSocial?.id) return;
+                            return router.delete(`/users/social-links/${deletingSocial.id}`);
+                        }}
+                    />
+                )}
             </DialogContent>
         </Dialog>
     );

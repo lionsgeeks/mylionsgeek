@@ -6,8 +6,7 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, LayoutGrid, Dock } from 'lucide-react';
-import Rolegard from './rolegard';
+import { LogOut, Settings, Dock, User as UserIcon } from 'lucide-react';
 import { AddDocumentModal } from './add-document-modal';
 interface UserMenuContentProps {
     user: User;
@@ -26,11 +25,17 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
         <>
             <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <UserInfo user={user} showEmail={true} />
+                    <UserInfo user={user} showEmail={false} />
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                    <Link className="block w-full" href={`/students/${user.id}`} prefetch onClick={cleanup}>
+                        <UserIcon className="mr-2" />
+                        View Profile
+                    </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                     onSelect={(e) => {
                         e.preventDefault();
@@ -49,15 +54,6 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         Settings
                     </Link>
                 </DropdownMenuItem>
-                <Rolegard authorized={['admin','responsable_studio','coach']}>
-                    <DropdownMenuItem asChild>
-                        <Link className="block w-full" href="/admin/dashboard" prefetch onClick={cleanup}>
-                            <LayoutGrid className="mr-2" />
-                            Back to admin
-                        </Link>
-                    </DropdownMenuItem>
-                </Rolegard>
-
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
