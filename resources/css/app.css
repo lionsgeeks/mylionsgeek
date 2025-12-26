@@ -500,6 +500,16 @@
     .notification-exit-active {
         @apply transform translate-x-full opacity-0 transition-all duration-300 ease-in;
     }
+
+    /* Hide scrollbar utility */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
 
 .fc .fc-button-primary {

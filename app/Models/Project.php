@@ -55,6 +55,11 @@ class Project extends Model
         return $this->hasMany(ProjectNote::class);
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ProjectMessage::class)->orderBy('created_at', 'asc');
+    }
+
     public function getActiveTasksCountAttribute()
     {
         return $this->tasks()->whereIn('status', ['todo', 'in_progress', 'review'])->count();
