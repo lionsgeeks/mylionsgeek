@@ -6,6 +6,9 @@ import { router } from '@inertiajs/react';
 import { Search, Keyboard, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSearchItems } from '@/hooks/use-search-items';
+import { usePage } from '@inertiajs/react';
+import Rolegard from '@/components/rolegard';
+import { Avatar } from '@/components/ui/avatar';
 
 interface SearchDialogProps {
     open?: boolean;
@@ -18,6 +21,8 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const [internalOpen, setInternalOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [userResults, setUserResults] = useState<any[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -25,8 +30,34 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const open = isControlled ? controlledOpen : internalOpen;
     const setOpen = isControlled && onOpenChange ? onOpenChange : setInternalOpen;
 
+    const { auth } = usePage().props as any;
+    const userRoles: string[] = Array.isArray(auth?.user?.role)
+        ? auth.user.role
+        : [auth?.user?.role].filter(Boolean);
+    const isStudent = userRoles.includes('student');
+
     const { search } = useSearchItems();
-    const results = useMemo(() => search(query), [query, search]);
+    const pageResults = useMemo(() => search(query), [query, search]);
+
+    const visibleUserResults = useMemo(() => {
+        if (!isStudent) return userResults;
+        return userResults.filter((u) => Array.isArray(u.roles) && u.roles.includes('student'));
+    }, [isStudent, userResults]);
+
+    const visiblePageResults = useMemo(() => {
+        return isStudent ? [] : pageResults;
+    }, [isStudent, pageResults]);
+
+    const combinedResults = useMemo(() => {
+        const users = visibleUserResults.map((u) => ({
+            ...u,
+            category: 'Users',
+            title: u.name,
+            description: [u.email, u.field, u.promo].filter(Boolean).join(' • '),
+            href: `/students/${u.id}`,
+        }));
+        return [...users, ...visiblePageResults];
+    }, [visiblePageResults, visibleUserResults]);
 
     // Keyboard shortcut handler
     useEffect(() => {
@@ -54,7 +85,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         }
     }, [open]);
 
-    const handleSelect = useCallback((item: typeof results[number]) => {
+    const handleSelect = useCallback((item: any) => {
         setOpen(false);
         setQuery('');
         setSelectedIndex(0);
@@ -65,26 +96,66 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         }
     }, [setOpen]);
 
+    useEffect(() => {
+        let active = true;
+        const q = query.trim();
+        if (!open || q.length === 0) {
+            setUserResults([]);
+            setIsLoadingUsers(false);
+            return;
+        }
+
+        const controller = new AbortController();
+        setIsLoadingUsers(true);
+
+        const timer = window.setTimeout(async () => {
+            try {
+                const url = `/api/search?q=${encodeURIComponent(q)}&type=students`;
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal,
+                });
+                if (!res.ok) throw new Error('Failed to search');
+                const data = await res.json();
+                if (!active) return;
+                setUserResults(Array.isArray(data?.results) ? data.results : []);
+            } catch (e) {
+                if (!active) return;
+                setUserResults([]);
+            } finally {
+                if (!active) return;
+                setIsLoadingUsers(false);
+            }
+        }, 250);
+
+        return () => {
+            active = false;
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [open, query]);
+
     // Keyboard navigation for results
     useEffect(() => {
-        if (!open || results.length === 0) return;
+        if (!open || combinedResults.length === 0) return;
 
         function handleKeyDown(e: KeyboardEvent) {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+                setSelectedIndex((prev) => (prev < combinedResults.length - 1 ? prev + 1 : prev));
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
-            } else if (e.key === 'Enter' && results[selectedIndex]) {
+            } else if (e.key === 'Enter' && combinedResults[selectedIndex]) {
                 e.preventDefault();
-                handleSelect(results[selectedIndex]);
+                handleSelect(combinedResults[selectedIndex]);
             }
         }
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleSelect, open, results, selectedIndex]);
+    }, [combinedResults, handleSelect, open, selectedIndex]);
 
     // Scroll selected item into view
     useEffect(() => {
@@ -163,73 +234,94 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                             </div>
                         )}
 
-                        {query.trim() !== '' && results.length === 0 && (
+                        {query.trim() !== '' && combinedResults.length === 0 && !isLoadingUsers && (
                             <div className="px-3 py-12 text-center">
                                 <p className="text-sm text-muted-foreground">No results found for "{query}"</p>
                                 <p className="text-xs text-muted-foreground mt-2">Try a different search term</p>
                             </div>
                         )}
 
-                        {results.length > 0 && (
+                        {isLoadingUsers && (
+                            <div className="px-3 py-6 text-sm text-muted-foreground">
+                                Searching...
+                            </div>
+                        )}
+
+                        {combinedResults.length > 0 && (
                             <div className="space-y-1">
-                                {results.map((item, index) => {
+                                {combinedResults.map((item, index) => {
                                     const isSelected = index === selectedIndex;
+                                    const isPageItem = item.category !== 'Users' && !!item.href;
+                                    const isUserItem = item.category === 'Users';
                                     return (
-                                        <button
-                                            key={`${item.category}:${item.title}:${item.href || index}`}
-                                            onClick={() => handleSelect(item)}
-                                            onMouseEnter={() => setSelectedIndex(index)}
-                                            className={cn(
-                                                'w-full rounded-md px-3 py-2.5 text-left transition-colors',
-                                                'flex items-center gap-3 group',
-                                                isSelected
-                                                    ? 'bg-accent text-accent-foreground'
-                                                    : 'hover:bg-accent/50 text-foreground'
-                                            )}
-                                            type="button"
-                                        >
-                                            {item.icon && (
-                                                <div className="shrink-0">
-                                                    <item.icon
-                                                        className={cn(
-                                                            'size-5 transition-colors',
-                                                            isSelected
-                                                                ? 'text-accent-foreground'
-                                                                : 'text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'
-                                                        )}
-                                                    />
+                                        <Rolegard key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
+                                            <button
+                                                onClick={() => handleSelect(item)}
+                                                onMouseEnter={() => setSelectedIndex(index)}
+                                                className={cn(
+                                                    'w-full rounded-md px-3 py-2.5 text-left transition-colors',
+                                                    'flex items-center gap-3 group',
+                                                    isSelected
+                                                        ? 'bg-accent text-accent-foreground'
+                                                        : 'hover:bg-accent/50 text-foreground'
+                                                )}
+                                                type="button"
+                                            >
+                                                {isUserItem ? (
+                                                    <div className="shrink-0">
+                                                        <Avatar
+                                                            className="size-9"
+                                                            name={item.title}
+                                                            image={item.image ?? undefined}
+                                                            onlineCircleClass="hidden"
+                                                            lastActivity={null}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    item.icon && (
+                                                        <div className="shrink-0">
+                                                            <item.icon
+                                                                className={cn(
+                                                                    'size-5 transition-colors',
+                                                                    isSelected
+                                                                        ? 'text-accent-foreground'
+                                                                        : 'text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    )
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium truncate">{item.title}</div>
+                                                    {item.description && (
+                                                        <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                                            {item.description}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium truncate">{item.title}</div>
-                                                {item.description && (
-                                                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                                        {item.description}
+                                                {item.category && (
+                                                    <div className="shrink-0 text-xs text-muted-foreground hidden sm:block">
+                                                        {item.category}
                                                     </div>
                                                 )}
-                                            </div>
-                                            {item.category && (
-                                                <div className="shrink-0 text-xs text-muted-foreground hidden sm:block">
-                                                    {item.category}
-                                                </div>
-                                            )}
-                                            <ArrowRight
-                                                className={cn(
-                                                    'size-4 shrink-0 transition-opacity',
-                                                    isSelected ? 'opacity-100' : 'opacity-0'
-                                                )}
-                                            />
-                                        </button>
+                                                <ArrowRight
+                                                    className={cn(
+                                                        'size-4 shrink-0 transition-opacity',
+                                                        isSelected ? 'opacity-100' : 'opacity-0'
+                                                    )}
+                                                />
+                                            </button>
+                                        </Rolegard>
                                     );
                                 })}
                             </div>
                         )}
                     </div>
 
-                    {results.length > 0 && (
+                    {combinedResults.length > 0 && (
                         <div className="border-t px-3 py-2 text-xs text-muted-foreground flex items-center justify-between">
                             <span>
-                                {results.length} result{results.length !== 1 ? 's' : ''}
+                                {combinedResults.length} result{combinedResults.length !== 1 ? 's' : ''}
                             </span>
                             <div className="flex items-center gap-4">
                                 <span className="flex items-center gap-1">

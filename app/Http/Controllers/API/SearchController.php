@@ -38,7 +38,8 @@ class SearchController extends Controller
                 $userQuery->where(function ($q) use ($query) {
                     $q->where('name', 'like', '%' . $query . '%')
                         ->orWhere('email', 'like', '%' . $query . '%')
-                        ->orWhere('promo', 'like', '%' . $query . '%');
+                        ->orWhere('promo', 'like', '%' . $query . '%')
+                        ->orWhere('field', 'like', '%' . $query . '%');
                 });
             }
 
@@ -57,6 +58,7 @@ class SearchController extends Controller
                     'avatar' => $u->image ? url('storage/' . $u->image) : null,
                     'image' => $u->image ?? null,
                     'promo' => $u->promo,
+                    'field' => $u->field,
                     'roles' => $roles,
                     'status' => $u->status,
                 ];
