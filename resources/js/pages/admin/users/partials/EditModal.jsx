@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users } from 'lucide-react';
+import { ImagePlus, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -22,6 +22,7 @@ const platformIcons = {
     discord: MessageCircle,
     threads: Send,
     reddit: Users,
+    portfolio: Briefcase,
 };
 
 const platforms = [
@@ -35,6 +36,7 @@ const platforms = [
     { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
     { value: 'threads', label: 'Threads', domains: ['threads.net'] },
     { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+    { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
 ];
 
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
@@ -48,6 +50,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [socialValidationError, setSocialValidationError] = useState('');
     const canManageSocials = auth?.user?.id === editedUser?.id;
     const socialLinks = auth?.user?.social_links || [];
+    
+    // Filter out platforms that are already added
+    const availablePlatforms = platforms.filter(platform => 
+        !socialLinks.some(link => link.title === platform.value)
+    );
 
     const [formData, setFormData] = useState({
         name: editedUser?.name || '',
@@ -98,6 +105,19 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
 
         const platform = platforms.find(p => p.value === newSocialPlatform);
         if (!platform) return false;
+
+        // Portfolio doesn't require domain validation
+        if (platform.value === 'portfolio') {
+            // Just check if it's a valid URL format
+            try {
+                new URL(newSocialUrl);
+                setSocialValidationError('');
+                return true;
+            } catch {
+                setSocialValidationError('Please enter a valid URL');
+                return false;
+            }
+        }
 
         const urlLower = newSocialUrl.toLowerCase();
         const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
@@ -300,7 +320,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                                 <SelectValue placeholder="Select platform" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {platforms.map(platform => (
+                                                {availablePlatforms.map(platform => (
                                                     <SelectItem key={platform.value} value={platform.value}>
                                                         {platform.label}
                                                     </SelectItem>

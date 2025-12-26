@@ -1,7 +1,7 @@
-import { X, InstagramIcon, MessageCircle, Send, Users, FacebookIcon, TwitterIcon, GithubIcon, LinkedinIcon, User, ExternalLink } from 'lucide-react';
+import { X, InstagramIcon, MessageCircle, Send, Users, FacebookIcon, TwitterIcon, GithubIcon, LinkedinIcon, User, ExternalLink, Briefcase } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
-import { useForm } from '@inertiajs/react';
+import { useForm, usePage } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 
 const platformIcons = {
@@ -15,25 +15,37 @@ const platformIcons = {
     discord: MessageCircle,
     threads: Send,
     reddit: Users,
+    portfolio: Briefcase,
 };
+
+const platforms = [
+    { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
+    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
+    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
+    { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
+    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
+    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
+    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+    { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
+];
 
 const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => {
     const { stopScrolling } = helpers();
+    const { auth } = usePage().props;
 
     const isEdit = Boolean(initialLink?.id);
 
-    const platforms = [
-        { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
-        { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
-        { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
-        { value: 'github', label: 'GitHub', domains: ['github.com'] },
-        { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
-        { value: 'behance', label: 'Behance', domains: ['behance.net'] },
-        { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
-        { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
-        { value: 'threads', label: 'Threads', domains: ['threads.net'] },
-        { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
-    ];
+    const socialLinks = auth?.user?.social_links || [];
+
+    // Filter out platforms that are already added (only for new links, not for editing)
+    const availablePlatforms = initialLink 
+        ? platforms 
+        : platforms.filter(platform => 
+            !socialLinks.some(link => link.title === platform.value && link.id !== initialLink?.id)
+        );
 
     const [validationError, setValidationError] = useState('');
 
@@ -69,6 +81,19 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
 
         const platform = platforms.find(p => p.value === data.title);
         if (!platform) return false;
+
+        // Portfolio doesn't require domain validation
+        if (platform.value === 'portfolio') {
+            // Just check if it's a valid URL format
+            try {
+                new URL(data.url);
+                setValidationError('');
+                return true;
+            } catch {
+                setValidationError('Please enter a valid URL');
+                return false;
+            }
+        }
 
         const urlLower = data.url.toLowerCase();
         const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
@@ -139,7 +164,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             >
                                 <option value="">Select a platform</option>
-                                {platforms.map(platform => (
+                                {availablePlatforms.map(platform => (
                                     <option key={platform.value} value={platform.value}>
                                         {platform.label}
                                     </option>

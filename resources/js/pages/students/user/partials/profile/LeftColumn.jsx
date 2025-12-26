@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users } from 'lucide-react';
+import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import AboutModal from '../../../../../components/AboutModal';
 import CreateSocialLinkModal from '../../../../../components/CreateSocialLinkModal';
@@ -17,7 +17,22 @@ const platformIcons = {
     discord: MessageCircle,
     threads: Send,
     reddit: Users,
+    portfolio: Briefcase,
 };
+
+const platforms = [
+    { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
+    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
+    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
+    { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
+    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
+    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
+    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+    { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
+];
 
 const LeftColumn = ({ user }) => {
     const [openAbout, setOpenAbout] = useState(false)
@@ -30,6 +45,11 @@ const LeftColumn = ({ user }) => {
     const links = user?.social_links || []
     const visibleLinks = links.slice(0, 2)
     const canManage = auth?.user?.id == user?.id
+
+    // Filter out platforms that are already added
+    const availablePlatforms = platforms.filter(platform =>
+        !links.some(link => link.title === platform.value)
+    );
     return (
         <>
             <div className="lg:col-span-1 space-y-4">
