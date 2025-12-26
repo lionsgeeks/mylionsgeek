@@ -10,8 +10,6 @@ import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 import Rolegard from '../../../../components/rolegard';
-import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
-import DeleteModal from '@/components/DeleteModal';
 
 const platformIcons = {
     instagram: Instagram,
@@ -26,16 +24,28 @@ const platformIcons = {
     reddit: Users,
 };
 
+const platforms = [
+    { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
+    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
+    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
+    { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
+    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
+    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
+    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+];
+
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
-    const [openSocialModal, setOpenSocialModal] = useState(false);
-    const [editingSocial, setEditingSocial] = useState(null);
-    const [openDeleteSocial, setOpenDeleteSocial] = useState(false);
-    const [deletingSocial, setDeletingSocial] = useState(null);
+    const [newSocialPlatform, setNewSocialPlatform] = useState('');
+    const [newSocialUrl, setNewSocialUrl] = useState('');
+    const [socialValidationError, setSocialValidationError] = useState('');
     const canManageSocials = auth?.user?.id === editedUser?.id;
     const socialLinks = auth?.user?.social_links || [];
 
@@ -82,6 +92,50 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             });
         }
     }, [editedUser]);
+
+    const validateSocialUrl = () => {
+        if (!newSocialPlatform || !newSocialUrl) return false;
+
+        const platform = platforms.find(p => p.value === newSocialPlatform);
+        if (!platform) return false;
+
+        const urlLower = newSocialUrl.toLowerCase();
+        const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
+
+        if (!isValidDomain) {
+            setSocialValidationError(`URL must contain ${platform.domains.join(' or ')}`);
+            return false;
+        }
+
+        setSocialValidationError('');
+        return true;
+    };
+
+    const addSocialLink = () => {
+        if (!validateSocialUrl()) return;
+
+        router.post('/users/social-links', {
+            title: newSocialPlatform,
+            url: newSocialUrl,
+        }, {
+            onSuccess: () => {
+                setNewSocialPlatform('');
+                setNewSocialUrl('');
+                setSocialValidationError('');
+            },
+            onError: (errors) => {
+                setSocialValidationError(errors.url || 'Failed to add social link');
+            }
+        });
+    };
+
+    const deleteSocialLink = (linkId) => {
+        router.delete(`/users/social-links/${linkId}`, {
+            onSuccess: () => {
+                // Social links will be updated via Inertia
+            }
+        });
+    };
 
     const submitEdit = (e) => {
         e.preventDefault();
@@ -169,89 +223,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 />
                             </label>
                         </div>
-
-                        {canManageSocials && (
-                            <div className="w-full">
-                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label>Socials</Label>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setEditingSocial(null);
-                                                setOpenSocialModal(true);
-                                            }}
-                                            className="p-2 rounded-lg hover:bg-beta/5 dark:hover:bg-light/5"
-                                            aria-label="Add link"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-
-                                    <div className="mt-3 space-y-2">
-                                        {socialLinks.length === 0 ? (
-                                            <p className="text-sm text-neutral-500">No links added.</p>
-                                        ) : (
-                                            socialLinks.map((link) => {
-                                                const IconComponent = platformIcons[link.title] || ExternalLink;
-                                                return (
-                                                    <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                                <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <a
-                                                                    href={link.url}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
-                                                                >
-                                                                    {link.title}
-                                                                </a>
-                                                                <a
-                                                                    href={link.url}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
-                                                                >
-                                                                    {link.url}
-                                                                </a>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setEditingSocial(link);
-                                                                    setOpenSocialModal(true);
-                                                                }}
-                                                                className="text-alpha"
-                                                                aria-label="Edit link"
-                                                            >
-                                                                <Pencil size={16} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setDeletingSocial(link);
-                                                                    setOpenDeleteSocial(true);
-                                                                }}
-                                                                className="text-error"
-                                                                aria-label="Delete link"
-                                                            >
-                                                                <Trash size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     {/* Form Fields - Left Column */}
@@ -312,6 +283,100 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {/* Socials Section */}
+                    {canManageSocials && (
+                        <div className="col-span-1 md:col-span-2">
+                            <Label>Socials</Label>
+
+                            <div className="mt-3">
+                                <div className="flex w-full gap-3 items-center">
+                                    <div className="w-[40%]">
+                                        <Select value={newSocialPlatform} onValueChange={(value) => {
+                                            setNewSocialPlatform(value);
+                                            setSocialValidationError('');
+                                        }}>
+                                            <SelectTrigger className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha">
+                                                <SelectValue placeholder="Select platform" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {platforms.map(platform => (
+                                                    <SelectItem key={platform.value} value={platform.value}>
+                                                        {platform.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="w-[40%]">
+                                        <Input
+                                            type="url"
+                                            placeholder="https://example.com/username"
+                                            value={newSocialUrl}
+                                            onChange={(e) => {
+                                                setNewSocialUrl(e.target.value);
+                                                setSocialValidationError('');
+                                            }}
+                                            className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha"
+                                        />
+                                    </div>
+                                    <div className="w-[20%]">
+                                        <button
+                                            type="button"
+                                            onClick={addSocialLink}
+                                            disabled={!newSocialPlatform || !newSocialUrl}
+                                            className="w-full px-3 py-2 bg-alpha text-white rounded-full text-sm font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                                {socialValidationError && (
+                                    <p className="text-red-500 text-xs mt-1">{socialValidationError}</p>
+                                )}
+                            </div>
+
+                            {/* Display existing social links */}
+                            <div className="mt-4 space-y-2">
+                                {socialLinks.length === 0 ? (
+                                    <p className="text-sm text-beta/60 dark:text-light/60">No socials added.</p>
+                                ) : (
+                                    socialLinks.map((link) => {
+                                        const IconComponent = platformIcons[link.title] || ExternalLink;
+                                        return (
+                                            <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
+                                                        <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-semibold text-beta dark:text-light">
+                                                            {link.title}
+                                                        </div>
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                        >
+                                                            {link.url}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deleteSocialLink(link.id)}
+                                                    className="text-error"
+                                                >
+                                                    <Trash size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    )}
                     {/* Right Column - Roles */}
                     <Rolegard authorized={"admin"}>
                         {isAdminOrStudioResponsable && (
@@ -413,26 +478,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     </div>
                 </form>
-
-                {openSocialModal && (
-                    <CreateSocialLinkModal
-                        onOpen={openSocialModal}
-                        onOpenChange={setOpenSocialModal}
-                        initialLink={editingSocial}
-                    />
-                )}
-                {openDeleteSocial && (
-                    <DeleteModal
-                        open={openDeleteSocial}
-                        onOpenChange={setOpenDeleteSocial}
-                        title="Delete link"
-                        description="This action cannot be undone. This will permanently delete this link."
-                        onConfirm={() => {
-                            if (!deletingSocial?.id) return;
-                            return router.delete(`/users/social-links/${deletingSocial.id}`);
-                        }}
-                    />
-                )}
             </DialogContent>
         </Dialog>
     );
