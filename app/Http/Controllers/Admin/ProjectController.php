@@ -9,7 +9,9 @@ use App\Models\Task;
 use App\Models\Attachment;
 use App\Models\ProjectInvitation;
 use App\Models\ProjectUser;
+use App\Models\ProjectMessage;
 use App\Mail\ProjectInvitationMail;
+use Ably\AblyRest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -825,5 +827,101 @@ class ProjectController extends Controller
             Log::error('Failed to send project invitation email: ' . $e->getMessage());
             return back()->with('info', "Invitation created. Share this link: {$inviteUrl}");
         }
+    }
+
+    /**
+     * Get messages for a project
+     */
+    public function getMessages(Project $project)
+    {
+        // Verify user is a member of the project
+        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+            || $project->created_by === Auth::id();
+        
+        if (!$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $messages = $project->messages()
+            ->with('user:id,name,image')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($message) {
+                return [
+                    'id' => $message->id,
+                    'content' => $message->content,
+                    'timestamp' => $message->created_at->toISOString(),
+                    'user' => [
+                        'id' => $message->user->id,
+                        'name' => $message->user->name,
+                        'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
+                    ],
+                ];
+            });
+
+        return response()->json(['messages' => $messages]);
+    }
+
+    /**
+     * Send a message to project chat
+     */
+    public function sendMessage(Request $request, Project $project)
+    {
+        // Verify user is a member of the project
+        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+            || $project->created_by === Auth::id();
+        
+        if (!$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'content' => 'required|string|max:5000',
+        ]);
+
+        $message = ProjectMessage::create([
+            'project_id' => $project->id,
+            'user_id' => Auth::id(),
+            'content' => $request->content,
+        ]);
+
+        $message->load('user:id,name,image');
+
+        // Broadcast message via Ably
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("project:{$project->id}");
+                
+                $broadcastData = [
+                    'id' => $message->id,
+                    'content' => $message->content,
+                    'timestamp' => $message->created_at->toISOString(),
+                    'user' => [
+                        'id' => $message->user->id,
+                        'name' => $message->user->name,
+                        'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
+                    ],
+                ];
+                
+                $channel->publish('new-message', $broadcastData);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast project message via Ably: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => [
+                'id' => $message->id,
+                'content' => $message->content,
+                'timestamp' => $message->created_at->toISOString(),
+                'user' => [
+                    'id' => $message->user->id,
+                    'name' => $message->user->name,
+                    'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
+                ],
+            ],
+        ]);
     }
 }

@@ -85,46 +85,11 @@ const sampleTasks = [
 
 
 
-const messages = [
-    {
-        id: "1",
-        user: {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        content: "Hey team, I've completed the authentication system",
-        timestamp: "2024-02-15T09:32:00",
-    },
-    {
-        id: "2",
-        user: {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        content: "Great work! I'm working on the landing page design",
-        timestamp: "2024-02-15T10:15:00",
-    },
-    {
-        id: "3",
-        user: {
-            id: "3",
-            name: "Mike Johnson",
-            email: "mike@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
-        },
-        content: "Let me know if you need any help with the database optimization",
-        timestamp: "2024-02-15T10:45:00",
-    },
-];
+// Messages are now fetched from backend via the Chat component
 
 
 const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManageTeam = false, isProjectOwner = false }) => {
     const [activeTab, setActiveTab] = useState("overview");
-    const [chatMessages, setChatMessages] = useState(messages);
     // console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
@@ -281,20 +246,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }, [project, tasks]);
 
-    const handleSendMessage = (message) => {
-        const newMessage = {
-            id: chatMessages.length + 1,
-            user: {
-                id: "current-user",
-                name: "You",
-                email: "you@example.com",
-                avatar: "/placeholder.svg?height=40&width=40",
-            },
-            content: message,
-            timestamp: new Date().toISOString(),
-        };
-        setChatMessages([...chatMessages, newMessage]);
-    };
+    // Message handling is now done in the Chat component
 
     return (
         <AppLayout>
@@ -388,10 +340,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                 </div>
 
                 {/* Floating Chat */}
-                <Chat
-                    messages={chatMessages}
-                    onSendMessage={handleSendMessage}
-                />
+                <Chat projectId={project.id} />
             </div>
         </AppLayout>
     );
