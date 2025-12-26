@@ -23,6 +23,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [deletedCommentId, setDeletedCommentId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [openImageUrl, setOpenImageUrl] = useState(null);
+  const [expandedCommentIds, setExpandedCommentIds] = useState([]);
   const commentsEndRef = useRef(null);
   const { auth } = usePage().props;
 
@@ -60,6 +61,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       setNewCommentImage(null);
       setNewCommentImagePreview(null);
       setOpenImageUrl(null);
+      setExpandedCommentIds([]);
       setLoading(false);
     }
   }, [open, postId]);
@@ -328,9 +330,36 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                       />
                     ) : (
                       <>
-                        <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full">
-                          {c.comment}
-                        </p>
+                        {(() => {
+                          const text = c.comment || '';
+                          const limit = 150;
+                          const isLong = text.length > limit;
+                          const isExpanded = expandedCommentIds.includes(c.id);
+                          const displayText = isLong && !isExpanded ? `${text.slice(0, limit)}...` : text;
+
+                          return (
+                            <div className="w-full">
+                              <p className="text-sm text-neutral-800 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full">
+                                {displayText}
+                              </p>
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  className="mt-1 text-xs font-semibold text-alpha hover:underline"
+                                  onClick={() => {
+                                    setExpandedCommentIds((prev) => {
+                                      const has = prev.includes(c.id);
+                                      if (has) return prev.filter((id) => id !== c.id);
+                                      return [...prev, c.id];
+                                    });
+                                  }}
+                                >
+                                  {isExpanded ? 'See less' : 'See more'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {c.comment_image && (
                           <div className="mt-2">
                             <button

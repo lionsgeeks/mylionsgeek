@@ -10,7 +10,9 @@ const Education = ({ user }) => {
 
     const { auth } = usePage().props
     const [openModal, setOpenModal] = useState(false)
+    const [expandedEducation, setExpandedEducation] = useState([])
     const { calculateDuration } = helpers()
+
     const getMonthName = (monthNumber) => {
         const date = new Date(2000, monthNumber - 1)
         return date.toLocaleString('en-US', { month: 'long' });
@@ -62,9 +64,37 @@ const Education = ({ user }) => {
                                             <p className="text-xs text-beta/60 dark:text-light/60 mt-1">
                                                 {educationDurationFormat(education)} · {calculateDuration(education)}
                                             </p>
-                                            {education?.description && (
-                                                <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{education?.description}</p>
-                                            )}
+                                            {(() => {
+                                                const text = education?.description || '';
+                                                const limit = 250;
+                                                const isLong = text.length > limit;
+                                                const id = education?.id ?? index;
+                                                const isExpanded = expandedEducation.includes(id);
+                                                const displayText = isLong && !isExpanded ? `${text.slice(0, limit)}...` : text;
+
+                                                if (!text) return null;
+
+                                                return (
+                                                    <div className="mt-2">
+                                                        <p className="text-sm text-beta/80 dark:text-light/80">{displayText}</p>
+                                                        {isLong && (
+                                                            <button
+                                                                type="button"
+                                                                className="mt-1 text-xs font-semibold text-alpha hover:underline"
+                                                                onClick={() => {
+                                                                    setExpandedEducation((prev) => {
+                                                                        const has = prev.includes(id);
+                                                                        if (has) return prev.filter((x) => x !== id);
+                                                                        return [...prev, id];
+                                                                    });
+                                                                }}
+                                                            >
+                                                                {isExpanded ? 'See less' : 'See more'}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                     {
