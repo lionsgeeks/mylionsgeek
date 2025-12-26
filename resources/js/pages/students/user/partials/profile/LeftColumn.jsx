@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
-import { Edit2, ExternalLink, Plus, Pencil, Trash } from 'lucide-react';
+import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import AboutModal from '../../../../../components/AboutModal';
 import CreateSocialLinkModal from '../../../../../components/CreateSocialLinkModal';
 import SocialLinksModal from '../../../../../components/SocialLinksModal';
 import DeleteModal from '../../../../../components/DeleteModal';
+
+const platformIcons = {
+    instagram: Instagram,
+    facebook: Facebook,
+    twitter: Twitter,
+    github: Github,
+    linkedin: Linkedin,
+    behance: ExternalLink,
+    pinterest: ExternalLink,
+    discord: MessageCircle,
+    threads: Send,
+    reddit: Users,
+};
 
 const LeftColumn = ({ user }) => {
     const [openAbout, setOpenAbout] = useState(false)
@@ -48,7 +61,7 @@ const LeftColumn = ({ user }) => {
                 {/* Contact Info Card */}
                 <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-lg font-semibold text-beta dark:text-light">Contact Info</h2>
+                        <h2 className="text-lg font-semibold text-beta dark:text-light">Socials</h2>
                         {canManage && (
                             <button
                                 onClick={() => {
@@ -69,58 +82,61 @@ const LeftColumn = ({ user }) => {
                             </p>
                         ) : (
                             <>
-                                {visibleLinks.map((link) => (
-                                    <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                <ExternalLink className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                {visibleLinks.map((link) => {
+                                    const IconComponent = platformIcons[link.title] || ExternalLink;
+                                    return (
+                                        <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
+                                                    <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <a
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
+                                                    >
+                                                        {link.title}
+                                                    </a>
+                                                    <a
+                                                        href={link.url}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                    >
+                                                        {link.url}
+                                                    </a>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <a
-                                                    href={link.url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
-                                                >
-                                                    {link.title}
-                                                </a>
-                                                <a
-                                                    href={link.url}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
-                                                >
-                                                    {link.url}
-                                                </a>
-                                            </div>
-                                        </div>
 
-                                        {canManage && (
-                                            <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setEditingSocial(link);
-                                                        setOpenSocialModal(true);
-                                                    }}
-                                                    className="text-alpha"
-                                                >
-                                                    <Pencil size={16} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setDeletingSocial(link);
-                                                        setOpenDeleteSocial(true);
-                                                    }}
-                                                    className="text-error"
-                                                >
-                                                    <Trash size={16} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                            {canManage && (
+                                                <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setEditingSocial(link);
+                                                            setOpenSocialModal(true);
+                                                        }}
+                                                        className="text-alpha"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDeletingSocial(link);
+                                                            setOpenDeleteSocial(true);
+                                                        }}
+                                                        className="text-error"
+                                                    >
+                                                        <Trash size={16} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
 
                                 {links.length > 2 && (
                                     <button

@@ -1,7 +1,7 @@
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import { send } from '@/routes/verification';
 import { Transition } from '@headlessui/react';
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
@@ -13,7 +13,24 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
 import { useInitials } from '@/hooks/use-initials';
-import { Avatar,  } from '@/components/ui/avatar';
+import { Avatar, } from '@/components/ui/avatar';
+import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
+import DeleteModal from '@/components/DeleteModal';
+import { ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users } from 'lucide-react';
+import { useState } from 'react';
+
+const platformIcons = {
+    instagram: Instagram,
+    facebook: Facebook,
+    twitter: Twitter,
+    github: Github,
+    linkedin: Linkedin,
+    behance: ExternalLink,
+    pinterest: ExternalLink,
+    discord: MessageCircle,
+    threads: Send,
+    reddit: Users,
+};
 
 const breadcrumbs = [
     {
@@ -25,6 +42,11 @@ const breadcrumbs = [
 export default function Profile({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
     const getInitials = useInitials();
+    const [openSocialModal, setOpenSocialModal] = useState(false)
+    const [editingSocial, setEditingSocial] = useState(null)
+    const [openDeleteSocial, setOpenDeleteSocial] = useState(false)
+    const [deletingSocial, setDeletingSocial] = useState(null)
+    const links = auth?.user?.social_links || []
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile settings" />
@@ -132,6 +154,85 @@ export default function Profile({ mustVerifyEmail, status }) {
                                     </div>
                                 </div>
 
+                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <HeadingSmall title="Socials" description="Manage your public links" />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingSocial(null)
+                                                setOpenSocialModal(true)
+                                            }}
+                                            className="p-2 rounded-lg hover:bg-beta/5 dark:hover:bg-light/5"
+                                            aria-label="Add link"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-3 space-y-2">
+                                        {links.length === 0 ? (
+                                            <p className="text-sm text-neutral-500">No links added.</p>
+                                        ) : (
+                                            links.map((link) => {
+                                                const IconComponent = platformIcons[link.title] || ExternalLink;
+                                                return (
+                                                    <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
+                                                                <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <a
+                                                                    href={link.url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
+                                                                >
+                                                                    {link.title}
+                                                                </a>
+                                                                <a
+                                                                    href={link.url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                                >
+                                                                    {link.url}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingSocial(link)
+                                                                    setOpenSocialModal(true)
+                                                                }}
+                                                                className="text-alpha"
+                                                                aria-label="Edit link"
+                                                            >
+                                                                <Pencil size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setDeletingSocial(link)
+                                                                    setOpenDeleteSocial(true)
+                                                                }}
+                                                                className="text-error"
+                                                                aria-label="Delete link"
+                                                            >
+                                                                <Trash size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+
                                 <div className="flex items-center gap-4">
                                     <Button disabled={processing} data-test="update-profile-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save</Button>
 
@@ -151,7 +252,28 @@ export default function Profile({ mustVerifyEmail, status }) {
                 </div>
 
                 <DeleteUser />
+
+                {openSocialModal && (
+                    <CreateSocialLinkModal
+                        onOpen={openSocialModal}
+                        onOpenChange={setOpenSocialModal}
+                        initialLink={editingSocial}
+                    />
+                )}
+                {openDeleteSocial && (
+                    <DeleteModal
+                        open={openDeleteSocial}
+                        onOpenChange={setOpenDeleteSocial}
+                        title="Delete link"
+                        description="This action cannot be undone. This will permanently delete this link."
+                        onConfirm={() => {
+                            if (!deletingSocial?.id) return;
+                            return router.delete(`/users/social-links/${deletingSocial.id}`);
+                        }}
+                    />
+                )}
             </SettingsLayout>
         </AppLayout>
     );
 }
+
