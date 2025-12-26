@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProjectMessage extends Model
 {
@@ -11,6 +12,7 @@ class ProjectMessage extends Model
         'project_id',
         'user_id',
         'content',
+        'reply_to',
     ];
 
     /**
@@ -27,5 +29,21 @@ class ProjectMessage extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the message this is a reply to
+     */
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(ProjectMessage::class, 'reply_to');
+    }
+
+    /**
+     * Get all reactions for this message
+     */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(ProjectMessageReaction::class, 'message_id');
     }
 }

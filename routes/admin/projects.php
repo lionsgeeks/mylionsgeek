@@ -55,4 +55,5 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('
     // Project chat routes
     Route::get('projects/{project}/messages', [ProjectController::class, 'getMessages'])->name('projects.messages');
     Route::post('projects/{project}/messages', [ProjectController::class, 'sendMessage'])->name('projects.send-message');
+    Route::post('projects/{project}/messages/{messageId}/reactions', [ProjectController::class, 'toggleReaction'])->name('projects.messages.reactions');
 });

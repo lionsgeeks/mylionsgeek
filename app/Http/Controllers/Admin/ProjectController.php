@@ -10,6 +10,7 @@ use App\Models\Attachment;
 use App\Models\ProjectInvitation;
 use App\Models\ProjectUser;
 use App\Models\ProjectMessage;
+use App\Models\ProjectMessageReaction;
 use App\Mail\ProjectInvitationMail;
 use Ably\AblyRest;
 use Illuminate\Http\Request;
@@ -843,14 +844,34 @@ class ProjectController extends Controller
         }
 
         $messages = $project->messages()
-            ->with('user:id,name,image')
+            ->with(['user:id,name,image', 'replyTo.user:id,name', 'reactions.user:id,name'])
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($message) {
+                // Group reactions by emoji
+                $reactionsGrouped = $message->reactions && $message->reactions->count() > 0
+                    ? $message->reactions->groupBy('reaction')->map(function ($reactions, $reaction) {
+                        return [
+                            'reaction' => $reaction,
+                            'count' => $reactions->count(),
+                            'users' => $reactions->pluck('user.name')->toArray(),
+                        ];
+                    })->values()
+                    : [];
+
                 return [
                     'id' => $message->id,
                     'content' => $message->content,
                     'timestamp' => $message->created_at->toISOString(),
+                    'reply_to' => $message->reply_to ? [
+                        'id' => $message->replyTo->id,
+                        'content' => $message->replyTo->content,
+                        'user' => [
+                            'id' => $message->replyTo->user->id,
+                            'name' => $message->replyTo->user->name,
+                        ],
+                    ] : null,
+                    'reactions' => $reactionsGrouped,
                     'user' => [
                         'id' => $message->user->id,
                         'name' => $message->user->name,
@@ -877,15 +898,17 @@ class ProjectController extends Controller
 
         $request->validate([
             'content' => 'required|string|max:5000',
+            'reply_to' => 'nullable|exists:project_messages,id',
         ]);
 
         $message = ProjectMessage::create([
             'project_id' => $project->id,
             'user_id' => Auth::id(),
             'content' => $request->content,
+            'reply_to' => $request->reply_to ?? null,
         ]);
 
-        $message->load('user:id,name,image');
+        $message->load(['user:id,name,image', 'replyTo.user:id,name']);
 
         // Broadcast message via Ably
         try {
@@ -898,6 +921,15 @@ class ProjectController extends Controller
                     'id' => $message->id,
                     'content' => $message->content,
                     'timestamp' => $message->created_at->toISOString(),
+                    'reply_to' => $message->reply_to ? [
+                        'id' => $message->replyTo->id,
+                        'content' => $message->replyTo->content,
+                        'user' => [
+                            'id' => $message->replyTo->user->id,
+                            'name' => $message->replyTo->user->name,
+                        ],
+                    ] : null,
+                    'reactions' => [],
                     'user' => [
                         'id' => $message->user->id,
                         'name' => $message->user->name,
@@ -916,12 +948,102 @@ class ProjectController extends Controller
                 'id' => $message->id,
                 'content' => $message->content,
                 'timestamp' => $message->created_at->toISOString(),
+                'reply_to' => $message->reply_to ? [
+                    'id' => $message->replyTo->id,
+                    'content' => $message->replyTo->content,
+                    'user' => [
+                        'id' => $message->replyTo->user->id,
+                        'name' => $message->replyTo->user->name,
+                    ],
+                ] : null,
+                'reactions' => [],
                 'user' => [
                     'id' => $message->user->id,
                     'name' => $message->user->name,
                     'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
                 ],
             ],
+        ]);
+    }
+
+    /**
+     * Add or remove a reaction to a message
+     */
+    public function toggleReaction(Request $request, Project $project, $messageId)
+    {
+        // Verify user is a member of the project
+        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+            || $project->created_by === Auth::id();
+        
+        if (!$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'reaction' => 'required|string|max:10',
+        ]);
+
+        $message = ProjectMessage::where('id', $messageId)
+            ->where('project_id', $project->id)
+            ->firstOrFail();
+
+        // Check if reaction already exists
+        $existingReaction = ProjectMessageReaction::where('message_id', $messageId)
+            ->where('user_id', Auth::id())
+            ->where('reaction', $request->reaction)
+            ->first();
+
+        if ($existingReaction) {
+            // Remove reaction
+            $existingReaction->delete();
+            $action = 'removed';
+        } else {
+            // Remove any other reaction from this user on this message (one reaction per user per message)
+            ProjectMessageReaction::where('message_id', $messageId)
+                ->where('user_id', Auth::id())
+                ->delete();
+            
+            // Add new reaction
+            ProjectMessageReaction::create([
+                'message_id' => $messageId,
+                'user_id' => Auth::id(),
+                'reaction' => $request->reaction,
+            ]);
+            $action = 'added';
+        }
+
+        // Reload message with reactions
+        $message->load(['reactions.user:id,name']);
+        $reactionsGrouped = $message->reactions->groupBy('reaction')->map(function ($reactions, $reaction) {
+            return [
+                'reaction' => $reaction,
+                'count' => $reactions->count(),
+                'users' => $reactions->pluck('user.name')->toArray(),
+            ];
+        })->values();
+
+        // Broadcast reaction update via Ably
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("project:{$project->id}");
+                
+                $channel->publish('message-reaction-updated', [
+                    'message_id' => $messageId,
+                    'reactions' => $reactionsGrouped,
+                    'action' => $action,
+                    'reaction' => $request->reaction,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast reaction update via Ably: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'reactions' => $reactionsGrouped,
         ]);
     }
 }
