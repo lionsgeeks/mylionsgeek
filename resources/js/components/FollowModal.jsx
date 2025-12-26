@@ -93,7 +93,7 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                                 key={user.id}
                                 className="flex items-center justify-between p-3 hover:bg-alpha/10 dark:hover:bg-alpha/20 transition-colors rounded-lg"
                             >
-                                <Link href={`/student/${user.id}`} className="flex items-center gap-3 flex-1 z-20">
+                                <Link href={`/students/${user.id}`} className="flex items-center gap-3 flex-1 z-20">
                                     <Avatar
                                         className="w-14 h-14 overflow-hidden ring-2 ring-light dark:ring-dark_gray"
                                         image={user.image}
