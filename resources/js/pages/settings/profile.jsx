@@ -16,8 +16,21 @@ import { useInitials } from '@/hooks/use-initials';
 import { Avatar,  } from '@/components/ui/avatar';
 import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
 import DeleteModal from '@/components/DeleteModal';
-import { ExternalLink, Plus, Pencil, Trash } from 'lucide-react';
+import { ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, Pinterest, MessageCircle, Send, Users } from 'lucide-react';
 import { useState } from 'react';
+
+const platformIcons = {
+    instagram: Instagram,
+    facebook: Facebook,
+    twitter: Twitter,
+    github: Github,
+    linkedin: Linkedin,
+    behance: ExternalLink,
+    pinterest: Pinterest,
+    discord: MessageCircle,
+    threads: Send,
+    reddit: Users,
+};
 
 const breadcrumbs = [
     {
@@ -143,7 +156,7 @@ export default function Profile({ mustVerifyEmail, status }) {
 
                                 <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                                     <div className="flex items-center justify-between">
-                                        <HeadingSmall title="Contact info" description="Manage your public links" />
+                                        <HeadingSmall title="Socials" description="Manage your public links" />
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -161,11 +174,13 @@ export default function Profile({ mustVerifyEmail, status }) {
                                         {links.length === 0 ? (
                                             <p className="text-sm text-neutral-500">No links added.</p>
                                         ) : (
-                                            links.map((link) => (
+                                            links.map((link) => {
+                                                const IconComponent = platformIcons[link.title] || ExternalLink;
+                                                return (
                                                 <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
                                                     <div className="flex items-center gap-3 min-w-0">
                                                         <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                            <ExternalLink className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                            <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
                                                         </div>
                                                         <div className="min-w-0">
                                                             <a
@@ -212,7 +227,8 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                         </button>
                                                     </div>
                                                 </div>
-                                            ))
+                                                )
+                                            })
                                         )}
                                     </div>
                                 </div>

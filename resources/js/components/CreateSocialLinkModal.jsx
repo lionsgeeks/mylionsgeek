@@ -1,13 +1,41 @@
-import { X } from 'lucide-react';
-import { useEffect } from 'react';
+import { X, InstagramIcon, MessageCircle, Send, Users, FacebookIcon, TwitterIcon, GithubIcon, LinkedinIcon, User, ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
 import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+
+const platformIcons = {
+    instagram: InstagramIcon,
+    facebook: FacebookIcon,
+    twitter: TwitterIcon,
+    github: GithubIcon,
+    linkedin: LinkedinIcon,
+    behance: ExternalLink,
+    pinterest: User,
+    discord: MessageCircle,
+    threads: Send,
+    reddit: Users,
+};
 
 const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => {
     const { stopScrolling } = helpers();
 
     const isEdit = Boolean(initialLink?.id);
+
+    const platforms = [
+        { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
+        { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
+        { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
+        { value: 'github', label: 'GitHub', domains: ['github.com'] },
+        { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
+        { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+        { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
+        { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
+        { value: 'threads', label: 'Threads', domains: ['threads.net'] },
+        { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+    ];
+
+    const [validationError, setValidationError] = useState('');
 
     const { data, setData, processing, errors, reset, clearErrors, post, put } = useForm({
         title: initialLink?.title || '',
@@ -17,12 +45,13 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
     useEffect(() => {
         stopScrolling(onOpen);
         return () => stopScrolling(false);
-    }, [onOpen]);
+    }, [onOpen, stopScrolling]);
 
     useEffect(() => {
         if (!onOpen) return;
 
         clearErrors();
+        setValidationError('');
         setData({
             title: initialLink?.title || '',
             url: initialLink?.url || '',
@@ -31,16 +60,38 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
         return () => {
             reset();
             clearErrors();
+            setValidationError('');
         };
-    }, [onOpen, initialLink?.id]);
+    }, [onOpen, initialLink?.id, initialLink?.title, initialLink?.url, clearErrors, setData, reset]);
+
+    const validateUrl = () => {
+        if (!data.title || !data.url) return false;
+
+        const platform = platforms.find(p => p.value === data.title);
+        if (!platform) return false;
+
+        const urlLower = data.url.toLowerCase();
+        const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
+
+        if (!isValidDomain) {
+            setValidationError(`URL must contain ${platform.domains.join(' or ')}`);
+            return false;
+        }
+
+        setValidationError('');
+        return true;
+    };
 
     const submit = () => {
+        if (!validateUrl()) return;
+
         if (isEdit) {
             put(`/users/social-links/${initialLink.id}`, {
                 onSuccess: () => {
                     onOpenChange(false);
                     reset();
                     clearErrors();
+                    setValidationError('');
                 },
             });
             return;
@@ -51,6 +102,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                 onOpenChange(false);
                 reset();
                 clearErrors();
+                setValidationError('');
             },
         });
     };
@@ -75,16 +127,24 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                     <div className="p-6 space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Title*
+                                Platform*
                             </label>
-                            <input
-                                type="text"
+                            <select
                                 name="title"
                                 value={data.title}
-                                onChange={(e) => setData('title', e.target.value)}
-                                placeholder="Ex: GitHub, Portfolio, Instagram"
+                                onChange={(e) => {
+                                    setData('title', e.target.value);
+                                    setValidationError('');
+                                }}
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
-                            />
+                            >
+                                <option value="">Select a platform</option>
+                                {platforms.map(platform => (
+                                    <option key={platform.value} value={platform.value}>
+                                        {platform.label}
+                                    </option>
+                                ))}
+                            </select>
                             <InputError message={errors.title} className="mt-1" />
                         </div>
 
@@ -96,11 +156,17 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                                 type="url"
                                 name="url"
                                 value={data.url}
-                                onChange={(e) => setData('url', e.target.value)}
-                                placeholder="https://..."
+                                onChange={(e) => {
+                                    setData('url', e.target.value);
+                                    setValidationError('');
+                                }}
+                                placeholder={`https://example.com/username`}
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
                             <InputError message={errors.url} className="mt-1" />
+                            {validationError && (
+                                <p className="text-error text-xs mt-1">{validationError}</p>
+                            )}
                         </div>
                     </div>
 
