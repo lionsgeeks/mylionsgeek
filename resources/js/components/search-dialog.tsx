@@ -9,7 +9,13 @@ import { useSearchItems } from '@/hooks/use-search-items';
 import Rolegard from '@/components/rolegard';
 import { Avatar } from '@/components/ui/avatar';
 
-const RolegardAny = Rolegard as any;
+type RolegardProps = {
+    children: React.ReactNode;
+    authorized?: string[] | string;
+    except?: string[] | string;
+};
+
+const RolegardTyped = Rolegard as unknown as React.ComponentType<RolegardProps>;
 
 type PageSearchItem = {
     title: string;
@@ -45,6 +51,14 @@ type SearchApiResponse = {
     results?: UserSearchApiItem[];
 };
 
+type PageAuthProps = {
+    auth?: {
+        user?: {
+            role?: string[] | string;
+        };
+    };
+};
+
 interface SearchDialogProps {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -65,10 +79,11 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
     const open = isControlled ? controlledOpen : internalOpen;
     const setOpen = isControlled && onOpenChange ? onOpenChange : setInternalOpen;
 
-    const { auth } = usePage().props as any;
-    const userRoles: string[] = Array.isArray(auth?.user?.role)
-        ? auth.user.role
-        : [auth?.user?.role].filter(Boolean);
+    const { auth } = usePage<PageAuthProps>().props;
+    const roleValue = auth?.user?.role;
+    const userRoles: string[] = Array.isArray(roleValue)
+        ? roleValue
+        : [roleValue].filter((v): v is string => typeof v === 'string' && v.length > 0);
     const isStudent = userRoles.includes('student');
 
     const { search } = useSearchItems();
@@ -155,12 +170,13 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                 const data = (await res.json()) as SearchApiResponse;
                 if (!active) return;
                 setUserResults(Array.isArray(data?.results) ? data.results : []);
-            } catch (e) {
+            } catch {
                 if (!active) return;
                 setUserResults([]);
             } finally {
-                if (!active) return;
-                setIsLoadingUsers(false);
+                if (active) {
+                    setIsLoadingUsers(false);
+                }
             }
         }, 250);
 
@@ -290,7 +306,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                     const isUserItem = item.category === 'Users';
                                     const PageIcon = (!isUserItem ? (item as PageSearchItem).icon : undefined) as LucideIcon | undefined;
                                     return (
-                                        <RolegardAny key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
+                                        <RolegardTyped key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
                                             <button
                                                 onClick={() => handleSelect(item)}
                                                 onMouseEnter={() => setSelectedIndex(index)}
@@ -347,7 +363,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                                     )}
                                                 />
                                             </button>
-                                        </RolegardAny>
+                                        </RolegardTyped>
                                     );
                                 })}
                             </div>
