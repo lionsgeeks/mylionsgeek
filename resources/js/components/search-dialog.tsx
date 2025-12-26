@@ -91,7 +91,10 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
 
     const visibleUserResults = useMemo(() => {
         if (!isStudent) return userResults;
-        return userResults.filter((u) => Array.isArray(u.roles) && u.roles.includes('student'));
+        return userResults.filter((u) => {
+            if (!Array.isArray(u.roles)) return false;
+            return u.roles.includes('student') || u.roles.includes('admin');
+        });
     }, [isStudent, userResults]);
 
     const visiblePageResults = useMemo(() => {

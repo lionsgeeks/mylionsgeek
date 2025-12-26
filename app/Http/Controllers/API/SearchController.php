@@ -26,7 +26,9 @@ class SearchController extends Controller
 
         // Search students/users
         if ($type === 'all' || $type === 'students') {
-            $userQuery = User::where('account_state', 0);
+            $userQuery = User::where(function ($q) {
+                $q->where('account_state', 0)->orWhereNull('account_state');
+            });
 
             // Filter by role if provided
             if ($filter && in_array($filter, ['student', 'admin', 'coach'])) {
