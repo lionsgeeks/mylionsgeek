@@ -4,7 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Link, usePage } from "@inertiajs/react";
 import { timeAgo } from '../../lib/utils'
 import DeleteModal from "../DeleteModal";
-import { CheckIcon, Pencil, Trash, Paperclip } from "lucide-react";
+import { CheckIcon, Pencil, Trash, Paperclip, ThumbsUp } from "lucide-react";
 import imageCompression from 'browser-image-compression';
 
 function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved, takeToUserProfile }) {
@@ -20,6 +20,10 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   const [openDelete, setOpenDelete] = useState(false);
   const [openUpdatedComment, setOpenUpdatedComment] = useState(null);
   const [editedComment, setEditedComment] = useState('');
+  const [editedCommentImage, setEditedCommentImage] = useState(null);
+  const [editedCommentImagePreview, setEditedCommentImagePreview] = useState(null);
+  const [editedRemoveImage, setEditedRemoveImage] = useState(false);
+  const [compressingEditedImage, setCompressingEditedImage] = useState(false);
   const [deletedCommentId, setDeletedCommentId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [openImageUrl, setOpenImageUrl] = useState(null);
@@ -38,6 +42,22 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       };
     }
   }, [open]);
+
+  const toggleCommentLike = async (commentId) => {
+    try {
+      const res = await axios.post(`/posts/comments/${commentId}/like`);
+      const { likes_count, liked } = res?.data || {};
+      setComments((prev) =>
+        prev.map((c) => c.id === commentId ? {
+          ...c,
+          likes_count: typeof likes_count === 'number' ? likes_count : c.likes_count,
+          liked: typeof liked === 'boolean' ? liked : c.liked,
+        } : c)
+      );
+    } catch (error) {
+      console.error('Failed to toggle comment like:', error);
+    }
+  };
 
   // ✅ Fetch comments when modal opens
   useEffect(() => {
@@ -62,8 +82,45 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
       setNewCommentImagePreview(null);
       setOpenImageUrl(null);
       setExpandedCommentIds([]);
+      setOpenUpdatedComment(null);
+      setEditedComment('');
+      setEditedCommentImage(null);
+      setEditedCommentImagePreview(null);
+      setEditedRemoveImage(false);
       setLoading(false);
     }
+  }, [open, postId]);
+
+  useEffect(() => {
+    if (!open || !postId) return;
+    let mounted = true;
+
+    const interval = window.setInterval(async () => {
+      try {
+        const res = await axios.get(`/posts/comments/${postId}/stats`);
+        if (!mounted) return;
+        const stats = res?.data?.stats || {};
+
+        setComments((prev) =>
+          prev.map((c) => {
+            const s = stats?.[String(c.id)];
+            if (!s) return c;
+            return {
+              ...c,
+              likes_count: typeof s.likes_count === 'number' ? s.likes_count : c.likes_count,
+              liked: typeof s.liked === 'boolean' ? s.liked : c.liked,
+            };
+          })
+        );
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
   }, [open, postId]);
 
   useEffect(() => {
@@ -140,15 +197,40 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
   //Handle comment update (optional)
   const handleUpdatedComment = async (commentId) => {
     try {
-      const res = await axios.put(`/posts/comments/${commentId}`, {
-        'comment': editedComment
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      formData.append('comment', editedComment);
+
+      if (editedRemoveImage) {
+        formData.append('remove_image', '1');
+      }
+      if (editedCommentImage) {
+        formData.append('image', editedCommentImage);
+      }
+
+      const res = await axios.post(`/posts/comments/${commentId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      ////console.log(res.data);
+
+      const updated = res?.data;
+
       setComments((prevComments) =>
-        prevComments.map((comment) => comment.id === commentId ? { ...comment, comment: editedComment } : comment)
-      )
+        prevComments.map((comment) => comment.id === commentId ? {
+          ...comment,
+          comment: updated?.comment ?? editedComment,
+          comment_image: updated?.comment_image ?? comment.comment_image,
+          likes_count: typeof updated?.likes_count === 'number' ? updated.likes_count : comment.likes_count,
+          liked: typeof updated?.liked === 'boolean' ? updated.liked : comment.liked,
+        } : comment)
+      );
+
       setOpenUpdatedComment(null);
       setEditedComment('');
+      setEditedCommentImage(null);
+      setEditedCommentImagePreview(null);
+      setEditedRemoveImage(false);
       //alert('success')
     } catch (error) {
       console.error("failed to update : ", error);
@@ -288,6 +370,9 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                                   onClick={() => {
                                     setOpenUpdatedComment(c.id);
                                     setEditedComment(c.comment);
+                                    setEditedRemoveImage(false);
+                                    setEditedCommentImage(null);
+                                    setEditedCommentImagePreview(c.comment_image ? `/storage/img/comments/${c.comment_image}` : null);
                                   }}
                                   className="text-alpha cursor-pointer"
                                 >
@@ -322,12 +407,89 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
 
                     {/* ✅ Edit only the selected comment */}
                     {openUpdatedComment === c.id ? (
-                      <textarea
-                        className="text-sm text-neutral-800 outline-2 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full resize-none bg-white dark:bg-dark/50 border border-alpha/20 rounded-lg p-2 min-h-[80px]"
-                        value={editedComment}
-                        onChange={(e) => setEditedComment(e.target.value)}
-                        autoFocus
-                      />
+                      <div className="w-full space-y-2">
+                        <textarea
+                          className="text-sm text-neutral-800 outline-2 dark:text-neutral-100 leading-snug break-words whitespace-pre-wrap w-full resize-none bg-white dark:bg-dark/50 border border-alpha/20 rounded-lg p-2 min-h-[80px]"
+                          value={editedComment}
+                          onChange={(e) => setEditedComment(e.target.value)}
+                          autoFocus
+                        />
+
+                        {editedCommentImagePreview && !editedRemoveImage && (
+                          <div className="relative">
+                            <img
+                              src={editedCommentImagePreview}
+                              alt="Selected"
+                              className="max-h-48 w-full rounded-xl object-cover border border-alpha/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditedRemoveImage(true);
+                                setEditedCommentImage(null);
+                                setEditedCommentImagePreview(null);
+                              }}
+                              className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                              aria-label="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 items-center">
+                          <label className="px-3 py-2 rounded-lg border border-alpha/30 bg-white dark:bg-dark text-sm cursor-pointer select-none">
+                            <span className="inline-flex items-center gap-2">
+                              <Paperclip size={16} />
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/jpg,image/webp"
+                              className="hidden"
+                              disabled={compressingEditedImage}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0] ?? null;
+                                if (!file) {
+                                  setEditedCommentImage(null);
+                                  return;
+                                }
+
+                                setCompressingEditedImage(true);
+                                try {
+                                  const compressed = await imageCompression(file, {
+                                    maxSizeMB: 1,
+                                    maxWidthOrHeight: 1500,
+                                    useWebWorker: true,
+                                  });
+                                  setEditedCommentImage(compressed);
+                                  setEditedCommentImagePreview(URL.createObjectURL(compressed));
+                                  setEditedRemoveImage(false);
+                                } catch {
+                                  setEditedCommentImage(file);
+                                  setEditedCommentImagePreview(URL.createObjectURL(file));
+                                  setEditedRemoveImage(false);
+                                } finally {
+                                  setCompressingEditedImage(false);
+                                }
+                              }}
+                            />
+                          </label>
+
+                          {c.comment_image && !editedRemoveImage && (
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-error hover:underline"
+                              onClick={() => {
+                                setEditedRemoveImage(true);
+                                setEditedCommentImage(null);
+                                setEditedCommentImagePreview(null);
+                              }}
+                            >
+                              Remove image
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <>
                         {(() => {
@@ -376,6 +538,23 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                             </button>
                           </div>
                         )}
+
+                        <div className="mt-2 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleCommentLike(c.id)}
+                            className={
+                              `inline-flex items-center gap-2 text-xs font-semibold ` +
+                              (c.liked ? 'text-alpha' : 'text-neutral-500 dark:text-neutral-300')
+                            }
+                          >
+                            <ThumbsUp size={14} />
+                            Like
+                          </button>
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                            {Number(c.likes_count || 0)}
+                          </span>
+                        </div>
                       </>
                     )}
                   </div>
