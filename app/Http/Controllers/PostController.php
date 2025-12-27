@@ -34,6 +34,39 @@ class PostController extends Controller
         }
     }
 
+    /**
+     * Broadcast post notification via Ably for real-time updates
+     */
+    private function broadcastNotification($notification, $sender, $post, $type): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get("notifications:{$notification->user_id}");
+            
+            $message = "{$sender->name} " . ($type === 'like' ? 'liked' : 'commented on') . " your post";
+            
+            $channel->publish('new_notification', [
+                'id' => 'post-' . $notification->id,
+                'type' => 'post_interaction',
+                'sender_name' => $sender->name,
+                'sender_image' => $sender->image,
+                'message' => $message,
+                'link' => '/feed#' . $post->id,
+                'icon_type' => 'user',
+                'created_at' => $notification->created_at->toISOString(),
+                'post_id' => $post->id,
+                'interaction_type' => $type,
+            ]);
+        } catch (Throwable $e) {
+            \Log::error('Failed to broadcast notification via Ably: ' . $e->getMessage());
+        }
+    }
+
     private function broadcastPostStats(Post $post): void
     {
         $this->publishFeedEvent('feed:global', 'post-stats-updated', [
@@ -149,6 +182,19 @@ class PostController extends Controller
         $comment = $post->comments()->create($payload);
         $comment->load('user:id,name,image');
 
+        // Create notification for post owner
+        $notification = \App\Models\PostNotification::createNotification(
+            $post->user_id,  // Post owner
+            $user->id,        // User who commented
+            $post->id,        // Post ID
+            'comment'         // Type
+        );
+
+        // Broadcast notification via Ably for real-time updates
+        if ($notification) {
+            $this->broadcastNotification($notification, $user, $post, 'comment');
+        }
+
         $commentPayload = [
             'id' => $comment->id,
             'user_id' => $comment->user_id,
@@ -202,6 +248,19 @@ class PostController extends Controller
         } else {
             $post->likes()->create(['user_id' => $user->id]);
             $liked = true;
+            
+            // Create notification for post owner
+            $notification = \App\Models\PostNotification::createNotification(
+                $post->user_id,  // Post owner
+                $user->id,        // User who liked
+                $post->id,        // Post ID
+                'like'            // Type
+            );
+
+            // Broadcast notification via Ably for real-time updates
+            if ($notification) {
+                $this->broadcastNotification($notification, $user, $post, 'like');
+            }
         }
 
         $count = $post->likes()->count();

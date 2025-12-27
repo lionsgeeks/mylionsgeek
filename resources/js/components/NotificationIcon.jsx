@@ -6,12 +6,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSep
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
+import * as Ably from 'ably';
 
 export default function NotificationIcon() {
     const page = usePage();
     const { auth, attendanceWarning } = page.props;
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [ablyClient, setAblyClient] = useState(null);
 
     const userRoles = useMemo(() => {
         const role = auth?.user?.role;
@@ -111,9 +113,48 @@ export default function NotificationIcon() {
     useEffect(() => {
         fetchNotifications();
         
-        // Refresh notifications every 30 seconds
+        // Initialize Ably for real-time notifications
+        const initAbly = async () => {
+            try {
+                const response = await fetch('/api/notifications/ably-token');
+                if (!response.ok) return;
+                
+                const { token, channelName } = await response.json();
+                const ably = new Ably.Realtime(token);
+                
+                setAblyClient(ably);
+                
+                const channel = ably.channels.get(channelName);
+                channel.subscribe('new_notification', (message) => {
+                    const newNotification = {
+                        id: message.data.id,
+                        type: message.data.type,
+                        senderName: message.data.sender_name,
+                        senderImage: message.data.sender_image,
+                        message: message.data.message,
+                        link: message.data.link,
+                        iconType: message.data.icon_type,
+                        timestamp: new Date(message.data.created_at),
+                    };
+                    
+                    setNotifications(prev => [newNotification, ...prev].slice(0, 50));
+                });
+                
+            } catch (error) {
+                console.error('Failed to initialize Ably:', error);
+            }
+        };
+        
+        initAbly();
+        
+        // Refresh notifications every 30 seconds (fallback)
         const interval = setInterval(fetchNotifications, 30000);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (ablyClient) {
+                ablyClient.close();
+            }
+        };
     }, [fetchNotifications]);
 
     // Fetch notifications when dropdown opens
