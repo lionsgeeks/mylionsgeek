@@ -109,6 +109,13 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
         });
     };
 
+    const handleSelectChange = (name, value) => {
+        setData({
+            ...data,
+            [name]: value
+        });
+    };
+
     return (
         <>
             <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-all duration-300">
