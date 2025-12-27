@@ -10,7 +10,7 @@ class PostNotification extends Model
         'user_id',           // Post owner who receives notification
         'sender_id',         // User who liked/commented
         'post_id',           // The post that was interacted with
-        'type',              // 'like' or 'comment'
+        'type',              // 'like', 'comment', or 'comment_like'
         'read_at',           // When notification was read
     ];
 
@@ -38,8 +38,13 @@ class PostNotification extends Model
      */
     public static function createNotification($userId, $senderId, $postId, $type)
     {
-        // Don't create notification if user is interacting with their own post
+        // Don't create notification if user is interacting with their own content
         if ($userId == $senderId) {
+            return null;
+        }
+
+        // Validate notification type
+        if (!in_array($type, ['like', 'comment', 'comment_like'])) {
             return null;
         }
 

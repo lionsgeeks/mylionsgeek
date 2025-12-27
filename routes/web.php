@@ -431,6 +431,8 @@ Route::get('/api/notifications', function (Request $request) {
                 $message = "{$senderName} liked your post";
             } elseif ($notif->type === 'comment') {
                 $message = "{$senderName} commented on your post";
+            } elseif ($notif->type === 'comment_like') {
+                $message = "{$senderName} liked your comment";
             } else {
                 $message = "{$senderName} interacted with your post";
             }
