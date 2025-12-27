@@ -52,12 +52,12 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
     const { data, setData, processing, errors } = useForm({
         title: '',
         description: '',
-        employmentType: '',
+        employment_type: '',
         company: '',
-        startMonth: '',
-        startYear: '',
-        endMonth: '',
-        endYear: '',
+        start_month: '',
+        start_year: '',
+        end_month: '',
+        end_year: '',
         location: '',
     })
 
@@ -68,9 +68,9 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
 
     // Validate date range
     useEffect(() => {
-        if (!currentlyWorking && data.startMonth && data.startYear && data.endMonth && data.endYear) {
-            const startDate = new Date(parseInt(data.startYear), parseInt(data.startMonth) - 1);
-            const endDate = new Date(parseInt(data.endYear), parseInt(data.endMonth) - 1);
+        if (!currentlyWorking && data.start_month && data.start_year && data.end_month && data.end_year) {
+            const startDate = new Date(parseInt(data.start_year), parseInt(data.start_month) - 1);
+            const endDate = new Date(parseInt(data.end_year), parseInt(data.end_month) - 1);
 
             if (startDate > endDate) {
                 setDateError('End date must be after start date');
@@ -80,7 +80,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
         } else {
             setDateError('');
         }
-    }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyWorking]);
+    }, [data.start_month, data.start_year, data.end_month, data.end_year, currentlyWorking]);
 
     const createExperience = () => {
         // Check if there's a date validation error
@@ -150,8 +150,8 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 Employment type
                             </label>
                             <select
-                                name="employmentType"
-                                value={data.employmentType}
+                                name="employment_type"
+                                value={data.employment_type}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             >
@@ -161,7 +161,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                     </option>
                                 ))}
                             </select>
-                            <InputError message={errors.employmentType} className="mt-1" />
+                            <InputError message={errors.employment_type} className="mt-1" />
                             <p className="text-xs text-beta/70 dark:text-light/70 mt-1">Learn more about employment types.</p>
                         </div>
 
@@ -202,8 +202,8 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                     Start date*
                                 </label>
                                 <select
-                                    name="startMonth"
-                                    value={data.startMonth}
+                                    name="start_month"
+                                    value={data.start_month}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
@@ -213,15 +213,15 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startMonth} className="mt-1" />
+                                <InputError message={errors.start_month} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
                                     Year
                                 </label>
                                 <select
-                                    name="startYear"
-                                    value={data.startYear}
+                                    name="start_year"
+                                    value={data.start_year}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
@@ -231,7 +231,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startYear} className="mt-1" />
+                                <InputError message={errors.start_year} className="mt-1" />
                             </div>
                         </div>
 
@@ -243,8 +243,8 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                         End date*
                                     </label>
                                     <select
-                                        name="endMonth"
-                                        value={data.endMonth}
+                                        name="end_month"
+                                        value={data.end_month}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
@@ -254,15 +254,15 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endMonth} className="mt-1" />
+                                    <InputError message={errors.end_month} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
                                         Year
                                     </label>
                                     <select
-                                        name="endYear"
-                                        value={data.endYear}
+                                        name="end_year"
+                                        value={data.end_year}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
@@ -272,7 +272,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endYear} className="mt-1" />
+                                    <InputError message={errors.end_year} className="mt-1" />
                                 </div>
                             </div>
                         )}
