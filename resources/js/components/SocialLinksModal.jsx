@@ -110,7 +110,7 @@ const SocialLinksModal = ({ open, onOpenChange, links = [], canManage = false, o
                         <h2 className="text-xl font-semibold text-beta dark:text-light">Socials</h2>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors"
+                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors cursor-pointer"
                         >
                             <X size={24} />
                         </button>
@@ -163,14 +163,14 @@ const SocialLinksModal = ({ open, onOpenChange, links = [], canManage = false, o
                                                     <button
                                                         type="button"
                                                         onClick={() => onEdit?.(link)}
-                                                        className="text-alpha"
+                                                        className="text-alpha cursor-pointer hover:text-alpha/80 transition-colors"
                                                     >
                                                         <Edit size={16} />
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => onDelete?.(link)}
-                                                        className="text-error"
+                                                        className="text-error cursor-pointer hover:text-error/80 transition-colors"
                                                     >
                                                         <Trash size={16} />
                                                     </button>

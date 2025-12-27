@@ -199,14 +199,14 @@ export default function NotificationIcon() {
     const getIconColor = (iconType) => {
         switch (iconType) {
             case 'briefcase':
-                return 'text-green-600';
+                return 'text-[var(--color-good)]';
             case 'calendar':
                 return 'text-blue-600';
             case 'clock':
-                return 'text-amber-600';
+                return 'text-[var(--color-alpha)]';
             case 'user':
             default:
-                return 'text-sky-600';
+                return 'text-[var(--color-alpha)]';
         }
     };
 
@@ -221,7 +221,7 @@ export default function NotificationIcon() {
                 >
                     <Bell className="h-5 w-5 flex-shrink-0" />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border border-white dark:border-dark">
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-error)] text-[10px] font-bold text-white border border-white dark:border-[var(--color-dark)]">
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
@@ -232,8 +232,8 @@ export default function NotificationIcon() {
                 align="end"
                 onCloseAutoFocus={(e) => e.preventDefault()}
             >
-                <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-dark flex-shrink-0">
-                    <h3 className="font-semibold text-sm">
+                <div className="flex items-center justify-between p-4 border-b bg-[var(--color-card)] flex-shrink-0">
+                    <h3 className="font-semibold text-sm text-[var(--color-foreground)]">
                         Notifications {unreadCount > 0 && `(${unreadCount})`}
                     </h3>
                 </div>
@@ -241,12 +241,12 @@ export default function NotificationIcon() {
                     <div className="max-h-[500px] overflow-y-auto">
                         {notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center p-8 text-center">
-                                <Bell className="h-12 w-12 text-muted-foreground/50 mb-2" />
-                                <p className="text-sm text-muted-foreground">No notifications</p>
-                                <p className="text-xs text-muted-foreground mt-1">You're all caught up!</p>
+                                <Bell className="h-12 w-12 text-[var(--color-muted-foreground)]/50 mb-2" />
+                                <p className="text-sm text-[var(--color-muted-foreground)]">No notifications</p>
+                                <p className="text-xs text-[var(--color-muted-foreground)] mt-1">You're all caught up!</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-border">
+                            <div className="divide-y divide-[var(--color-border)]">
                             {notifications.map((notification) => {
                                 const IconComponent = getIcon(notification.iconType);
                                 const iconColor = getIconColor(notification.iconType);
@@ -258,7 +258,7 @@ export default function NotificationIcon() {
                                         onClick={() => setIsOpen(false)}
                                         className="block"
                                     >
-                                        <div className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                                        <div className="flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer">
                                             <div className="flex-shrink-0 mt-1">
                                                 {notification.senderImage ? (
                                                     <Avatar 
@@ -267,19 +267,19 @@ export default function NotificationIcon() {
                                                         name={notification.senderName}
                                                     />
                                                 ) : (
-                                                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
+                                                    <div className="h-10 w-10 rounded-full flex items-center justify-center bg-[var(--color-muted)]">
                                                         <IconComponent className={cn("h-5 w-5", iconColor)} />
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-foreground mb-1">
+                                                <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">
                                                     {notification.senderName}
                                                 </p>
-                                                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                                <p className="text-sm text-[var(--color-muted-foreground)] line-clamp-2 mb-2">
                                                     {notification.message}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="text-xs text-[var(--color-muted-foreground)]">
                                                     {formatTimestamp(notification.timestamp)}
                                                 </p>
                                             </div>

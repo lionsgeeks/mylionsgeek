@@ -54,7 +54,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                     <h2 className="text-xl font-semibold text-beta dark:text-light">Edit about</h2>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="text-gray-600 dark:text-gray-400 hover:text-beta dark:hover:text-light transition"
+                        className="text-gray-600 dark:text-gray-400 hover:text-beta dark:hover:text-light transition cursor-pointer"
                     >
                         <X size={24} />
                     </button>
@@ -107,7 +107,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                         onClick={updateAbout}
                         type="submit"
                         disabled={processing}
-                        className={`px-6 py-2 rounded-lg font-semibold transition
+                        className={`px-6 py-2 rounded-lg font-semibold transition cursor-pointer
         ${processing
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 : 'bg-alpha text-beta hover:opacity-90'
