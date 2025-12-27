@@ -143,7 +143,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                         </h2>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors"
+                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors cursor-pointer"
                         >
                             <X size={24} />
                         </button>
@@ -198,14 +198,14 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                     <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end gap-3">
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="px-6 py-2 border border-beta/30 dark:border-light/30 text-beta dark:text-light rounded-full font-medium hover:bg-beta/5 dark:hover:bg-light/5 transition-colors"
+                            className="px-6 py-2 border border-beta/30 dark:border-light/30 text-beta dark:text-light rounded-full font-medium hover:bg-beta/5 dark:hover:bg-light/5 transition-colors cursor-pointer"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={submit}
                             disabled={processing}
-                            className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             {processing ? 'Saving...' : 'Save'}
                         </button>

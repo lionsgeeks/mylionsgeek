@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import AboutModal from '../../../../../components/AboutModal';
@@ -41,15 +41,82 @@ const LeftColumn = ({ user }) => {
     const [openAllSocials, setOpenAllSocials] = useState(false)
     const [openDeleteSocial, setOpenDeleteSocial] = useState(false)
     const [deletingSocial, setDeletingSocial] = useState(null)
+    const [draggedItem, setDraggedItem] = useState(null)
+    const [socialLinks, setSocialLinks] = useState(user?.social_links || [])
     const { auth } = usePage().props
-    const links = user?.social_links || []
-    const visibleLinks = links.slice(0, 2)
+    const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id
+
+    // Sync socialLinks with user data when it changes
+    useEffect(() => {
+        setSocialLinks(user?.social_links || []);
+    }, [user?.social_links]);
 
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter(platform =>
-        !links.some(link => link.title === platform.value)
+        !socialLinks.some(link => link.title === platform.value)
     );
+
+    // Drag and drop handlers
+    const handleDragStart = (e, index) => {
+        setDraggedItem(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e, dropIndex) => {
+        e.preventDefault();
+
+        if (draggedItem === null) return;
+
+        const draggedLink = socialLinks[draggedItem];
+        const newLinks = [...socialLinks];
+
+        // Remove the dragged item
+        newLinks.splice(draggedItem, 1);
+
+        // Insert at the new position
+        newLinks.splice(dropIndex, 0, draggedLink);
+
+        setSocialLinks(newLinks);
+        setDraggedItem(null);
+
+        // Update the order on the server
+        updateSocialLinksOrder(newLinks);
+    };
+
+    const updateSocialLinksOrder = (links) => {
+        fetch('/users/social-links/reorder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                links: links.map(link => link.id)
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to reorder social links');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Social links reordered successfully');
+        })
+        .catch(error => {
+            console.error('Failed to reorder social links:', error);
+            // Revert to original order on error
+            setSocialLinks(user?.social_links || []);
+        });
+    };
+
     return (
         <>
             <div className="lg:col-span-1 space-y-4">
@@ -96,16 +163,25 @@ const LeftColumn = ({ user }) => {
                     </div>
 
                     <div className="space-y-2">
-                        {links.length === 0 ? (
+                        {socialLinks.length === 0 ? (
                             <p className="text-sm text-beta/60 dark:text-light/60">
                                 No links added.
                             </p>
                         ) : (
                             <>
-                                {visibleLinks.map((link) => {
+                                {visibleLinks.map((link, index) => {
                                     const IconComponent = platformIcons[link.title] || ExternalLink;
                                     return (
-                                        <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
+                                        <div
+                                            key={link.id}
+                                            draggable={canManage}
+                                            onDragStart={(e) => handleDragStart(e, index)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, index)}
+                                            className={`flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group ${
+                                                canManage ? 'cursor-move' : ''
+                                            } ${draggedItem === index ? 'opacity-50' : ''}`}
+                                        >
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
                                                     <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
@@ -158,13 +234,13 @@ const LeftColumn = ({ user }) => {
                                     )
                                 })}
 
-                                {links.length > 2 && (
+                                {socialLinks.length > 2 && (
                                     <button
                                         type="button"
                                         className="text-sm font-semibold text-alpha hover:underline"
                                         onClick={() => setOpenAllSocials(true)}
                                     >
-                                        Show all ({links.length})
+                                        Show all ({socialLinks.length})
                                     </button>
                                 )}
                             </>
@@ -184,8 +260,11 @@ const LeftColumn = ({ user }) => {
                 <SocialLinksModal
                     open={openAllSocials}
                     onOpenChange={setOpenAllSocials}
-                    links={links}
+                    links={socialLinks}
                     canManage={canManage}
+                    onOrderChange={(newOrder) => {
+                        setSocialLinks(newOrder);
+                    }}
                     onEdit={(link) => {
                         setOpenAllSocials(false);
                         setEditingSocial(link);

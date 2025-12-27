@@ -48,8 +48,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [newSocialPlatform, setNewSocialPlatform] = useState('');
     const [newSocialUrl, setNewSocialUrl] = useState('');
     const [socialValidationError, setSocialValidationError] = useState('');
+    const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
     const canManageSocials = auth?.user?.id === editedUser?.id;
-    const socialLinks = auth?.user?.social_links || [];
     
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter(platform => 
@@ -59,11 +59,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [formData, setFormData] = useState({
         name: editedUser?.name || '',
         email: editedUser?.email || '',
-        roles: editedUser?.role || [],
+        roles: [],
         status: editedUser?.status || '',
         formation_id: editedUser?.formation_id || '',
-        phone: editedUser?.phone || '',
-        cin: editedUser?.cin || '',
+        phone: editedUser?.phone ?? '',
+        cin: editedUser?.cin ?? '',
         image: editedUser?.image || null,
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
         access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
@@ -91,12 +91,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 roles: rolesArray,
                 status: editedUser.status || '',
                 formation_id: editedUser.formation_id || '',
-                phone: editedUser.phone || '',
-                cin: editedUser.cin || '',
+                phone: editedUser.phone ?? '',
+                cin: editedUser.cin ?? '',
                 image: editedUser?.image || null,
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
             });
+            setSocialLinks(editedUser?.social_links || []);
         }
     }, [editedUser]);
 

@@ -292,13 +292,14 @@ class UsersController extends Controller
 
     private function formatUserPayload(User $user, bool $isOnline)
     {
-        return [
+        $payload = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
             'cin' => $user->cin,
             'status' => $user->status,
+            'formation_id' => $user->formation_id,
             'image' => $user->image,
             'cover' => $user->cover,
             'about' => $user->about,
@@ -307,6 +308,15 @@ class UsersController extends Controller
             'is_online' => $isOnline,
             'formation_name' => $user->formation?->name,
         ];
+        
+        // Debug logging
+        \Log::info('User payload for user ' . $user->id, [
+            'phone' => $user->phone,
+            'status' => $user->status,
+            'formation_id' => $user->formation_id,
+        ]);
+        
+        return $payload;
     }
 
     private function formatComputer($computer)

@@ -237,7 +237,19 @@ const Header = ({ user, userFunctionality }) => {
                     </div>
                 </div>
             </div>
-            {openEdit && <EditUserModal open={openEdit} editedUser={user} onClose={() => setOpenEdit(false)} />}
+            {openEdit && (
+                <>
+                    {console.log('Header - user data passed to EditModal:', user)}
+                    <EditUserModal 
+                        open={openEdit} 
+                        editedUser={user} 
+                        onClose={() => setOpenEdit(false)} 
+                        status={['studying', 'unemployed', 'internship', 'freelancing', 'working']} 
+                        roles={['student', 'admin', 'coach', 'studio_responsable']} 
+                        trainings={[]} 
+                    />
+                </>
+            )}
             {openFollowModal[0] && <FollowModal student={user} onOpenChange={setOpenFollowModal} openChange={openFollowModal} />}
         </>
     );

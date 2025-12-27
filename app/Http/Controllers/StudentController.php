@@ -40,7 +40,9 @@ class StudentController extends Controller
         $user = User::find($id);
         $userExperience = User::with('experiences')->findOrFail($id);
         $userEducation = User::with('educations')->findOrFail($id);
-        $userSocialLinks = User::with('socialLinks')->findOrFail($id);
+        $userSocialLinks = User::with(['socialLinks' => function($query) {
+            $query->ordered();
+        }])->findOrFail($id);
         $isFollowing = Auth::user()
             ->following()
             ->where('followed_id', $id)
@@ -70,6 +72,7 @@ class StudentController extends Controller
                 'cover' => $user->cover,
                 'name' => $user->name,
                 'status' => $user->status,
+                'phone' => $user->phone,
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'formation' => $user->formation_id != Null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,
@@ -103,6 +106,7 @@ class StudentController extends Controller
             'user_id' => $user->id,
             'title' => $data['title'],
             'url' => $data['url'],
+            'sort_order' => UserSocialLink::where('user_id', $user->id)->max('sort_order') + 1,
         ]);
 
         return redirect()->back()->with('success', 'Social link added');
@@ -144,6 +148,40 @@ class StudentController extends Controller
 
         $link->delete();
         return redirect()->back()->with('success', 'Social link deleted');
+    }
+
+    public function reorderSocialLinks(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'links' => 'required|array',
+            'links.*' => 'integer|exists:user_social_links,id',
+        ]);
+
+        $linkIds = $request->input('links');
+        
+        // Verify all links belong to the authenticated user
+        $userLinks = UserSocialLink::where('user_id', $user->id)
+            ->whereIn('id', $linkIds)
+            ->pluck('id')
+            ->toArray();
+
+        if (count($userLinks) !== count($linkIds)) {
+            return response()->json(['error' => 'Invalid link IDs'], 403);
+        }
+
+        // Update the order
+        foreach ($linkIds as $index => $linkId) {
+            UserSocialLink::where('id', $linkId)
+                ->where('user_id', $user->id)
+                ->update(['sort_order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
     public function changeProfileImage(Request $request, $id)
     {
@@ -237,23 +275,23 @@ class StudentController extends Controller
         $request->validate([
             'title' => 'string|required',
             'description' => 'string|required',
-            'employmentType' => 'string|required',
+            'employment_type' => 'string|required',
             'company' => 'string|nullable',
-            'startMonth' => 'string|required',
-            'startYear' => 'string|required',
-            'endMonth' => 'string|nullable',
-            'endYear' => 'string|nullable',
+            'start_month' => 'string|required',
+            'start_year' => 'string|required',
+            'end_month' => 'string|nullable',
+            'end_year' => 'string|nullable',
             'location' => 'string|nullable',
         ]);
         $experience = Experience::create([
             'title' => $request->title,
             'description' => $request->description,
-            'employement_type' => $request->employmentType,
+            'employement_type' => $request->employment_type,
             'company' => $request->company,
-            'start_month' => $request->startMonth,
-            'start_year' => $request->startYear,
-            'end_month' => $request->endMonth,
-            'end_year' => $request->endYear,
+            'start_month' => $request->start_month,
+            'start_year' => $request->start_year,
+            'end_month' => $request->end_month,
+            'end_year' => $request->end_year,
             'location' => $request->location,
         ]);
 
@@ -266,23 +304,23 @@ class StudentController extends Controller
         $request->validate([
             'title' => 'string|required',
             'description' => 'string|required',
-            'employmentType' => 'string|required',
+            'employment_type' => 'string|required',
             'company' => 'string|nullable',
-            'startMonth' => 'string|required',
-            'startYear' => 'string|required',
-            'endMonth' => 'string|nullable',
-            'endYear' => 'string|nullable',
+            'start_month' => 'string|required',
+            'start_year' => 'string|required',
+            'end_month' => 'string|nullable',
+            'end_year' => 'string|nullable',
             'location' => 'string|nullable',
         ]);
         $experience->update([
             'title' => $request->title,
             'description' => $request->description,
-            'employement_type' => $request->employmentType,
+            'employement_type' => $request->employment_type,
             'company' => $request->company,
-            'start_month' => $request->startMonth,
-            'start_year' => $request->startYear,
-            'end_month' => $request->endMonth,
-            'end_year' => $request->endYear,
+            'start_month' => $request->start_month,
+            'start_year' => $request->start_year,
+            'end_month' => $request->end_month,
+            'end_year' => $request->end_year,
             'location' => $request->location,
         ]);
         return redirect()->back()->with('success', 'Experience Updated successfuly');

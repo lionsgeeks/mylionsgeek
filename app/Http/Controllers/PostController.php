@@ -34,12 +34,53 @@ class PostController extends Controller
         }
     }
 
+    /**
+     * Broadcast post notification via Ably for real-time updates
+     */
+    private function broadcastNotification($notification, $sender, $post, $type): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get("notifications:{$notification->user_id}");
+            
+            $message = match($type) {
+                'like' => "{$sender->name} liked your post",
+                'comment' => "{$sender->name} commented on your post",
+                'comment_like' => "{$sender->name} liked your comment",
+                default => "{$sender->name} interacted with your post"
+            };
+            
+            $channel->publish('new_notification', [
+                'id' => 'post-' . $notification->id,
+                'type' => 'post_interaction',
+                'sender_name' => $sender->name,
+                'sender_image' => $sender->image,
+                'message' => $message,
+                'link' => '/feed#' . $post->id,
+                'icon_type' => 'user',
+                'created_at' => $notification->created_at->toISOString(),
+                'post_id' => $post->id,
+                'interaction_type' => $type,
+            ]);
+        } catch (Throwable $e) {
+            \Log::error('Failed to broadcast notification via Ably: ' . $e->getMessage());
+        }
+    }
+
     private function broadcastPostStats(Post $post): void
     {
+        // Use cached counts to avoid redundant queries
+        $post->loadCount(['likes', 'comments']);
+        
         $this->publishFeedEvent('feed:global', 'post-stats-updated', [
             'post_id' => (int) $post->id,
-            'likes_count' => (int) $post->likes()->count(),
-            'comments_count' => (int) $post->comments()->count(),
+            'likes_count' => (int) $post->likes_count,
+            'comments_count' => (int) $post->comments_count,
         ]);
     }
 
@@ -48,47 +89,39 @@ class PostController extends Controller
         $post = Post::findOrFail($postId);
         $userId = Auth::id();
 
-        $rawComments = $post->comments()
-            ->with(['user:id,name,image'])
+        // Single query with optimized eager loading
+        $comments = $post->comments()
+            ->with(['user:id,name,image,last_online'])
+            ->withCount(['likes'])
             ->orderBy('created_at', 'asc')
             ->get();
 
-        $commentIds = $rawComments->pluck('id')->all();
-
-        $likesCountMap = collect();
-        $likedIds = [];
-
-        if (!empty($commentIds) && Schema::hasTable('comment_likes')) {
-            $likesCountMap = CommentLike::query()
-                ->selectRaw('comment_id, COUNT(*) as likes_count')
-                ->whereIn('comment_id', $commentIds)
-                ->groupBy('comment_id')
-                ->pluck('likes_count', 'comment_id');
-
-            if ($userId) {
-                $likedIds = CommentLike::query()
-                    ->whereIn('comment_id', $commentIds)
-                    ->where('user_id', $userId)
-                    ->pluck('comment_id')
-                    ->all();
-            }
+        // Get liked comments in single query if user is authenticated
+        $likedCommentIds = [];
+        if ($userId && Schema::hasTable('comment_likes')) {
+            $likedCommentIds = CommentLike::query()
+                ->whereIn('comment_id', $comments->pluck('id'))
+                ->where('user_id', $userId)
+                ->pluck('comment_id')
+                ->toArray();
         }
 
-        $comments = $rawComments->map(function ($c) use ($likesCountMap, $likedIds) {
-                return [
-                    'id' => $c->id,
-                    'user_id' => $c->user_id,
-                    'user_name' => $c->user->name,
-                    'user_lastActivity' => $c->user->last_online,
-                    'user_image' => $c->user->image,
-                    'comment' => $c->comment,
-                    'comment_image' => $c->image,
-                    'likes_count' => (int) ($likesCountMap[$c->id] ?? 0),
-                    'liked' => in_array($c->id, $likedIds, true),
-                    'created_at' => $c->created_at->toDateTimeString(),
-                ];
-            });
-        return response()->json(['comments' => $comments]);
+        $formattedComments = $comments->map(function ($comment) use ($likedCommentIds) {
+            return [
+                'id' => $comment->id,
+                'user_id' => $comment->user_id,
+                'user_name' => $comment->user->name,
+                'user_lastActivity' => $comment->user->last_online,
+                'user_image' => $comment->user->image,
+                'comment' => $comment->comment,
+                'comment_image' => $comment->image,
+                'likes_count' => (int) $comment->likes_count,
+                'liked' => in_array($comment->id, $likedCommentIds),
+                'created_at' => $comment->created_at->toDateTimeString(),
+            ];
+        });
+
+        return response()->json(['comments' => $formattedComments]);
     }
 
     public function getPostLikes($postId)
@@ -149,6 +182,19 @@ class PostController extends Controller
         $comment = $post->comments()->create($payload);
         $comment->load('user:id,name,image');
 
+        // Create notification for post owner
+        $notification = \App\Models\PostNotification::createNotification(
+            $post->user_id,  // Post owner
+            $user->id,        // User who commented
+            $post->id,        // Post ID
+            'comment'         // Type
+        );
+
+        // Broadcast notification via Ably for real-time updates
+        if ($notification) {
+            $this->broadcastNotification($notification, $user, $post, 'comment');
+        }
+
         $commentPayload = [
             'id' => $comment->id,
             'user_id' => $comment->user_id,
@@ -171,19 +217,25 @@ class PostController extends Controller
 
     public function getPostStats($postId)
     {
-        $post = Post::findOrFail($postId);
         $user = Auth::user();
-        $liked = false;
+        $userId = $user ? $user->id : null;
 
-        if ($user) {
-            $liked = $post->likes()->where('user_id', $user->id)->exists();
+        // Single query to get post with counts and user like status
+        $query = Post::withCount(['likes', 'comments']);
+        
+        if ($userId) {
+            $query->withExists(['likes as user_liked' => function($query) use ($userId) {
+                $query->where('user_id', $userId);
+            }]);
         }
+        
+        $post = $query->findOrFail($postId);
 
         return response()->json([
             'post_id' => $post->id,
-            'likes_count' => $post->likes()->count(),
-            'comments_count' => $post->comments()->count(),
-            'liked' => $liked,
+            'likes_count' => (int) $post->likes_count,
+            'comments_count' => (int) $post->comments_count,
+            'liked' => $userId ? (bool) $post->user_liked : false,
         ]);
     }
 
@@ -195,22 +247,41 @@ class PostController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $like = $post->likes()->where('user_id', $user->id)->first();
-        if ($like) {
-            $like->delete();
+        // Use firstOrCreate to check and create in single operation
+        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+        
+        if ($existingLike) {
+            $existingLike->delete();
             $liked = false;
+            $countChange = -1;
         } else {
             $post->likes()->create(['user_id' => $user->id]);
             $liked = true;
+            $countChange = 1;
+            
+            // Create notification for post owner
+            $notification = \App\Models\PostNotification::createNotification(
+                $post->user_id,  // Post owner
+                $user->id,        // User who liked
+                $post->id,        // Post ID
+                'like'            // Type
+            );
+
+            // Broadcast notification via Ably for real-time updates
+            if ($notification) {
+                $this->broadcastNotification($notification, $user, $post, 'like');
+            }
         }
 
-        $count = $post->likes()->count();
+        // Use cached counts to avoid redundant query
+        $post->loadCount('likes');
+        $currentCount = $post->likes_count;
 
         $this->broadcastPostStats($post);
 
         return response()->json([
             'liked' => $liked,
-            'likes_count' => $count,
+            'likes_count' => $currentCount,
         ]);
     }
 
@@ -342,6 +413,61 @@ class PostController extends Controller
             'comment_id' => $comment->id,
             'liked' => $liked,
             'likes_count' => (int) $count,
+        ]);
+    }
+
+    public function addCommentLike(Request $request, $commentId)
+    {
+        $user = Auth::user();
+        $comment = Comment::findOrFail($commentId);
+        
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $userId = $request->user_id;
+        $existingLike = $comment->likes()->where('user_id', $userId)->first();
+
+        if ($existingLike) {
+            $existingLike->delete();
+            $liked = false;
+        } else {
+            $comment->likes()->create(['user_id' => $userId]);
+            $liked = true;
+            
+            // Create notification for comment owner (if not liking own comment)
+            if ($comment->user_id != $userId) {
+                $notification = \App\Models\PostNotification::createNotification(
+                    $comment->user_id,  // Comment owner
+                    $userId,            // User who liked
+                    $comment->post_id,  // Post ID
+                    'comment_like'      // Type
+                );
+
+                // Broadcast notification via Ably for real-time updates
+                if ($notification) {
+                    $sender = User::find($userId);
+                    $post = Post::find($comment->post_id);
+                    $this->broadcastNotification($notification, $sender, $post, 'comment_like');
+                }
+            }
+        }
+
+        $count = $comment->likes()->count();
+
+        $this->publishFeedEvent("feed:post:{$comment->post_id}", 'comment-like-updated', [
+            'comment_id' => (int) $comment->id,
+            'likes_count' => (int) $count,
+        ]);
+
+        return response()->json([
+            'comment_id' => $comment->id,
+            'liked' => $liked,
+            'likes_count' => $count,
         ]);
     }
 
