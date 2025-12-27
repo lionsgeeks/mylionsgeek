@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import AboutModal from '../../../../../components/AboutModal';
@@ -46,6 +46,11 @@ const LeftColumn = ({ user }) => {
     const { auth } = usePage().props
     const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id
+
+    // Sync socialLinks with user data when it changes
+    useEffect(() => {
+        setSocialLinks(user?.social_links || []);
+    }, [user?.social_links]);
 
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter(platform =>
@@ -178,13 +183,6 @@ const LeftColumn = ({ user }) => {
                                             } ${draggedItem === index ? 'opacity-50' : ''}`}
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
-                                                {canManage && (
-                                                    <div className="w-4 h-4 flex items-center justify-center text-beta/40">
-                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M7 2a2 2 0 00-2 2v1a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zM6 7a1 1 0 00-1 1v3a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1H6zM6 14a1 1 0 00-1 1v1a1 1 0 001 1h8a1 1 0 001-1v-1a1 1 0 00-1-1H6z"/>
-                                                        </svg>
-                                                    </div>
-                                                )}
                                                 <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
                                                     <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
                                                 </div>
@@ -262,8 +260,11 @@ const LeftColumn = ({ user }) => {
                 <SocialLinksModal
                     open={openAllSocials}
                     onOpenChange={setOpenAllSocials}
-                    links={links}
+                    links={socialLinks}
                     canManage={canManage}
+                    onOrderChange={(newOrder) => {
+                        setSocialLinks(newOrder);
+                    }}
                     onEdit={(link) => {
                         setOpenAllSocials(false);
                         setEditingSocial(link);

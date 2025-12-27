@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { X, ExternalLink, Edit, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, ExternalLink, Edit, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { helpers } from './utils/helpers';
 import DeleteModal from './DeleteModal';
 
@@ -14,15 +14,90 @@ const platformIcons = {
     discord: MessageCircle,
     threads: Send,
     reddit: Users,
+    portfolio: Briefcase,
 };
 
-const SocialLinksModal = ({ open, onOpenChange, links = [], canManage = false, onEdit, onDelete }) => {
+const SocialLinksModal = ({ open, onOpenChange, links = [], canManage = false, onEdit, onDelete, onOrderChange }) => {
     const { stopScrolling } = helpers();
+    const [draggedItem, setDraggedItem] = useState(null);
+    const [modalLinks, setModalLinks] = useState(links);
+
+    // Update modalLinks when links prop changes
+    useEffect(() => {
+        setModalLinks(links);
+    }, [links]);
 
     useEffect(() => {
         stopScrolling(open);
         return () => stopScrolling(false);
     }, [open]);
+
+    // Drag and drop handlers
+    const handleDragStart = (e, index) => {
+        if (!canManage) return;
+        setDraggedItem(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e) => {
+        if (!canManage) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e, dropIndex) => {
+        e.preventDefault();
+        
+        if (!canManage || draggedItem === null) return;
+        
+        const draggedLink = modalLinks[draggedItem];
+        const newLinks = [...modalLinks];
+        
+        // Remove the dragged item
+        newLinks.splice(draggedItem, 1);
+        
+        // Insert at the new position
+        newLinks.splice(dropIndex, 0, draggedLink);
+        
+        setModalLinks(newLinks);
+        setDraggedItem(null);
+        
+        // Update the order on the server
+        updateSocialLinksOrder(newLinks);
+        
+        // Notify parent component of the order change
+        if (onOrderChange) {
+            onOrderChange(newLinks);
+        }
+    };
+
+    const updateSocialLinksOrder = (newLinks) => {
+        fetch('/users/social-links/reorder', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                links: newLinks.map(link => link.id)
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to reorder social links');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Social links reordered successfully');
+        })
+        .catch(error => {
+            console.error('Failed to reorder social links:', error);
+            // Revert to original order on error
+            setModalLinks(links);
+        });
+    };
 
     if (!open) return null;
 
@@ -43,13 +118,22 @@ const SocialLinksModal = ({ open, onOpenChange, links = [], canManage = false, o
 
                     <div className="p-4">
                         <div className="space-y-2">
-                            {(links || []).length === 0 ? (
+                            {(modalLinks || []).length === 0 ? (
                                 <p className="text-sm text-beta/60 dark:text-light/60">No links added.</p>
                             ) : (
-                                (links || []).map((link) => {
+                                (modalLinks || []).map((link, index) => {
                                     const IconComponent = platformIcons[link.title] || ExternalLink;
                                     return (
-                                        <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
+                                        <div
+                                            key={link.id}
+                                            draggable={canManage}
+                                            onDragStart={(e) => handleDragStart(e, index)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, index)}
+                                            className={`flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group ${
+                                                canManage ? 'cursor-move' : ''
+                                            } ${draggedItem === index ? 'opacity-50' : ''}`}
+                                        >
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
                                                     <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />

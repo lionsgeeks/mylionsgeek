@@ -14,12 +14,22 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
         stopScrolling(onOpen)
         return () => stopScrolling(false);
     }, [onOpen]);
+
+    // Update form data when user changes
+    useEffect(() => {
+        setData('about', user?.about || '');
+        setCharCount(user?.about?.length || 0);
+    }, [user?.about]);
+
     //! update about
-    const updateAbout = (id) => {
+    const updateAbout = () => {
         try {
-            router.post(`/users/about/${id}`, data, {
+            router.post(`/users/about/${user?.id}`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
+                },
+                onError: (errors) => {
+                    console.log('About update errors:', errors);
                 }
             })
         } catch (error) {
@@ -61,7 +71,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                     <div className="mb-2">
                         <textarea
                             value={data.about}
-                            onChange={(e) => setData('about', e.target.value)}
+                            onChange={handleAboutChange}
                             className={`w-full p-3 rounded-md outline-none resize-none text-sm
         border
         ${errors.about
@@ -94,7 +104,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                         Save
                         </button> */}
                     <button
-                        onClick={() => updateAbout(user?.id, data.about, onOpenChange)}
+                        onClick={updateAbout}
                         type="submit"
                         disabled={processing}
                         className={`px-6 py-2 rounded-lg font-semibold transition
