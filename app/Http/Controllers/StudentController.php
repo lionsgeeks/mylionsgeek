@@ -300,12 +300,19 @@ class StudentController extends Controller
     }
     public function editExperience(Request $request, $id)
     {
+        $user = Auth::user();
         $experience = Experience::find($id);
+        
+        // Check if user owns this experience
+        if (!$user->experiences()->where('experience_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $request->validate([
             'title' => 'string|required',
             'description' => 'string|required',
+            'company' => 'string|required',
             'employment_type' => 'string|required',
-            'company' => 'string|nullable',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
@@ -327,7 +334,14 @@ class StudentController extends Controller
     }
     public function deleteExperience($id)
     {
+        $user = Auth::user();
         $experience = Experience::find($id);
+        
+        // Check if user owns this experience
+        if (!$user->experiences()->where('experience_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $experience->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
@@ -363,13 +377,19 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $education = Education::find($id);
+        
+        // Check if user owns this education
+        if (!$user->educations()->where('education_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $request->validate([
             'school' => 'string|required',
             'degree' => 'string|nullable',
             'fieldOfStudy' => 'string|nullable',
-            'startMonth' => 'string|required',
-            'startYear' => 'string|required',
-            'endMonth' => 'string|nullable',
+            'start_month' => 'string|required',
+            'start_year' => 'string|required',
+            'end_month' => 'string|nullable',
             'endYear' => 'string|nullable',
             'description' => 'string|nullable',
         ]);
@@ -378,9 +398,9 @@ class StudentController extends Controller
             'school' => $request->school,
             'degree' => $request->degree,
             'field_of_study' => $request->fieldOfStudy,
-            'start_month' => $request->startMonth,
-            'start_year' => $request->startYear,
-            'end_month' => $request->endMonth,
+            'start_month' => $request->start_month,
+            'start_year' => $request->start_year,
+            'end_month' => $request->end_month,
             'end_year' => $request->endYear,
             'description' => $request->description,
         ]);
@@ -388,7 +408,14 @@ class StudentController extends Controller
     }
     public function deleteEducation($id)
     {
+        $user = Auth::user();
         $education = Education::find($id);
+        
+        // Check if user owns this education
+        if (!$user->educations()->where('education_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $education->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
