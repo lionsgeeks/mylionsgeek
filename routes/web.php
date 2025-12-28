@@ -449,6 +449,31 @@ Route::get('/api/notifications', function (Request $request) {
             ];
         }
 
+        // 5. FOLLOW NOTIFICATIONS (All users)
+        $followNotifications = \App\Models\FollowNotification::with('follower')
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        foreach ($followNotifications as $notif) {
+            $senderName = $notif->follower ? $notif->follower->name : 'Unknown';
+            $senderImage = $notif->follower ? $notif->follower->image : null;
+            
+            $notifications[] = [
+                'id' => 'follow-' . $notif->id,
+                'type' => 'follow',
+                'sender_name' => $senderName,
+                'sender_image' => $senderImage,
+                'message' => "{$senderName} started following you",
+                'link' => "/student/{$notif->follower_id}",
+                'icon_type' => 'user',
+                'created_at' => $notif->created_at->toISOString(),
+                'follower_id' => $notif->follower_id,
+            ];
+        }
+
         // Sort by created_at (newest first)
         usort($notifications, function ($a, $b) {
             return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -461,6 +486,45 @@ Route::get('/api/notifications', function (Request $request) {
         return response()->json(['notifications' => []], 500);
     }
 })->name('api.notifications');
+
+// Mark notification as read
+Route::post('/api/notifications/{type}/{id}/read', function (Request $request, $type, $id) {
+    $user = $request->user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    try {
+        switch ($type) {
+            case 'follow':
+                $notification = \App\Models\FollowNotification::where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                if ($notification) {
+                    $notification->read_at = now();
+                    $notification->save();
+                }
+                break;
+            case 'post':
+                $notification = \App\Models\PostNotification::where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->first();
+                if ($notification) {
+                    $notification->read_at = now();
+                    $notification->save();
+                }
+                break;
+            default:
+                return response()->json(['error' => 'Invalid notification type'], 400);
+        }
+
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        \Log::error('Failed to mark notification as read: ' . $e->getMessage());
+        return response()->json(['error' => 'Failed to mark as read'], 500);
+    }
+})->name('api.notifications.mark-read');
 
 // Ably token endpoint for real-time notifications
 Route::get('/api/notifications/ably-token', function (Request $request) {
