@@ -98,7 +98,7 @@ const Education = ({ user }) => {
                                         </div>
                                     </div>
                                     {
-                                        auth.user && <EducationMenuModal education={education} />
+                                        auth.user.id == user.id && <EducationMenuModal education={education} />
                                     }
                                 </div>
                             )

@@ -166,6 +166,26 @@ export default function NotificationIcon() {
 
     const unreadCount = notifications.length;
 
+    const markAsRead = async (notification) => {
+        try {
+            // Extract type and ID from notification.id (e.g., "follow-123" -> type="follow", id="123")
+            const [type, id] = notification.id.split('-');
+            
+            await fetch(`/api/notifications/${type}/${id}/read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                },
+            });
+
+            // Remove from notifications list
+            setNotifications(prev => prev.filter(n => n.id !== notification.id));
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    };
+
     const formatTimestamp = (date) => {
         if (!date) return '';
         try {
@@ -255,7 +275,10 @@ export default function NotificationIcon() {
                                     <Link
                                         key={notification.id}
                                         href={notification.link}
-                                        onClick={() => setIsOpen(false)}
+                                        onClick={() => {
+                                            setIsOpen(false);
+                                            markAsRead(notification);
+                                        }}
                                         className="block"
                                     >
                                         <div className="flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer">

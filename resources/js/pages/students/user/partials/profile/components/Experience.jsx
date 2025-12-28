@@ -96,7 +96,7 @@ const Experience = ({ user }) => {
                                         </div>
                                     </div>
                                     {
-                                        auth.user && <ExperienceMenuModal experience={experience} />
+                                        auth.user.id == user.id && <ExperienceMenuModal experience={experience} />
                                     }
                                 </div>
                             )

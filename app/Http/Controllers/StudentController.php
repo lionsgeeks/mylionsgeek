@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Education;
 use App\Models\Experience;
 use App\Models\Follower;
+use App\Models\FollowNotification;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\UserSocialLink;
 use App\Models\User;
+use Ably\AblyRest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -234,8 +236,20 @@ class StudentController extends Controller
             return back()->with('error', "You can't follow yourself.");
         }
 
+        // Check if already following
+        $alreadyFollowing = $follower->following()->where('followed_id', $followed->id)->exists();
+        if ($alreadyFollowing) {
+            return back()->with('error', "You are already following this user.");
+        }
+
         // Attach the followed user without duplicates
         $follower->following()->syncWithoutDetaching([$followed->id]);
+
+        // Create follow notification
+        $notification = FollowNotification::createNotification($followed->id, $follower->id);
+
+        // Broadcast follow notification via Ably
+        $this->broadcastFollowNotification($notification, $follower, $followed);
 
         return back()->with('success', 'You are now following this user.');
     }
@@ -267,6 +281,36 @@ class StudentController extends Controller
         ]);
 
         return back()->with('success', 'About updated successfully');
+    }
+
+    private function broadcastFollowNotification($notification, $follower, $followed): void
+    {
+        try {
+            $ablyKey = config('services.ably.key');
+            if (!$ablyKey) {
+                return;
+            }
+
+            $ably = new AblyRest($ablyKey);
+            $channel = $ably->channels->get("notifications:{$notification->user_id}");
+            
+            $message = "{$follower->name} started following you";
+            
+            $channel->publish('new_notification', [
+                'id' => 'follow-' . $notification->id,
+                'type' => 'follow',
+                'sender_name' => $follower->name,
+                'sender_image' => $follower->image,
+                'message' => $message,
+                'link' => "/student/{$follower->id}",
+                'icon_type' => 'user',
+                'created_at' => $notification->created_at->toISOString(),
+                'follower_id' => $follower->id,
+                'followed_id' => $followed->id,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to broadcast follow notification: ' . $e->getMessage());
+        }
     }
     //! create experience
     public function createExperience(Request $request)
@@ -300,12 +344,19 @@ class StudentController extends Controller
     }
     public function editExperience(Request $request, $id)
     {
+        $user = Auth::user();
         $experience = Experience::find($id);
+        
+        // Check if user owns this experience
+        if (!$user->experiences()->where('experience_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $request->validate([
             'title' => 'string|required',
             'description' => 'string|required',
+            'company' => 'string|required',
             'employment_type' => 'string|required',
-            'company' => 'string|nullable',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
@@ -327,7 +378,14 @@ class StudentController extends Controller
     }
     public function deleteExperience($id)
     {
+        $user = Auth::user();
         $experience = Experience::find($id);
+        
+        // Check if user owns this experience
+        if (!$user->experiences()->where('experience_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $experience->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
@@ -363,13 +421,19 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $education = Education::find($id);
+        
+        // Check if user owns this education
+        if (!$user->educations()->where('education_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $request->validate([
             'school' => 'string|required',
             'degree' => 'string|nullable',
             'fieldOfStudy' => 'string|nullable',
-            'startMonth' => 'string|required',
-            'startYear' => 'string|required',
-            'endMonth' => 'string|nullable',
+            'start_month' => 'string|required',
+            'start_year' => 'string|required',
+            'end_month' => 'string|nullable',
             'endYear' => 'string|nullable',
             'description' => 'string|nullable',
         ]);
@@ -378,9 +442,9 @@ class StudentController extends Controller
             'school' => $request->school,
             'degree' => $request->degree,
             'field_of_study' => $request->fieldOfStudy,
-            'start_month' => $request->startMonth,
-            'start_year' => $request->startYear,
-            'end_month' => $request->endMonth,
+            'start_month' => $request->start_month,
+            'start_year' => $request->start_year,
+            'end_month' => $request->end_month,
             'end_year' => $request->endYear,
             'description' => $request->description,
         ]);
@@ -388,7 +452,14 @@ class StudentController extends Controller
     }
     public function deleteEducation($id)
     {
+        $user = Auth::user();
         $education = Education::find($id);
+        
+        // Check if user owns this education
+        if (!$user->educations()->where('education_id', $id)->exists()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        
         $education->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
