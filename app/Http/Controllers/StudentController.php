@@ -318,8 +318,8 @@ class StudentController extends Controller
         $user = Auth::user();
         $request->validate([
             'title' => 'string|required',
-            'description' => 'string|required',
-            'employment_type' => 'string|required',
+            'description' => 'string|nullable',
+            'employment_type' => 'string|nullable',
             'company' => 'string|nullable',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
@@ -354,9 +354,9 @@ class StudentController extends Controller
         
         $request->validate([
             'title' => 'string|required',
-            'description' => 'string|required',
-            'company' => 'string|required',
-            'employment_type' => 'string|required',
+            'description' => 'string|nullable',
+            'company' => 'string|nullable',
+            'employment_type' => 'string|nullable',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
