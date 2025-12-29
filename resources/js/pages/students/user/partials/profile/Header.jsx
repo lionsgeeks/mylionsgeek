@@ -7,12 +7,21 @@ import { helpers } from '../../../../../components/utils/helpers';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Rolegard from '../../../../../components/rolegard';
 import FollowModal from '../../../../../components/FollowModal';
+import ProfilePictureModal from '../../../../../components/ProfilePictureModal';
 
 const Header = ({ user, userFunctionality }) => {
     const [openEdit, setOpenEdit] = useState(false);
     const [openFollowModal, setOpenFollowModal] = useState([]);
+    const [openProfilePicture, setOpenProfilePicture] = useState(false);
     const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
+
+    const handleProfilePictureClick = () => {
+        // Only show modal for other users' profiles, not own profile
+        if (auth.user?.id !== user?.id && user?.image) {
+            setOpenProfilePicture(true);
+        }
+    };
 
     // Filter social links based on user formation and allowed platforms
     const allowedPlatforms = ['instagram', 'linkedin', 'portfolio', 'behance'];
@@ -160,14 +169,19 @@ const Header = ({ user, userFunctionality }) => {
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                     {/* Avatar */}
                     <div className="lg:-mt-35 -mt-16 mb-5 relative w-fit group mx-auto lg:mx-0">
-                        <Avatar
-                            className="w-32 h-32 sm:w-32 sm:h-32 lg:w-40 lg:h-40 border-4 border-white dark:border-dark"
-                            image={user?.image}
-                            name={user?.name}
-                            lastActivity={user?.online || null}
-                            onlineCircleClass="hidden"
-                            edit={true}
-                        />
+                        <div 
+                            className={`${auth.user?.id !== user?.id && user?.image ? 'cursor-pointer' : ''}`}
+                            onClick={handleProfilePictureClick}
+                        >
+                            <Avatar
+                                className="w-32 h-32 sm:w-32 sm:h-32 lg:w-40 lg:h-40 border-4 border-white dark:border-dark"
+                                image={user?.image}
+                                name={user?.name}
+                                lastActivity={user?.online || null}
+                                onlineCircleClass="hidden"
+                                edit={auth.user?.id == user?.id}
+                            />
+                        </div>
 
                         {/* CAMERA ICON */}
                         {auth.user.id == user.id && (
@@ -362,6 +376,11 @@ const Header = ({ user, userFunctionality }) => {
                 </>
             )}
             {openFollowModal[0] && <FollowModal student={user} onOpenChange={setOpenFollowModal} openChange={openFollowModal} />}
+            <ProfilePictureModal 
+                open={openProfilePicture} 
+                onOpenChange={setOpenProfilePicture} 
+                user={user} 
+            />
         </>
     );
 };
