@@ -515,6 +515,15 @@ Route::post('/api/notifications/{type}/{id}/read', function (Request $request, $
                     $notification->save();
                 }
                 break;
+            case 'exercise-review':
+                $notification = \App\Models\ExerciseReviewNotification::where('id', $id)
+                    ->where('coach_id', $user->id)
+                    ->first();
+                if ($notification) {
+                    $notification->read_at = now();
+                    $notification->save();
+                }
+                break;
             default:
                 return response()->json(['error' => 'Invalid notification type'], 400);
         }
@@ -525,6 +534,37 @@ Route::post('/api/notifications/{type}/{id}/read', function (Request $request, $
         return response()->json(['error' => 'Failed to mark as read'], 500);
     }
 })->name('api.notifications.mark-read');
+
+// Mark all notifications as read
+Route::post('/api/notifications/mark-all-read', function (Request $request) {
+    $user = $request->user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    try {
+        // Mark all follow notifications as read
+        \App\Models\FollowNotification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Mark all post notifications as read
+        \App\Models\PostNotification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Mark all exercise review notifications as read (for coaches)
+        \App\Models\ExerciseReviewNotification::where('coach_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        \Log::error('Failed to mark all notifications as read: ' . $e->getMessage());
+        return response()->json(['error' => 'Failed to mark all as read'], 500);
+    }
+})->name('api.notifications.mark-all-read');
 
 // Ably token endpoint for real-time notifications
 Route::get('/api/notifications/ably-token', function (Request $request) {

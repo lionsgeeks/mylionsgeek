@@ -142,7 +142,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
     };
 
     return (
-        <div className="absolute z-[100] w-80 bg-background shadow-xl rounded-lg border border-border p-0 top-0 right-0 overflow-hidden" style={{ marginTop: '0px' }}>
+        <div className="absolute z-[100] w-80 bg-light dark:bg-dark shadow-xl rounded-lg border border-border p-0 top-0 right-0 overflow-hidden" style={{ marginTop: '0px' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Members</h3>
@@ -196,7 +196,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                         group relative flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer
                                         transition-colors w-full
                                         ${selected
-                                                ? 'bg-primary/10'
+                                                ? 'bg-alpha/10'
                                                 : isHovered
                                                     ? 'bg-muted/50'
                                                     : 'hover:bg-muted/30'
@@ -230,15 +230,15 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                         {/* Selection Indicator */}
                                         <div className="flex-shrink-0">
                                             {selected ? (
-                                                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-primary border-2 border-primary">
+                                                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-light dark:bg-dark border-2 border-alpha">
                                                     <CheckCircle
-                                                        className="h-3 w-3 text-primary-foreground"
+                                                        className="h-3 w-3 text-alpha"
                                                         strokeWidth={2.5}
                                                         fill="currentColor"
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="w-4 h-4 rounded-full border-2 border-input group-hover:border-primary/50 transition-colors" />
+                                                <div className="w-4 h-4 rounded-full border-2 border-input group-hover:border-alpha/50 transition-colors" />
                                             )}
                                         </div>
                                     </div>
@@ -291,7 +291,7 @@ const AttachPopover = ({ onClose, onFileUpload }) => {
                 />
                 <Input
                     placeholder="Search or paste a link"
-                    className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
+                    className="bg-light dark:bg-dark border-border text-foreground placeholder:text-muted-foreground"
                 />
             </div>
         </div>
@@ -548,13 +548,7 @@ const TaskModal = ({
         });
     };
 
-    const handleShare = () => {
-        const taskUrl = `${window.location.origin}/admin/projects/${selectedTask.project_id}/tasks/${selectedTask.id}`;
-        navigator.clipboard.writeText(taskUrl).then(() => {
-            // You could add a toast notification here
-            //('Task URL copied to clipboard');
-        });
-    };
+
 
     // Comment handlers
     const handleAddComment = () => {
@@ -866,7 +860,7 @@ const TaskModal = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent showCloseButton={false} className="!max-w-6xl max-h-[96vh] !w-[96vw] p-0 bg-background border shadow-xl rounded-lg overflow-hidden">
+            <DialogContent showCloseButton={false} className="!max-w-6xl max-h-[96vh] !w-[96vw] p-0 bg-light dark:bg-dark border shadow-xl rounded-lg overflow-hidden">
                 
                 {/* Clean Minimal Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -904,14 +898,7 @@ const TaskModal = ({
                         >
                             {taskData.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                         </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={handleShare} 
-                            className="h-8 w-8"
-                        >
-                            <Share2 className="h-4 w-4" />
-                        </Button>
+                   
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -1293,7 +1280,7 @@ const TaskModal = ({
                                         onChange={(e) => setNewComment(e.target.value)}
                                         placeholder="Write a comment..."
                                         rows={2}
-                                        className="text-sm resize-none"
+                                        className="text-sm resize-none "
                                     />
                                     {newComment && (
                                         <div className="flex items-center gap-2 mt-2">
@@ -1383,7 +1370,7 @@ const TaskModal = ({
             {/* User Profile Dialog */}
             {showUserModal && selectedUser && (
                 <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-                    <DialogContent className="max-w-md bg-background border-border rounded-lg shadow-lg">
+                    <DialogContent className="max-w-md bg-light dark:bg-dark border-border rounded-lg shadow-lg">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-foreground">User Profile</h2>
                             <Button variant="ghost" size="icon" onClick={() => setShowUserModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-accent">
