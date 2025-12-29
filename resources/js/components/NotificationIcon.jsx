@@ -43,9 +43,9 @@ export default function NotificationIcon() {
             if (response.ok) {
                 const data = await response.json();
                 const apiNotifications = data.notifications || [];
-                
+
                 // console.log('Fetched notifications:', apiNotifications.length, apiNotifications);
-                
+
                 apiNotifications.forEach((notif) => {
                     try {
                         notificationList.push({
@@ -73,10 +73,10 @@ export default function NotificationIcon() {
 
         // Add attendance alerts for coaches - only show active trainings
         if (isCoach && attendanceWarning?.hasWarning) {
-            const allTrainings = Array.isArray(attendanceWarning.trainings) 
-                ? attendanceWarning.trainings 
+            const allTrainings = Array.isArray(attendanceWarning.trainings)
+                ? attendanceWarning.trainings
                 : [];
-            
+
             // Filter to only show active trainings (same logic as attendance-warning.jsx)
             const getTrainingStatus = (training) => {
                 if (!training.start_time) return null;
@@ -87,9 +87,9 @@ export default function NotificationIcon() {
                 if (now < sixMonthsLater && start < now) return 'active';
                 return null;
             };
-            
+
             const activeTrainings = allTrainings.filter((t) => getTrainingStatus(t) === 'active');
-            
+
             activeTrainings.forEach((training) => {
                 notificationList.push({
                     id: `attendance-${training.id}`,
@@ -112,18 +112,18 @@ export default function NotificationIcon() {
     // Fetch notifications on mount and when dependencies change
     useEffect(() => {
         fetchNotifications();
-        
+
         // Initialize Ably for real-time notifications
         const initAbly = async () => {
             try {
                 const response = await fetch('/api/notifications/ably-token');
                 if (!response.ok) return;
-                
+
                 const { token, channelName } = await response.json();
                 const ably = new Ably.Realtime(token);
-                
+
                 setAblyClient(ably);
-                
+
                 const channel = ably.channels.get(channelName);
                 channel.subscribe('new_notification', (message) => {
                     const newNotification = {
@@ -136,17 +136,17 @@ export default function NotificationIcon() {
                         iconType: message.data.icon_type,
                         timestamp: new Date(message.data.created_at),
                     };
-                    
+
                     setNotifications(prev => [newNotification, ...prev].slice(0, 50));
                 });
-                
+
             } catch (error) {
                 console.error('Failed to initialize Ably:', error);
             }
         };
-        
+
         initAbly();
-        
+
         // Refresh notifications every 30 seconds (fallback)
         const interval = setInterval(fetchNotifications, 30000);
         return () => {
@@ -157,6 +157,23 @@ export default function NotificationIcon() {
         };
     }, [fetchNotifications]);
 
+    // Mark all notifications as read when dropdown opens
+    const markAllAsRead = React.useCallback(async () => {
+        try {
+            await fetch('/api/notifications/mark-all-read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                },
+            });
+            // Refresh notifications to get updated list (will be empty since all are read)
+            await fetchNotifications();
+        } catch (error) {
+            console.error('Failed to mark all notifications as read:', error);
+        }
+    }, [fetchNotifications]);
+
     // Fetch notifications when dropdown opens
     useEffect(() => {
         if (isOpen) {
@@ -164,13 +181,22 @@ export default function NotificationIcon() {
         }
     }, [isOpen, fetchNotifications]);
 
+    // Handle dropdown close - mark all notifications as read when user closes it
+    const handleDropdownClose = (open) => {
+        setIsOpen(open);
+        // When closing (open becomes false), mark all notifications as read
+        if (!open && notifications.length > 0) {
+            markAllAsRead();
+        }
+    };
+
     const unreadCount = notifications.length;
 
     const markAsRead = async (notification) => {
         try {
             // Extract type and ID from notification.id (e.g., "follow-123" -> type="follow", id="123")
             const [type, id] = notification.id.split('-');
-            
+
             await fetch(`/api/notifications/${type}/${id}/read`, {
                 method: 'POST',
                 headers: {
@@ -231,30 +257,30 @@ export default function NotificationIcon() {
     };
 
     return (
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenu open={isOpen} onOpenChange={handleDropdownClose}>
             <DropdownMenuTrigger asChild>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
+                <Button
+                    variant="ghost"
+                    size="icon"
                     className="relative h-9 w-9 rounded-md"
                     aria-label="Notifications"
                 >
                     <Bell className="h-5 w-5 flex-shrink-0" />
-                    {unreadCount > 0 && (
+                    {unreadCount > 0 && !isOpen && (
                         <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-error)] text-[10px] font-bold text-white border border-white dark:border-[var(--color-dark)]">
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-                className="w-96 p-0 max-h-[600px] flex flex-col" 
+            <DropdownMenuContent
+                className="w-96 p-0 max-h-[600px] flex flex-col"
                 align="end"
                 onCloseAutoFocus={(e) => e.preventDefault()}
             >
                 <div className="flex items-center justify-between p-4 border-b bg-[var(--color-card)] flex-shrink-0">
                     <h3 className="font-semibold text-sm text-[var(--color-foreground)]">
-                        Notifications {unreadCount > 0 && `(${unreadCount})`}
+                        Notifications
                     </h3>
                 </div>
                 <ScrollArea className="flex-1 max-h-[500px]">
@@ -270,7 +296,7 @@ export default function NotificationIcon() {
                             {notifications.map((notification) => {
                                 const IconComponent = getIcon(notification.iconType);
                                 const iconColor = getIconColor(notification.iconType);
-                                
+
                                 return (
                                     <Link
                                         key={notification.id}
@@ -284,7 +310,7 @@ export default function NotificationIcon() {
                                         <div className="flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer">
                                             <div className="flex-shrink-0 mt-1">
                                                 {notification.senderImage ? (
-                                                    <Avatar 
+                                                    <Avatar
                                                         className="h-10 w-10 rounded-full"
                                                         image={notification.senderImage}
                                                         name={notification.senderName}

@@ -35,3 +35,4 @@ export default function Card({ card, onClick, disabled = false, isPlayable = fal
 
 
 
+
