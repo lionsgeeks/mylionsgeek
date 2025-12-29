@@ -1023,20 +1023,31 @@ class ProjectController extends Controller
             ];
         })->values();
 
-        // Broadcast reaction update via Ably
+        // Broadcast reaction update via Ably to all users in the project
         try {
             $ablyKey = config('services.ably.key');
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
-                $channel = $ably->channels->get("project:{$project->id}");
+                $channelName = "project:{$project->id}";
+                $channel = $ably->channels->get($channelName);
                 
-                $channel->publish('message-reaction-updated', [
+                $broadcastData = [
                     'message_id' => $messageId,
                     'reactions' => $reactionsGrouped,
                     'action' => $action,
                     'reaction' => $request->reaction,
                     'user_id' => Auth::id(),
+                ];
+                
+                $channel->publish('message-reaction-updated', $broadcastData);
+                
+                Log::info('✅ Broadcasted reaction update via Ably', [
+                    'channel' => $channelName,
+                    'message_id' => $messageId,
+                    'action' => $action,
                 ]);
+            } else {
+                Log::warning('Ably key not configured - reaction update not broadcasted');
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast reaction update via Ably: ' . $e->getMessage());
@@ -1165,17 +1176,29 @@ class ProjectController extends Controller
 
         $message->delete();
 
-        // Broadcast message deletion via Ably
+        // Broadcast message deletion via Ably to all users in the project
         try {
             $ablyKey = config('services.ably.key');
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
-                $channel = $ably->channels->get("project:{$project->id}");
+                $channelName = "project:{$project->id}";
+                $channel = $ably->channels->get($channelName);
                 
-                $channel->publish('message-deleted', [
+                $broadcastData = [
                     'message_id' => $messageId,
                     'project_id' => $project->id,
+                    'deleted_by' => Auth::id(),
+                ];
+                
+                $channel->publish('message-deleted', $broadcastData);
+                
+                Log::info('✅ Broadcasted message deletion via Ably', [
+                    'channel' => $channelName,
+                    'message_id' => $messageId,
+                    'deleted_by' => Auth::id(),
                 ]);
+            } else {
+                Log::warning('Ably key not configured - message deletion not broadcasted');
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast message deletion via Ably: ' . $e->getMessage());

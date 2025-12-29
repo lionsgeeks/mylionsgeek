@@ -98,14 +98,32 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         const handleReactionUpdate = (data) => {
-            console.log('📨 Received reaction update via Ably:', data);
-            setMessages((prev) => 
-                prev.map(msg => 
-                    msg.id === data.message_id 
-                        ? { ...msg, reactions: data.reactions || [] }
-                        : msg
-                )
-            );
+            console.log('📨 Received reaction update via Ably (real-time for all users):', data);
+            if (!data || !data.message_id) {
+                console.warn('⚠️ Invalid reaction update data:', data);
+                return;
+            }
+            
+            setMessages((prev) => {
+                const messageExists = prev.some(msg => msg.id === data.message_id);
+                if (!messageExists) {
+                    console.warn('⚠️ Reaction update received for non-existent message:', data.message_id, '- message may have been deleted');
+                    return prev;
+                }
+                
+                const updated = prev.map(msg => {
+                    if (msg.id === data.message_id) {
+                        console.log('✅ Updating reactions for message:', data.message_id, 'New reactions:', data.reactions);
+                        return { 
+                            ...msg, 
+                            reactions: Array.isArray(data.reactions) ? data.reactions : [] 
+                        };
+                    }
+                    return msg;
+                });
+                
+                return updated;
+            });
         };
 
         const handleMessageUpdate = (data) => {
@@ -139,27 +157,39 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         const handleMessageDelete = (data) => {
-            console.log('📨 Received message deletion via Ably:', data);
+            console.log('📨 Received message deletion via Ably (real-time for all users):', data);
+            if (!data || !data.message_id) {
+                console.warn('⚠️ Invalid deletion data:', data);
+                return;
+            }
+            
             setMessages((prev) => {
-                const filtered = prev.filter(msg => msg.id !== data.message_id);
-                if (filtered.length !== prev.length) {
-                    console.log('✅ Message deleted in real-time');
+                const messageExists = prev.some(msg => msg.id === data.message_id);
+                if (!messageExists) {
+                    console.log('ℹ️ Message already deleted or not found:', data.message_id, '- may have been optimistically deleted');
+                    return prev; // Message already deleted (optimistic update)
                 }
+                const filtered = prev.filter(msg => msg.id !== data.message_id);
+                console.log('✅ Message deleted in real-time - synced for all users');
                 return filtered;
             });
+            
             // Cancel edit mode if editing this message
             if (editingMessage?.id === data.message_id) {
+                console.log('🔄 Cancelling edit mode after message deletion');
                 setEditingMessage(null);
                 setEditContent('');
                 setIsEditing(false);
             }
         };
 
-        // Register the callbacks
+        // Register the callbacks for real-time updates
+        console.log('📡 Registering Ably event handlers for real-time updates');
         subscribe('new-message', handleNewMessage);
         subscribe('message-reaction-updated', handleReactionUpdate);
         subscribe('message-updated', handleMessageUpdate);
         subscribe('message-deleted', handleMessageDelete);
+        console.log('✅ All real-time event handlers registered');
 
         // Cleanup
         return () => {
@@ -313,7 +343,9 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             return;
         }
 
-        // Optimistically remove the message from UI
+        console.log('🗑️ Deleting message:', messageId);
+
+        // Optimistically remove the message from UI for immediate feedback
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
         
         // Cancel edit mode if editing this message
@@ -339,8 +371,8 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                 throw new Error(errorData.error || 'Failed to delete message');
             }
 
-            // Real-time update will sync the deletion across all clients
-            // If deletion fails, we'll refetch to restore the message
+            console.log('✅ Message deleted successfully - real-time update will sync for all users');
+            // Real-time update will sync the deletion across all clients via Ably
         } catch (error) {
             console.error('Failed to delete message:', error);
             // Revert optimistic update on error - refetch messages
@@ -369,7 +401,9 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
     const handleToggleReaction = async (messageId, reaction) => {
         if (!projectId) return;
 
-        // Optimistically update the UI
+        console.log('👍 Toggling reaction:', { messageId, reaction, userId: auth?.user?.id });
+
+        // Optimistically update the UI for immediate feedback
         setMessages((prev) => 
             prev.map(msg => {
                 if (msg.id !== messageId) return msg;
@@ -447,7 +481,8 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             // Close reaction picker
             setShowReactionPicker(null);
             
-            // The real update will come via Ably, but we've already optimistically updated
+            console.log('✅ Reaction toggle successful - real-time update will sync for all users');
+            // The real update will come via Ably and sync for all users
         } catch (error) {
             console.error('Failed to toggle reaction:', error);
             // Revert optimistic update on error - refetch messages
