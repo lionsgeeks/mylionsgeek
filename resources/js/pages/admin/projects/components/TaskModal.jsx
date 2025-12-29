@@ -75,10 +75,10 @@ const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, 
     ];
 
     return (
-        <div className="absolute z-20 w-64 bg-zinc-800 shadow-lg rounded-md border border-zinc-700 p-3 top-7 left-150 ml-2">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-zinc-400">Change Status</span>
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-zinc-700">
+        <div className="absolute z-20 w-64 bg-background shadow-xl rounded-xl border-2 border-border p-3 top-12 left-0">
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-foreground">Change Status</span>
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg">
                     <X className="h-4 w-4" />
                 </Button>
             </div>
@@ -92,15 +92,17 @@ const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, 
                                 onStatusChange(status.value);
                                 onClose();
                             }}
-                            className={`flex items-center justify-between p-2 rounded-md hover:bg-zinc-700 cursor-pointer ${isSelected ? 'bg-zinc-700/50' : ''}`}
+                            className={`flex items-center justify-between p-3 rounded-lg hover:bg-accent cursor-pointer transition-colors ${
+                                isSelected ? 'bg-primary/10 border-2 border-primary/20' : 'border-2 border-transparent'
+                            }`}
                         >
                             <div className="flex items-center gap-2">
-                                <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusBadgeClass(status.value)}`}>
+                                <div className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${getStatusBadgeClass(status.value)}`}>
                                     {getStatusIcon(status.value)}
                                     {status.label}
                                 </div>
                             </div>
-                            {isSelected && <CheckCircle className="h-4 w-4 text-alpha" />}
+                            {isSelected && <CheckCircle className="h-4 w-4 text-primary" />}
                         </div>
                     );
                 })}
@@ -140,15 +142,15 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
     };
 
     return (
-        <div className="absolute z-[100] w-80 bg-zinc-900 shadow-2xl rounded-lg border border-zinc-700/50 p-0 top-0 -right-6 overflow-hidden" style={{ marginTop: '0px' }}>
+        <div className="absolute z-[100] w-80 bg-light dark:bg-dark shadow-xl rounded-lg border border-border p-0 top-0 right-0 overflow-hidden" style={{ marginTop: '0px' }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700/50 bg-zinc-800/50">
-                <h3 className="text-sm font-semibold text-zinc-200">Members</h3>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Members</h3>
                 <Button
                     variant="ghost"
                     size="icon"
                     onClick={onClose}
-                    className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-md transition-colors"
+                    className="h-7 w-7"
                 >
                     <X className="h-4 w-4" />
                 </Button>
@@ -160,7 +162,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                     placeholder="Search members"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 h-9"
+                    className="h-9 text-sm"
                     autoFocus
                 />
             </div>
@@ -169,7 +171,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
             <ScrollArea className="h-64">
                 <div className="px-2 py-2">
                     <div className="px-2 py-1.5 mb-1">
-                        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                             Board members
                         </span>
                     </div>
@@ -177,7 +179,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                     <div className="space-y-0.5">
                         {filteredMembers.length === 0 ? (
                             <div className="px-3 py-8 text-center">
-                                <p className="text-sm text-zinc-500">No members found</p>
+                                <p className="text-sm text-muted-foreground">No members found</p>
                             </div>
                         ) : (
                             filteredMembers.map((member) => {
@@ -191,21 +193,20 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                         onMouseEnter={() => setHoveredId(member.id)}
                                         onMouseLeave={() => setHoveredId(null)}
                                         className={`
-                                        group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer
-                                        transition-all duration-150 ease-out w-full pointer-events-auto
+                                        group relative flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer
+                                        transition-colors w-full
                                         ${selected
-                                                ? 'bg-zinc-700/80 hover:bg-zinc-600/90'
+                                                ? 'bg-alpha/10'
                                                 : isHovered
-                                                    ? 'bg-zinc-800/60 hover:bg-zinc-700/70'
-                                                    : 'hover:bg-zinc-800/40'
+                                                    ? 'bg-muted/50'
+                                                    : 'hover:bg-muted/30'
                                             }
                                     `}
                                     >
-
                                         {/* Avatar */}
-                                        <div className="flex-shrink-0 pointer-events-none">
+                                        <div className="flex-shrink-0">
                                             <Avatar
-                                                className="h-8 w-8 overflow-hidden ring-2 ring-transparent transition-all pointer-events-none"
+                                                className="h-7 w-7"
                                                 image={member.image}
                                                 name={member.name}
                                                 lastActivity={member.last_online || null}
@@ -214,14 +215,12 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                         </div>
 
                                         {/* Name */}
-                                        <div className="flex-1  pointer-events-none">
+                                        <div className="flex-1 min-w-0">
                                             <span className={`
-                                                text-sm block truncate transition-all duration-150
+                                                text-sm block truncate
                                                 ${selected
-                                                    ? 'text-white font-semibold'
-                                                    : isHovered
-                                                        ? 'text-white font-medium'
-                                                        : 'text-zinc-300'
+                                                    ? 'text-foreground font-medium'
+                                                    : 'text-foreground'
                                                 }
                                             `}>
                                                 {member.name}
@@ -229,18 +228,17 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                         </div>
 
                                         {/* Selection Indicator */}
-                                        <div className="flex-shrink-0 flex items-center justify-center pointer-events-none">
+                                        <div className="flex-shrink-0">
                                             {selected ? (
-                                                <div className="flex items-center justify-center w-5 h-5 rounded-full bg-yellow-400/20 ring-2 ring-yellow-400/40">
+                                                <div className="flex items-center justify-center w-4 h-4 rounded-full bg-light dark:bg-dark border-2 border-alpha">
                                                     <CheckCircle
-                                                        className="h-4 w-4 text-yellow-400"
+                                                        className="h-3 w-3 text-alpha"
                                                         strokeWidth={2.5}
-                                                        fill="rgb(250 204 21)"
-                                                        fillOpacity={0.3}
+                                                        fill="currentColor"
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="w-5 h-5 rounded-full border-2 border-zinc-600 group-hover:border-zinc-500 transition-colors" />
+                                                <div className="w-4 h-4 rounded-full border-2 border-input group-hover:border-alpha/50 transition-colors" />
                                             )}
                                         </div>
                                     </div>
@@ -293,7 +291,7 @@ const AttachPopover = ({ onClose, onFileUpload }) => {
                 />
                 <Input
                     placeholder="Search or paste a link"
-                    className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
+                    className="bg-light dark:bg-dark border-border text-foreground placeholder:text-muted-foreground"
                 />
             </div>
         </div>
@@ -550,13 +548,7 @@ const TaskModal = ({
         });
     };
 
-    const handleShare = () => {
-        const taskUrl = `${window.location.origin}/admin/projects/${selectedTask.project_id}/tasks/${selectedTask.id}`;
-        navigator.clipboard.writeText(taskUrl).then(() => {
-            // You could add a toast notification here
-            //('Task URL copied to clipboard');
-        });
-    };
+
 
     // Comment handlers
     const handleAddComment = () => {
@@ -868,20 +860,19 @@ const TaskModal = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="!max-w-4xl max-h-[90vh] !w-[90vw] p-0 bg-background border-border shadow-2xl rounded-lg">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-1 border-b border-border bg-light dark:bg-dark">
-                    <div className="flex items-center gap-4">
-                        {/* Status Badge - Clickable */}
+            <DialogContent showCloseButton={false} className="!max-w-6xl max-h-[96vh] !w-[96vw] p-0 bg-light dark:bg-dark border shadow-xl rounded-lg overflow-hidden">
+                
+                {/* Clean Minimal Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                    <div className="flex items-center gap-3">
                         <div className="relative">
-                            <div
+                            <button
                                 onClick={() => setShowStatusPopover(true)}
-                                className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${getStatusBadgeClass(taskData.status)}`}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${getStatusBadgeClass(taskData.status)}`}
                             >
                                 {getStatusIcon(taskData.status)}
-                                {taskData.status.replace('_', ' ').toUpperCase()}
-                            </div>
+                                <span className="capitalize">{taskData.status.replace('_', ' ')}</span>
+                            </button>
                             {showStatusPopover && (
                                 <StatusPopover
                                     currentStatus={taskData.status}
@@ -892,23 +883,25 @@ const TaskModal = ({
                                 />
                             )}
                         </div>
-
-                        {/* Priority Badge */}
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getPriorityBadgeClass(taskData.priority)}`}>
+                        <div className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 ${getPriorityBadgeClass(taskData.priority)}`}>
                             {getPriorityIcon(taskData.priority)}
-                            {taskData.priority.toUpperCase()}
+                            <span className="capitalize">{taskData.priority}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={handleTogglePin} className="text-dark dark:text-light hover:bg-alpha/20">
+                    
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={handleTogglePin} 
+                            className="h-8 w-8"
+                        >
                             {taskData.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={handleShare} className="text-dark dark:text-light hover:bg-alpha/20">
-                            <Share2 className="h-4 w-4" />
-                        </Button>
+                   
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-dark dark:text-light hover:bg-alpha/20">
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -919,7 +912,7 @@ const TaskModal = ({
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleProgression()}>
                                     <Progress className="mr-2 h-4 w-4" />
-                                    progression
+                                    Progression
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleDeleteTask()} className="text-destructive">
                                     <Trash2 className="mr-2 h-4 w-4" />
@@ -927,82 +920,85 @@ const TaskModal = ({
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="text-dark dark:text-light hover:bg-alpha/20">
-                            {/* <X className="h-5 w-5" /> */}
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+                            <X className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="flex h-[75vh] bg-background">
-                    {/* Left Column - Professional Elegant Design */}
-                    <div className="flex-1 bg-gradient-to-br from-light via-light to-gray-50 dark:from-dark dark:via-dark dark:to-dark_gray py-8 pl-8 pr-6 space-y-8">
-                        <ScrollArea className="h-full pr-4">
-                            {/* Task Title - Elegant Design */}
-                            <div className="mb-10">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-1 h-6 bg-gradient-to-b from-alpha to-alpha/60 rounded-full"></div>
-                                    <label className="text-xs font-semibold text-dark/80 dark:text-light/80 capitalize tracking-wider">Task Title</label>
-                                </div>
+                <div className="flex h-[calc(96vh-80px)]">
+                    {/* Left Column */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5">
+                        <div className="max-w-4xl space-y-6">
+                            {/* Task Title */}
+                            <div>
                                 {isEditingTitle ? (
-                                    <div className="space-y-4 py-3">
+                                    <div className="space-y-3">
                                         <Input
                                             value={taskData.title}
                                             onChange={(e) => setTaskData('title', e.target.value)}
                                             onBlur={handleUpdateTitle}
                                             onKeyPress={(e) => e.key === 'Enter' && handleUpdateTitle()}
                                             autoFocus
-                                            className="text-2xl font-bold bg-neutral-200 dark:bg-neutral-800 border-alpha/40 text-dark dark:text-light focus-visible:ring-alpha/50 focus-visible:ring-2 rounded-xl px-6 py-4"
+                                            className="text-2xl font-semibold border-0 border-b-2 border-primary rounded-none px-0 py-2 focus-visible:ring-0 focus-visible:border-primary"
                                         />
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
                                             <Button
                                                 onClick={handleUpdateTitle}
                                                 disabled={isUpdating}
-                                                className="bg-gradient-to-r from-alpha to-alpha/80 hover:from-alpha/90 hover:to-alpha/70 text-dark font-semibold px-6 py-2 rounded-lg shadow-lg"
+                                                size="sm"
+                                                className="h-8"
                                             >
-                                                {isUpdating ? 'Saving...' : 'Save Changes'}
+                                                {isUpdating ? 'Saving...' : 'Save'}
                                             </Button>
-                                            <Button variant="ghost" onClick={() => setIsEditingTitle(false)} className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/10 px-6 py-2 rounded-lg">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => setIsEditingTitle(false)} 
+                                                className="h-8"
+                                            >
                                                 Cancel
                                             </Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div
+                                    <h1
                                         onClick={() => setIsEditingTitle(true)}
-                                        className="group px-6 py-2 bg-neutral-200 dark:bg-neutral-800 dark:to-dark/40 rounded-xl border border-alpha/20 cursor-pointer hover:from-alpha/10 hover:to-alpha/5 hover:border-alpha/40 transition-all duration-300 backdrop-blur-sm"
+                                        className="text-2xl font-semibold text-foreground cursor-pointer hover:opacity-70 transition-opacity"
                                     >
-                                        <h1 className="text-xl  font-bold text-dark group-hover:text-alpha dark:text-light transition-colors">
-                                            {selectedTask.title || 'Untitled Task'}
-                                        </h1>
-                                    </div>
+                                        {selectedTask.title || 'Untitled Task'}
+                                    </h1>
                                 )}
                             </div>
 
-                            {/* Description - Elegant Design */}
-                            <div className="mb-10">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-1 h-6 bg-gradient-to-b from-alpha to-alpha/60 rounded-full"></div>
-                                    <label className="text-xs font-semibold text-dark/80 dark:text-light/80 capitalize tracking-wider">Description</label>
-                                </div>
+                            {/* Description */}
+                            <div>
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 block">Description</label>
                                 {isEditingDescription ? (
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <Textarea
                                             value={taskData.description}
                                             onChange={(e) => setTaskData('description', e.target.value)}
-                                            placeholder="Add a more detailed description..."
+                                            placeholder="Add a detailed description..."
                                             rows={5}
-                                            className="bg-neutral-200 dark:bg-neutral-800 border-alpha/40 text-dark dark:text-light placeholder:text-dark/60 dark:placeholder:text-light/60 focus-visible:ring-alpha focus-visible:ring-2 rounded-xl px-6 py-4 resize-none"
+                                            className="min-h-[100px] resize-none"
                                         />
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
                                             <Button
                                                 onClick={handleUpdateDescription}
                                                 disabled={isUpdating}
-                                                className="bg-gradient-to-r from-alpha to-alpha/80 hover:from-alpha/90 hover:to-alpha/70 text-dark font-semibold px-6 py-2 rounded-lg shadow-lg"
+                                                size="sm"
+                                                className="h-8"
                                             >
-                                                {isUpdating ? 'Saving...' : 'Save Changes'}
+                                                {isUpdating ? 'Saving...' : 'Save'}
                                             </Button>
-                                            <Button variant="ghost" onClick={() => setIsEditingDescription(false)} className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/10 px-6 py-2 rounded-lg">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => setIsEditingDescription(false)} 
+                                                className="h-8"
+                                            >
                                                 Cancel
                                             </Button>
                                         </div>
@@ -1010,93 +1006,97 @@ const TaskModal = ({
                                 ) : (
                                     <div
                                         onClick={() => setIsEditingDescription(true)}
-                                        className="group shadow-lg px-6 py-3 bg-neutral-200 dark:bg-neutral-800 dark:from-dark/60 dark:to-dark/40 rounded-xl border border-alpha/20 cursor-pointer hover:from-alpha/10 hover:to-alpha/5 hover:border-alpha/40 transition-all duration-300 backdrop-blur-sm min-h-[120px]"
+                                        className="min-h-[100px] p-3 border border-border rounded-md cursor-pointer hover:border-primary/50 transition-colors"
                                     >
                                         {selectedTask.description ? (
-                                            <p className="text-dark text-sm leading-relaxed group-hover:text-alpha/90 dark:text-light/80 transition-colors">{selectedTask.description}</p>
+                                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>
                                         ) : (
-                                            <p className="text-dark/60 italic group-hover:text-dark/80 dark:text-light/60 dark:group-hover:text-light/80 transition-colors">Add a more detailed description...</p>
+                                            <p className="text-sm text-muted-foreground italic">Add a detailed description...</p>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            {/* Checklist - Elegant Design */}
-                            <div className="mb-10">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1 h-6 bg-gradient-to-b from-alpha to-alpha/60 rounded-full"></div>
-                                            <CheckSquare className="h-5 w-5 text-alpha" />
-                                            <h3 className="text-lg font-bold text-dark dark:text-light">Checklist</h3>
-                                        </div>
-                                        <div className="px-3 py-1 dark:bg-alpha/20 bg-dark/80 rounded-lg">
-                                            <span className="text-sm font-semibold text-alpha">{getSubtaskProgress()}% complete</span>
-                                        </div>
+                            {/* Checklist */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
+                                        <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs font-medium">
+                                            {getSubtaskProgress()}%
+                                        </span>
                                     </div>
-                                    <Button variant="ghost" size="sm" onClick={() => setShowSubtasks(!showSubtasks)} className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/20 text-sm px-4 py-2 rounded-lg">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => setShowSubtasks(!showSubtasks)} 
+                                        className="h-7 text-xs"
+                                    >
                                         {showSubtasks ? 'Hide' : 'Show'}
                                     </Button>
                                 </div>
 
                                 {showSubtasks && (
-                                    <div className="space-y-4">
-                                        {/* Add New Subtask - Elegant */}
-                                        <div className="flex gap-4 p-2 bg-gradient-to-r from-light/60 to-light/40 dark:from-dark/60 dark:to-dark/40 rounded-xl border border-alpha/30 hover:border-alpha/50 transition-all duration-300">
+                                    <div className="space-y-3">
+                                        {/* Add New Subtask */}
+                                        <div className="flex gap-2">
                                             <Input
                                                 value={newSubtask}
                                                 onChange={(e) => setNewSubtask(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
-                                                placeholder="Add a new checklist item..."
-                                                className="flex-1 bg-neutral-200 dark:bg-neutral-800 border-0 text-dark dark:text-light placeholder:text-dark/60 dark:placeholder:text-light/60 focus-visible:ring-alpha focus-visible:ring-2 rounded-lg px-4 py-3"
+                                                placeholder="Add item..."
+                                                className="h-9 text-sm"
                                             />
-                                            <Button onClick={handleAddSubtask} className="bg-gradient-to-r from-alpha to-alpha/80 hover:from-alpha/90 hover:to-alpha/70 text-dark font-semibold px-6 py-3 rounded-lg shadow-lg">
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Add Item
+                                            <Button 
+                                                onClick={handleAddSubtask} 
+                                                size="sm"
+                                                className="h-9"
+                                            >
+                                                <Plus className="h-4 w-4" />
                                             </Button>
                                         </div>
 
-                                        {/* Progress Bar - Elegant */}
-                                        <div className="mb-6">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-medium text-dark/80 dark:text-light/80">Progress</span>
-                                                <span className="text-sm font-bold text-alpha">{getSubtaskProgress()}%</span>
+                                        {/* Progress Bar */}
+                                        <div>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className="text-xs text-muted-foreground">Progress</span>
+                                                <span className="text-xs font-medium text-foreground">{getSubtaskProgress()}%</span>
                                             </div>
-                                            <Progress value={getSubtaskProgress()} className="h-2 bg-light/40 dark:bg-dark/40 rounded-full overflow-hidden" indicatorClassName="bg-gradient-to-r from-alpha to-alpha/80 transition-all duration-500 ease-in-out" />
+                                            <Progress value={getSubtaskProgress()} className="h-1.5" />
                                         </div>
 
-                                        {/* Subtasks List - Elegant */}
-                                        <div className="space-y-3">
+                                        {/* Subtasks List */}
+                                        <div className="space-y-1.5">
                                             {(taskData.subtasks || []).map(subtask => (
-                                                <div key={subtask.id} className="flex items-center gap-4 p-4 bg-neutral-200/80 dark:bg-neutral-800/80 dark:from-dark/60 dark:to-dark/40 hover:from-alpha/10 hover:to-alpha/5 rounded-xl group transition-all duration-300 border border-alpha/20 hover:border-alpha/40 backdrop-blur-sm">
+                                                <div 
+                                                    key={subtask.id} 
+                                                    className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 group"
+                                                >
                                                     <Checkbox
                                                         id={`subtask-${subtask.id}`}
                                                         checked={subtask.completed}
                                                         onCheckedChange={() => handleToggleSubtask(subtask.id)}
-                                                        className="border-alpha/40 data-[state=checked]:bg-alpha data-[state=checked]:border-alpha w-5 h-5 rounded-md"
+                                                        className="h-4 w-4"
                                                     />
                                                     {editingSubtask?.id === subtask.id ? (
-                                                        <div className="flex-1 flex items-center gap-3">
+                                                        <div className="flex-1 flex items-center gap-2">
                                                             <Input
                                                                 value={editingSubtaskTitle}
                                                                 onChange={(e) => setEditingSubtaskTitle(e.target.value)}
                                                                 onKeyPress={(e) => e.key === 'Enter' && handleUpdateSubtask()}
                                                                 onBlur={handleUpdateSubtask}
                                                                 autoFocus
-                                                                className="flex-1 bg-neutral-200 dark:bg-neutral-800 border-alpha/40 text-dark dark:text-light focus-visible:ring-alpha focus-visible:ring-2 rounded-lg px-4 py-2"
+                                                                className="flex-1 h-8 text-sm"
                                                             />
-                                                            <Button
-                                                                size="sm"
-                                                                onClick={handleUpdateSubtask}
-                                                                className="bg-gradient-to-r from-alpha to-alpha/80 hover:from-alpha/90 hover:to-alpha/70 text-dark font-semibold px-4 py-2 rounded-lg"
-                                                            >
+                                                            <Button size="sm" onClick={handleUpdateSubtask} className="h-8">
                                                                 Save
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => { setEditingSubtask(null); setEditingSubtaskTitle(''); }}
-                                                                className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/10 px-4 py-2 rounded-lg"
+                                                                className="h-8"
                                                             >
                                                                 Cancel
                                                             </Button>
@@ -1105,26 +1105,30 @@ const TaskModal = ({
                                                         <>
                                                             <label
                                                                 htmlFor={`subtask-${subtask.id}`}
-                                                                className={`flex-1 text-sm font-medium cursor-pointer transition-colors ${subtask.completed ? 'line-through text-dark/50 dark:text-light/50' : 'text-dark group-hover:text-alpha/90 dark:text-light'}`}
+                                                                className={`flex-1 text-sm cursor-pointer ${
+                                                                    subtask.completed 
+                                                                        ? 'line-through text-muted-foreground' 
+                                                                        : 'text-foreground'
+                                                                }`}
                                                             >
                                                                 {subtask.title}
                                                             </label>
-                                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={() => handleEditSubtask(subtask)}
-                                                                    className="h-8 w-8 text-dark/60 dark:text-light/60 hover:text-alpha hover:bg-alpha/20 rounded-lg"
+                                                                    className="h-7 w-7"
                                                                 >
-                                                                    <Edit className="h-4 w-4" />
+                                                                    <Edit className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={() => handleDeleteSubtask(subtask.id)}
-                                                                    className="h-8 w-8 text-dark/60 dark:text-light/60 hover:text-error hover:bg-error/20 rounded-lg"
+                                                                    className="h-7 w-7 text-destructive hover:text-destructive"
                                                                 >
-                                                                    <Trash2 className="h-4 w-4" />
+                                                                    <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </div>
                                                         </>
@@ -1136,169 +1140,124 @@ const TaskModal = ({
                                 )}
                             </div>
 
-                            {/* Attachments - Elegant Design */}
-                            <div className="mb-10">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1 h-6 bg-gradient-to-b from-alpha to-alpha/60 rounded-full"></div>
-                                            <Paperclip className="h-5 w-5 text-alpha" />
-                                            <h3 className="text-lg font-bold text-dark dark:text-light">Attachments</h3>
-                                        </div>
-                                        <div className="px-3 py-1 dark:bg-alpha/20 bg-dark/80 rounded-lg">
-                                            <span className="text-sm font-semibold text-alpha">{(taskData.attachments || []).length} files</span>
-                                        </div>
+                            {/* Attachments */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold text-foreground">Attachments</h3>
+                                        <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs font-medium">
+                                            {(taskData.attachments || []).length}
+                                        </span>
                                     </div>
-                                    {/* Upload Button */}
-                                    <div className="  border border-alpha/20 rounded-lg">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                                            className="hidden"
-                                            id="file-upload"
-                                        />
-                                        <label
-                                            htmlFor="file-upload"
-                                            className="inline-flex items-center px-4 py-2  border border-zinc-700 text-sm font-medium rounded-md text-neutral-800 dark:text-light hover:text-white hover:bg-zinc-700 cursor-pointer transition-colors"
-                                        >
-                                            <UploadCloud className="h-4 w-4 mr-2" />
-                                            Upload Files
-                                        </label>
-                                    </div>
-                                    {/* <Button variant="ghost" size="sm" onClick={() => setShowAttachments(!showAttachments)} className="text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/20 text-sm px-4 py-2 rounded-lg">
-                                        {showAttachments ? 'Hide' : 'Show'}
-                                    </Button> */}
                                 </div>
 
                                 {showAttachments && (
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        {/* Upload Button */}
+                                        <div className="p-3 border border-dashed border-border rounded-md hover:border-primary/50 transition-colors">
+                                            <input
+                                                type="file"
+                                                multiple
+                                                onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                                                className="hidden"
+                                                id="file-upload"
+                                            />
+                                            <label
+                                                htmlFor="file-upload"
+                                                className="flex items-center gap-2 cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+                                            >
+                                                <UploadCloud className="h-4 w-4" />
+                                                <span>Upload files</span>
+                                            </label>
+                                        </div>
+
+                                        {/* Attachments List */}
                                         {(taskData.attachments || []).length > 0 ? (
                                             (taskData.attachments || []).map(attachment => (
-                                                <div key={attachment.id} className="flex items-center justify-between p-4 bg-neutral-200/80 dark:bg-neutral-800/80 dark:from-dark/60 dark:to-dark/40 border border-alpha/20 rounded-xl hover:border-alpha/40 group transition-all duration-300 backdrop-blur-sm">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-3 bg-light/30 dark:bg-zinc-700 rounded-lg">
+                                                <div 
+                                                    key={attachment.id} 
+                                                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"
+                                                >
+                                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                        <div className="p-1.5 bg-muted rounded">
                                                             {getFileIcon(attachment.type, attachment.name)}
                                                         </div>
-                                                        <div>
+                                                        <div className="flex-1 min-w-0">
                                                             {attachment.type && attachment.type.startsWith('image/') ? (
                                                                 <Popover>
                                                                     <PopoverTrigger asChild>
-                                                                        <p className="text-dark font-medium dark:text-light cursor-pointer hover:text-alpha transition-colors">{attachment.name}</p>
+                                                                        <p className="text-sm font-medium cursor-pointer hover:text-primary truncate">{attachment.name}</p>
                                                                     </PopoverTrigger>
-                                                                    <PopoverContent className="w-auto p-0 bg-white border-none shadow-none">
-                                                                        <img src={`/storage/${attachment.path}`} alt={attachment.name} className="max-w-xs max-h-xs rounded-lg shadow-xl" />
+                                                                    <PopoverContent className="w-auto p-0">
+                                                                        <img src={`/storage/${attachment.path}`} alt={attachment.name} className="max-w-xs max-h-xs rounded" />
                                                                     </PopoverContent>
                                                                 </Popover>
                                                             ) : (
-                                                                <p className="text-dark font-medium dark:text-light">{attachment.name}</p>
+                                                                <p className="text-sm font-medium truncate">{attachment.name}</p>
                                                             )}
-                                                            <p className="text-xs text-dark/50 dark:text-zinc-400">
+                                                            <p className="text-xs text-muted-foreground">
                                                                 {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Unknown size'}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <a className='text-dark/60 dark:text-alpha hover:text-alpha dark:hover:text-alpha hover:bg-alpha/20 p-2 rounded-md' download={true} href={`/storage/${attachment.path}`} target="_blank" rel="noopener noreferrer">
-                                                            <Download className="h-5 w-5" />
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <a 
+                                                            className='p-1.5 hover:bg-muted rounded' 
+                                                            download={true} 
+                                                            href={`/storage/${attachment.path}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <Download className="h-4 w-4" />
                                                         </a>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => handleRemoveAttachment(attachment.id)}
-                                                            className="h-9 w-9 text-dark/60 dark:text-red-400 hover:text-error hover:bg-error/20 rounded-md"
+                                                            className="h-7 w-7 text-destructive hover:text-destructive"
                                                         >
-                                                            <Trash2 className="h-5 w-5" />
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
                                             ))
-                                        ) : (
-                                            <div className="text-center py-16 border-2 border-dashed border-alpha/30 rounded-xl bg-gradient-to-br from-light/40 to-light/20 dark:from-dark/40 dark:to-dark/20 hover:from-alpha/10 hover:to-alpha/5 transition-all duration-300 group">
-                                                <UploadCloud className="h-20 w-20 text-alpha/60 mx-auto mb-6 group-hover:text-alpha transition-colors" />
-                                                <p className="text-lg font-semibold text-dark/80 mb-2 group-hover:text-dark dark:text-light/80 dark:group-hover:text-light transition-colors">No attachments yet</p>
-                                                <p className="text-sm text-dark/50 mb-8 group-hover:text-dark/70 dark:text-light/50 dark:group-hover:text-light/70 transition-colors">Drag and drop files here or click to upload</p>
-                                                <Button
-                                                    onClick={() => document.getElementById('file-upload').click()}
-                                                    className="bg-gradient-to-r from-alpha to-alpha/80 hover:from-alpha/90 hover:to-alpha/70 text-dark font-semibold px-8 py-3 rounded-lg shadow-lg"
-                                                >
-                                                    <UploadCloud className="h-5 w-5 mr-3" />
-                                                    Upload Files
-                                                </Button>
-                                            </div>
-                                        )}
-
-
+                                        ) : null}
                                     </div>
                                 )}
                             </div>
-
-                        </ScrollArea>
+                        </div>
                     </div>
 
-                    {/* Right Column */}
-                    <div className="w-1/3 p-6 space-y-6 border-l border-alpha/20 bg-light dark:bg-dark relative">
-                        {/* Action Buttons */}
-                        <div className="space-y-2 pt-6 sticky top-0">
-                            <div className="relative">
-
-                                {/* Assigned To */}
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-semibold text-dark dark:text-light mb-3">Assigned To</h3>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        {selectedTask.assigned_to && (
-                                            <Avatar
-                                                key={selectedTask.assigned_to.id || selectedTask.assigned_to}
-                                                className="h-8 w-8 overflow-hidden relative z-50"
-                                                image={selectedTask.assigned_to.image}
-                                                name={selectedTask.assigned_to.name}
-                                                lastActivity={selectedTask.assigned_to.last_online || null}
-                                                onlineCircleClass="hidden"
-                                            />
-                                        )}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setShowMembersPopover(true)}
-                                            className="h-8 w-8 bg-alpha/20 hover:bg-alpha/30 text-dark dark:text-light rounded-full"
-                                        >
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                    {/* Right Column - Sidebar */}
+                    <div className="w-80 border-l border-border flex flex-col">
+                        <div className="p-5 space-y-5 overflow-y-auto flex-1">
+                            {/* Assigned To */}
+                            <div>
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Assigned To</h3>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {selectedTask.assigned_to && (
+                                        <Avatar
+                                            key={selectedTask.assigned_to.id || selectedTask.assigned_to}
+                                            className="h-8 w-8"
+                                            image={selectedTask.assigned_to.image}
+                                            name={selectedTask.assigned_to.name}
+                                            lastActivity={selectedTask.assigned_to.last_online || null}
+                                            onlineCircleClass="hidden"
+                                        />
+                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setShowMembersPopover(true)}
+                                        className="h-8 w-8 border border-dashed"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
 
-                        </div>
-
-                        {/* Comments & Activity */}
-                        <div className="relative">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-dark dark:text-light">Comments</h3>
-                            </div>
-
-
-                            {/* New Comment Input */}
-                            <div className="mb-4 ">
-                                <Textarea
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="Write a comment..."
-                                    rows={3}
-                                    className="bg-neutral-200 dark:bg-neutral-800 border-alpha/20 text-dark dark:text-light placeholder:text-dark/60 dark:placeholder:text-light/60 focus-visible:ring-alpha"
-                                />
-                                {newComment && (
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Button onClick={handleAddComment} className="bg-alpha hover:bg-alpha/90 text-dark">
-                                            {editingComment ? 'Update' : 'Save'}
-                                        </Button>
-                                        <Button variant="ghost" onClick={() => { setNewComment(''); setEditingComment(null); }} className="text-dark dark:text-light hover:bg-alpha/20">
-                                            Cancel
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* MemberPopover - positioned over Comments List */}
+                            {/* MemberPopover */}
                             {showMembersPopover && (
                                 <MemberPopover
                                     key={`members-${taskData.assigned_to || 'none'}`}
@@ -1309,63 +1268,99 @@ const TaskModal = ({
                                 />
                             )}
 
-                            {/* Comments List */}
-                            <ScrollArea className="h-[calc(75vh-300px)] pr-4">
-                                <div className="space-y-4">
-                                    {(taskData.comments || []).map(comment => (
-                                        <div key={comment.id} className="flex gap-4 p-4 bg-light/80 dark:bg-neutral-800 rounded-xl border border-alpha/20 shadow-sm">
-                                            {/* <Avatar className="h-8 w-8 cursor-pointer" onClick={() => handleUserClick(comment.user)}>
-                                                <AvatarImage src={comment.user?.image ? `/storage/${comment.user.image}` : null} alt={comment.user?.name} />
-                                                <AvatarFallback className="text-xs bg-alpha/20 text-dark dark:text-light">{comment.user?.name?.slice(0, 2).toUpperCase() || '??'}</AvatarFallback>
-                                            </Avatar> */}
-                                            <Avatar
-                                                className="h-8 w-8 overflow-hidden relative z-50"
-                                                image={comment.user?.image}
-                                                name={comment.user?.name}
-                                                lastActivity={comment.user?.last_online || null}
-                                                onlineCircleClass="hidden"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <div className="flex items-baseline gap-2">
-                                                        <span
-                                                            className="text-sm font-semibold text-dark dark:text-light cursor-pointer hover:text-alpha transition-colors"
-                                                            onClick={() => handleUserClick(comment.user)}
-                                                        >
-                                                            {comment.user?.name === auth.user.name ? 'You' : comment.user?.name || 'Unknown User'}
-                                                        </span>
-                                                        <span className="text-xs text-dark/50 dark:text-light/50">
-                                                            {formatRelativeTime(comment.created_at)}
-                                                        </span>
-                                                    </div>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light hover:bg-alpha/10">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleEditComment(comment)}>
-                                                                <Edit className="mr-2 h-4 w-4" />
-                                                                <span>Edit</span>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleDeleteComment(comment)} className="text-red-600 dark:text-red-400">
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                <span>Delete</span>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                                <p className="text-sm text-dark/80 dark:text-light/80 leading-relaxed">{comment.content}</p>
-                                            </div>
+                            {/* Comments */}
+                            <div className="flex-1 flex flex-col">
+                                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Comments</h3>
+                                
+                                {/* New Comment Input */}
+                                <div className="mb-3">
+                                    <Textarea
+                                        ref={commentInputRef}
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Write a comment..."
+                                        rows={2}
+                                        className="text-sm resize-none "
+                                    />
+                                    {newComment && (
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <Button 
+                                                onClick={handleAddComment} 
+                                                size="sm"
+                                                className="h-7 text-xs"
+                                            >
+                                                {editingComment ? 'Update' : 'Post'}
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                onClick={() => { setNewComment(''); setEditingComment(null); }} 
+                                                className="h-7 text-xs"
+                                            >
+                                                Cancel
+                                            </Button>
                                         </div>
-                                    ))}
-
-
+                                    )}
                                 </div>
-                            </ScrollArea>
 
-
+                                {/* Comments List */}
+                                <ScrollArea className="flex-1 pr-2">
+                                    <div className="space-y-2">
+                                        {(taskData.comments || []).map(comment => (
+                                            <div 
+                                                key={comment.id} 
+                                                className="flex gap-2 p-2 rounded-md hover:bg-muted/50"
+                                            >
+                                                <Avatar
+                                                    className="h-7 w-7 flex-shrink-0 cursor-pointer"
+                                                    image={comment.user?.image}
+                                                    name={comment.user?.name}
+                                                    lastActivity={comment.user?.last_online || null}
+                                                    onlineCircleClass="hidden"
+                                                    onClick={() => handleUserClick(comment.user)}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-0.5">
+                                                        <div className="flex items-baseline gap-1.5">
+                                                            <span
+                                                                className="text-xs font-medium text-foreground cursor-pointer hover:text-primary"
+                                                                onClick={() => handleUserClick(comment.user)}
+                                                            >
+                                                                {comment.user?.name === auth.user.name ? 'You' : comment.user?.name || 'Unknown User'}
+                                                            </span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {formatRelativeTime(comment.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-6 w-6"
+                                                                >
+                                                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => handleEditComment(comment)}>
+                                                                    <Edit className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleDeleteComment(comment)} className="text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                    <p className="text-xs text-foreground leading-relaxed break-words">{comment.content}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1375,22 +1370,16 @@ const TaskModal = ({
             {/* User Profile Dialog */}
             {showUserModal && selectedUser && (
                 <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-                    <DialogContent className="max-w-md bg-background dark:bg-dark border-border dark:border-alpha/20 rounded-lg shadow-lg">
+                    <DialogContent className="max-w-md bg-light dark:bg-dark border-border rounded-lg shadow-lg">
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-semibold text-dark dark:text-light">User Profile</h2>
-                            <Button variant="ghost" size="icon" onClick={() => setShowUserModal(false)} className="text-dark dark:text-light hover:bg-alpha/20">
+                            <h2 className="text-xl font-semibold text-foreground">User Profile</h2>
+                            <Button variant="ghost" size="icon" onClick={() => setShowUserModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-accent">
                                 <X className="h-5 w-5" />
                             </Button>
                         </div>
 
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
-                                {/* <Avatar className="h-16 w-16">
-                                    <AvatarImage src={selectedUser.image ? `/storage/${selectedUser.image}` : null} alt={selectedUser.name} />
-                                    <AvatarFallback className="text-lg bg-alpha/20 text-dark dark:text-light">
-                                        {selectedUser.name?.slice(0, 2).toUpperCase() || '??'}
-                                    </AvatarFallback>
-                                </Avatar> */}
                                 <Avatar
                                     className="h-16 w-16 overflow-hidden relative z-50"
                                     image={selectedUser.image}
@@ -1399,10 +1388,10 @@ const TaskModal = ({
                                     onlineCircleClass="hidden"
                                 />
                                 <div>
-                                    <h3 className="text-lg font-semibold text-dark dark:text-light">{selectedUser.name}</h3>
-                                    <p className="text-sm text-dark/60 dark:text-light/60">{selectedUser.email}</p>
+                                    <h3 className="text-lg font-semibold text-foreground">{selectedUser.name}</h3>
+                                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
                                     {selectedUser.role && (
-                                        <Badge className="mt-1 bg-alpha/20 text-dark dark:text-light border-alpha/30">
+                                        <Badge className="mt-1 bg-primary/10 text-primary border-primary/30">
                                             {selectedUser.role}
                                         </Badge>
                                     )}
@@ -1411,21 +1400,21 @@ const TaskModal = ({
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-sm font-medium text-dark dark:text-light">Email</label>
-                                    <p className="text-sm text-dark/80 dark:text-light/80">{selectedUser.email}</p>
+                                    <label className="text-sm font-medium text-foreground">Email</label>
+                                    <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
                                 </div>
 
                                 {selectedUser.phone && (
                                     <div>
-                                        <label className="text-sm font-medium text-dark dark:text-light">Phone</label>
-                                        <p className="text-sm text-dark/80 dark:text-light/80">{selectedUser.phone}</p>
+                                        <label className="text-sm font-medium text-foreground">Phone</label>
+                                        <p className="text-sm text-muted-foreground">{selectedUser.phone}</p>
                                     </div>
                                 )}
 
                                 {selectedUser.cin && (
                                     <div>
-                                        <label className="text-sm font-medium text-dark dark:text-light">CIN</label>
-                                        <p className="text-sm text-dark/80 dark:text-light/80">{selectedUser.cin}</p>
+                                        <label className="text-sm font-medium text-foreground">CIN</label>
+                                        <p className="text-sm text-muted-foreground">{selectedUser.cin}</p>
                                     </div>
                                 )}
                             </div>

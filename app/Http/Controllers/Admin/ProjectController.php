@@ -863,6 +863,7 @@ class ProjectController extends Controller
                     'id' => $message->id,
                     'content' => $message->content,
                     'timestamp' => $message->created_at->toISOString(),
+                    'updated_at' => $message->updated_at->toISOString(),
                     'reply_to' => $message->reply_to ? [
                         'id' => $message->replyTo->id,
                         'content' => $message->replyTo->content,
@@ -1022,20 +1023,31 @@ class ProjectController extends Controller
             ];
         })->values();
 
-        // Broadcast reaction update via Ably
+        // Broadcast reaction update via Ably to all users in the project
         try {
             $ablyKey = config('services.ably.key');
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
-                $channel = $ably->channels->get("project:{$project->id}");
+                $channelName = "project:{$project->id}";
+                $channel = $ably->channels->get($channelName);
                 
-                $channel->publish('message-reaction-updated', [
+                $broadcastData = [
                     'message_id' => $messageId,
                     'reactions' => $reactionsGrouped,
                     'action' => $action,
                     'reaction' => $request->reaction,
                     'user_id' => Auth::id(),
+                ];
+                
+                $channel->publish('message-reaction-updated', $broadcastData);
+                
+                Log::info('✅ Broadcasted reaction update via Ably', [
+                    'channel' => $channelName,
+                    'message_id' => $messageId,
+                    'action' => $action,
                 ]);
+            } else {
+                Log::warning('Ably key not configured - reaction update not broadcasted');
             }
         } catch (\Exception $e) {
             Log::error('Failed to broadcast reaction update via Ably: ' . $e->getMessage());
@@ -1044,6 +1056,156 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'reactions' => $reactionsGrouped,
+        ]);
+    }
+
+    /**
+     * Update a message
+     */
+    public function updateMessage(Request $request, Project $project, $messageId)
+    {
+        // Verify user is a member of the project
+        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+            || $project->created_by === Auth::id();
+        
+        if (!$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'content' => 'required|string|max:5000',
+        ]);
+
+        $message = ProjectMessage::where('id', $messageId)
+            ->where('project_id', $project->id)
+            ->where('user_id', Auth::id()) // Only allow users to edit their own messages
+            ->firstOrFail();
+
+        $message->update([
+            'content' => $request->content,
+        ]);
+
+        $message->load(['user:id,name,image', 'replyTo.user:id,name']);
+
+        // Reload message with reactions
+        $message->load(['reactions.user:id,name']);
+        $reactionsGrouped = $message->reactions->groupBy('reaction')->map(function ($reactions, $reaction) {
+            return [
+                'reaction' => $reaction,
+                'count' => $reactions->count(),
+                'users' => $reactions->pluck('user.name')->toArray(),
+            ];
+        })->values();
+
+        // Broadcast message update via Ably
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channel = $ably->channels->get("project:{$project->id}");
+                
+                $broadcastData = [
+                    'id' => $message->id,
+                    'content' => $message->content,
+                    'timestamp' => $message->created_at->toISOString(),
+                    'updated_at' => $message->updated_at->toISOString(),
+                    'reply_to' => $message->reply_to ? [
+                        'id' => $message->replyTo->id,
+                        'content' => $message->replyTo->content,
+                        'user' => [
+                            'id' => $message->replyTo->user->id,
+                            'name' => $message->replyTo->user->name,
+                        ],
+                    ] : null,
+                    'reactions' => $reactionsGrouped,
+                    'user' => [
+                        'id' => $message->user->id,
+                        'name' => $message->user->name,
+                        'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
+                    ],
+                ];
+                
+                $channel->publish('message-updated', $broadcastData);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast message update via Ably: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => [
+                'id' => $message->id,
+                'content' => $message->content,
+                'timestamp' => $message->created_at->toISOString(),
+                'updated_at' => $message->updated_at->toISOString(),
+                'reply_to' => $message->reply_to ? [
+                    'id' => $message->replyTo->id,
+                    'content' => $message->replyTo->content,
+                    'user' => [
+                        'id' => $message->replyTo->user->id,
+                        'name' => $message->replyTo->user->name,
+                    ],
+                ] : null,
+                'reactions' => $reactionsGrouped,
+                'user' => [
+                    'id' => $message->user->id,
+                    'name' => $message->user->name,
+                    'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Delete a message
+     */
+    public function deleteMessage(Project $project, $messageId)
+    {
+        // Verify user is a member of the project
+        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+            || $project->created_by === Auth::id();
+        
+        if (!$isMember) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $message = ProjectMessage::where('id', $messageId)
+            ->where('project_id', $project->id)
+            ->where('user_id', Auth::id()) // Only allow users to delete their own messages
+            ->firstOrFail();
+
+        $message->delete();
+
+        // Broadcast message deletion via Ably to all users in the project
+        try {
+            $ablyKey = config('services.ably.key');
+            if ($ablyKey) {
+                $ably = new AblyRest($ablyKey);
+                $channelName = "project:{$project->id}";
+                $channel = $ably->channels->get($channelName);
+                
+                $broadcastData = [
+                    'message_id' => $messageId,
+                    'project_id' => $project->id,
+                    'deleted_by' => Auth::id(),
+                ];
+                
+                $channel->publish('message-deleted', $broadcastData);
+                
+                Log::info('✅ Broadcasted message deletion via Ably', [
+                    'channel' => $channelName,
+                    'message_id' => $messageId,
+                    'deleted_by' => Auth::id(),
+                ]);
+            } else {
+                Log::warning('Ably key not configured - message deletion not broadcasted');
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to broadcast message deletion via Ably: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
         ]);
     }
 }
