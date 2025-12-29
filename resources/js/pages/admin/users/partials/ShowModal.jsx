@@ -93,7 +93,7 @@ const [processingId, setProcessingId] = useState(null);
 
     React.useEffect(() => {
         if (!open) return;
-        
+
         // Fetch attendance summary
         fetch(`/admin/users/${user.id}/attendance-summary`)
             .then(r => r.json())
@@ -106,22 +106,22 @@ const [processingId, setProcessingId] = useState(null);
                     recentAbsences: Array.isArray(data?.recentAbsences) ? data.recentAbsences : [],
                     monthlyFullDayAbsences: Array.isArray(data?.monthlyFullDayAbsences) ? data.monthlyFullDayAbsences : [],
                 });
-                
+
                 if (newDiscipline !== null) {
                     // Get old discipline from localStorage
                     const storageKey = `discipline_${user.id}`;
                     const oldDiscipline = localStorage.getItem(storageKey);
-                    
+
                     if (oldDiscipline !== null) {
                         const oldValue = parseInt(oldDiscipline);
                         const change = newDiscipline - oldValue;
-                        
+
                         // If change >= 5% or <= -5%, send notification
                         if (Math.abs(change) >= 5) {
-                            
+
                             try {
                                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                                
+
                                 await fetch('/api/discipline-change-notification', {
                                     method: 'POST',
                                     headers: {
@@ -141,7 +141,7 @@ const [processingId, setProcessingId] = useState(null);
                                 });
 
                             const result = await response.json();
-                           
+
                             } catch (error) {
                                 console.error('Failed to send discipline notification:', error);
                             }
@@ -150,15 +150,15 @@ const [processingId, setProcessingId] = useState(null);
                     }
                 } else {
                     console.log(' No old discipline in localStorage (first time)');
-                        
+
                     }
-                    
+
                     // Update localStorage with new discipline
                     localStorage.setItem(storageKey, newDiscipline.toString());
                 }
             })
             .catch(() => setSummary({ discipline: null, recentAbsences: [] }));
-        
+
         // ... rest of fetches (notes, docs, projects)
         fetch(`/admin/users/${user.id}/notes`)
             .then(r => r.json())
@@ -177,7 +177,7 @@ const [processingId, setProcessingId] = useState(null);
             .then(r => r.json())
             .then((data) => setProjects(Array.isArray(data?.projects) ? data.projects : []))
             .catch(() => setProjects([]));
-            
+
     }, [open, user.id]);
 
     return (
@@ -456,7 +456,7 @@ const [processingId, setProcessingId] = useState(null);
                                             <div className="flex gap-2 flex-wrap mb-1">
                                                 {project.project && (
                                                     <a
-                                                        href={project.project}
+                                                        href={`/student/project/${project.id}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-[var(--color-alpha)] hover:underline text-sm font-medium"

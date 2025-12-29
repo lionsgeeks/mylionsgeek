@@ -611,13 +611,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className={cn(
-                                                        "rounded-lg px-3 py-2 text-sm relative",
-                                                        isCurrentUser 
-                                                            ? "bg-primary text-primary-foreground rounded-br-sm" 
-                                                            : "bg-muted rounded-bl-sm"
-                                                    )}>
-                                                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                <div className={cn(
+                                                    "rounded-lg px-3 py-2 text-sm relative",
+                                                    isCurrentUser 
+                                                        ? "bg-primary text-primary-foreground rounded-br-sm" 
+                                                        : "bg-muted rounded-bl-sm"
+                                                )}>
+                                                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
                                                         {message.updated_at && message.updated_at !== message.timestamp && (
                                                             <span className={cn(
                                                                 "text-xs block mt-1",

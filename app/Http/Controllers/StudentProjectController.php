@@ -36,6 +36,58 @@ class StudentProjectController extends Controller
     }
 
     /**
+     * Show a single project's details
+     */
+    public function show(StudentProject $studentProject)
+    {
+        $user = auth()->user();
+        $isAdmin = ! empty(array_intersect(
+            $user->role,
+            ['admin', 'moderateur', 'coach']
+        ));
+
+        // dd($isAdmin);
+        // dd($user->role);
+
+        // Check authorization - student can only view their own projects, admins can view any
+        if (!$isAdmin && $studentProject->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Load relationships
+        $studentProject->load(['user:id,name,image', 'approvedBy:id,name,image']);
+
+        // Format the project data
+        $project = [
+            'id' => $studentProject->id,
+            'title' => $studentProject->title,
+            'description' => $studentProject->description,
+            'image' => $studentProject->image,
+            'project' => $studentProject->project,
+            'status' => $studentProject->status,
+            'rejection_reason' => $studentProject->rejection_reason,
+            'created_at' => (string) $studentProject->created_at,
+            'updated_at' => (string) $studentProject->updated_at,
+            'approved_at' => $studentProject->approved_at ? (string) $studentProject->approved_at : null,
+            'user' => $studentProject->user ? [
+                'id' => $studentProject->user->id,
+                'name' => $studentProject->user->name,
+                'image' => $studentProject->user->image,
+            ] : null,
+            'approved_by' => $studentProject->approvedBy ? [
+                'id' => $studentProject->approvedBy->id,
+                'name' => $studentProject->approvedBy->name,
+                'image' => $studentProject->approvedBy->image,
+            ] : null,
+            'user_id' => $studentProject->user_id,
+        ];
+
+        return Inertia::render('students/projects/[id]', [
+            'project' => $project,
+        ]);
+    }
+
+    /**
      * Store project
      */
     public function store(Request $request)
@@ -165,5 +217,4 @@ class StudentProjectController extends Controller
 
         return back()->with('success', 'Project updated!');
     }
-
 }

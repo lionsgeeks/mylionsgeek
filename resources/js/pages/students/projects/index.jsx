@@ -238,7 +238,14 @@ export default function ProjectsIndex({ projects }) {
                             {projects.data.map((project) => (
                                 <div
                                     key={project.id}
-                                    className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:shadow-lg transition-shadow"
+                                    className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                                    onClick={(e) => {
+                                        // Don't navigate if clicking on buttons or links
+                                        if (e.target.closest('button') || e.target.closest('a')) {
+                                            return;
+                                        }
+                                        router.visit(`/student/project/${project.id}`);
+                                    }}
                                 >
                                     <div className="flex flex-col gap-4 relative">
                                         <div className="flex justify-end absolute right-0">
@@ -288,15 +295,25 @@ export default function ProjectsIndex({ projects }) {
                                             </div>
 
                                             <div className="flex gap-2 flex-wrap">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        router.visit(`/student/project/${project.id}`);
+                                                    }}
+                                                    className="text-[var(--color-alpha)] hover:underline text-sm flex items-center gap-1"
+                                                >
+                                                    <Eye size={16} />
+                                                    View Project
+                                                </button>
                                                 {project.project && (
                                                     <a
                                                         href={project.project}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
+                                                        onClick={(e) => e.stopPropagation()}
                                                         className="text-[var(--color-alpha)] hover:underline text-sm flex items-center gap-1"
                                                     >
-                                                        <Eye size={16} />
-                                                        View Project
+                                                        Open Link
                                                     </a>
                                                 )}
                                             </div>
