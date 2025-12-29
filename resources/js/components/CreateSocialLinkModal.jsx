@@ -1,4 +1,4 @@
-import { X, InstagramIcon, MessageCircle, Send, Users, FacebookIcon, TwitterIcon, GithubIcon, LinkedinIcon, User, ExternalLink, Briefcase } from 'lucide-react';
+import { X, InstagramIcon, GithubIcon, LinkedinIcon, ExternalLink, Briefcase } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
 import { useForm, usePage } from '@inertiajs/react';
@@ -6,30 +6,18 @@ import InputError from '@/components/input-error';
 
 const platformIcons = {
     instagram: InstagramIcon,
-    facebook: FacebookIcon,
-    twitter: TwitterIcon,
-    github: GithubIcon,
     linkedin: LinkedinIcon,
     behance: ExternalLink,
-    pinterest: User,
-    discord: MessageCircle,
-    threads: Send,
-    reddit: Users,
+    github: GithubIcon,
     portfolio: Briefcase,
 };
 
 const platforms = [
     { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
-    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
-    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
-    { value: 'github', label: 'GitHub', domains: ['github.com'] },
     { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
-    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
-    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
-    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
-    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
-    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
 ];
 
 const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => {
@@ -39,13 +27,23 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
     const isEdit = Boolean(initialLink?.id);
 
     const socialLinks = auth?.user?.social_links || [];
+    const userFormation = auth?.user?.formation || '';
 
-    // Filter out platforms that are already added (only for new links, not for editing)
-    const availablePlatforms = initialLink 
+    // Check if user is a coding user
+    const isCodingUser = userFormation.toLowerCase().includes('developpement') || 
+                        userFormation.toLowerCase().includes('coding');
+
+    // Filter platforms based on user formation
+    const availablePlatforms = isEdit 
         ? platforms 
-        : platforms.filter(platform => 
-            !socialLinks.some(link => link.title === platform.value && link.id !== initialLink?.id)
-        );
+        : platforms.filter(platform => {
+            // For GitHub, only show to coding users
+            if (platform.value === 'github' && !isCodingUser) {
+                return false;
+            }
+            // Filter out platforms that are already added
+            return !socialLinks.some(link => link.title === platform.value && link.id !== initialLink?.id);
+        });
 
     const [validationError, setValidationError] = useState('');
 

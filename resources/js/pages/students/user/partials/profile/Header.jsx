@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
-import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal, MessageCircle } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal, MessageCircle, Instagram, Linkedin, ExternalLink, Github } from 'lucide-react';
 import { Link, router, usePage } from '@inertiajs/react';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 import { helpers } from '../../../../../components/utils/helpers';
@@ -13,6 +13,37 @@ const Header = ({ user, userFunctionality }) => {
     const [openFollowModal, setOpenFollowModal] = useState([]);
     const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
+
+    // Filter social links based on user formation and allowed platforms
+    const allowedPlatforms = ['instagram', 'linkedin', 'portfolio', 'behance'];
+    
+    // Add GitHub only for coding users
+    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || 
+                         user?.formation?.toLowerCase().includes('coding');
+    
+    if (isCodingUser) {
+        allowedPlatforms.push('github');
+    }
+
+    const filteredSocialLinks = (user?.social_links || []).filter(link => 
+        allowedPlatforms.includes(link.title)
+    );
+
+    const getSocialIcon = (platform) => {
+        switch (platform) {
+            case 'instagram':
+                return Instagram;
+            case 'linkedin':
+                return Linkedin;
+            case 'portfolio':
+            case 'behance':
+                return ExternalLink;
+            case 'github':
+                return Github;
+            default:
+                return ExternalLink;
+        }
+    };
 
     const handleMessageClick = () => {
         // 7al chat w 3tiw conversation dyal had user
@@ -101,12 +132,40 @@ const Header = ({ user, userFunctionality }) => {
                     )}
                 </div>
 
+                {/* Social Links - Directly Under Cover */}
+                {filteredSocialLinks.length > 0 && (
+                    <div className="flex justify-end px-6 pt-4 pb-2">
+                        <div className="flex gap-2">
+                            {filteredSocialLinks.slice(0, 4).map((link) => {
+                                const Icon = getSocialIcon(link.title);
+                                return (
+                                    <a
+                                        key={link.id}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-8 h-8 text-beta dark:text-light hover:text-alpha dark:hover:text-alpha transition-colors"
+                                        title={link.title.charAt(0).toUpperCase() + link.title.slice(1)}
+                                    >
+                                        <Icon size={20} />
+                                    </a>
+                                );
+                            })}
+                            {filteredSocialLinks.length > 4 && (
+                                <span className="text-xs text-beta dark:text-light font-medium self-center">
+                                    +{filteredSocialLinks.length - 4}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Profile Info */}
                 <div className="px-6 pb-6">
                     {/* Avatar */}
-                    <div className="-mt-16 mb-4 relative w-fit group">
+                    <div className="-mt-30 mb-4 relative w-fit group">
                         <Avatar
-                            className="w-32 h-32"
+                            className="w-40 h-40"
                             image={user?.image}
                             name={user?.name}
                             lastActivity={user?.online || null}
