@@ -29,7 +29,7 @@ const ProfilePictureModal = ({ open, onOpenChange, user }) => {
                 <img
                     src={`/storage/img/profile/${user.image}`}
                     alt={`${user.name}'s profile picture`}
-                    className="max-w-full max-h-full object-contain"
+                    className="w-full h-full max-w-3xl max-h-[50vh] object-contain"
                 />
             </div>
         </>

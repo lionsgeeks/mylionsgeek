@@ -168,7 +168,7 @@ const Header = ({ user, userFunctionality }) => {
                 {/* Profile Info */}
                 <div className="px-4 sm:px-6 pb-4 sm:pb-6">
                     {/* Avatar */}
-                    <div className="lg:-mt-35 -mt-16 mb-5 relative w-fit group mx-auto lg:mx-0">
+                    <div className="lg:-mt-20 -mt-16 mb-5 relative w-fit group mx-auto lg:mx-0">
                         <div 
                             className={`${auth.user?.id !== user?.id && user?.image ? 'cursor-pointer' : ''}`}
                             onClick={handleProfilePictureClick}
