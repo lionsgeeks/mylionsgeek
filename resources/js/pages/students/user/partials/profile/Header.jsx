@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
-import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal, MessageCircle, Instagram, Linkedin, ExternalLink, Github } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, Edit2, Camera, MoreHorizontal, MessageCircle, Instagram, Linkedin, ExternalLink, Github, User, PenTool } from 'lucide-react';
 import { Link, router, usePage } from '@inertiajs/react';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 import { helpers } from '../../../../../components/utils/helpers';
@@ -36,8 +36,9 @@ const Header = ({ user, userFunctionality }) => {
             case 'linkedin':
                 return Linkedin;
             case 'portfolio':
+                return User;
             case 'behance':
-                return ExternalLink;
+                return PenTool;
             case 'github':
                 return Github;
             default:
@@ -135,8 +136,8 @@ const Header = ({ user, userFunctionality }) => {
                 {/* Social Links - Directly Under Cover */}
                 {filteredSocialLinks.length > 0 && (
                     <div className="flex justify-end px-6 pt-4 pb-2">
-                        <div className="flex gap-2">
-                            {filteredSocialLinks.slice(0, 4).map((link) => {
+                        <div className="flex gap-2 flex-wrap">
+                            {filteredSocialLinks.map((link) => {
                                 const Icon = getSocialIcon(link.title);
                                 return (
                                     <a
@@ -151,11 +152,6 @@ const Header = ({ user, userFunctionality }) => {
                                     </a>
                                 );
                             })}
-                            {filteredSocialLinks.length > 4 && (
-                                <span className="text-xs text-beta dark:text-light font-medium self-center">
-                                    +{filteredSocialLinks.length - 4}
-                                </span>
-                            )}
                         </div>
                     </div>
                 )}

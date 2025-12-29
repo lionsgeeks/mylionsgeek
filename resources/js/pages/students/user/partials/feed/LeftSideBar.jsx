@@ -16,7 +16,7 @@ const LeftSideBar = ({ user }) => {
     return (
         <>
             {/* Left Sidebar - Fixed */}
-            <div className="lg:col-span-3  h-fit sticky top-0 space-y-4">
+            <div className="lg:col-span-3  h-fit lg:sticky top-0 space-y-4">
                 {/* Profile Card */}
                 <div className="bg-white dark:bg-dark_gray rounded-lg  overflow-hidden">
                     <div className="h-16 dark:bg-light bg-dark">
@@ -42,7 +42,7 @@ const LeftSideBar = ({ user }) => {
                         <p className="text-xs text-dark dark:text-light mt-1">
                             {getField(user)}
                         </p>
-                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#2e3235]">
+                        {/* <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#2e3235]">
                             <div className="flex justify-between text-xs mb-2">
                                 <span className=" text-dark dark:text-light">Profile viewers</span>
                                 <span className=" text-dark dark:text-alpha font-semibold">24</span>
@@ -51,12 +51,12 @@ const LeftSideBar = ({ user }) => {
                                 <span className=" text-dark dark:text-light">Post impressions</span>
                                 <span className=" text-dark dark:text-alpha font-semibold">87</span>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
 
                 {/* Quick Links */}
-                <div className="bg-white dark:bg-dark_gray shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
+                {/* <div className="bg-white dark:bg-dark_gray shadow-background rounded-lg shadow-xl p-4 hidden lg:block">
                     <div className="space-y-3">
                         <a href="#" className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 hover:text-alpha dark:hover:text-alpha">
                             <BookOpen className="w-4 h-4" />
@@ -75,7 +75,7 @@ const LeftSideBar = ({ user }) => {
                             <span>Hashtags</span>
                         </a>
                     </div>
-                </div>
+                </div> */}
             </div>
 
         </>
