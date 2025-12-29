@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Models\StudentProject;
 use App\Models\User;
+use App\Models\ProjectSubmissionNotification;
+use App\Models\ProjectStatusNotification;
 
 class StudentProjectController extends Controller
 {
@@ -115,13 +118,17 @@ class StudentProjectController extends Controller
             $imagePath = $request->file('image')->store('projects', 'public');
         }
 
-        auth()->user()->studentProjects()->create([
+        $student = auth()->user();
+        $project = $student->studentProjects()->create([
             'title' => $validated['title'] ?? null,
             'description' => $validated['description'] ?? null,
             'project' => $validated['project'] ?? null,
             'image' => $imagePath,
             'status' => 'pending',
         ]);
+
+        // Create notifications for admins and coaches
+        $this->notifyAdminsAndCoaches($project, $student);
 
         // xp lpgique
         // $user = auth()->user();
@@ -151,10 +158,29 @@ class StudentProjectController extends Controller
 
     public function approve(Request $request, StudentProject $studentProject)
     {
+        $reviewer = auth()->user();
         $studentProject->update([
             'status' => 'approved',
-            'approved_by' => auth()->id(),
+            'approved_by' => $reviewer->id,
             'approved_at' => now(),
+        ]);
+
+        // Mark submission notifications as read (for admins/coaches)
+        ProjectSubmissionNotification::where('project_id', $studentProject->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Create notification for the student
+        $projectPath = "/student/project/{$studentProject->id}";
+        $message = "Your project \"{$studentProject->title}\" has been approved!";
+        
+        ProjectStatusNotification::create([
+            'project_id' => $studentProject->id,
+            'student_id' => $studentProject->user_id,
+            'reviewer_id' => $reviewer->id,
+            'status' => 'approved',
+            'message_notification' => $message,
+            'path' => $projectPath,
         ]);
 
         return back()->with('success', 'Project approved!');
@@ -166,11 +192,33 @@ class StudentProjectController extends Controller
             'rejection_reason' => 'required|string|min:1',
         ]);
 
+        $reviewer = auth()->user();
+        $rejectionReason = $validated['rejection_reason'];
+
         $studentProject->update([
             'status' => 'rejected',
-            'approved_by' => auth()->id(),
+            'approved_by' => $reviewer->id,
             'approved_at' => now(),
-            'rejection_reason' => $validated['rejection_reason'],
+            'rejection_reason' => $rejectionReason,
+        ]);
+
+        // Mark submission notifications as read (for admins/coaches)
+        ProjectSubmissionNotification::where('project_id', $studentProject->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Create notification for the student
+        $projectPath = "/student/project/{$studentProject->id}";
+        $message = "Your project \"{$studentProject->title}\" has been rejected.";
+        
+        ProjectStatusNotification::create([
+            'project_id' => $studentProject->id,
+            'student_id' => $studentProject->user_id,
+            'reviewer_id' => $reviewer->id,
+            'status' => 'rejected',
+            'rejection_reason' => $rejectionReason,
+            'message_notification' => $message,
+            'path' => $projectPath,
         ]);
 
         return back()->with('success', 'Project rejected!');
@@ -216,5 +264,83 @@ class StudentProjectController extends Controller
         ]);
 
         return back()->with('success', 'Project updated!');
+    }
+
+    /**
+     * Notify admins and coaches about project submission
+     */
+    private function notifyAdminsAndCoaches(StudentProject $project, User $student)
+    {
+        $projectPath = "/student/project/{$project->id}";
+        $message = "{$student->name} submitted a new project: " . ($project->title ?? 'Untitled Project');
+
+        // Get all admins
+        $admins = User::where(function($query) {
+            $query->where('role', 'like', '%admin%')
+                  ->orWhere('role', 'like', '%super_admin%')
+                  ->orWhere('role', 'like', '%moderateur%');
+        })->get();
+
+        // Get coaches with the same field/category as the student
+        $coaches = collect();
+        if ($student->formation_id) {
+            // Get the student's formation to find the category/field
+            $studentFormation = \App\Models\Formation::find($student->formation_id);
+            
+            if ($studentFormation && $studentFormation->category) {
+                // Find all formations with the same category (coding, media, etc.)
+                $sameCategoryFormations = \App\Models\Formation::where('category', $studentFormation->category)->get();
+                
+                $coachIds = collect();
+                
+                foreach ($sameCategoryFormations as $formation) {
+                    // Get the formation's assigned coach (user_id in formations table)
+                    if ($formation->user_id) {
+                        $coachIds->push($formation->user_id);
+                    }
+                    
+                    // Get all users with coach role in formations with the same category
+                    $formationCoachIds = User::where('formation_id', $formation->id)
+                        ->where(function($query) {
+                            $query->where('role', 'like', '%coach%');
+                        })
+                        ->pluck('id');
+                    
+                    $coachIds = $coachIds->merge($formationCoachIds);
+                }
+                
+                // Get all unique coaches
+                $coaches = User::whereIn('id', $coachIds->unique())
+                    ->where(function($query) {
+                        $query->where('role', 'like', '%coach%');
+                    })
+                    ->get();
+            }
+        }
+
+        // Create notifications for admins
+        foreach ($admins as $admin) {
+            ProjectSubmissionNotification::create([
+                'project_id' => $project->id,
+                'student_id' => $student->id,
+                'notified_user_id' => $admin->id,
+                'message_notification' => $message,
+                'path' => $projectPath,
+            ]);
+        }
+
+        // Create notifications for coaches
+        foreach ($coaches as $coach) {
+            // Don't create duplicate notification if coach is also an admin
+            if (!$admins->contains('id', $coach->id)) {
+                ProjectSubmissionNotification::create([
+                    'project_id' => $project->id,
+                    'student_id' => $student->id,
+                    'notified_user_id' => $coach->id,
+                    'message_notification' => $message,
+                    'path' => $projectPath,
+                ]);
+            }
+        }
     }
 }

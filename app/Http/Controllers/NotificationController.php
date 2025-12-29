@@ -11,6 +11,8 @@ use App\Models\DisciplineNotification;
 use App\Models\ExerciseReviewNotification;
 use App\Models\PostNotification;
 use App\Models\FollowNotification;
+use App\Models\ProjectSubmissionNotification;
+use App\Models\ProjectStatusNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -134,6 +136,40 @@ class NotificationController extends Controller
                     }
                 } catch (\Exception $e) {
                     Log::error('Error fetching exercise review notifications: ' . $e->getMessage());
+                }
+            }
+
+            //  1.5. PROJECT SUBMISSION NOTIFICATIONS (Admin and Coach)
+            if (($isAdmin || $isModerator || $isCoach) && Schema::hasTable('project_submission_notifications')) {
+                try {
+                    $projectNotifications = ProjectSubmissionNotification::with(['student', 'project'])
+                        ->where('notified_user_id', $user->id)
+                        ->whereNull('read_at')
+                        ->whereHas('project', function($query) {
+                            $query->where('status', 'pending');
+                        })
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectNotifications as $notif) {
+                        if ($notif->student && $notif->project && $notif->project->status === 'pending') {
+                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            
+                            $notifications[] = [
+                                'id' => 'project-submission-' . $notif->id,
+                                'type' => 'project_submission',
+                                'sender_name' => $notif->student->name ?? 'Unknown',
+                                'sender_image' => $notif->student->image ?? null,
+                                'message' => $notif->message_notification ?? 'A student submitted a new project',
+                                'link' => $link,
+                                'icon_type' => 'folder',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project submission notifications: ' . $e->getMessage());
                 }
             }
 
@@ -278,6 +314,42 @@ class NotificationController extends Controller
                     'created_at' => $notif->created_at->toISOString(),
                     'follower_id' => $notif->follower_id,
                 ];
+            }
+
+            // 6. PROJECT STATUS NOTIFICATIONS (Students - when project is approved/rejected)
+            if (Schema::hasTable('project_status_notifications')) {
+                try {
+                    $projectStatusNotifications = ProjectStatusNotification::with(['project', 'reviewer'])
+                        ->where('student_id', $user->id)
+                        ->whereNull('read_at')
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectStatusNotifications as $notif) {
+                        if ($notif->project) {
+                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
+                            
+                            $iconType = $notif->status === 'approved' ? 'check-circle' : 'x-circle';
+                            
+                            $notifications[] = [
+                                'id' => 'project-status-' . $notif->id,
+                                'type' => 'project_status',
+                                'sender_name' => $reviewerName,
+                                'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => $iconType,
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'status' => $notif->status,
+                                'rejection_reason' => $notif->rejection_reason,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project status notifications: ' . $e->getMessage());
+                }
             }
 
             // Sort by created_at (newest first)

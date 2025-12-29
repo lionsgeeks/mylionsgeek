@@ -4,6 +4,9 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock, Edit, Trash2 } from 'lucide-react';
 import Rolegard from '@/components/rolegard';
 import { format } from 'date-fns';
@@ -12,6 +15,9 @@ export default function ProjectShow({ project }) {
     const { auth } = usePage().props;
     const isOwner = project.user_id === auth.user.id;
     const isAdmin = ['admin', 'super_admin', 'moderateur', 'coach'].includes(auth.user.role);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -41,26 +47,34 @@ export default function ProjectShow({ project }) {
     };
 
     const handleApprove = () => {
-        if (confirm('Are you sure you want to approve this project?')) {
-            router.post(`/admin/projects/${project.id}/approve`, {}, {
-                onSuccess: () => {
-                    router.reload();
-                }
-            });
-        }
+        setIsProcessing(true);
+        router.post(`/admin/projects/${project.id}/approve`, {}, {
+            onSuccess: () => {
+                router.reload();
+            },
+            onFinish: () => setIsProcessing(false)
+        });
     };
 
     const handleReject = () => {
-        const reason = prompt('Please provide a reason for rejection:');
-        if (reason && reason.trim()) {
-            router.post(`/admin/projects/${project.id}/reject`, {
-                rejection_reason: reason.trim()
-            }, {
-                onSuccess: () => {
-                    router.reload();
-                }
-            });
+        setShowRejectModal(true);
+    };
+
+    const confirmReject = () => {
+        if (!rejectionReason.trim()) {
+            return;
         }
+        setIsProcessing(true);
+        router.post(`/admin/projects/${project.id}/reject`, {
+            rejection_reason: rejectionReason.trim()
+        }, {
+            onSuccess: () => {
+                setShowRejectModal(false);
+                setRejectionReason('');
+                router.reload();
+            },
+            onFinish: () => setIsProcessing(false)
+        });
     };
 
     return (
@@ -97,13 +111,15 @@ export default function ProjectShow({ project }) {
                                 <>
                                     <Button
                                         onClick={handleApprove}
+                                        disabled={isProcessing}
                                         className="bg-green-600 hover:bg-green-700 text-white"
                                     >
                                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Approve
+                                        {isProcessing ? 'Approving...' : 'Approve'}
                                     </Button>
                                     <Button
                                         onClick={handleReject}
+                                        disabled={isProcessing}
                                         variant="destructive"
                                     >
                                         <XCircle className="w-4 h-4 mr-2" />
@@ -253,6 +269,50 @@ export default function ProjectShow({ project }) {
                     </div>
                 </div>
             </div>
+
+            {/* Rejection Modal */}
+            <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Reject Project</DialogTitle>
+                        <DialogDescription>
+                            Please provide a reason for rejecting this project. This will be visible to the student.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="rejection-reason">Rejection Reason *</Label>
+                            <Textarea
+                                id="rejection-reason"
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="Enter the reason for rejection..."
+                                rows={4}
+                                className="resize-none"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowRejectModal(false);
+                                setRejectionReason('');
+                            }}
+                            disabled={isProcessing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmReject}
+                            disabled={!rejectionReason.trim() || isProcessing}
+                        >
+                            {isProcessing ? 'Rejecting...' : 'Reject Project'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
