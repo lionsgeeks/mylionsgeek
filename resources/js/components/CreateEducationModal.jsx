@@ -102,7 +102,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
         <>
             <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-all duration-300">
             </div>
-            <div className="fixed inset-0 h-fit mx-auto w-[50%] bg-light dark:bg-beta rounded-lg top-1/2 -translate-y-1/2 z-50 overflow-hidden flex flex-col">
+            <div className="fixed inset-0 h-fit mx-auto w-[95%] sm:w-[90%] md:w-[70%] lg:w-[50%] xl:w-[45%] bg-light dark:bg-beta rounded-lg top-1/2 -translate-y-1/2 z-50 overflow-hidden flex flex-col">
                 <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
