@@ -14,12 +14,22 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
         stopScrolling(onOpen)
         return () => stopScrolling(false);
     }, [onOpen]);
+
+    // Update form data when user changes
+    useEffect(() => {
+        setData('about', user?.about || '');
+        setCharCount(user?.about?.length || 0);
+    }, [user?.about]);
+
     //! update about
-    const updateAbout = (id) => {
+    const updateAbout = () => {
         try {
-            router.post(`/users/about/${id}`, data, {
+            router.post(`/users/about/${user?.id}`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
+                },
+                onError: (errors) => {
+                    console.log('About update errors:', errors);
                 }
             })
         } catch (error) {
@@ -44,7 +54,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                     <h2 className="text-xl font-semibold text-beta dark:text-light">Edit about</h2>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="text-gray-600 dark:text-gray-400 hover:text-beta dark:hover:text-light transition"
+                        className="text-gray-600 dark:text-gray-400 hover:text-beta dark:hover:text-light transition cursor-pointer"
                     >
                         <X size={24} />
                     </button>
@@ -61,7 +71,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                     <div className="mb-2">
                         <textarea
                             value={data.about}
-                            onChange={(e) => setData('about', e.target.value)}
+                            onChange={handleAboutChange}
                             className={`w-full p-3 rounded-md outline-none resize-none text-sm
         border
         ${errors.about
@@ -94,10 +104,10 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                         Save
                         </button> */}
                     <button
-                        onClick={() => updateAbout(user?.id, data.about, onOpenChange)}
+                        onClick={updateAbout}
                         type="submit"
                         disabled={processing}
-                        className={`px-6 py-2 rounded-lg font-semibold transition
+                        className={`px-6 py-2 rounded-lg font-semibold transition cursor-pointer
         ${processing
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 : 'bg-alpha text-beta hover:opacity-90'

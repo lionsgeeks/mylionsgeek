@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import CommentsModal from './CommentsModal';
 import LikesModal from './LikesModal';
+import { subscribeToChannel } from '../../lib/ablyManager';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => {
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -19,6 +20,37 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
             setLikedPostIds(prev => [...new Set([...prev, post.id])]);
         }
     }, [post.id, post.likes_count, post.comments_count, post.is_liked_by_current_user]);
+
+    useEffect(() => {
+        if (!post?.id) return;
+
+        let mounted = true;
+        let unsubscribe = null;
+
+        const setup = async () => {
+            // Only use Ably real-time updates, no polling
+            unsubscribe = await subscribeToChannel('feed:global', 'post-stats-updated', (data) => {
+                if (!mounted) return;
+                if (!data || Number(data.post_id) !== Number(post.id)) return;
+
+                if (typeof data.likes_count === 'number') {
+                    setLikesCountMap((prev) => ({ ...prev, [post.id]: data.likes_count }));
+                }
+                if (typeof data.comments_count === 'number') {
+                    setCommentsCountMap((prev) => ({ ...prev, [post.id]: data.comments_count }));
+                }
+            });
+        };
+
+        setup();
+
+        return () => {
+            mounted = false;
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [post.id]);
 
     const toggleLike = async (postId) => {
         try {

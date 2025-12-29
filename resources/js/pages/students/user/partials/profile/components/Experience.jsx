@@ -10,7 +10,9 @@ import { ExperienceMenuModal } from '../../../../../../components/ExperienceMenu
 const Experience = ({ user }) => {
     const { auth } = usePage().props
     const [openModal, setOpenModal] = useState()
+    const [expandedExperience, setExpandedExperience] = useState([])
     const { calculateDuration } = helpers()
+
     const getMonthName = (monthNumber) => {
         const date = new Date(2000, monthNumber - 1)
         return date.toLocaleString('en-US', { month: 'long' });
@@ -51,6 +53,7 @@ const Experience = ({ user }) => {
                             user?.experiences?.map((experience, index) =>
                                 <div key={index} className='w-full flex justify-between items-start'>
                                     <div className="flex gap-3">
+
                                         <div className="w-12 h-12 rounded bg-alpha flex items-center justify-center text-beta font-bold flex-shrink-0">
                                             {experience?.company?.slice(0, 1)}
                                         </div>
@@ -59,11 +62,41 @@ const Experience = ({ user }) => {
                                             <p className="text-[0.9rem] text-beta dark:text-light">{experience?.company} - {experience?.employement_type}</p>
                                             {/* <p className="text-sm text-beta/70 dark:text-light/70"></p> */}
                                             <p className="text-xs text-beta/60 dark:text-light/60 mt-1">{experienceDurationFormat(experience)} · {calculateDuration(experience)} - {experience?.location}</p>
-                                            <p className="text-sm text-beta/80 dark:text-light/80 mt-2">{experience?.description}</p>
+                                            {(() => {
+                                                const text = experience?.description || '';
+                                                const limit = 250;
+                                                const isLong = text.length > limit;
+                                                const id = experience?.id ?? index;
+                                                const isExpanded = expandedExperience.includes(id);
+                                                const displayText = isLong && !isExpanded ? `${text.slice(0, limit)}...` : text;
+
+                                                if (!text) return null;
+
+                                                return (
+                                                    <div className="mt-2">
+                                                        <p className="text-sm text-beta/80 dark:text-light/80">{displayText}</p>
+                                                        {isLong && (
+                                                            <button
+                                                                type="button"
+                                                                className="mt-1 text-xs font-semibold text-alpha hover:underline"
+                                                                onClick={() => {
+                                                                    setExpandedExperience((prev) => {
+                                                                        const has = prev.includes(id);
+                                                                        if (has) return prev.filter((x) => x !== id);
+                                                                        return [...prev, id];
+                                                                    });
+                                                                }}
+                                                            >
+                                                                {isExpanded ? 'See less' : 'See more'}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                     {
-                                        auth.user && <ExperienceMenuModal experience={experience} />
+                                        auth.user.id == user.id && <ExperienceMenuModal experience={experience} />
                                     }
                                 </div>
                             )

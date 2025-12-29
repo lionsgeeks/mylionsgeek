@@ -62,6 +62,8 @@ class HandleInertiaRequests extends Middleware
                         $user->loadMissing('access');
                     }
 
+                    $user->loadMissing('socialLinks');
+
                     $rawImage = $user->image ?? null;
                     $avatarUrl = null;
                     if ($rawImage) {
@@ -74,6 +76,7 @@ class HandleInertiaRequests extends Middleware
                     return array_merge($user->toArray(), [
                         'avatarUrl' => $avatarUrl,
                         'isProfileImageMissing' => empty($avatarUrl),
+                        'social_links' => $user->socialLinks,
                     ]);
                 })(),
             ],

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Comment extends Model
 {
@@ -11,6 +12,7 @@ class Comment extends Model
         'user_id',
         'post_id',
         'comment',
+        'image',
     ];
 
     public function user()
@@ -20,5 +22,10 @@ class Comment extends Model
     public function post()
     {
         return $this->belongsTo(Post::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->hasMany(CommentLike::class);
     }
 }

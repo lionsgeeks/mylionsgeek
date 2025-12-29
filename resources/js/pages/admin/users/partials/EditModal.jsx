@@ -1,34 +1,72 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Avatar, } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import RolesMultiSelect from './RolesMultiSelect';
 import Rolegard from '../../../../components/rolegard';
 
+const platformIcons = {
+    instagram: Instagram,
+    facebook: Facebook,
+    twitter: Twitter,
+    github: Github,
+    linkedin: Linkedin,
+    behance: ExternalLink,
+    pinterest: ExternalLink,
+    discord: MessageCircle,
+    threads: Send,
+    reddit: Users,
+    portfolio: Briefcase,
+};
+
+const platforms = [
+    { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
+    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
+    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
+    { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
+    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
+    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
+    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
+    { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
+];
+
 const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], trainings = [] }) => {
-    // console.log('status options:', status);
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
     const [errors, setErrors] = useState({});
+    const [newSocialPlatform, setNewSocialPlatform] = useState('');
+    const [newSocialUrl, setNewSocialUrl] = useState('');
+    const [socialValidationError, setSocialValidationError] = useState('');
+    const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
+    const canManageSocials = auth?.user?.id === editedUser?.id;
+    
+    // Filter out platforms that are already added
+    const availablePlatforms = platforms.filter(platform => 
+        !socialLinks.some(link => link.title === platform.value)
+    );
+
     const [formData, setFormData] = useState({
-        name: editedUser?.name,
-        email: editedUser?.status,
-        roles: editedUser?.role,
-        status: editedUser?.status,
-        formation_id: editedUser?.formation_id,
-        phone: editedUser?.phone,
-        cin: editedUser?.cin,
-        image: editedUser?.image,
-        access_studio: editedUser?.access_studio, // Add default value for access_studio
-        access_cowork: editedUser?.access_cowork, // Add default value for access_cowork
+        name: editedUser?.name || '',
+        email: editedUser?.email || '',
+        roles: [],
+        status: editedUser?.status || '',
+        formation_id: editedUser?.formation_id || '',
+        phone: editedUser?.phone ?? '',
+        cin: editedUser?.cin ?? '',
+        image: editedUser?.image || null,
+        access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
+        access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
     });
 
     // Load user data into form when modal opens or user changes
@@ -48,20 +86,77 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             }
             rolesArray = rolesArray.map(r => String(r).toLowerCase());
             setFormData({
-                name: editedUser.name,
-                email: editedUser.email,
+                name: editedUser.name || '',
+                email: editedUser.email || '',
                 roles: rolesArray,
-                status: editedUser.status,
-                formation_id: editedUser.formation_id,
-                phone: editedUser.phone,
-                cin: editedUser.cin,
-                image: editedUser?.image || null, // User's image from DB (if exists)
-                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
-                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No', // Convert 1/0 to Yes/No
+                status: editedUser.status || '',
+                formation_id: editedUser.formation_id || '',
+                phone: editedUser.phone ?? '',
+                cin: editedUser.cin ?? '',
+                image: editedUser?.image || null,
+                access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
+                access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
             });
-            // console.log(formData);
+            setSocialLinks(editedUser?.social_links || []);
         }
     }, [editedUser]);
+
+    const validateSocialUrl = () => {
+        if (!newSocialPlatform || !newSocialUrl) return false;
+
+        const platform = platforms.find(p => p.value === newSocialPlatform);
+        if (!platform) return false;
+
+        // Portfolio doesn't require domain validation
+        if (platform.value === 'portfolio') {
+            // Just check if it's a valid URL format
+            try {
+                new URL(newSocialUrl);
+                setSocialValidationError('');
+                return true;
+            } catch {
+                setSocialValidationError('Please enter a valid URL');
+                return false;
+            }
+        }
+
+        const urlLower = newSocialUrl.toLowerCase();
+        const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
+
+        if (!isValidDomain) {
+            setSocialValidationError(`URL must contain ${platform.domains.join(' or ')}`);
+            return false;
+        }
+
+        setSocialValidationError('');
+        return true;
+    };
+
+    const addSocialLink = () => {
+        if (!validateSocialUrl()) return;
+
+        router.post('/users/social-links', {
+            title: newSocialPlatform,
+            url: newSocialUrl,
+        }, {
+            onSuccess: () => {
+                setNewSocialPlatform('');
+                setNewSocialUrl('');
+                setSocialValidationError('');
+            },
+            onError: (errors) => {
+                setSocialValidationError(errors.url || 'Failed to add social link');
+            }
+        });
+    };
+
+    const deleteSocialLink = (linkId) => {
+        router.delete(`/users/social-links/${linkId}`, {
+            onSuccess: () => {
+                // Social links will be updated via Inertia
+            }
+        });
+    };
 
     const submitEdit = (e) => {
         e.preventDefault();
@@ -70,31 +165,27 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
 
         const form = new FormData();
 
-        form.append('_method', 'put'); // Ensure to override method if using put
+        form.append('_method', 'put');
         form.append('name', formData.name);
         form.append('email', formData.email);
-        formData.roles.forEach((r) => form.append('roles[]', r)); // Send roles as array
+        formData.roles.forEach((r) => form.append('roles[]', r));
         form.append('status', formData.status);
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
         form.append('formation_id', formData.formation_id || '');
 
-        // Convert Yes/No back to 1/0 for submission
         form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
         form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
 
-        // Append image ONLY if it's a File
         if (formData?.image instanceof File) {
             form.append('image', formData?.image);
         }
 
-        // Sending data to backend
         router.post(`/users/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
                 onClose();
                 console.log('success');
-
             },
             onError: (err) => {
                 setErrors(err);
@@ -126,20 +217,19 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 </DialogHeader>
                 <form onSubmit={submitEdit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     {/* Avatar */}
-                    <div className="col-span-1 md:col-span-2 flex justify-center items-center gap-4 mb-4">
+                    <div className="col-span-1 md:col-span-2 flex flex-col items-center gap-4 mb-4">
                         <div className="relative w-24 h-24">
                             <Avatar
                                 image={
                                     formData?.image instanceof File
-                                        ? URL.createObjectURL(formData?.image) // Use Object URL for file input
-                                        : formData?.image || editedUser?.image // Use the provided image URL or the fallback editedUser image
+                                        ? URL.createObjectURL(formData?.image)
+                                        : formData?.image || editedUser?.image
                                 }
                                 name={formData?.name}
                                 lastActivity={editedUser?.last_online || null}
                                 className="w-24 h-24 rounded-full overflow-hidden"
                                 onlineCircleClass="hidden"
                             />
-
 
                             <label className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-alpha rounded-full cursor-pointer border-2 border-white hover:bg-alpha/80">
                                 <ImagePlus size={18} className="text-white" />
@@ -214,14 +304,108 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </SelectContent>
                         </Select>
                     </div>
-                    {/* Right Column - Roles */}
-                    <Rolegard authorized={"admin"}>
-                    {isAdminOrStudioResponsable && (
-                        <div className="col-span-1">
-                            <Label htmlFor="roles">Roles</Label>
-                            <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+
+                    {/* Socials Section */}
+                    {canManageSocials && (
+                        <div className="col-span-1 md:col-span-2">
+                            <Label>Socials</Label>
+
+                            <div className="mt-3">
+                                <div className="flex w-full gap-3 items-center">
+                                    <div className="w-[40%]">
+                                        <Select value={newSocialPlatform} onValueChange={(value) => {
+                                            setNewSocialPlatform(value);
+                                            setSocialValidationError('');
+                                        }}>
+                                            <SelectTrigger className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha">
+                                                <SelectValue placeholder="Select platform" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availablePlatforms.map(platform => (
+                                                    <SelectItem key={platform.value} value={platform.value}>
+                                                        {platform.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="w-[40%]">
+                                        <Input
+                                            type="url"
+                                            placeholder="https://example.com/username"
+                                            value={newSocialUrl}
+                                            onChange={(e) => {
+                                                setNewSocialUrl(e.target.value);
+                                                setSocialValidationError('');
+                                            }}
+                                            className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha"
+                                        />
+                                    </div>
+                                    <div className="w-[20%]">
+                                        <button
+                                            type="button"
+                                            onClick={addSocialLink}
+                                            disabled={!newSocialPlatform || !newSocialUrl}
+                                            className="w-full px-3 py-2 bg-alpha text-white rounded-full text-sm font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                                {socialValidationError && (
+                                    <p className="text-red-500 text-xs mt-1">{socialValidationError}</p>
+                                )}
+                            </div>
+
+                            {/* Display existing social links */}
+                            <div className="mt-4 space-y-2">
+                                {socialLinks.length === 0 ? (
+                                    <p className="text-sm text-beta/60 dark:text-light/60">No socials added.</p>
+                                ) : (
+                                    socialLinks.map((link) => {
+                                        const IconComponent = platformIcons[link.title] || ExternalLink;
+                                        return (
+                                            <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
+                                                        <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-semibold text-beta dark:text-light">
+                                                            {link.title}
+                                                        </div>
+                                                        <a
+                                                            href={link.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                        >
+                                                            {link.url}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => deleteSocialLink(link.id)}
+                                                    className="text-error"
+                                                >
+                                                    <Trash size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
                         </div>
                     )}
+                    {/* Right Column - Roles */}
+                    <Rolegard authorized={"admin"}>
+                        {isAdminOrStudioResponsable && (
+                            <div className="col-span-1">
+                                <Label htmlFor="roles">Roles</Label>
+                                <RolesMultiSelect roles={formData.roles} onChange={(newRoles) => setFormData({ ...formData, roles: newRoles })} />
+                            </div>
+                        )}
                     </Rolegard>
                     {/* Left Column - Access Studio */}
                     {isAdminOrStudioResponsable && (
@@ -282,8 +466,6 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             </Select>
                         </div>
                     )}
-
-
 
                     {/* Footer */}
                     <div className="col-span-1 md:col-span-2 mt-6">
