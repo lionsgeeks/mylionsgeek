@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 // Removed ScrollArea import - using native scroll with hidden scrollbar
-import { MessageSquare, Send, Smile, Reply, X } from 'lucide-react';
+import { MessageSquare, Send, Smile, Reply, X, Edit2, Trash2, Check, XCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useAblyChannel from '@/hooks/useAblyChannel';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,9 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
     const [isSending, setIsSending] = useState(false);
     const [replyingTo, setReplyingTo] = useState(null);
     const [showReactionPicker, setShowReactionPicker] = useState(null);
+    const [editingMessage, setEditingMessage] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
     const scrollAreaRef = useRef(null);
     const messagesEndRef = useRef(null);
 
@@ -30,7 +33,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
     
     const { isConnected, subscribe } = useAblyChannel(
         channelName || 'project:placeholder',
-        ['new-message', 'message-reaction-updated'],
+        ['new-message', 'message-reaction-updated', 'message-updated', 'message-deleted'],
         {
             onConnected: () => {
                 if (projectId) {
@@ -105,15 +108,64 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             );
         };
 
+        const handleMessageUpdate = (data) => {
+            console.log('📨 Received message update via Ably:', data);
+            setMessages((prev) => {
+                const updated = prev.map(msg => 
+                    msg.id === data.id 
+                        ? { 
+                            ...msg, 
+                            content: data.content,
+                            timestamp: data.timestamp,
+                            updated_at: data.updated_at,
+                            reactions: data.reactions || [],
+                            reply_to: data.reply_to,
+                        }
+                        : msg
+                );
+                const found = prev.find(msg => msg.id === data.id);
+                if (found) {
+                    console.log('✅ Message updated in real-time');
+                }
+                return updated;
+            });
+            // Cancel edit mode if editing this message
+            if (editingMessage?.id === data.id) {
+                console.log('🔄 Cancelling edit mode after real-time update');
+                setEditingMessage(null);
+                setEditContent('');
+                setIsEditing(false);
+            }
+        };
+
+        const handleMessageDelete = (data) => {
+            console.log('📨 Received message deletion via Ably:', data);
+            setMessages((prev) => {
+                const filtered = prev.filter(msg => msg.id !== data.message_id);
+                if (filtered.length !== prev.length) {
+                    console.log('✅ Message deleted in real-time');
+                }
+                return filtered;
+            });
+            // Cancel edit mode if editing this message
+            if (editingMessage?.id === data.message_id) {
+                setEditingMessage(null);
+                setEditContent('');
+                setIsEditing(false);
+            }
+        };
+
         // Register the callbacks
         subscribe('new-message', handleNewMessage);
         subscribe('message-reaction-updated', handleReactionUpdate);
+        subscribe('message-updated', handleMessageUpdate);
+        subscribe('message-deleted', handleMessageDelete);
 
         // Cleanup
         return () => {
             // The hook handles cleanup, but we can add additional cleanup if needed
         };
-    }, [subscribe, projectId]);
+    }, [subscribe, projectId, editingMessage]);
 
     // Auto-scroll to bottom when chat opens or messages change
     useEffect(() => {
@@ -161,6 +213,156 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             setNewMessage(content);
         } finally {
             setIsSending(false);
+        }
+    };
+
+    const handleEditMessage = (message) => {
+        setEditingMessage(message);
+        setEditContent(message.content);
+        setIsEditing(false); // Reset saving state
+        setReplyingTo(null);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingMessage(null);
+        setEditContent('');
+        setIsEditing(false);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editContent.trim() || !projectId || !editingMessage || isEditing) {
+            console.log('⚠️ Cannot save edit:', { 
+                hasContent: !!editContent.trim(), 
+                hasProjectId: !!projectId, 
+                hasEditingMessage: !!editingMessage, 
+                isEditing 
+            });
+            return;
+        }
+
+        const content = editContent.trim();
+        const messageId = editingMessage.id;
+        console.log('💾 Saving message edit:', { messageId, content });
+        setIsEditing(true);
+
+        // Optimistically update the UI
+        setMessages((prev) => 
+            prev.map(msg => 
+                msg.id === messageId 
+                    ? { ...msg, content: content, updated_at: new Date().toISOString() }
+                    : msg
+            )
+        );
+
+        try {
+            const response = await fetch(`/admin/projects/${projectId}/messages/${messageId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ content }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Failed to update message:', errorData);
+                throw new Error(errorData.error || 'Failed to update message');
+            }
+
+            const result = await response.json();
+            console.log('✅ Message updated successfully:', result);
+
+            // Close edit mode - real-time update will sync the final state
+            setEditingMessage(null);
+            setEditContent('');
+            setIsEditing(false);
+        } catch (error) {
+            console.error('Failed to update message:', error);
+            // Revert optimistic update on error - refetch messages
+            if (projectId) {
+                fetch(`/admin/projects/${projectId}/messages`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.messages) {
+                            setMessages(data.messages);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error('Failed to refetch messages:', err);
+                    });
+            }
+            setIsEditing(false);
+        }
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        if (!projectId || !messageId) return;
+
+        if (!confirm('Are you sure you want to delete this message?')) {
+            return;
+        }
+
+        // Optimistically remove the message from UI
+        setMessages((prev) => prev.filter(msg => msg.id !== messageId));
+        
+        // Cancel edit mode if editing this message
+        if (editingMessage?.id === messageId) {
+            setEditingMessage(null);
+            setEditContent('');
+            setIsEditing(false);
+        }
+
+        try {
+            const response = await fetch(`/admin/projects/${projectId}/messages/${messageId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to delete message');
+            }
+
+            // Real-time update will sync the deletion across all clients
+            // If deletion fails, we'll refetch to restore the message
+        } catch (error) {
+            console.error('Failed to delete message:', error);
+            // Revert optimistic update on error - refetch messages
+            if (projectId) {
+                fetch(`/admin/projects/${projectId}/messages`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                })
+                    .then((res) => res.json())
+                    .then((data) => {
+                        if (data.messages) {
+                            setMessages(data.messages);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error('Failed to refetch messages:', err);
+                    });
+            }
         }
     };
 
@@ -329,13 +531,66 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         <div className="truncate">{message.reply_to.content}</div>
                                                     </div>
                                                 )}
-                                                <div className={cn(
-                                                    "rounded-lg px-3 py-2 text-sm relative",
-                                                    isCurrentUser 
-                                                        ? "bg-primary text-primary-foreground rounded-br-sm" 
-                                                        : "bg-muted rounded-bl-sm"
-                                                )}>
-                                                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                {editingMessage?.id === message.id ? (
+                                                    <div className={cn(
+                                                        "rounded-lg px-3 py-2 text-sm relative",
+                                                        isCurrentUser 
+                                                            ? "bg-primary text-primary-foreground rounded-br-sm" 
+                                                            : "bg-muted rounded-bl-sm"
+                                                    )}>
+                                                        <Input
+                                                            value={editContent}
+                                                            onChange={(e) => setEditContent(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    handleSaveEdit();
+                                                                } else if (e.key === 'Escape') {
+                                                                    handleCancelEdit();
+                                                                }
+                                                            }}
+                                                            className="bg-background text-foreground"
+                                                            autoFocus
+                                                        />
+                                                        <div className="flex items-center gap-1 mt-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-xs"
+                                                                onClick={handleSaveEdit}
+                                                                disabled={isEditing || !editContent.trim()}
+                                                            >
+                                                                <Check className="h-3 w-3 mr-1" />
+                                                                Save
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 px-2 text-xs"
+                                                                onClick={handleCancelEdit}
+                                                                disabled={isEditing}
+                                                            >
+                                                                <XCircle className="h-3 w-3 mr-1" />
+                                                                Cancel
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={cn(
+                                                        "rounded-lg px-3 py-2 text-sm relative",
+                                                        isCurrentUser 
+                                                            ? "bg-primary text-primary-foreground rounded-br-sm" 
+                                                            : "bg-muted rounded-bl-sm"
+                                                    )}>
+                                                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                        {message.updated_at && message.updated_at !== message.timestamp && (
+                                                            <span className={cn(
+                                                                "text-xs block mt-1",
+                                                                isCurrentUser ? "text-primary-foreground/50" : "text-muted-foreground/70"
+                                                            )}>
+                                                                (edited)
+                                                            </span>
+                                                        )}
                                                     <div className={cn(
                                                         "flex items-center gap-1 mt-1",
                                                         isCurrentUser ? "justify-end" : "justify-start"
@@ -351,6 +606,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         </span>
                                                     </div>
                                                 </div>
+                                                )}
                                                 {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
                                                     <div className={cn(
                                                         "flex flex-wrap gap-1 mt-1",
@@ -429,6 +685,26 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     >
                                                         <Reply className="h-3 w-3" />
                                                     </Button>
+                                                    {isCurrentUser && editingMessage?.id !== message.id && (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 w-6 p-0"
+                                                                onClick={() => handleEditMessage(message)}
+                                                            >
+                                                                <Edit2 className="h-3 w-3" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                                onClick={() => handleDeleteMessage(message.id)}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                             {isCurrentUser && (
