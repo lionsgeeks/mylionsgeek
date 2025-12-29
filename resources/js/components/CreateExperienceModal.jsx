@@ -48,6 +48,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
     const [currentlyWorking, setCurrentlyWorking] = useState(false);
     const [remotePosition, setRemotePosition] = useState(false);
     const [dateError, setDateError] = useState('');
+    const [formError, setFormError] = useState('');
     const { stopScrolling } = helpers()
     const { data, setData, processing, errors } = useForm({
         title: '',
@@ -88,18 +89,15 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
             return;
         }
 
-        try {
-            router.post(`/users/experience`, data, {
-                onSuccess: () => {
-                    onOpenChange(false)
-                },
-                onError: (error) => {
-                    console.log(error);
-                }
-            })
-        } catch (error) {
-            console.log(error);
-        }
+        router.post(`/users/experience`, data, {
+            onSuccess: () => {
+                onOpenChange(false)
+            },
+            onError: (errors) => {
+                setFormError('Failed to create experience. Please try again.');
+                console.log('Form errors:', errors);
+            }
+        })
     }
 
     const handleChange = (e) => {
@@ -135,6 +133,15 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
 
                     {/* Content */}
                     <div className="p-6 space-y-6">
+                        {/* General Form Error */}
+                        {formError && (
+                            <div className="flex items-center gap-2 p-3 bg-error/10 border border-error/30 rounded">
+                                <svg className="w-5 h-5 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm text-error font-medium">{formError}</span>
+                            </div>
+                        )}
                         {/* Title */}
                         <div>
                             <label className="block text-sm font-medium text-beta dark:text-light mb-2">
