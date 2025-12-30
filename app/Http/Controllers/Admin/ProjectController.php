@@ -28,13 +28,27 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
+        $userId = Auth::id();
+        
+        // Filter projects: show only projects where user is owner or team member
         $query = Project::with(['creator', 'users:id,name,image', 'tasks'])
-            ->withCount(['tasks', 'users']);
+            ->withCount(['tasks', 'users'])
+            ->where(function ($q) use ($userId) {
+                // User is the owner
+                $q->where('created_by', $userId)
+                    // OR user is a team member
+                    ->orWhereHas('users', function ($userQuery) use ($userId) {
+                        $userQuery->where('users.id', $userId);
+                    });
+            });
 
         // Search functionality
         if ($request->has('search') && $request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%')
-                ->orWhere('description', 'like', '%' . $request->search . '%');
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('description', 'like', '%' . $searchTerm . '%');
+            });
         }
 
         // Filter by status
@@ -49,13 +63,20 @@ class ProjectController extends Controller
 
         $projects = $query->paginate(12);
 
-        // Statistics
+        // Statistics - only count projects user has access to
+        $accessibleProjectsQuery = Project::where(function ($q) use ($userId) {
+            $q->where('created_by', $userId)
+                ->orWhereHas('users', function ($userQuery) use ($userId) {
+                    $userQuery->where('users.id', $userId);
+                });
+        });
+        
         $stats = [
-            'total' => Project::count(),
-            'active' => Project::where('status', 'active')->count(),
-            'completed' => Project::where('status', 'completed')->count(),
-            'on_hold' => Project::where('status', 'on_hold')->count(),
-            'cancelled' => Project::where('status', 'cancelled')->count(),
+            'total' => $accessibleProjectsQuery->count(),
+            'active' => (clone $accessibleProjectsQuery)->where('status', 'active')->count(),
+            'completed' => (clone $accessibleProjectsQuery)->where('status', 'completed')->count(),
+            'on_hold' => (clone $accessibleProjectsQuery)->where('status', 'on_hold')->count(),
+            'cancelled' => (clone $accessibleProjectsQuery)->where('status', 'cancelled')->count(),
         ];
 
         // Get all users for invite suggestions
@@ -172,6 +193,18 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
+        $userId = Auth::id();
+        
+        // Check if user has access: owner or team member
+        $isOwner = $project->created_by === $userId;
+        $isTeamMember = ProjectUser::where('project_id', $project->id)
+            ->where('user_id', $userId)
+            ->exists();
+        
+        if (!$isOwner && !$isTeamMember) {
+            abort(403, 'You do not have access to this project.');
+        }
+        
         $project->load([
             'creator',
             'users',
@@ -209,13 +242,12 @@ class ProjectController extends Controller
         
         // Get current user's role in this project
         $currentUserProjectRole = ProjectUser::where('project_id', $project->id)
-            ->where('user_id', Auth::id())
+            ->where('user_id', $userId)
             ->first();
         
         // Check if user is project owner or has admin/owner role
-        $isProjectOwner = $project->created_by === Auth::id();
         $isProjectAdmin = $currentUserProjectRole && in_array($currentUserProjectRole->role, ['owner', 'admin']);
-        $canManageTeam = $isProjectOwner || $isProjectAdmin;
+        $canManageTeam = $isOwner || $isProjectAdmin;
 
         return Inertia::render('admin/projects/[id]', [
             'project' => $project,
@@ -234,6 +266,17 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
+        // Check if user has access: owner or team member
+        $userId = Auth::id();
+        $isOwner = $project->created_by === $userId;
+        $isTeamMember = ProjectUser::where('project_id', $project->id)
+            ->where('user_id', $userId)
+            ->exists();
+        
+        if (!$isOwner && !$isTeamMember) {
+            abort(403, 'You do not have access to this project.');
+        }
+        
         try {
             $request->validate([
                 'name' => 'required|string|max:255',
@@ -279,6 +322,14 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
+        // Only owner can delete the project
+        $userId = Auth::id();
+        $isOwner = $project->created_by === $userId;
+        
+        if (!$isOwner) {
+            abort(403, 'Only the project owner can delete this project.');
+        }
+        
         try {
             // Delete project photo if it exists
             if ($project->photo) {
