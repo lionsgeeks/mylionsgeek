@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
+import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Linkedin, Instagram, Briefcase } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
 import AboutModal from '../../../../../components/AboutModal';
 import CreateSocialLinkModal from '../../../../../components/CreateSocialLinkModal';
@@ -8,30 +8,18 @@ import DeleteModal from '../../../../../components/DeleteModal';
 
 const platformIcons = {
     instagram: Instagram,
-    facebook: Facebook,
-    twitter: Twitter,
-    github: Github,
     linkedin: Linkedin,
     behance: ExternalLink,
-    pinterest: ExternalLink,
-    discord: MessageCircle,
-    threads: Send,
-    reddit: Users,
+    github: Github,
     portfolio: Briefcase,
 };
 
 const platforms = [
     { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
-    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
-    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
-    { value: 'github', label: 'GitHub', domains: ['github.com'] },
     { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
-    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
-    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
-    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
-    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
-    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
+    { value: 'behance', label: 'Behance', domains: ['behance.net'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
 ];
 
 const LeftColumn = ({ user }) => {
@@ -47,15 +35,24 @@ const LeftColumn = ({ user }) => {
     const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id
 
+    // Check if user is a coding user
+    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || 
+                        user?.formation?.toLowerCase().includes('coding');
+
     // Sync socialLinks with user data when it changes
     useEffect(() => {
         setSocialLinks(user?.social_links || []);
     }, [user?.social_links]);
 
-    // Filter out platforms that are already added
-    const availablePlatforms = platforms.filter(platform =>
-        !socialLinks.some(link => link.title === platform.value)
-    );
+    // Filter out platforms that are already added and filter GitHub for coding users
+    const availablePlatforms = platforms.filter(platform => {
+        // For GitHub, only show to coding users
+        if (platform.value === 'github' && !isCodingUser) {
+            return false;
+        }
+        // Filter out platforms that are already added
+        return !socialLinks.some(link => link.title === platform.value);
+    });
 
     // Drag and drop handlers
     const handleDragStart = (e, index) => {

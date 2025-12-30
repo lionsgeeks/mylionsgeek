@@ -1,19 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { X, ExternalLink, Edit, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
+import { X, ExternalLink, Edit, Trash, Github, Linkedin, Instagram, Briefcase } from 'lucide-react';
 import { helpers } from './utils/helpers';
 import DeleteModal from './DeleteModal';
 
 const platformIcons = {
     instagram: Instagram,
-    facebook: Facebook,
-    twitter: Twitter,
-    github: Github,
     linkedin: Linkedin,
     behance: ExternalLink,
-    pinterest: ExternalLink,
-    discord: MessageCircle,
-    threads: Send,
-    reddit: Users,
+    github: Github,
     portfolio: Briefcase,
 };
 
