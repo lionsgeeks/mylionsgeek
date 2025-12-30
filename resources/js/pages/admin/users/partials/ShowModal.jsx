@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
 import LineStatistic from './components/LineChart';
@@ -14,7 +16,18 @@ const User = ({ user, trainings, close, open }) => {
 
 const [projects, setProjects] = useState([]);
 const [rejectingId, setRejectingId] = useState(null);
+const [approvingId, setApprovingId] = useState(null);
 const [rejectionReason, setRejectionReason] = useState('');
+const [reviewRatings, setReviewRatings] = useState({
+    good_structure: false,
+    clean_code: false,
+    pure_code: false,
+    pure_ai: false,
+    mix_vibe: false,
+    responsive_design: false,
+    good_performance: false,
+});
+const [reviewNotes, setReviewNotes] = useState('');
 const [processingId, setProcessingId] = useState(null);
 
     const getInitials = useInitials();
@@ -436,7 +449,7 @@ const [processingId, setProcessingId] = useState(null);
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <h4 className="font-semibold mb-1">{project.title}</h4>
-                                                 
+
                                                         <p className="text-xs text-neutral-500">
                                                             {new Date(project.created_at).toLocaleString('en-US', {
                                                                 year: 'numeric',
@@ -466,25 +479,11 @@ const [processingId, setProcessingId] = useState(null);
                                                 {project.status === 'pending' && (
                                                     <>
                                                         <button
-                                                            onClick={() => {
-                                                                setProcessingId(project.id);
-                                                                router.post(`/admin/projects/${project.id}/approve`, {}, {
-                                                                    onSuccess: () => {
-                                                                        setProjects(prev =>
-                                                                            prev.map(p =>
-                                                                                p.id === project.id
-                                                                                    ? { ...p, status: 'approved' }
-                                                                                    : p
-                                                                            )
-                                                                        );
-                                                                    },
-                                                                    onFinish: () => setProcessingId(null),
-                                                                });
-                                                            }}
+                                                            onClick={() => setApprovingId(project.id)}
                                                             disabled={processingId === project.id}
                                                             className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium cursor-pointer"
                                                         >
-                                                            {processingId === project.id ? 'Approving...' : 'Approve'}
+                                                            Approve
                                                         </button>
                                                         <button
                                                             onClick={() => setRejectingId(project.id)}
@@ -497,68 +496,397 @@ const [processingId, setProcessingId] = useState(null);
                                             </div>
                                         </div>
 
-                                        {/* Reject Modal */}
+                                        {/* Approve Modal with Ratings */}
+                                        {approvingId === project.id && (
+                                            <Dialog open={approvingId === project.id} onOpenChange={() => {
+                                                setApprovingId(null);
+                                                setReviewRatings({
+                                                    good_structure: false,
+                                                    clean_code: false,
+                                                    pure_code: false,
+                                                    pure_ai: false,
+                                                    mix_vibe: false,
+                                                    responsive_design: false,
+                                                    good_performance: false,
+                                                });
+                                                setReviewNotes('');
+                                            }}>
+                                                <DialogContent className="sm:max-w-[600px] max-h-[90vh] bg-light dark:bg-dark overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Review & Approve Project</DialogTitle>
+                                                        <DialogDescription>
+                                                            Please rate the project and add any notes before approving.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="space-y-6 py-4">
+                                                        {/* Rating Checkboxes */}
+                                                        <div className="space-y-4">
+                                                            <Label className="text-base font-semibold">Project Ratings</Label>
+                                                            <div className="grid grid-cols-1 gap-3">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-good_structure-${project.id}`}
+                                                                        checked={reviewRatings.good_structure}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, good_structure: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-good_structure-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Good Structure
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-clean_code-${project.id}`}
+                                                                        checked={reviewRatings.clean_code}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, clean_code: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-clean_code-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Clean Code
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-pure_code-${project.id}`}
+                                                                        checked={reviewRatings.pure_code}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, pure_code: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-pure_code-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Pure Code
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-pure_ai-${project.id}`}
+                                                                        checked={reviewRatings.pure_ai}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, pure_ai: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-pure_ai-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Pure AI
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-mix_vibe-${project.id}`}
+                                                                        checked={reviewRatings.mix_vibe}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, mix_vibe: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-mix_vibe-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Mix Vibe One
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-responsive_design-${project.id}`}
+                                                                        checked={reviewRatings.responsive_design}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, responsive_design: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-responsive_design-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Responsive Design
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`approve-good_performance-${project.id}`}
+                                                                        checked={reviewRatings.good_performance}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, good_performance: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`approve-good_performance-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Good Performance
+                                                                    </Label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Notes */}
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`approve-review-notes-${project.id}`}>Review Notes</Label>
+                                                            <Textarea
+                                                                id={`approve-review-notes-${project.id}`}
+                                                                value={reviewNotes}
+                                                                onChange={(e) => setReviewNotes(e.target.value)}
+                                                                placeholder="Add any additional notes about the project..."
+                                                                rows={4}
+                                                                className="resize-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setApprovingId(null);
+                                                                setReviewRatings({
+                                                                    good_structure: false,
+                                                                    clean_code: false,
+                                                                    pure_code: false,
+                                                                    pure_ai: false,
+                                                                    mix_vibe: false,
+                                                                    responsive_design: false,
+                                                                    good_performance: false,
+                                                                });
+                                                                setReviewNotes('');
+                                                            }}
+                                                            disabled={processingId === project.id}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => {
+                                                                setProcessingId(project.id);
+                                                                router.post(`/admin/projects/${project.id}/approve`, {
+                                                                    review_ratings: reviewRatings,
+                                                                    review_notes: reviewNotes.trim(),
+                                                                }, {
+                                                                    onSuccess: () => {
+                                                                        setProjects(prev =>
+                                                                            prev.map(p =>
+                                                                                p.id === project.id
+                                                                                    ? { ...p, status: 'approved' }
+                                                                                    : p
+                                                                            )
+                                                                        );
+                                                                        setApprovingId(null);
+                                                                        setReviewRatings({
+                                                                            good_structure: false,
+                                                                            clean_code: false,
+                                                                            pure_code: false,
+                                                                            pure_ai: false,
+                                                                            mix_vibe: false,
+                                                                            responsive_design: false,
+                                                                            good_performance: false,
+                                                                        });
+                                                                        setReviewNotes('');
+                                                                    },
+                                                                    onFinish: () => setProcessingId(null),
+                                                                });
+                                                            }}
+                                                            disabled={processingId === project.id}
+                                                            className="bg-green-600 hover:bg-green-700 text-white"
+                                                        >
+                                                            {processingId === project.id ? 'Approving...' : 'Approve Project'}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
+
+                                        {/* Reject Modal with Ratings */}
                                         {rejectingId === project.id && (
                                             <Dialog open={rejectingId === project.id} onOpenChange={() => {
                                                 setRejectingId(null);
                                                 setRejectionReason('');
+                                                setReviewRatings({
+                                                    good_structure: false,
+                                                    clean_code: false,
+                                                    pure_code: false,
+                                                    pure_ai: false,
+                                                    mix_vibe: false,
+                                                    responsive_design: false,
+                                                    good_performance: false,
+                                                });
+                                                setReviewNotes('');
                                             }}>
-                                                <DialogContent className="max-w-sm">
+                                                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-light dark:bg-dark">
                                                     <DialogHeader>
-                                                        <DialogTitle>Reject Project</DialogTitle>
+                                                        <DialogTitle>Review & Reject Project</DialogTitle>
+                                                        <DialogDescription>
+                                                            Please provide a reason for rejecting this project and rate it. This will be visible to the student.
+                                                        </DialogDescription>
                                                     </DialogHeader>
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <Label className="text-sm">Rejection Reason *</Label>
-                                                            <textarea
+                                                    <div className="space-y-6 py-4">
+                                                        {/* Rejection Reason */}
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`reject-reason-${project.id}`}>Rejection Reason *</Label>
+                                                            <Textarea
+                                                                id={`reject-reason-${project.id}`}
                                                                 value={rejectionReason}
                                                                 onChange={(e) => setRejectionReason(e.target.value)}
-                                                                placeholder="Explain why this project is being rejected..."
-                                                                rows={3}
-                                                                className="w-full p-2 border border-neutral-300 rounded text-sm dark:bg-neutral-800 dark:border-neutral-600"
+                                                                placeholder="Enter the reason for rejection..."
+                                                                rows={4}
+                                                                className="resize-none"
                                                             />
                                                         </div>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                onClick={() => {
-                                                                    setRejectingId(null);
-                                                                    setRejectionReason('');
-                                                                }}
-                                                            >
-                                                                Cancel
-                                                            </Button>
-                                                            <Button
-                                                                onClick={() => {
-                                                                    if (!rejectionReason.trim()) {
-                                                                        alert('Please provide a rejection reason minimum 1 characters');
-                                                                        return;
-                                                                    }
-                                                                    setProcessingId(project.id);
-                                                                    router.post(`/admin/projects/${project.id}/reject`, {
-                                                                        rejection_reason: rejectionReason,
-                                                                    }, {
-                                                                        onSuccess: () => {
-                                                                            setProjects(prev =>
-                                                                                prev.map(p =>
-                                                                                    p.id === project.id
-                                                                                        ? { ...p, status: 'rejected' }
-                                                                                        : p
-                                                                                )
-                                                                            );
-                                                                            setRejectingId(null);
-                                                                            setRejectionReason('');
-                                                                        },
-                                                                        onFinish: () => setProcessingId(null),
-                                                                    });
-                                                                }}
-                                                                disabled={processingId === project.id}
-                                                                className="bg-red-600 hover:bg-red-700"
-                                                            >
-                                                                {processingId === project.id ? 'Rejecting...' : 'Reject'}
-                                                            </Button>
+
+                                                        {/* Rating Checkboxes */}
+                                                        <div className="space-y-4">
+                                                            <Label className="text-base font-semibold">Project Ratings</Label>
+                                                            <div className="grid grid-cols-1 gap-3">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-good_structure-${project.id}`}
+                                                                        checked={reviewRatings.good_structure}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, good_structure: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-good_structure-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Good Structure
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-clean_code-${project.id}`}
+                                                                        checked={reviewRatings.clean_code}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, clean_code: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-clean_code-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Clean Code
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-pure_code-${project.id}`}
+                                                                        checked={reviewRatings.pure_code}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, pure_code: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-pure_code-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Pure Code
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-pure_ai-${project.id}`}
+                                                                        checked={reviewRatings.pure_ai}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, pure_ai: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-pure_ai-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Pure AI
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-mix_vibe-${project.id}`}
+                                                                        checked={reviewRatings.mix_vibe}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, mix_vibe: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-mix_vibe-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Mix Vibe One
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-responsive_design-${project.id}`}
+                                                                        checked={reviewRatings.responsive_design}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, responsive_design: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-responsive_design-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Responsive Design
+                                                                    </Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`reject-good_performance-${project.id}`}
+                                                                        checked={reviewRatings.good_performance}
+                                                                        onCheckedChange={(checked) =>
+                                                                            setReviewRatings(prev => ({ ...prev, good_performance: checked }))
+                                                                        }
+                                                                    />
+                                                                    <Label htmlFor={`reject-good_performance-${project.id}`} className="font-normal cursor-pointer">
+                                                                        Good Performance
+                                                                    </Label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Notes */}
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`reject-review-notes-${project.id}`}>Review Notes</Label>
+                                                            <Textarea
+                                                                id={`reject-review-notes-${project.id}`}
+                                                                value={reviewNotes}
+                                                                onChange={(e) => setReviewNotes(e.target.value)}
+                                                                placeholder="Add any additional notes about the project..."
+                                                                rows={4}
+                                                                className="resize-none"
+                                                            />
                                                         </div>
                                                     </div>
+                                                    <DialogFooter>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setRejectingId(null);
+                                                                setRejectionReason('');
+                                                                setReviewRatings({
+                                                                    good_structure: false,
+                                                                    clean_code: false,
+                                                                    pure_code: false,
+                                                                    pure_ai: false,
+                                                                    mix_vibe: false,
+                                                                    responsive_design: false,
+                                                                    good_performance: false,
+                                                                });
+                                                                setReviewNotes('');
+                                                            }}
+                                                            disabled={processingId === project.id}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => {
+                                                                if (!rejectionReason.trim()) {
+                                                                    alert('Please provide a rejection reason minimum 1 characters');
+                                                                    return;
+                                                                }
+                                                                setProcessingId(project.id);
+                                                                router.post(`/admin/projects/${project.id}/reject`, {
+                                                                    rejection_reason: rejectionReason.trim(),
+                                                                    review_ratings: reviewRatings,
+                                                                    review_notes: reviewNotes.trim(),
+                                                                }, {
+                                                                    onSuccess: () => {
+                                                                        setProjects(prev =>
+                                                                            prev.map(p =>
+                                                                                p.id === project.id
+                                                                                    ? { ...p, status: 'rejected' }
+                                                                                    : p
+                                                                            )
+                                                                        );
+                                                                        setRejectingId(null);
+                                                                        setRejectionReason('');
+                                                                        setReviewRatings({
+                                                                            good_structure: false,
+                                                                            clean_code: false,
+                                                                            pure_code: false,
+                                                                            pure_ai: false,
+                                                                            mix_vibe: false,
+                                                                            responsive_design: false,
+                                                                            good_performance: false,
+                                                                        });
+                                                                        setReviewNotes('');
+                                                                    },
+                                                                    onFinish: () => setProcessingId(null),
+                                                                });
+                                                            }}
+                                                            disabled={!rejectionReason.trim() || processingId === project.id}
+                                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                                        >
+                                                            {processingId === project.id ? 'Rejecting...' : 'Reject Project'}
+                                                        </Button>
+                                                    </DialogFooter>
                                                 </DialogContent>
                                             </Dialog>
                                         )}

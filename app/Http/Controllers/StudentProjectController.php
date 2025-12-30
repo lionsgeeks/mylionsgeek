@@ -74,6 +74,8 @@ class StudentProjectController extends Controller
             'project' => $studentProject->project,
             'status' => $studentProject->status,
             'rejection_reason' => $studentProject->rejection_reason,
+            'review_ratings' => $studentProject->review_ratings,
+            'review_notes' => $studentProject->review_notes,
             'created_at' => (string) $studentProject->created_at,
             'updated_at' => (string) $studentProject->updated_at,
             'approved_at' => $studentProject->approved_at ? (string) $studentProject->approved_at : null,
@@ -165,11 +167,18 @@ class StudentProjectController extends Controller
 
     public function approve(Request $request, StudentProject $studentProject)
     {
+        $validated = $request->validate([
+            'review_ratings' => 'nullable|array',
+            'review_notes' => 'nullable|string',
+        ]);
+
         $reviewer = auth()->user();
         $studentProject->update([
             'status' => 'approved',
             'approved_by' => $reviewer->id,
             'approved_at' => now(),
+            'review_ratings' => $validated['review_ratings'] ?? null,
+            'review_notes' => $validated['review_notes'] ?? null,
         ]);
 
         // Mark submission notifications as read (for admins/coaches)
@@ -197,6 +206,8 @@ class StudentProjectController extends Controller
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|min:1',
+            'review_ratings' => 'nullable|array',
+            'review_notes' => 'nullable|string',
         ]);
 
         $reviewer = auth()->user();
@@ -207,6 +218,8 @@ class StudentProjectController extends Controller
             'approved_by' => $reviewer->id,
             'approved_at' => now(),
             'rejection_reason' => $rejectionReason,
+            'review_ratings' => $validated['review_ratings'] ?? null,
+            'review_notes' => $validated['review_notes'] ?? null,
         ]);
 
         // Mark submission notifications as read (for admins/coaches)

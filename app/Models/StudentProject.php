@@ -20,10 +20,13 @@ class StudentProject extends Model
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'review_ratings',
+        'review_notes',
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
+        'review_ratings' => 'array',
     ];
 
     public function getRouteKeyName()
