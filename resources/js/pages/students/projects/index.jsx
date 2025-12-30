@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Eye } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Eye, X } from 'lucide-react';
 import TablePagination from '@/components/TablePagination';
 
 
-export default function ProjectsIndex({ projects }) {
+export default function ProjectsIndex({ projects, models = [] }) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ export default function ProjectsIndex({ projects }) {
         description: '',
         project: '',
         image: null,
+        model_id: '',
     });
     const [imagePreview, setImagePreview] = useState(null);
     const [processing, setProcessing] = useState(false);
@@ -25,14 +27,14 @@ export default function ProjectsIndex({ projects }) {
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
-        
+
         if (type === 'file') {
             const file = e.target.files[0];
             setFormData(prev => ({
                 ...prev,
                 image: file,
             }));
-            
+
             if (file) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -58,6 +60,7 @@ export default function ProjectsIndex({ projects }) {
         data.append('title', formData.title);
         data.append('description', formData.description);
         data.append('project', formData.project);
+        data.append('model_id', formData.model_id);
         if (formData.image) {
             data.append('image', formData.image);
         }
@@ -91,6 +94,7 @@ export default function ProjectsIndex({ projects }) {
             description: project.description,
             project: project.project,
             image: null,
+            model_id: project.model_id || '',
         });
         setImagePreview(project.image ? `/storage/${project.image}` : null);
         setIsAddModalOpen(true);
@@ -100,7 +104,7 @@ export default function ProjectsIndex({ projects }) {
     const closeModals = () => {
         setIsAddModalOpen(false);
         setEditingProject(null);
-        setFormData({ title: '', description: '', project: '', image: null });
+        setFormData({ title: '', description: '', project: '', image: null, model_id: '' });
         setImagePreview(null);
     };
 
@@ -118,11 +122,11 @@ export default function ProjectsIndex({ projects }) {
                             Create and manage your portfolio projects. Submit for approval to make them visible in your profile.
                         </p>
                     </div>
-                    <Button 
+                    <Button
                         className="bg-[var(--color-alpha)]  text-black hover:text-white dark:hover:text-black cursor-pointer"
                         onClick={() => {
                             setEditingProject(null);
-                            setFormData({ title: '', description: '', url: '', image: null });
+                            setFormData({ title: '', description: '', project: '', image: null, model_id: '' });
                             setImagePreview(null);
                             setIsAddModalOpen(true);
                         }}
@@ -133,30 +137,54 @@ export default function ProjectsIndex({ projects }) {
                 </div>
 
                 <Dialog open={isAddModalOpen} onOpenChange={closeModals}>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-2xl max-h-[90vh] bg-[var(--color-background)] border-[var(--color-border)] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="text-white text-xl">
+                            <DialogTitle className="text-[var(--color-foreground)] text-xl">
                                 {editingProject ? 'Edit Project' : 'Create New Project'}
                             </DialogTitle>
                         </DialogHeader>
-                        
-                        <form onSubmit={handleSubmit} className="space-y-6">
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <Label htmlFor="title" className="text-white block mb-2">Title</Label>
+                                <Label htmlFor="model_id" className="text-[var(--color-foreground)] block mb-2">Model *</Label>
+                                <Select
+                                    value={formData.model_id}
+                                    onValueChange={(value) => setFormData(prev => ({ ...prev, model_id: value }))}
+                                    required
+                                >
+                                    <SelectTrigger className="border-2 border-[var(--color-alpha)] bg-[var(--color-background)] text-[var(--color-foreground)] rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]">
+                                        <SelectValue placeholder="Select a model" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[var(--color-popover)] border-[var(--color-border)]">
+                                        {models.map((model) => (
+                                            <SelectItem
+                                                key={model.id}
+                                                value={String(model.id)}
+                                                className="text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
+                                            >
+                                                {model.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="title" className="text-[var(--color-foreground)] block mb-2">Title</Label>
                                 <Input
                                     id="title"
                                     name="title"
                                     value={formData.title}
                                     onChange={handleInputChange}
                                     placeholder="My Awesome Project"
-                                    className=" border-2 border-[var(--color-alpha)] text-white placeholder-gray-500 rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]"
+                                    className="border-2 border-[var(--color-alpha)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder-[var(--color-muted-foreground)] rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]"
                                 />
                             </div>
 
                             <div>
-                                <Label htmlFor="image" className="text-white block mb-2">Image</Label>
-                                <div className="flex items-center gap-3 rounded-lg p-1 border-2 border-[var(--color-alpha)]">
-                                    <label htmlFor="image" className="bg-[var(--color-alpha)] hover:bg-gray-950 text-black hover:text-white dark:hover:text-black dark:hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold cursor-pointer transition">
+                                <Label htmlFor="image" className="text-[var(--color-foreground)] block mb-2">Image</Label>
+                                <div className="flex items-center gap-3 rounded-lg p-1 border-2 border-[var(--color-alpha)] bg-[var(--color-background)]">
+                                    <label htmlFor="image" className="bg-[var(--color-alpha)] hover:opacity-90 text-black dark:text-black px-4 py-2 rounded-lg font-semibold cursor-pointer transition">
                                         Choose File
                                     </label>
                                     <Input
@@ -167,24 +195,40 @@ export default function ProjectsIndex({ projects }) {
                                         accept="image/*"
                                         className="hidden"
                                     />
-                                    <span className="text-gray-400 text-sm">
+                                    <span className="text-[var(--color-muted-foreground)] text-sm flex-1 truncate">
                                         {formData.image?.name || (editingProject?.image ? 'Current image will be kept' : 'No file chosen')}
                                     </span>
                                 </div>
-                                
+
                                 {imagePreview && (
-                                    <div className="mt-3 rounded-lg overflow-hidden ">
-                                        <img 
-                                            src={imagePreview} 
-                                            alt="Preview" 
-                                            className="w-full h-auto max-h-48 object-cover rounded-lg"
-                                        />
+                                    <div className="mt-3 relative group">
+                                        <div className="relative w-full border-2 border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-muted)]/10">
+                                            <img
+                                                src={imagePreview}
+                                                alt="Preview"
+                                                className="w-full h-auto max-h-40 object-contain rounded-lg"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData(prev => ({ ...prev, image: null }));
+                                                    setImagePreview(null);
+                                                    // Reset file input
+                                                    const fileInput = document.getElementById('image');
+                                                    if (fileInput) fileInput.value = '';
+                                                }}
+                                                className="absolute top-2 right-2 bg-[var(--color-destructive)] hover:bg-[var(--color-destructive)]/90 text-white rounded-full p-1.5 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+                                                aria-label="Remove image"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
 
                             <div>
-                                <Label htmlFor="description" className="text-white block mb-2">Description</Label>
+                                <Label htmlFor="description" className="text-[var(--color-foreground)] block mb-2">Description</Label>
                                 <Textarea
                                     id="description"
                                     name="description"
@@ -192,12 +236,12 @@ export default function ProjectsIndex({ projects }) {
                                     onChange={handleInputChange}
                                     placeholder="Describe your project..."
                                     rows={4}
-                                    className=" border-2 border-[var(--color-alpha)] text-white placeholder-gray-500 rounded-lg px-4 py-4 focus:outline-none focus:border-[var(--color-alpha)] resize-none"
+                                    className="border-2 border-[var(--color-alpha)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder-[var(--color-muted-foreground)] rounded-lg px-4 py-4 focus:outline-none focus:border-[var(--color-alpha)] resize-none"
                                 />
                             </div>
 
                             <div>
-                                <Label htmlFor="project" className="text-white block mb-2">Project URL</Label>
+                                <Label htmlFor="project" className="text-[var(--color-foreground)] block mb-2">Project URL</Label>
                                 <Input
                                     id="project"
                                     name="project"
@@ -205,24 +249,24 @@ export default function ProjectsIndex({ projects }) {
                                     value={formData.project}
                                     onChange={handleInputChange}
                                     placeholder="https://example.com"
-                                    className=" border-2 border-[var(--color-alpha)] text-white placeholder-gray-500 rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]"
+                                    className="border-2 border-[var(--color-alpha)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder-[var(--color-muted-foreground)] rounded-lg px-4 py-6 focus:outline-none focus:border-[var(--color-alpha)]"
                                 />
                             </div>
 
-                            <div className="flex gap-2 justify-end pt-4">
-                                <Button 
-                                    type="button" 
+                            <div className="flex gap-2 justify-end pt-4 border-t border-[var(--color-border)] mt-6">
+                                <Button
+                                    type="button"
                                     variant="outline"
                                     onClick={closeModals}
                                     disabled={processing}
-                                    className=" text-whit2 border-gray-700 hover:bg-gray-900 cursor-pointer"
+                                    className="border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)] cursor-pointer"
                                 >
                                     Cancel
                                 </Button>
-                                <Button 
-                                    type="submit" 
-                                    disabled={processing} 
-                                    className="bg-[var(--color-alpha)] text-black hover:text-white dark:hover:text-black cursor-pointer"
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="bg-[var(--color-alpha)] text-black hover:opacity-90 cursor-pointer"
                                 >
                                     {processing ? 'Saving...' : editingProject ? 'Update Project' : 'Submit Project'}
                                 </Button>
@@ -278,9 +322,7 @@ export default function ProjectsIndex({ projects }) {
                                             <div className="flex justify-between items-start">
                                                 <div className=''>
                                                     <h3 className="text-lg font-semibold">{project.title}</h3>
-                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">
-                                                        {project.description}
-                                                    </p>
+
                                                     <p className="text-sm text-neutral-500">
                                                         {new Date(project.created_at).toLocaleString('fr-FR', {
                                                             year: 'numeric',
@@ -305,17 +347,7 @@ export default function ProjectsIndex({ projects }) {
                                                     <Eye size={16} />
                                                     View Project
                                                 </button>
-                                                {project.project && (
-                                                    <a
-                                                        href={project.project}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="text-[var(--color-alpha)] hover:underline text-sm flex items-center gap-1"
-                                                    >
-                                                        Open Link
-                                                    </a>
-                                                )}
+                               
                                             </div>
                                             {project.status === 'rejected' && (
                                             <div className="text-red-500 py-2">

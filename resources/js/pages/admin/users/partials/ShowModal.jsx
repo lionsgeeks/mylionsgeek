@@ -436,9 +436,7 @@ const [processingId, setProcessingId] = useState(null);
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <h4 className="font-semibold mb-1">{project.title}</h4>
-                                                            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2 line-clamp-2">
-                                                                {project.description}
-                                                            </p>
+                                                 
                                                         <p className="text-xs text-neutral-500">
                                                             {new Date(project.created_at).toLocaleString('en-US', {
                                                                 year: 'numeric',

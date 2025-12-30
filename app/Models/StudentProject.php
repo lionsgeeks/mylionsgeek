@@ -11,6 +11,7 @@ class StudentProject extends Model
     
     protected $fillable = [
         'user_id',
+        'model_id',
         'title',
         'description',
         'image',
@@ -38,6 +39,11 @@ class StudentProject extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function model(): BelongsTo
+    {
+        return $this->belongsTo(Models::class, 'model_id');
     }
 
     public function scopePending($query)

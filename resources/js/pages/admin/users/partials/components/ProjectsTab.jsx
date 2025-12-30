@@ -42,14 +42,14 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
     const link = project.url || project.link;
     const comments = getCommentsForProject(project);
     const commentsCount = Array.isArray(comments) ? comments.length : 0;
-    
+
     // Handle click - redirect to project details for student projects
     const handleCardClick = (e) => {
       // Don't navigate if clicking on links
       if (e.target.closest('a')) {
         return;
       }
-      
+
       // For portfolio (student) projects, redirect to details page
       if (type === 'portfolio' && project.id) {
         router.visit(`/student/project/${project.id}`);
@@ -59,7 +59,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
         setExpandedProjectId(expandedProjectId === project.id ? null : project.id);
       }
     };
-    
+
     return (
       <div
         key={project.id || idx}
@@ -69,7 +69,6 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
         {img && <img src={`/storage/${img}`} alt={title} className="w-full object-cover max-h-50 rounded-t-xl" />}
         <div className="p-6 flex flex-col gap-2">
           <div className="text-xl font-bold text-gray-900 dark:text-white mb-1 break-words">{title}</div>
-          <div className="text-base text-neutral-700 dark:text-neutral-300 mb-2 line-clamp-5">{project.description}</div>
           <div className="flex gap-3 items-center text-sm text-neutral-500 dark:text-neutral-400 pt-1">
             <span>{formatDate(project.created_at)}</span>
             <span className="inline-block px-2 py-1 ml-3 rounded text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">{project.status || 'N/A'}</span>
@@ -89,10 +88,10 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
               </button>
             )}
             {link && (
-              <a 
-                href={`/student/project/${project.id}`} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={`/student/project/${project.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-2 dark:text-alpha text-beta font-semibold hover:underline"
               >

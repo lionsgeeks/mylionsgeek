@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Models\StudentProject;
 use App\Models\User;
+use App\Models\Models;
 use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
 
@@ -33,8 +34,12 @@ class StudentProjectController extends Controller
                 'created_at' => (string) $project->created_at,
             ]);
 
+        // Get all models for the dropdown
+        $models = Models::select('id', 'name', 'description')->orderBy('name')->get();
+
         return Inertia::render('students/projects/index', [
             'projects' => $projects,
+            'models' => $models,
         ]);
     }
 
@@ -100,6 +105,7 @@ class StudentProjectController extends Controller
             'description' => 'nullable|string',
             'project' => 'nullable|url',
             'image' => 'nullable|image|max:2048',
+            'model_id' => 'required|exists:models,id',
         ]);
 
         $hasImage = $request->hasFile('image');
@@ -124,6 +130,7 @@ class StudentProjectController extends Controller
             'description' => $validated['description'] ?? null,
             'project' => $validated['project'] ?? null,
             'image' => $imagePath,
+            'model_id' => $validated['model_id'],
             'status' => 'pending',
         ]);
 
@@ -239,6 +246,7 @@ class StudentProjectController extends Controller
             'description' => 'nullable|string',
             'project' => 'nullable|url',
             'image' => 'nullable|image|max:2048',
+            'model_id' => 'required|exists:models,id',
         ]);
 
         $hasImage = $request->hasFile('image');
@@ -259,6 +267,7 @@ class StudentProjectController extends Controller
             'description' => $validated['description'] ?? null,
             'project' => $validated['project'] ?? null,
             'image' => $imagePath,
+            'model_id' => $validated['model_id'],
             'status' => 'pending',
             'rejection_reason' => null,
         ]);
