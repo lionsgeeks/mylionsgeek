@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\StudentProject;
 use App\Models\User;
 use App\Models\Models;
+use App\Models\Badges;
 use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
 
@@ -173,6 +174,10 @@ class StudentProjectController extends Controller
         ]);
 
         $reviewer = auth()->user();
+        
+        // Get previous ratings to calculate XP difference
+        $previousRatings = $studentProject->review_ratings ?? [];
+        
         $studentProject->update([
             'status' => 'approved',
             'approved_by' => $reviewer->id,
@@ -180,6 +185,9 @@ class StudentProjectController extends Controller
             'review_ratings' => $validated['review_ratings'] ?? null,
             'review_notes' => $validated['review_notes'] ?? null,
         ]);
+
+        // Award XP based on ratings
+        $this->awardProjectRatingXP($studentProject, $validated['review_ratings'] ?? [], $previousRatings);
 
         // Mark submission notifications as read (for admins/coaches)
         ProjectSubmissionNotification::where('project_id', $studentProject->id)
@@ -213,6 +221,9 @@ class StudentProjectController extends Controller
         $reviewer = auth()->user();
         $rejectionReason = $validated['rejection_reason'];
 
+        // Get previous ratings to calculate XP difference
+        $previousRatings = $studentProject->review_ratings ?? [];
+
         $studentProject->update([
             'status' => 'rejected',
             'approved_by' => $reviewer->id,
@@ -221,6 +232,9 @@ class StudentProjectController extends Controller
             'review_ratings' => $validated['review_ratings'] ?? null,
             'review_notes' => $validated['review_notes'] ?? null,
         ]);
+
+        // Award XP based on ratings (even for rejected projects, they can still get XP for good aspects)
+        $this->awardProjectRatingXP($studentProject, $validated['review_ratings'] ?? [], $previousRatings);
 
         // Mark submission notifications as read (for admins/coaches)
         ProjectSubmissionNotification::where('project_id', $studentProject->id)
@@ -242,6 +256,69 @@ class StudentProjectController extends Controller
         ]);
 
         return back()->with('success', 'Project rejected!');
+    }
+
+    /**
+     * Award XP to user's badge based on project ratings
+     */
+    private function awardProjectRatingXP(StudentProject $project, array $newRatings, array $previousRatings = [])
+    {
+        // Define XP values for each rating
+        $ratingXP = [
+            'good_structure' => 50,
+            'clean_code' => 50,
+            'pure_code' => 100,
+            'pure_ai' => 100,
+            'mix_vibe' => 75,
+            'responsive_design' => 50,
+            'good_performance' => 75,
+        ];
+
+        // Calculate XP from new ratings
+        $newXP = 0;
+        foreach ($ratingXP as $rating => $xp) {
+            if (!empty($newRatings[$rating])) {
+                $newXP += $xp;
+            }
+        }
+
+        // Calculate XP from previous ratings
+        $previousXP = 0;
+        foreach ($ratingXP as $rating => $xp) {
+            if (!empty($previousRatings[$rating])) {
+                $previousXP += $xp;
+            }
+        }
+
+        // Calculate XP difference
+        $xpDifference = $newXP - $previousXP;
+
+        // Only proceed if there's XP to award and project has model_id
+        if ($xpDifference > 0 && $project->model_id && $project->user_id) {
+            $user = User::find($project->user_id);
+            
+            if ($user) {
+                // Check if badge already exists
+                $wasJustCreated = !Badges::where('user_id', $user->id)
+                    ->where('model_id', $project->model_id)
+                    ->exists();
+
+                // Use updateOrCreate to ensure badge exists
+                $badge = Badges::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'model_id' => $project->model_id,
+                    ],
+                    $wasJustCreated ? ['exp' => 0] : [] // Only set exp when creating new record
+                );
+
+                // Add XP difference to existing exp value
+                $badge->exp = ($badge->exp ?? 0) + (int)round($xpDifference);
+                // Ensure exp doesn't go negative
+                $badge->exp = max(0, $badge->exp);
+                $badge->save();
+            }
+        }
     }
 
     public function update(Request $request, StudentProject $studentProject)
