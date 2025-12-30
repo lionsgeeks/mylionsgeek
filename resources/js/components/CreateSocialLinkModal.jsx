@@ -1,7 +1,7 @@
 import { X, InstagramIcon, GithubIcon, LinkedinIcon, ExternalLink, Briefcase } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 
 const platformIcons = {
@@ -22,28 +22,8 @@ const platforms = [
 
 const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => {
     const { stopScrolling } = helpers();
-    const { auth } = usePage().props;
 
     const isEdit = Boolean(initialLink?.id);
-
-    const socialLinks = auth?.user?.social_links || [];
-    const userFormation = auth?.user?.formation || '';
-
-    // Check if user is a coding user
-    const isCodingUser = userFormation.toLowerCase().includes('developpement') || 
-                        userFormation.toLowerCase().includes('coding');
-
-    // Filter platforms based on user formation
-    const availablePlatforms = isEdit 
-        ? platforms 
-        : platforms.filter(platform => {
-            // For GitHub, only show to coding users
-            if (platform.value === 'github' && !isCodingUser) {
-                return false;
-            }
-            // Filter out platforms that are already added
-            return !socialLinks.some(link => link.title === platform.value && link.id !== initialLink?.id);
-        });
 
     const [validationError, setValidationError] = useState('');
 
@@ -162,7 +142,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             >
                                 <option value="">Select a platform</option>
-                                {availablePlatforms.map(platform => (
+                                {platforms.map(platform => (
                                     <option key={platform.value} value={platform.value}>
                                         {platform.label}
                                     </option>
