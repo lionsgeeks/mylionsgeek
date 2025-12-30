@@ -30,6 +30,7 @@ class StudentProjectController extends Controller
                 'description' => $project->description,
                 'image' => $project->image,
                 'project' => $project->project,
+                'model_id' => $project->model_id,
                 'rejection_reason' => $project->rejection_reason,
                 'status' => $project->status,
                 'created_at' => (string) $project->created_at,
@@ -214,27 +215,17 @@ class StudentProjectController extends Controller
     {
         $validated = $request->validate([
             'rejection_reason' => 'required|string|min:1',
-            'review_ratings' => 'nullable|array',
-            'review_notes' => 'nullable|string',
         ]);
 
         $reviewer = auth()->user();
         $rejectionReason = $validated['rejection_reason'];
-
-        // Get previous ratings to calculate XP difference
-        $previousRatings = $studentProject->review_ratings ?? [];
 
         $studentProject->update([
             'status' => 'rejected',
             'approved_by' => $reviewer->id,
             'approved_at' => now(),
             'rejection_reason' => $rejectionReason,
-            'review_ratings' => $validated['review_ratings'] ?? null,
-            'review_notes' => $validated['review_notes'] ?? null,
         ]);
-
-        // Award XP based on ratings (even for rejected projects, they can still get XP for good aspects)
-        $this->awardProjectRatingXP($studentProject, $validated['review_ratings'] ?? [], $previousRatings);
 
         // Mark submission notifications as read (for admins/coaches)
         ProjectSubmissionNotification::where('project_id', $studentProject->id)
@@ -317,6 +308,12 @@ class StudentProjectController extends Controller
                 // Ensure exp doesn't go negative
                 $badge->exp = max(0, $badge->exp);
                 $badge->save();
+
+                // Check if user has reached 1000 exp and update badge name
+                if ($badge->exp >= 1000) {
+                    $badge->badge_name = 'intermediere';
+                    $badge->save();
+                }
             }
         }
     }

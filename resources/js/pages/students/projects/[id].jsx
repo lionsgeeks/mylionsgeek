@@ -97,22 +97,10 @@ export default function ProjectShow({ project }) {
         setIsProcessing(true);
         router.post(`/admin/projects/${project.id}/reject`, {
             rejection_reason: rejectionReason.trim(),
-            review_ratings: reviewRatings,
-            review_notes: reviewNotes.trim(),
         }, {
             onSuccess: () => {
                 setShowRejectModal(false);
                 setRejectionReason('');
-                setReviewRatings({
-                    good_structure: false,
-                    clean_code: false,
-                    pure_code: false,
-                    pure_ai: false,
-                    mix_vibe: false,
-                    responsive_design: false,
-                    good_performance: false,
-                });
-                setReviewNotes('');
                 router.reload();
             },
             onFinish: () => setIsProcessing(false)
@@ -516,17 +504,16 @@ export default function ProjectShow({ project }) {
                 </DialogContent>
             </Dialog>
 
-            {/* Rejection Modal with Ratings */}
+            {/* Rejection Modal */}
             <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto bg-light dark:bg-dark">
+                <DialogContent className="sm:max-w-[500px] bg-light dark:bg-dark">
                     <DialogHeader>
-                        <DialogTitle>Review & Reject Project</DialogTitle>
+                        <DialogTitle>Reject Project</DialogTitle>
                         <DialogDescription>
-                            Please provide a reason for rejecting this project and rate it. This will be visible to the student.
+                            Please provide a reason for rejecting this project. This will be visible to the student.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
-                        {/* Rejection Reason */}
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="rejection-reason">Rejection Reason *</Label>
                             <Textarea
@@ -538,110 +525,6 @@ export default function ProjectShow({ project }) {
                                 className="resize-none"
                             />
                         </div>
-
-                        {/* Rating Checkboxes */}
-                        <div className="space-y-4">
-                            <Label className="text-base font-semibold">Project Ratings</Label>
-                            <div className="grid grid-cols-1 gap-3">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-good_structure"
-                                        checked={reviewRatings.good_structure}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, good_structure: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-good_structure" className="font-normal cursor-pointer">
-                                        Good Structure
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-clean_code"
-                                        checked={reviewRatings.clean_code}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, clean_code: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-clean_code" className="font-normal cursor-pointer">
-                                        Clean Code
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-pure_code"
-                                        checked={reviewRatings.pure_code}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, pure_code: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-pure_code" className="font-normal cursor-pointer">
-                                        Pure Code
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-pure_ai"
-                                        checked={reviewRatings.pure_ai}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, pure_ai: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-pure_ai" className="font-normal cursor-pointer">
-                                        Pure AI
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-mix_vibe"
-                                        checked={reviewRatings.mix_vibe}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, mix_vibe: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-mix_vibe" className="font-normal cursor-pointer">
-                                        Mix Vibe One
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-responsive_design"
-                                        checked={reviewRatings.responsive_design}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, responsive_design: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-responsive_design" className="font-normal cursor-pointer">
-                                        Responsive Design
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="reject-good_performance"
-                                        checked={reviewRatings.good_performance}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, good_performance: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="reject-good_performance" className="font-normal cursor-pointer">
-                                        Good Performance
-                                    </Label>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Notes */}
-                        <div className="space-y-2">
-                            <Label htmlFor="reject-review-notes">Review Notes</Label>
-                            <Textarea
-                                id="reject-review-notes"
-                                value={reviewNotes}
-                                onChange={(e) => setReviewNotes(e.target.value)}
-                                placeholder="Add any additional notes about the project..."
-                                rows={4}
-                                className="resize-none"
-                            />
-                        </div>
                     </div>
                     <DialogFooter>
                         <Button
@@ -649,16 +532,6 @@ export default function ProjectShow({ project }) {
                             onClick={() => {
                                 setShowRejectModal(false);
                                 setRejectionReason('');
-                                setReviewRatings({
-                                    good_structure: false,
-                                    clean_code: false,
-                                    pure_code: false,
-                                    pure_ai: false,
-                                    mix_vibe: false,
-                                    responsive_design: false,
-                                    good_performance: false,
-                                });
-                                setReviewNotes('');
                             }}
                             disabled={isProcessing}
                         >

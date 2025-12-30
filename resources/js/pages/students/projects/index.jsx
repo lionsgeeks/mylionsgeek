@@ -90,11 +90,11 @@ export default function ProjectsIndex({ projects, models = [] }) {
     const handleEdit = (project) => {
         setEditingProject(project);
         setFormData({
-            title: project.title,
-            description: project.description,
-            project: project.project,
+            title: project.title || '',
+            description: project.description || '',
+            project: project.project || '',
             image: null,
-            model_id: project.model_id || '',
+            model_id: project.model_id ? String(project.model_id) : '',
         });
         setImagePreview(project.image ? `/storage/${project.image}` : null);
         setIsAddModalOpen(true);
