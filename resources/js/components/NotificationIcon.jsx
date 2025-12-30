@@ -57,6 +57,7 @@ export default function NotificationIcon() {
                             link: notif.link || '#',
                             iconType: notif.icon_type || 'user',
                             timestamp: notif.created_at ? new Date(notif.created_at) : new Date(),
+                            readAt: notif.read_at ? new Date(notif.read_at) : null,
                         });
                     } catch (e) {
                         console.error('Error processing notification:', e, notif);
@@ -100,6 +101,7 @@ export default function NotificationIcon() {
                     link: `/trainings/${training.id}`,
                     iconType: 'clock',
                     timestamp: new Date(),
+                    readAt: null, // Attendance notifications are always unread (system notifications)
                 });
             });
         }
@@ -135,6 +137,7 @@ export default function NotificationIcon() {
                         link: message.data.link,
                         iconType: message.data.icon_type,
                         timestamp: new Date(message.data.created_at),
+                        readAt: message.data.read_at ? new Date(message.data.read_at) : null,
                     };
 
                     setNotifications(prev => [newNotification, ...prev].slice(0, 50));
@@ -157,7 +160,7 @@ export default function NotificationIcon() {
         };
     }, [fetchNotifications]);
 
-    // Mark all notifications as read when dropdown opens
+    // Mark all notifications as read
     const markAllAsRead = React.useCallback(async () => {
         try {
             await fetch('/api/notifications/mark-all-read', {
@@ -167,7 +170,7 @@ export default function NotificationIcon() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                 },
             });
-            // Refresh notifications to get updated list (will be empty since all are read)
+            // Refresh notifications to get updated list with read_at timestamps
             await fetchNotifications();
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
@@ -177,25 +180,37 @@ export default function NotificationIcon() {
     // Fetch notifications when dropdown opens
     useEffect(() => {
         if (isOpen) {
-            fetchNotifications();
+            fetchNotifications().then(() => {
+                // Mark all notifications as read after fetching them
+                markAllAsRead();
+            });
         }
-    }, [isOpen, fetchNotifications]);
+    }, [isOpen, fetchNotifications, markAllAsRead]);
 
-    // Handle dropdown close - mark all notifications as read when user closes it
+    // Handle dropdown open/close
     const handleDropdownClose = (open) => {
         setIsOpen(open);
-        // When closing (open becomes false), mark all notifications as read
-        if (!open && notifications.length > 0) {
-            markAllAsRead();
-        }
     };
 
-    const unreadCount = notifications.length;
+    // Calculate unread count (notifications without readAt)
+    const unreadCount = notifications.filter(n => !n.readAt).length;
 
     const markAsRead = async (notification) => {
         try {
             // Extract type and ID from notification.id (e.g., "follow-123" -> type="follow", id="123")
-            const [type, id] = notification.id.split('-');
+            // Handle compound types like "project-submission-123" or "project-status-123"
+            const parts = notification.id.split('-');
+            let type, id;
+            
+            if (parts.length === 3 && parts[0] === 'project') {
+                // Handle "project-submission-123" or "project-status-123"
+                type = `${parts[0]}-${parts[1]}`;
+                id = parts[2];
+            } else {
+                // Handle simple types like "follow-123"
+                type = parts[0];
+                id = parts.slice(1).join('-');
+            }
 
             await fetch(`/api/notifications/${type}/${id}/read`, {
                 method: 'POST',
@@ -205,8 +220,12 @@ export default function NotificationIcon() {
                 },
             });
 
-            // Remove from notifications list
-            setNotifications(prev => prev.filter(n => n.id !== notification.id));
+            // Update notification to mark as read (don't remove it)
+            setNotifications(prev => prev.map(n => 
+                n.id === notification.id 
+                    ? { ...n, readAt: new Date() }
+                    : n
+            ));
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
         }
@@ -266,7 +285,7 @@ export default function NotificationIcon() {
                     aria-label="Notifications"
                 >
                     <Bell className="h-5 w-5 flex-shrink-0" />
-                    {unreadCount > 0 && !isOpen && (
+                    {unreadCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-error)] text-[10px] font-bold text-white border border-white dark:border-[var(--color-dark)]">
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
@@ -307,7 +326,10 @@ export default function NotificationIcon() {
                                         }}
                                         className="block"
                                     >
-                                        <div className="flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer">
+                                        <div className={cn(
+                                            "flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer",
+                                            notification.readAt ? "opacity-70" : "bg-[var(--color-muted)]/20"
+                                        )}>
                                             <div className="flex-shrink-0 mt-1">
                                                 {notification.senderImage ? (
                                                     <Avatar
@@ -322,9 +344,14 @@ export default function NotificationIcon() {
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">
-                                                    {notification.senderName}
-                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">
+                                                        {notification.senderName}
+                                                    </p>
+                                                    {!notification.readAt && (
+                                                        <span className="h-2 w-2 rounded-full bg-[var(--color-error)] flex-shrink-0 mt-1"></span>
+                                                    )}
+                                                </div>
                                                 <p className="text-sm text-[var(--color-muted-foreground)] line-clamp-2 mb-2">
                                                     {notification.message}
                                                 </p>
