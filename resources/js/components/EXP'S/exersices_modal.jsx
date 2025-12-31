@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useForm, router } from '@inertiajs/react';
 
-export default function ExercicesModal({ trainingId, models = [] }) {
+export default function ExercicesModal({ trainingId, courses = [] }) {
   const [open, setOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -40,7 +40,7 @@ export default function ExercicesModal({ trainingId, models = [] }) {
     description: '',
     file: null,
     training_id: trainingId,
-    model_id: '',
+    course_id: '',
     xp: 0,
   });
 
@@ -348,24 +348,24 @@ export default function ExercicesModal({ trainingId, models = [] }) {
             </div>
 
             <div>
-              <Label htmlFor="model_id">Assign to Model</Label>
+              <Label htmlFor="course_id">Assign to Course</Label>
               <Select
-                value={data.model_id?.toString() || undefined}
-                onValueChange={(value) => setData('model_id', value === 'none' ? null : parseInt(value))}
+                value={data.course_id?.toString() || undefined}
+                onValueChange={(value) => setData('course_id', value === 'none' ? null : parseInt(value))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a model" />
+                  <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {models.map((model) => (
-                    <SelectItem key={model.id} value={model.id.toString()}>
-                      {model.name}
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id.toString()}>
+                      {course.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.model_id && <p className="text-red-600 text-sm mt-1">{errors.model_id}</p>}
+              {errors.course_id && <p className="text-red-600 text-sm mt-1">{errors.course_id}</p>}
             </div>
 
             <div>

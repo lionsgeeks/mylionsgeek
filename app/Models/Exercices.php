@@ -12,7 +12,7 @@ class Exercices extends Model
         'file',
         'file_type',
         'training_id',
-        'model_id',
+        'course_id',
         'xp',
     ];
 
@@ -21,9 +21,9 @@ class Exercices extends Model
         return $this->belongsTo(Formation::class, 'training_id');
     }
 
-    public function model()
+    public function course()
     {
-        return $this->belongsTo(Models::class, 'model_id');
+        return $this->belongsTo(Course::class, 'course_id');
     }
 
     public function submissions()

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown, BookOpen, Award } from 'lucide-react';
 import { Users, CalendarDays, User, Trash2, Plus, UserPlus, Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,9 @@ import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import ExercicesModal from "@/components/EXP'S/exersices_modal";
+import CoursesModal from "@/components/EXP'S/courses_modal";
 
-export default function Show({ training, usersNull, models = [] }) {
+export default function Show({ training, usersNull, courses = [] }) {
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const isCoachRole = userRoles.includes('coach');
@@ -453,7 +454,7 @@ export default function Show({ training, usersNull, models = [] }) {
                         <p className="text-dark/70 mt-1 sm:mt-2 dark:text-light/70">{training.category}</p>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <ExercicesModal trainingId={training.id} models={models} />
+                        <ExercicesModal trainingId={training.id} courses={courses} />
                         <Button
                             onClick={() => setIsModalOpen(true)}
                             className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
@@ -529,6 +530,86 @@ export default function Show({ training, usersNull, models = [] }) {
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-alpha to-alpha/70 flex items-center justify-center text-light font-bold text-xl">
                             {training.name}
+                        </div>
+                    )}
+                </div>
+
+                {/* Courses Section */}
+                <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6 mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold">
+                            Courses ({courses.length})
+                        </h2>
+                        <CoursesModal />
+                    </div>
+                    
+                    {courses.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {courses.map((course) => (
+                                <div key={course.id} className="bg-light/50 dark:bg-dark/50 rounded-xl border border-alpha/10 p-4 hover:border-alpha/30 transition-colors">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div>
+                                            <h3 className="font-semibold text-lg text-dark dark:text-light">
+                                                {course.name}
+                                            </h3>
+                                            {course.description && (
+                                                <p className="text-sm text-dark/70 dark:text-light/70 mt-1 line-clamp-2">
+                                                    {course.description}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Badges Display */}
+                                    <div className="flex items-center gap-2 mt-3">
+                                        {course.badge1 && (
+                                            <img 
+                                                src={`/storage/img/courses/${course.badge1}`} 
+                                                alt="Badge 1" 
+                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            />
+                                        )}
+                                        {course.badge2 && (
+                                            <img 
+                                                src={`/storage/img/courses/${course.badge2}`} 
+                                                alt="Badge 2" 
+                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            />
+                                        )}
+                                        {course.badge3 && (
+                                            <img 
+                                                src={`/storage/img/courses/${course.badge3}`} 
+                                                alt="Badge 3" 
+                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            />
+                                        )}
+                                        {!course.badge1 && !course.badge2 && !course.badge3 && (
+                                            <div className="w-8 h-8 rounded-full bg-alpha/10 flex items-center justify-center">
+                                                <Award className="w-4 h-4 text-alpha" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Exercises Count */}
+                                    {course.exercices && course.exercices.length > 0 && (
+                                        <div className="mt-3 text-xs text-dark/60 dark:text-light/60">
+                                            {course.exercices.length} exercise{course.exercices.length > 1 ? 's' : ''}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-alpha/10 flex items-center justify-center">
+                                <BookOpen className="w-8 h-8 text-alpha" />
+                            </div>
+                            <p className="text-dark/70 dark:text-light/70">
+                                No courses assigned to this training yet.
+                            </p>
+                            <p className="text-sm text-dark/50 dark:text-light/50 mt-1">
+                                Add exercises and assign them to courses to see them here.
+                            </p>
                         </div>
                     )}
                 </div>
