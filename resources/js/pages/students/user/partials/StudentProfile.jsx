@@ -9,8 +9,7 @@ const StudentProfile = ({ user }) => {
 
 
     const userFunctionality = (user) => {
-        if (user?.formation.toLowerCase().includes('developpement') ||
-            user?.formation.toLowerCase().includes('coding')) {
+        if (user?.field == 'coding') {
             return 'Full Stack Developer'
         }
         return 'Content Creator'
