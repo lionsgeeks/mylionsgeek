@@ -426,6 +426,32 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'discipline_change':
+                    $roles = is_array($user->role) ? $user->role : [$user->role];
+                    $isAdmin = in_array('admin', $roles);
+                    $isModerator = in_array('moderateur', $roles);
+                    $isCoach = in_array('coach', $roles);
+                    
+                    $query = DisciplineNotification::where('id', $id);
+                    
+                    if ($isAdmin || $isModerator) {
+                        // Admins/Moderators can mark any discipline notification as read
+                        $notification = $query->first();
+                    } elseif ($isCoach) {
+                        // Coaches can only mark discipline notifications for their students
+                        $coachFormations = Formation::where('user_id', $user->id)->pluck('id');
+                        $studentIds = User::whereIn('formation_id', $coachFormations)->pluck('id');
+                        $notification = $query->whereIn('user_id', $studentIds)->first();
+                    } else {
+                        // Regular users can mark their own discipline notifications
+                        $notification = $query->where('user_id', $user->id)->first();
+                    }
+                    
+                    if ($notification) {
+                        $notification->read_at = now();
+                        $notification->save();
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -474,6 +500,30 @@ class NotificationController extends Controller
             // Mark all project status notifications as read (for students)
             if (Schema::hasTable('project_status_notifications')) {
                 ProjectStatusNotification::where('student_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all discipline notifications as read
+            $roles = is_array($user->role) ? $user->role : [$user->role];
+            $isAdmin = in_array('admin', $roles);
+            $isModerator = in_array('moderateur', $roles);
+            $isCoach = in_array('coach', $roles);
+            
+            if ($isAdmin || $isModerator) {
+                // Admins/Moderators mark all discipline notifications as read
+                DisciplineNotification::whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            } elseif ($isCoach) {
+                // Coaches mark discipline notifications for their students as read
+                $coachFormations = Formation::where('user_id', $user->id)->pluck('id');
+                $studentIds = User::whereIn('formation_id', $coachFormations)->pluck('id');
+                DisciplineNotification::whereIn('user_id', $studentIds)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            } else {
+                // Regular users mark their own discipline notifications as read
+                DisciplineNotification::where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }
