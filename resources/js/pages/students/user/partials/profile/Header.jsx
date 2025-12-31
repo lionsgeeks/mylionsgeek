@@ -26,13 +26,6 @@ const Header = ({ user, userFunctionality }) => {
     // Filter social links based on user formation and allowed platforms
     const allowedPlatforms = ['instagram', 'linkedin', 'portfolio', 'behance'];
     
-    // Add GitHub only for coding users
-    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || 
-                         user?.formation?.toLowerCase().includes('coding');
-    
-    if (isCodingUser) {
-        allowedPlatforms.push('github');
-    }
 
     const filteredSocialLinks = (user?.social_links || []).filter(link => 
         allowedPlatforms.includes(link.title)
