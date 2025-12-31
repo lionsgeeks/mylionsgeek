@@ -5,9 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use App\Models\StudentProject;
 use App\Models\User;
+use App\Models\Models;
+use App\Models\Badges;
+use App\Models\ProjectSubmissionNotification;
+use App\Models\ProjectStatusNotification;
 
 class StudentProjectController extends Controller
 {
@@ -25,13 +30,72 @@ class StudentProjectController extends Controller
                 'description' => $project->description,
                 'image' => $project->image,
                 'project' => $project->project,
+                'model_id' => $project->model_id,
                 'rejection_reason' => $project->rejection_reason,
                 'status' => $project->status,
                 'created_at' => (string) $project->created_at,
             ]);
 
+        // Get all models for the dropdown
+        $models = Models::select('id', 'name', 'description')->orderBy('name')->get();
+
         return Inertia::render('students/projects/index', [
             'projects' => $projects,
+            'models' => $models,
+        ]);
+    }
+
+    /**
+     * Show a single project's details
+     */
+    public function show(StudentProject $studentProject)
+    {
+        $user = auth()->user();
+        $isAdmin = ! empty(array_intersect(
+            $user->role,
+            ['admin', 'moderateur', 'coach']
+        ));
+
+        // dd($isAdmin);
+        // dd($user->role);
+
+        // Check authorization - student can only view their own projects, admins can view any
+        if (!$isAdmin && $studentProject->user_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Load relationships
+        $studentProject->load(['user:id,name,image', 'approvedBy:id,name,image']);
+
+        // Format the project data
+        $project = [
+            'id' => $studentProject->id,
+            'title' => $studentProject->title,
+            'description' => $studentProject->description,
+            'image' => $studentProject->image,
+            'project' => $studentProject->project,
+            'status' => $studentProject->status,
+            'rejection_reason' => $studentProject->rejection_reason,
+            'review_ratings' => $studentProject->review_ratings,
+            'review_notes' => $studentProject->review_notes,
+            'created_at' => (string) $studentProject->created_at,
+            'updated_at' => (string) $studentProject->updated_at,
+            'approved_at' => $studentProject->approved_at ? (string) $studentProject->approved_at : null,
+            'user' => $studentProject->user ? [
+                'id' => $studentProject->user->id,
+                'name' => $studentProject->user->name,
+                'image' => $studentProject->user->image,
+            ] : null,
+            'approved_by' => $studentProject->approvedBy ? [
+                'id' => $studentProject->approvedBy->id,
+                'name' => $studentProject->approvedBy->name,
+                'image' => $studentProject->approvedBy->image,
+            ] : null,
+            'user_id' => $studentProject->user_id,
+        ];
+
+        return Inertia::render('students/projects/[id]', [
+            'project' => $project,
         ]);
     }
 
@@ -45,6 +109,7 @@ class StudentProjectController extends Controller
             'description' => 'nullable|string',
             'project' => 'nullable|url',
             'image' => 'nullable|image|max:2048',
+            'model_id' => 'required|exists:models,id',
         ]);
 
         $hasImage = $request->hasFile('image');
@@ -63,13 +128,18 @@ class StudentProjectController extends Controller
             $imagePath = $request->file('image')->store('projects', 'public');
         }
 
-        auth()->user()->studentProjects()->create([
+        $student = auth()->user();
+        $project = $student->studentProjects()->create([
             'title' => $validated['title'] ?? null,
             'description' => $validated['description'] ?? null,
             'project' => $validated['project'] ?? null,
             'image' => $imagePath,
+            'model_id' => $validated['model_id'],
             'status' => 'pending',
         ]);
+
+        // Create notifications for admins and coaches
+        $this->notifyAdminsAndCoaches($project, $student);
 
         // xp lpgique
         // $user = auth()->user();
@@ -99,10 +169,43 @@ class StudentProjectController extends Controller
 
     public function approve(Request $request, StudentProject $studentProject)
     {
+        $validated = $request->validate([
+            'review_ratings' => 'nullable|array',
+            'review_notes' => 'nullable|string',
+        ]);
+
+        $reviewer = auth()->user();
+        
+        // Get previous ratings to calculate XP difference
+        $previousRatings = $studentProject->review_ratings ?? [];
+        
         $studentProject->update([
             'status' => 'approved',
-            'approved_by' => auth()->id(),
+            'approved_by' => $reviewer->id,
             'approved_at' => now(),
+            'review_ratings' => $validated['review_ratings'] ?? null,
+            'review_notes' => $validated['review_notes'] ?? null,
+        ]);
+
+        // Award XP based on ratings
+        $this->awardProjectRatingXP($studentProject, $validated['review_ratings'] ?? [], $previousRatings);
+
+        // Mark submission notifications as read (for admins/coaches)
+        ProjectSubmissionNotification::where('project_id', $studentProject->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Create notification for the student
+        $projectPath = "/student/project/{$studentProject->id}";
+        $message = "Your project \"{$studentProject->title}\" has been approved!";
+        
+        ProjectStatusNotification::create([
+            'project_id' => $studentProject->id,
+            'student_id' => $studentProject->user_id,
+            'reviewer_id' => $reviewer->id,
+            'status' => 'approved',
+            'message_notification' => $message,
+            'path' => $projectPath,
         ]);
 
         return back()->with('success', 'Project approved!');
@@ -114,14 +217,105 @@ class StudentProjectController extends Controller
             'rejection_reason' => 'required|string|min:1',
         ]);
 
+        $reviewer = auth()->user();
+        $rejectionReason = $validated['rejection_reason'];
+
         $studentProject->update([
             'status' => 'rejected',
-            'approved_by' => auth()->id(),
+            'approved_by' => $reviewer->id,
             'approved_at' => now(),
-            'rejection_reason' => $validated['rejection_reason'],
+            'rejection_reason' => $rejectionReason,
+        ]);
+
+        // Mark submission notifications as read (for admins/coaches)
+        ProjectSubmissionNotification::where('project_id', $studentProject->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Create notification for the student
+        $projectPath = "/student/project/{$studentProject->id}";
+        $message = "Your project \"{$studentProject->title}\" has been rejected.";
+        
+        ProjectStatusNotification::create([
+            'project_id' => $studentProject->id,
+            'student_id' => $studentProject->user_id,
+            'reviewer_id' => $reviewer->id,
+            'status' => 'rejected',
+            'rejection_reason' => $rejectionReason,
+            'message_notification' => $message,
+            'path' => $projectPath,
         ]);
 
         return back()->with('success', 'Project rejected!');
+    }
+
+    /**
+     * Award XP to user's badge based on project ratings
+     */
+    private function awardProjectRatingXP(StudentProject $project, array $newRatings, array $previousRatings = [])
+    {
+        // Define XP values for each rating
+        $ratingXP = [
+            'good_structure' => 50,
+            'clean_code' => 50,
+            'pure_code' => 100,
+            'pure_ai' => 100,
+            'mix_vibe' => 75,
+            'responsive_design' => 50,
+            'good_performance' => 75,
+        ];
+
+        // Calculate XP from new ratings
+        $newXP = 0;
+        foreach ($ratingXP as $rating => $xp) {
+            if (!empty($newRatings[$rating])) {
+                $newXP += $xp;
+            }
+        }
+
+        // Calculate XP from previous ratings
+        $previousXP = 0;
+        foreach ($ratingXP as $rating => $xp) {
+            if (!empty($previousRatings[$rating])) {
+                $previousXP += $xp;
+            }
+        }
+
+        // Calculate XP difference
+        $xpDifference = $newXP - $previousXP;
+
+        // Only proceed if there's XP to award and project has model_id
+        if ($xpDifference > 0 && $project->model_id && $project->user_id) {
+            $user = User::find($project->user_id);
+            
+            if ($user) {
+                // Check if badge already exists
+                $wasJustCreated = !Badges::where('user_id', $user->id)
+                    ->where('model_id', $project->model_id)
+                    ->exists();
+
+                // Use updateOrCreate to ensure badge exists
+                $badge = Badges::updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'model_id' => $project->model_id,
+                    ],
+                    $wasJustCreated ? ['exp' => 0] : [] // Only set exp when creating new record
+                );
+
+                // Add XP difference to existing exp value
+                $badge->exp = ($badge->exp ?? 0) + (int)round($xpDifference);
+                // Ensure exp doesn't go negative
+                $badge->exp = max(0, $badge->exp);
+                $badge->save();
+
+                // Check if user has reached 1000 exp and update badge name
+                if ($badge->exp >= 1000) {
+                    $badge->badge_name = 'intermediere';
+                    $badge->save();
+                }
+            }
+        }
     }
 
     public function update(Request $request, StudentProject $studentProject)
@@ -139,6 +333,7 @@ class StudentProjectController extends Controller
             'description' => 'nullable|string',
             'project' => 'nullable|url',
             'image' => 'nullable|image|max:2048',
+            'model_id' => 'required|exists:models,id',
         ]);
 
         $hasImage = $request->hasFile('image');
@@ -159,6 +354,7 @@ class StudentProjectController extends Controller
             'description' => $validated['description'] ?? null,
             'project' => $validated['project'] ?? null,
             'image' => $imagePath,
+            'model_id' => $validated['model_id'],
             'status' => 'pending',
             'rejection_reason' => null,
         ]);
@@ -166,4 +362,81 @@ class StudentProjectController extends Controller
         return back()->with('success', 'Project updated!');
     }
 
+    /**
+     * Notify admins and coaches about project submission
+     */
+    private function notifyAdminsAndCoaches(StudentProject $project, User $student)
+    {
+        $projectPath = "/student/project/{$project->id}";
+        $message = "{$student->name} submitted a new project: " . ($project->title ?? 'Untitled Project');
+
+        // Get all admins
+        $admins = User::where(function($query) {
+            $query->where('role', 'like', '%admin%')
+                  ->orWhere('role', 'like', '%super_admin%')
+                  ->orWhere('role', 'like', '%moderateur%');
+        })->get();
+
+        // Get coaches with the same field/category as the student
+        $coaches = collect();
+        if ($student->formation_id) {
+            // Get the student's formation to find the category/field
+            $studentFormation = \App\Models\Formation::find($student->formation_id);
+            
+            if ($studentFormation && $studentFormation->category) {
+                // Find all formations with the same category (coding, media, etc.)
+                $sameCategoryFormations = \App\Models\Formation::where('category', $studentFormation->category)->get();
+                
+                $coachIds = collect();
+                
+                foreach ($sameCategoryFormations as $formation) {
+                    // Get the formation's assigned coach (user_id in formations table)
+                    if ($formation->user_id) {
+                        $coachIds->push($formation->user_id);
+                    }
+                    
+                    // Get all users with coach role in formations with the same category
+                    $formationCoachIds = User::where('formation_id', $formation->id)
+                        ->where(function($query) {
+                            $query->where('role', 'like', '%coach%');
+                        })
+                        ->pluck('id');
+                    
+                    $coachIds = $coachIds->merge($formationCoachIds);
+                }
+                
+                // Get all unique coaches
+                $coaches = User::whereIn('id', $coachIds->unique())
+                    ->where(function($query) {
+                        $query->where('role', 'like', '%coach%');
+                    })
+                    ->get();
+            }
+        }
+
+        // Create notifications for admins
+        foreach ($admins as $admin) {
+            ProjectSubmissionNotification::create([
+                'project_id' => $project->id,
+                'student_id' => $student->id,
+                'notified_user_id' => $admin->id,
+                'message_notification' => $message,
+                'path' => $projectPath,
+            ]);
+        }
+
+        // Create notifications for coaches
+        foreach ($coaches as $coach) {
+            // Don't create duplicate notification if coach is also an admin
+            if (!$admins->contains('id', $coach->id)) {
+                ProjectSubmissionNotification::create([
+                    'project_id' => $project->id,
+                    'student_id' => $student->id,
+                    'notified_user_id' => $coach->id,
+                    'message_notification' => $message,
+                    'path' => $projectPath,
+                ]);
+            }
+        }
+    }
 }

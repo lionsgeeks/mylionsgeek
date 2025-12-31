@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
-import { FolderKanban, Clock, CheckCircle2, ExternalLink, Heart, MessageCircle } from 'lucide-react';
+import { FolderKanban, Clock, CheckCircle2, ExternalLink, Heart, MessageCircle, Eye, ArrowRight } from 'lucide-react';
 import TablePagination from "@/components/TablePagination";
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import { useState } from 'react';
 
 export default function ProjectsTab({ userProjects = { data: [], meta: {} }, collaborativeProjects = { data: [], meta: {} } }) {
@@ -42,24 +42,62 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
     const link = project.url || project.link;
     const comments = getCommentsForProject(project);
     const commentsCount = Array.isArray(comments) ? comments.length : 0;
+
+    // Handle click - redirect to project details for student projects
+    const handleCardClick = (e) => {
+      // Don't navigate if clicking on links
+      if (e.target.closest('a')) {
+        return;
+      }
+
+      // For portfolio (student) projects, redirect to details page
+      if (type === 'portfolio' && project.id) {
+        router.visit(`/student/project/${project.id}`);
+      }
+      // For collaborative projects, keep the expand/collapse behavior for now
+      else if (type === 'collab') {
+        setExpandedProjectId(expandedProjectId === project.id ? null : project.id);
+      }
+    };
+
     return (
       <div
         key={project.id || idx}
         className={`rounded-2xl bg-white dark:bg-neutral-900 shadow-lg border border-neutral-200 dark:border-neutral-700 w-full mx-auto max-w-2xl flex flex-col cursor-pointer transition hover:shadow-xl`}
-        onClick={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+        onClick={handleCardClick}
       >
         {img && <img src={`/storage/${img}`} alt={title} className="w-full object-cover max-h-50 rounded-t-xl" />}
         <div className="p-6 flex flex-col gap-2">
           <div className="text-xl font-bold text-gray-900 dark:text-white mb-1 break-words">{title}</div>
-          <div className="text-base text-neutral-700 dark:text-neutral-300 mb-2 line-clamp-5">{project.description}</div>
-          {link && (
-            <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 dark:text-alpha text-beta font-semibold hover:underline mt-1">
-              <ExternalLink className="w-4 h-4" /> Project Link
-            </a>
-          )}
           <div className="flex gap-3 items-center text-sm text-neutral-500 dark:text-neutral-400 pt-1">
             <span>{formatDate(project.created_at)}</span>
             <span className="inline-block px-2 py-1 ml-3 rounded text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">{project.status || 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            {type === 'portfolio' && project.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.visit(`/student/project/${project.id}`);
+                }}
+                className="flex items-center gap-1 text-[var(--color-alpha)] hover:underline font-semibold text-sm"
+              >
+                <Eye className="w-4 h-4" />
+                View
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+            {link && (
+              <a
+                href={`/student/project/${project.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-2 dark:text-alpha text-beta font-semibold hover:underline"
+              >
+                <ExternalLink className="w-4 h-4" /> Project Link
+              </a>
+            )}
           </div>
         </div>
         {/* Inline comments section */}

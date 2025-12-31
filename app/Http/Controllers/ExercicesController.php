@@ -172,6 +172,12 @@ class ExercicesController extends Controller
                 // First time rating: add XP to existing exp value (add to old value, don't replace)
                 $badge->exp = ($badge->exp ?? 0) + (int)round($xpToAward);
                 $badge->save();
+
+                // Check if user has reached 1000 exp and update badge name
+                if ($badge->exp >= 1000) {
+                    $badge->badge_name = 'intermediere';
+                    $badge->save();
+                }
             } else {
                 // Rating updated: adjust XP based on difference
                 $previousXpAwarded = ($previousRating / 100) * $exercice->xp;
@@ -185,6 +191,12 @@ class ExercicesController extends Controller
                     // Ensure exp doesn't go negative
                     $badge->exp = max(0, $badge->exp);
                     $badge->save();
+
+                    // Check if user has reached 1000 exp and update badge name
+                    if ($badge->exp >= 1000) {
+                        $badge->badge_name = 'intermediere';
+                        $badge->save();
+                    }
                 }
             }
         }

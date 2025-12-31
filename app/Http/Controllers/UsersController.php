@@ -308,14 +308,14 @@ class UsersController extends Controller
             'is_online' => $isOnline,
             'formation_name' => $user->formation?->name,
         ];
-        
+
         // Debug logging
         \Log::info('User payload for user ' . $user->id, [
             'phone' => $user->phone,
             'status' => $user->status,
             'formation_id' => $user->formation_id,
         ]);
-        
+
         return $payload;
     }
 
@@ -545,6 +545,12 @@ class UsersController extends Controller
             'access_studio' => 'nullable|integer|in:0,1',
         ]);
 
+            if ($request->has('formation_id')) {
+            $formation = Formation::where('id', $request->formation_id)->first();
+            // dd($formation->category);
+            $user->field = $formation->category;
+            $user->save();
+        }
         if ($request->hasFile('image')) {
             $file = $request->file('image');
 

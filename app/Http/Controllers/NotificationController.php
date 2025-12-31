@@ -11,6 +11,8 @@ use App\Models\DisciplineNotification;
 use App\Models\ExerciseReviewNotification;
 use App\Models\PostNotification;
 use App\Models\FollowNotification;
+use App\Models\ProjectSubmissionNotification;
+use App\Models\ProjectStatusNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -58,6 +60,7 @@ class NotificationController extends Controller
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type, // 'increase' or 'decrease'
                         'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
                     ];
                 }
             } elseif ($isCoach) {
@@ -83,6 +86,7 @@ class NotificationController extends Controller
                         'discipline_value' => $notif->discipline_change,
                         'change_type' => $notif->type,
                         'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                        'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
                     ];
                 }
             }
@@ -92,7 +96,6 @@ class NotificationController extends Controller
                 try {
                     $exerciseReviewNotifications = ExerciseReviewNotification::with(['user', 'exercice.training'])
                         ->where('coach_id', $user->id)
-                        ->whereNull('read_at')
                         ->orderByDesc('created_at')
                         ->limit(20)
                         ->get();
@@ -129,11 +132,43 @@ class NotificationController extends Controller
                                 'link' => $link,
                                 'icon_type' => 'file-text',
                                 'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
                             ];
                         }
                     }
                 } catch (\Exception $e) {
                     Log::error('Error fetching exercise review notifications: ' . $e->getMessage());
+                }
+            }
+
+            //  1.5. PROJECT SUBMISSION NOTIFICATIONS (Admin and Coach)
+            if (($isAdmin || $isModerator || $isCoach) && Schema::hasTable('project_submission_notifications')) {
+                try {
+                    $projectNotifications = ProjectSubmissionNotification::with(['student', 'project'])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectNotifications as $notif) {
+                        if ($notif->student && $notif->project) {
+                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            
+                            $notifications[] = [
+                                'id' => 'project-submission-' . $notif->id,
+                                'type' => 'project_submission',
+                                'sender_name' => $notif->student->name ?? 'Unknown',
+                                'sender_image' => $notif->student->image ?? null,
+                                'message' => $notif->message_notification ?? 'A student submitted a new project',
+                                'link' => $link,
+                                'icon_type' => 'folder',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project submission notifications: ' . $e->getMessage());
                 }
             }
 
@@ -224,7 +259,6 @@ class NotificationController extends Controller
             // 4. POST NOTIFICATIONS (All users)
             $postNotifications = PostNotification::with(['sender', 'post'])
                 ->where('user_id', $user->id)
-                ->whereNull('read_at')
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get();
@@ -252,13 +286,13 @@ class NotificationController extends Controller
                     'link' => '/feed#' . $notif->post_id,
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
+                    'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                 ];
             }
 
             // 5. FOLLOW NOTIFICATIONS (All users)
             $followNotifications = FollowNotification::with('follower')
                 ->where('user_id', $user->id)
-                ->whereNull('read_at')
                 ->orderByDesc('created_at')
                 ->limit(20)
                 ->get();
@@ -276,8 +310,45 @@ class NotificationController extends Controller
                     'link' => "/student/{$notif->follower_id}",
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
+                    'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
                     'follower_id' => $notif->follower_id,
                 ];
+            }
+
+            // 6. PROJECT STATUS NOTIFICATIONS (Students - when project is approved/rejected)
+            if (Schema::hasTable('project_status_notifications')) {
+                try {
+                    $projectStatusNotifications = ProjectStatusNotification::with(['project', 'reviewer'])
+                        ->where('student_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectStatusNotifications as $notif) {
+                        if ($notif->project) {
+                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
+                            
+                            $iconType = $notif->status === 'approved' ? 'check-circle' : 'x-circle';
+                            
+                            $notifications[] = [
+                                'id' => 'project-status-' . $notif->id,
+                                'type' => 'project_status',
+                                'sender_name' => $reviewerName,
+                                'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => $iconType,
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                                'status' => $notif->status,
+                                'rejection_reason' => $notif->rejection_reason,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project status notifications: ' . $e->getMessage());
+                }
             }
 
             // Sort by created_at (newest first)
@@ -333,6 +404,28 @@ class NotificationController extends Controller
                         $notification->save();
                     }
                     break;
+                case 'project-submission':
+                    if (Schema::hasTable('project_submission_notifications')) {
+                        $notification = ProjectSubmissionNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'project-status':
+                    if (Schema::hasTable('project_status_notifications')) {
+                        $notification = ProjectStatusNotification::where('id', $id)
+                            ->where('student_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -370,6 +463,20 @@ class NotificationController extends Controller
             ExerciseReviewNotification::where('coach_id', $user->id)
                 ->whereNull('read_at')
                 ->update(['read_at' => now()]);
+
+            // Mark all project submission notifications as read (for admins/coaches)
+            if (Schema::hasTable('project_submission_notifications')) {
+                ProjectSubmissionNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all project status notifications as read (for students)
+            if (Schema::hasTable('project_status_notifications')) {
+                ProjectStatusNotification::where('student_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
