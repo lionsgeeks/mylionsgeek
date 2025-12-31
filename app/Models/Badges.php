@@ -10,7 +10,7 @@ class Badges extends Model
     protected $fillable = [
         'badge_name',
         'user_id',
-        'model_id',
+        'course_id',
         'exp',
     ];
 
@@ -23,10 +23,10 @@ class Badges extends Model
     }
 
     /**
-     * Get the model associated with this badge.
+     * Get the course associated with this badge.
      */
-    public function model(): BelongsTo
+    public function course(): BelongsTo
     {
-        return $this->belongsTo(Models::class, 'model_id');
+        return $this->belongsTo(Course::class, 'course_id');
     }
 }
