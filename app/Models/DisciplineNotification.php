@@ -13,10 +13,12 @@ class DisciplineNotification extends Model
         'discipline_change',
         'path',
         'type',
+        'read_at',
     ];
 
     protected $casts = [
         'discipline_change' => 'decimal:2',
+        'read_at' => 'datetime',
     ];
 
     /**
