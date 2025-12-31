@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm, router } from '@inertiajs/react';
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 export default function CoursesModal() {
   const [open, setOpen] = useState(false);
