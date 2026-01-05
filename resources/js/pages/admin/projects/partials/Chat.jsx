@@ -105,23 +105,28 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             }
             
             setMessages((prev) => {
-                const messageExists = prev.some(msg => msg.id === data.message_id);
+                // Convert message_id to number for comparison (in case it's a string)
+                const targetMessageId = Number(data.message_id);
+                const messageExists = prev.some(msg => Number(msg.id) === targetMessageId);
+                
                 if (!messageExists) {
-                    console.warn('⚠️ Reaction update received for non-existent message:', data.message_id, '- message may have been deleted');
+                    console.warn('⚠️ Reaction update received for non-existent message:', targetMessageId, '- Available message IDs:', prev.map(m => m.id));
                     return prev;
                 }
                 
                 const updated = prev.map(msg => {
-                    if (msg.id === data.message_id) {
-                        console.log('✅ Updating reactions for message:', data.message_id, 'New reactions:', data.reactions);
+                    if (Number(msg.id) === targetMessageId) {
+                        const reactionsArray = Array.isArray(data.reactions) ? data.reactions : [];
+                        console.log('✅ Updating reactions for message:', targetMessageId, 'New reactions:', reactionsArray);
                         return { 
                             ...msg, 
-                            reactions: Array.isArray(data.reactions) ? data.reactions : [] 
+                            reactions: reactionsArray
                         };
                     }
                     return msg;
                 });
                 
+                console.log('✅ Reactions updated in real-time');
                 return updated;
             });
         };
@@ -612,7 +617,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     </div>
                                                 ) : (
                                                 <div className={cn(
-                                                    "rounded-lg px-3 py-2 text-sm relative",
+                                                    "rounded-lg px-3 py-2 text-sm relative group/message-bubble",
                                                     isCurrentUser 
                                                         ? "bg-primary text-primary-foreground rounded-br-sm" 
                                                         : "bg-muted rounded-bl-sm"
@@ -627,12 +632,40 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                             </span>
                                                         )}
                                                     <div className={cn(
-                                                        "flex items-center gap-1 mt-1",
+                                                        "flex items-center gap-2 mt-1.5",
                                                         isCurrentUser ? "justify-end" : "justify-start"
                                                     )}>
+                                                        {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
+                                                            <div className={cn(
+                                                                "flex flex-wrap gap-1",
+                                                                isCurrentUser ? "order-2" : "order-1"
+                                                            )}>
+                                                                {message.reactions.map((reactionGroup, idx) => {
+                                                                    const userReacted = reactionGroup.users && 
+                                                                        Array.isArray(reactionGroup.users) && 
+                                                                        reactionGroup.users.includes(auth?.user?.name);
+                                                                    return (
+                                                                        <button
+                                                                            key={`${reactionGroup.reaction}-${idx}`}
+                                                                            onClick={() => handleToggleReaction(message.id, reactionGroup.reaction)}
+                                                                            className={cn(
+                                                                                "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 hover:scale-105 transition-all cursor-pointer",
+                                                                                userReacted
+                                                                                    ? "bg-primary/20 border-primary/50 text-primary shadow-sm" 
+                                                                                    : "bg-background border-border hover:bg-muted"
+                                                                            )}
+                                                                            title={reactionGroup.users?.join(', ') || ''}
+                                                                        >
+                                                                            <span className="text-sm">{reactionGroup.reaction}</span>
+                                                                            <span className="font-medium">{reactionGroup.count || 0}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                         <span className={cn(
                                                             "text-xs",
-                                                            isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                                                            isCurrentUser ? "text-primary-foreground/70 order-1" : "text-muted-foreground order-2"
                                                         )}>
                                                             {new Date(message.timestamp).toLocaleTimeString(undefined, {
                                                                 hour: "2-digit",
@@ -641,34 +674,6 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         </span>
                                                     </div>
                                                 </div>
-                                                )}
-                                                {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
-                                                    <div className={cn(
-                                                        "flex flex-wrap gap-1 mt-1",
-                                                        isCurrentUser ? "justify-end" : "justify-start"
-                                                    )}>
-                                                        {message.reactions.map((reactionGroup, idx) => {
-                                                            const userReacted = reactionGroup.users && 
-                                                                Array.isArray(reactionGroup.users) && 
-                                                                reactionGroup.users.includes(auth?.user?.name);
-                                                            return (
-                                                                <button
-                                                                    key={`${reactionGroup.reaction}-${idx}`}
-                                                                    onClick={() => handleToggleReaction(message.id, reactionGroup.reaction)}
-                                                                    className={cn(
-                                                                        "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 hover:bg-muted transition-colors cursor-pointer",
-                                                                        userReacted
-                                                                            ? "bg-primary/10 border-primary text-primary" 
-                                                                            : "bg-background border-border"
-                                                                    )}
-                                                                    title={reactionGroup.users?.join(', ') || ''}
-                                                                >
-                                                                    <span>{reactionGroup.reaction}</span>
-                                                                    <span>{reactionGroup.count || 0}</span>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
                                                 )}
                                                 <div className={cn(
                                                     "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -679,12 +684,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-6 w-6 p-0"
+                                                                className="h-7 w-7 p-0 hover:bg-muted"
+                                                                title="Add reaction"
                                                             >
-                                                                <Smile className="h-3 w-3" />
+                                                                <Smile className="h-4 w-4" />
                                                             </Button>
                                                         </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-2" align={isCurrentUser ? "end" : "start"}>
+                                                        <PopoverContent className="w-auto p-3" align={isCurrentUser ? "end" : "start"}>
                                                             <div className="flex gap-2">
                                                                 {reactions.map((reaction) => {
                                                                     const hasReaction = message.reactions?.some(
@@ -700,8 +706,8 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                                                 setTimeout(() => setShowReactionPicker(null), 100);
                                                                             }}
                                                                             className={cn(
-                                                                                "text-xl hover:scale-125 transition-transform p-1 rounded",
-                                                                                hasReaction && "bg-primary/10"
+                                                                                "text-2xl hover:scale-125 transition-transform p-2 rounded hover:bg-muted",
+                                                                                hasReaction && "bg-primary/20 ring-2 ring-primary/30"
                                                                             )}
                                                                             title={reaction}
                                                                         >

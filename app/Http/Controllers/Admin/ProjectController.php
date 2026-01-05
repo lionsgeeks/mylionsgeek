@@ -1076,7 +1076,7 @@ class ProjectController extends Controller
                 'count' => $reactions->count(),
                 'users' => $reactions->pluck('user.name')->toArray(),
             ];
-        })->values();
+        })->values()->toArray();
 
         // Broadcast reaction update via Ably to all users in the project
         try {
@@ -1087,7 +1087,7 @@ class ProjectController extends Controller
                 $channel = $ably->channels->get($channelName);
 
                 $broadcastData = [
-                    'message_id' => $messageId,
+                    'message_id' => (int) $messageId,
                     'reactions' => $reactionsGrouped,
                     'action' => $action,
                     'reaction' => $request->reaction,
@@ -1150,7 +1150,7 @@ class ProjectController extends Controller
                 'count' => $reactions->count(),
                 'users' => $reactions->pluck('user.name')->toArray(),
             ];
-        })->values();
+        })->values()->toArray();
 
         // Broadcast message update via Ably
         try {
