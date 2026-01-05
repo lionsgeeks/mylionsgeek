@@ -42,7 +42,7 @@ class StudentController extends Controller
         $user = User::find($id);
         $userExperience = User::with('experiences')->findOrFail($id);
         $userEducation = User::with('educations')->findOrFail($id);
-        $userSocialLinks = User::with(['socialLinks' => function($query) {
+        $userSocialLinks = User::with(['socialLinks' => function ($query) {
             $query->ordered();
         }])->findOrFail($id);
         $isFollowing = Auth::user()
@@ -165,7 +165,7 @@ class StudentController extends Controller
         ]);
 
         $linkIds = $request->input('links');
-        
+
         // Verify all links belong to the authenticated user
         $userLinks = UserSocialLink::where('user_id', $user->id)
             ->whereIn('id', $linkIds)
@@ -293,9 +293,9 @@ class StudentController extends Controller
 
             $ably = new AblyRest($ablyKey);
             $channel = $ably->channels->get("notifications:{$notification->user_id}");
-            
+
             $message = "{$follower->name} started following you";
-            
+
             $channel->publish('new_notification', [
                 'id' => 'follow-' . $notification->id,
                 'type' => 'follow',
@@ -346,12 +346,12 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $experience = Experience::find($id);
-        
+
         // Check if user owns this experience
         if (!$user->experiences()->where('experience_id', $id)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
+
         $request->validate([
             'title' => 'string|required',
             'description' => 'string|nullable',
@@ -380,12 +380,12 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $experience = Experience::find($id);
-        
+
         // Check if user owns this experience
         if (!$user->experiences()->where('experience_id', $id)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
+
         $experience->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }
@@ -421,12 +421,12 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $education = Education::find($id);
-        
+
         // Check if user owns this education
         if (!$user->educations()->where('education_id', $id)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
+
         $request->validate([
             'school' => 'string|required',
             'degree' => 'string|nullable',
@@ -454,12 +454,12 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $education = Education::find($id);
-        
+
         // Check if user owns this education
         if (!$user->educations()->where('education_id', $id)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        
+
         $education->delete();
         return redirect()->back()->with('success', 'Experience Deleted successfuly');
     }

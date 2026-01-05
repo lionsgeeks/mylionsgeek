@@ -17,10 +17,10 @@ const platforms = [
     { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
     { value: 'behance', label: 'Behance', domains: ['behance.net'] },
-        { value: 'github', label: 'GitHub', domains: ['github.com'] },
+    { value: 'github', label: 'GitHub', domains: ['github.com'] },
 ];
 
-const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => {
+const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, availiblePlatfroms }) => {
     const { stopScrolling } = helpers();
 
     const isEdit = Boolean(initialLink?.id);
@@ -32,6 +32,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
         title: initialLink?.title || '',
         url: initialLink?.url || '',
     });
+
 
     useEffect(() => {
         stopScrolling(onOpen);
@@ -143,7 +144,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null }) => 
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             >
                                 <option value="">Select a platform</option>
-                                {platforms.map(platform => (
+                                {availiblePlatfroms.map(platform => (
                                     <option key={platform.value} value={platform.value}>
                                         {platform.label}
                                     </option>

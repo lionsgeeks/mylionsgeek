@@ -119,13 +119,13 @@ export default function CoursesModal() {
                         onChange={(e) => handleFileChange(badgeNumber, e.target.files[0])}
                         className={errors[`badge${badgeNumber}`] ? 'border-red-500' : ''}
                       />
-                      {eval(`badge${badgeNumber}Preview`) && (
+                      {/* {eval(`badge${badgeNumber}Preview`) && (
                         <img
-                          src={eval(`badge${badgeNumber}Preview`)}
+                          // src={eval(`badge${badgeNumber}Preview`)}
                           alt={`Badge ${badgeNumber} preview`}
                           className="w-full h-32 object-cover rounded"
                         />
-                      )}
+                      )} */}
                     </div>
                     {errors[`badge${badgeNumber}`] && (
                       <p className="mt-1 text-sm text-red-500">{errors[`badge${badgeNumber}`]}</p>
