@@ -154,25 +154,25 @@ class DisciplineService
         if ($newDiscipline < $oldDiscipline) {
             foreach (self::THRESHOLDS as $index => $threshold) {
                 if ($threshold >= 100) continue;
-                
+
                 // Check if old was >= threshold AND new is < threshold
                 if ($oldDiscipline >= $threshold && $newDiscipline < $threshold) {
                     $fromThreshold = $index > 0 ? self::THRESHOLDS[$index - 1] : 100;
-                    
+
                     // Check if already notified
                     $existing = DisciplineNotification::where('user_id', $user->id)
                         ->where('discipline_change', '<', $threshold)
                         ->where('discipline_change', '>=', $threshold - 5)
                         ->where('message_notification', 'like', '%decreased%')
                         ->exists();
-                    
+
                     if (!$existing) {
                         return [true, 'decrease', $threshold, $fromThreshold];
                     }
                 }
             }
         }
-        
+
         // INCREASE: Check if crossed ABOVE any threshold (including 100%)
         // e.g., 94% → 96% = crossed above 95%
         // e.g., 94% → 100% = crossed to 100%
@@ -180,39 +180,39 @@ class DisciplineService
             // Special case: reached 100%
             if ($newDiscipline >= 100 && $oldDiscipline < 100) {
                 $oldThreshold = $this->findThreshold($oldDiscipline);
-                
+
                 $existing = DisciplineNotification::where('user_id', $user->id)
                     ->where('discipline_change', '>=', 100)
                     ->where('message_notification', 'like', '%increased%')
                     ->exists();
-                
+
                 if (!$existing) {
                     return [true, 'increase', 100, $oldThreshold];
                 }
             }
-            
+
             // Check other thresholds
             foreach (self::THRESHOLDS as $index => $threshold) {
                 if ($threshold >= 100) continue;
-                
+
                 // Check if old was < threshold AND new is >= threshold
                 if ($oldDiscipline < $threshold && $newDiscipline >= $threshold) {
                     $oldThreshold = $this->findThreshold($oldDiscipline);
-                    
+
                     // Check if already notified
                     $existing = DisciplineNotification::where('user_id', $user->id)
                         ->where('discipline_change', '>=', $threshold)
                         ->where('discipline_change', '<', $threshold + 5)
                         ->where('message_notification', 'like', '%increased%')
                         ->exists();
-                    
+
                     if (!$existing) {
                         return [true, 'increase', $threshold, $oldThreshold];
                     }
                 }
             }
         }
-        
+
         return [false, null, null, null];
     }
 
@@ -245,6 +245,11 @@ class DisciplineService
      */
     public function processDisciplineChange(User $user, float $oldDiscipline): ?DisciplineNotification
     {
+        // Skip notifications for users with status == "left"
+        // if (strtolower($user->status ?? '') === 'left') {
+        //     return null;
+        // }
+
         $newDiscipline = $this->calculateDisciplineScore($user);
 
         [$shouldNotify, $type, $crossedThreshold, $fromThreshold] = $this->shouldNotify($user, $oldDiscipline, $newDiscipline);

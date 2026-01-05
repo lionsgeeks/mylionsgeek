@@ -49,6 +49,11 @@ class NotificationController extends Controller
                     ->get();
 
                 foreach ($disciplineNotifications as $notif) {
+                    // Skip notifications for users with status == "left"
+                    if ($notif->user && strtolower($notif->user->status ?? '') === 'left') {
+                        continue;
+                    }
+
                     $notifications[] = [
                         'id' => 'discipline-' . $notif->id,
                         'type' => 'discipline_change',
@@ -75,6 +80,11 @@ class NotificationController extends Controller
                     ->get();
 
                 foreach ($disciplineNotifications as $notif) {
+                    // Skip notifications for users with status == "left"
+                    if ($notif->user && strtolower($notif->user->status ?? '') === 'left') {
+                        continue;
+                    }
+
                     $notifications[] = [
                         'id' => 'discipline-' . $notif->id,
                         'type' => 'discipline_change',
