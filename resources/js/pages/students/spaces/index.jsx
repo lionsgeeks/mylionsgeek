@@ -808,10 +808,7 @@ export default function SpacesPage() {
                 <BookAppointment
                     isOpen={isAppointmentModalOpen}
                     onClose={() => setIsAppointmentModalOpen(false)}
-                    onSuccess={(selectedPerson) => {
-                        console.log('Appointment booked with:', selectedPerson);
 
-                    }}
                 />
             </div>
         </AppLayout>

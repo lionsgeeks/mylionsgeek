@@ -6,8 +6,11 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, Dock, User as UserIcon } from 'lucide-react';
+import { LogOut, Settings, Dock, User as UserIcon, Book } from 'lucide-react';
 import { AddDocumentModal } from './add-document-modal';
+import { Button } from '@headlessui/react';
+import BookAppointment from '@/components/book-appointment';
+
 interface UserMenuContentProps {
     user: User;
 }
@@ -15,6 +18,7 @@ interface UserMenuContentProps {
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
     const handleLogout = () => {
         cleanup();
@@ -48,6 +52,16 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     <Dock className="mr-2" />
                     Add document
                 </DropdownMenuItem>
+
+                <DropdownMenuItem onSelect={(e) => {
+                    e.preventDefault();
+                    setTimeout(() => {
+                        setIsAppointmentModalOpen(true);
+                    }, 150);
+                }}>
+                    <Book className="mr-2" />
+                    Book an appointment
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                     <Link className="block w-full" href={edit()} as="button" prefetch onClick={cleanup}>
                         <Settings className="mr-2" />
@@ -64,10 +78,18 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuItem>
 
             {/* Add Document Modal */}
-            <AddDocumentModal 
-                user={user} 
-                isOpen={isDocModalOpen} 
-                onClose={() => setIsDocModalOpen(false)} 
+            <AddDocumentModal
+                user={user}
+                isOpen={isDocModalOpen}
+                onClose={() => setIsDocModalOpen(false)}
+            />
+            <BookAppointment
+                isOpen={isAppointmentModalOpen}
+                onClose={() => setIsAppointmentModalOpen(false)}
+                onSuccess={(selectedPerson) => {
+                    console.log('Appointment booked with:', selectedPerson);
+
+                }}
             />
         </>
     );

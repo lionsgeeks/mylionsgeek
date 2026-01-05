@@ -635,7 +635,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
             {/* Create Project Modal */}
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl bg-light dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Create New Project</DialogTitle>
                     </DialogHeader>
@@ -755,7 +755,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
             {/* Edit Project Modal */}
             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl bg-light dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Edit Project</DialogTitle>
                     </DialogHeader>

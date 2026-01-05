@@ -245,6 +245,11 @@ class DisciplineService
      */
     public function processDisciplineChange(User $user, float $oldDiscipline): ?DisciplineNotification
     {
+        // Skip notifications for users with status == "left"
+        if (strtolower($user->status ?? '') === 'left') {
+            return null;
+        }
+
         $newDiscipline = $this->calculateDisciplineScore($user);
 
         [$shouldNotify, $type, $crossedThreshold, $fromThreshold] = $this->shouldNotify($user, $oldDiscipline, $newDiscipline);
