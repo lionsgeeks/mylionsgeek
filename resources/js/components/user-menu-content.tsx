@@ -6,10 +6,11 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, Dock, User as UserIcon, Book } from 'lucide-react';
+import { LogOut, Settings, Dock, User as UserIcon, Book, SkipBack, LayoutGrid } from 'lucide-react';
 import { AddDocumentModal } from './add-document-modal';
 import { Button } from '@headlessui/react';
 import BookAppointment from '@/components/book-appointment';
+import Rolegard from './rolegard';
 
 interface UserMenuContentProps {
     user: User;
@@ -34,6 +35,14 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+                <Rolegard authorized={['admin', 'responsable_studio', 'coach']}>
+                    <DropdownMenuItem asChild>
+                        <Link className="block w-full" href="/admin/dashboard" prefetch onClick={cleanup}>
+                            <LayoutGrid className="mr-2" />
+                            Back to admin
+                        </Link>
+                    </DropdownMenuItem>
+                </Rolegard>
                 <DropdownMenuItem asChild>
                     <Link className="block w-full" href={`/students/${user.id}`} prefetch onClick={cleanup}>
                         <UserIcon className="mr-2" />
