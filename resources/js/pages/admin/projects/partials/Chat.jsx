@@ -9,6 +9,8 @@ import { MessageSquare, Send, Smile, Reply, X, Edit2, Trash2, Check, XCircle } f
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useAblyChannel from '@/hooks/useAblyChannel';
 import { cn } from '@/lib/utils';
+import VoiceRecorder from '@/components/chat/VoiceRecorder';
+import VoiceMessage from '@/components/chat/VoiceMessage';
 
 const Chat = ({ projectId, messages: initialMessages = [] }) => {
     const page = usePage();
@@ -83,10 +85,14 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                     return prev;
                 }
                 console.log('✅ Adding new message to chat');
-                // Ensure reactions is always an array
+                // Ensure reactions is always an array and include audio data
                 return [...prev, {
                     ...data,
                     reactions: data.reactions || [],
+                    attachment_path: data.attachment_path || null,
+                    attachment_type: data.attachment_type || null,
+                    attachment_name: data.attachment_name || null,
+                    audio_duration: data.audio_duration || null,
                 }];
             });
             // Auto-scroll to bottom when new message arrives
@@ -143,6 +149,10 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                             updated_at: data.updated_at,
                             reactions: data.reactions || [],
                             reply_to: data.reply_to,
+                            attachment_path: data.attachment_path || msg.attachment_path,
+                            attachment_type: data.attachment_type || msg.attachment_type,
+                            attachment_name: data.attachment_name || msg.attachment_name,
+                            audio_duration: data.audio_duration || msg.audio_duration,
                         }
                         : msg
                 );
@@ -211,41 +221,205 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         }
     }, [chatOpen, messages]);
 
+    const [audioBlob, setAudioBlob] = useState(null);
+    const [audioDuration, setAudioDuration] = useState(0);
+    const voiceRecorderRef = useRef(null);
+    const audioBlobReadyRef = useRef(false);
+    const audioBlobPromiseRef = useRef(null);
+
+    const handleRecordingComplete = async (blob, duration, mimeType) => {
+        console.log('Chat: handleRecordingComplete called', { 
+            blobSize: blob.size, 
+            duration, 
+            mimeType 
+        });
+
+        if (!blob || blob.size === 0) {
+            console.error('Invalid audio blob');
+            if (audioBlobPromiseRef.current) {
+                audioBlobPromiseRef.current.reject(new Error('Invalid audio blob'));
+                audioBlobPromiseRef.current = null;
+            }
+            return;
+        }
+
+        // Ensure duration is a valid integer
+        let validDuration = Math.round(duration || 1);
+        if (!isFinite(validDuration) || validDuration <= 0 || validDuration > 600) {
+            console.warn('Invalid duration, using fallback:', validDuration);
+            validDuration = 1; // Minimum 1 second
+        }
+
+        console.log('Using duration:', validDuration);
+
+        // Store the audio blob and duration
+        setAudioBlob(blob);
+        setAudioDuration(validDuration);
+        audioBlobReadyRef.current = true;
+        
+        // Resolve the promise if waiting
+        if (audioBlobPromiseRef.current) {
+            audioBlobPromiseRef.current.resolve({ blob, duration: validDuration });
+            audioBlobPromiseRef.current = null;
+        }
+    };
+
+    const handleRecordingCancel = () => {
+        setAudioBlob(null);
+        setAudioDuration(0);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !projectId || isSending) return;
-
+        
+        console.log('📤 Send button clicked', {
+            projectId,
+            isSending,
+            hasText: !!newMessage.trim(),
+            hasAudio: !!audioBlob,
+            isRecording: voiceRecorderRef.current?.isRecording,
+            canSend: voiceRecorderRef.current?.canSend
+        });
+        
+        if (!projectId || isSending) {
+            console.log('❌ Cannot send: missing projectId or already sending');
+            return;
+        }
+        
+        // If recording, stop recording first and wait for blob
+        let recordedAudio = null;
+        let recordedDuration = 0;
+        
+        if (voiceRecorderRef.current?.isRecording && voiceRecorderRef.current?.canSend) {
+            console.log('📤 Send clicked during recording - stopping first...');
+            audioBlobReadyRef.current = false;
+            
+            // Create a promise to wait for the blob
+            let resolvePromise, rejectPromise;
+            const blobPromise = new Promise((resolve, reject) => {
+                resolvePromise = resolve;
+                rejectPromise = reject;
+            });
+            audioBlobPromiseRef.current = { resolve: resolvePromise, reject: rejectPromise };
+            
+            if (voiceRecorderRef.current.stopAndSend) {
+                voiceRecorderRef.current.stopAndSend();
+                
+                // Wait for blob with timeout
+                try {
+                    const result = await Promise.race([
+                        blobPromise,
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout waiting for audio')), 3000)
+                        )
+                    ]);
+                    recordedAudio = result.blob;
+                    recordedDuration = result.duration;
+                    console.log('✅ Audio blob ready:', { size: recordedAudio.size, duration: recordedDuration });
+                } catch (err) {
+                    console.error('❌ Failed to get audio blob:', err);
+                    audioBlobPromiseRef.current = null;
+                    return;
+                }
+            } else {
+                console.error('❌ stopAndSend function not available');
+                return;
+            }
+        }
+        
+        // Get current values
         const content = newMessage.trim();
+        const audio = recordedAudio || audioBlob;
+        const duration = recordedDuration || audioDuration;
+        const replyId = replyingTo?.id;
+        
+        console.log('📦 Preparing to send:', { 
+            hasContent: !!content, 
+            hasAudio: !!audio,
+            contentLength: content.length,
+            audioSize: audio?.size 
+        });
+        
+        // Check if we have something to send
+        if (!content && !audio) {
+            console.log('❌ Nothing to send');
+            return;
+        }
+        
+        // Clear inputs
         setNewMessage('');
+        setAudioBlob(null);
+        setAudioDuration(0);
         setReplyingTo(null);
+        audioBlobReadyRef.current = false;
         setIsSending(true);
 
         try {
+            const formData = new FormData();
+            
+            // Always send content, even if empty (backend requires either content or audio)
+            formData.append('content', content || '');
+            
+            if (audio) {
+                let extension = 'webm';
+                const blobType = audio.type || '';
+                if (blobType.includes('mp4') || blobType.includes('m4a')) {
+                    extension = 'm4a';
+                } else if (blobType.includes('mp3')) {
+                    extension = 'mp3';
+                } else if (blobType.includes('ogg')) {
+                    extension = 'ogg';
+                } else if (blobType.includes('wav')) {
+                    extension = 'wav';
+                }
+                formData.append('audio', audio, `voice_message.${extension}`);
+                formData.append('audio_duration', duration || 1);
+            }
+            
+            if (replyId) {
+                formData.append('reply_to', replyId);
+            }
+            
+            console.log('📤 FormData prepared:', {
+                hasContent: formData.has('content'),
+                contentValue: content || '(empty)',
+                hasAudio: formData.has('audio'),
+                hasDuration: formData.has('audio_duration'),
+                duration: duration || 1
+            });
+
+            console.log('📤 Sending message...', { hasContent: !!content, hasAudio: !!audio });
+
             const response = await fetch(`/admin/projects/${projectId}/messages`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ 
-                    content,
-                    reply_to: replyingTo?.id || null,
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
-                throw new Error('Failed to send message');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to send message');
             }
 
-            // Don't add message here - it will be received via Ably broadcast
-            // This prevents duplicate messages
+            console.log('✅ Message sent successfully');
         } catch (error) {
-            console.error('Failed to send message:', error);
-            // Restore message on error
+            console.error('❌ Failed to send message:', error);
+            // Restore on error
             setNewMessage(content);
+            if (audio) {
+                setAudioBlob(audio);
+                setAudioDuration(duration);
+                audioBlobReadyRef.current = true;
+            }
+            if (replyingTo) {
+                setReplyingTo(replyingTo);
+            }
+            alert('Failed to send: ' + error.message);
         } finally {
             setIsSending(false);
         }
@@ -622,7 +796,17 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         ? "bg-primary text-primary-foreground rounded-br-sm" 
                                                         : "bg-muted rounded-bl-sm"
                                                 )}>
-                                                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                    {message.attachment_type === 'audio' && message.attachment_path ? (
+                                                        <VoiceMessage
+                                                            audioUrl={message.attachment_path}
+                                                            duration={message.audio_duration}
+                                                            isCurrentUser={isCurrentUser}
+                                                        />
+                                                    ) : (
+                                                        message.content && (
+                                                            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                        )
+                                                    )}
                                                         {message.updated_at && message.updated_at !== message.timestamp && (
                                                             <span className={cn(
                                                                 "text-xs block mt-1",
@@ -780,17 +964,169 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                 </Button>
                             </div>
                         )}
-                        <form onSubmit={handleSubmit} className="flex gap-2 w-full">
-                            <Input
-                                placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Type something..."}
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                className="flex-1"
+                        {voiceRecorderRef.current?.isRecording ? (
+                            <VoiceRecorder
+                                onRecordingComplete={handleRecordingComplete}
+                                onCancel={handleRecordingCancel}
+                                disabled={isSending}
+                                onStopRecordingRef={voiceRecorderRef}
+                                onSendAudioDirect={async (blob, duration, mimeType) => {
+                                    console.log('🚀 onSendAudioDirect called - sending audio directly...', {
+                                        blobSize: blob?.size,
+                                        duration: duration,
+                                        mimeType: mimeType
+                                    });
+                                    
+                                    // Clear any existing audio state first
+                                    setAudioBlob(null);
+                                    setAudioDuration(0);
+                                    audioBlobReadyRef.current = false;
+                                    
+                                    // Send audio directly to chat
+                                    const formData = new FormData();
+                                    formData.append('content', '');
+                                    
+                                    let extension = 'webm';
+                                    if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+                                        extension = 'm4a';
+                                    } else if (mimeType.includes('mp3')) {
+                                        extension = 'mp3';
+                                    } else if (mimeType.includes('ogg')) {
+                                        extension = 'ogg';
+                                    } else if (mimeType.includes('wav')) {
+                                        extension = 'wav';
+                                    }
+                                    
+                                    formData.append('audio', blob, `voice_message.${extension}`);
+                                    formData.append('audio_duration', duration || 1);
+                                    
+                                    if (replyingTo?.id) {
+                                        formData.append('reply_to', replyingTo.id);
+                                    }
+                                    
+                                    setIsSending(true);
+                                    try {
+                                        const response = await fetch(`/admin/projects/${projectId}/messages`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Accept': 'application/json',
+                                                'X-Requested-With': 'XMLHttpRequest',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                            },
+                                            credentials: 'same-origin',
+                                            body: formData,
+                                        });
+                                        
+                                        if (!response.ok) {
+                                            const errorData = await response.json().catch(() => ({}));
+                                            throw new Error(errorData.error || 'Failed to send message');
+                                        }
+                                        
+                                        console.log('✅ Audio sent successfully via onSendAudioDirect');
+                                        setReplyingTo(null);
+                                    } catch (error) {
+                                        console.error('❌ Failed to send audio via onSendAudioDirect:', error);
+                                        alert('Failed to send audio: ' + error.message);
+                                    } finally {
+                                        setIsSending(false);
+                                    }
+                                }}
                             />
-                            <Button type="submit" size="icon" className="h-9 w-9" disabled={isSending || !newMessage.trim()}>
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="flex gap-2 w-full">
+                                <VoiceRecorder
+                                    onRecordingComplete={handleRecordingComplete}
+                                    onCancel={handleRecordingCancel}
+                                    disabled={isSending}
+                                    onStopRecordingRef={voiceRecorderRef}
+                                    onSendAudioDirect={async (blob, duration, mimeType) => {
+                                        console.log('🚀 onSendAudioDirect called from idle state - sending audio directly...', {
+                                            blobSize: blob?.size,
+                                            duration: duration,
+                                            mimeType: mimeType
+                                        });
+                                        
+                                        // Clear any existing audio state first
+                                        setAudioBlob(null);
+                                        setAudioDuration(0);
+                                        audioBlobReadyRef.current = false;
+                                        
+                                        // Send audio directly to chat
+                                        const formData = new FormData();
+                                        formData.append('content', newMessage.trim() || '');
+                                        
+                                        let extension = 'webm';
+                                        if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+                                            extension = 'm4a';
+                                        } else if (mimeType.includes('mp3')) {
+                                            extension = 'mp3';
+                                        } else if (mimeType.includes('ogg')) {
+                                            extension = 'ogg';
+                                        } else if (mimeType.includes('wav')) {
+                                            extension = 'wav';
+                                        }
+                                        
+                                        formData.append('audio', blob, `voice_message.${extension}`);
+                                        formData.append('audio_duration', duration || 1);
+                                        
+                                        if (replyingTo?.id) {
+                                            formData.append('reply_to', replyingTo.id);
+                                        }
+                                        
+                                        setIsSending(true);
+                                        try {
+                                            const response = await fetch(`/admin/projects/${projectId}/messages`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Accept': 'application/json',
+                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                },
+                                                credentials: 'same-origin',
+                                                body: formData,
+                                            });
+                                            
+                                            if (!response.ok) {
+                                                const errorData = await response.json().catch(() => ({}));
+                                                throw new Error(errorData.error || 'Failed to send message');
+                                            }
+                                            
+                                            console.log('✅ Audio sent successfully via onSendAudioDirect (idle state)');
+                                            setNewMessage('');
+                                            setReplyingTo(null);
+                                        } catch (error) {
+                                            console.error('❌ Failed to send audio via onSendAudioDirect (idle state):', error);
+                                            alert('Failed to send audio: ' + error.message);
+                                        } finally {
+                                            setIsSending(false);
+                                        }
+                                    }}
+                                />
+                                <Input
+                                    placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Type something..."}
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    className="flex-1"
+                                    disabled={isSending}
+                                />
+                                <Button 
+                                    type="submit" 
+                                    size="icon" 
+                                    className="h-9 w-9"
+                                    disabled={
+                                        isSending || 
+                                        (
+                                            !newMessage.trim() && 
+                                            !audioBlob && 
+                                            !(voiceRecorderRef.current?.isRecording && voiceRecorderRef.current?.canSend)
+                                        )
+                                    }
+                                    title="Send message"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            </form>
+                        )}
                     </SheetFooter>
                 </SheetContent>
             </Sheet>

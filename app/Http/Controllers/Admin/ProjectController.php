@@ -927,6 +927,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => $reactionsGrouped,
                     'user' => [
                         'id' => $message->user->id,
@@ -953,15 +957,65 @@ class ProjectController extends Controller
         }
 
         $request->validate([
-            'content' => 'required|string|max:5000',
+            'content' => 'nullable|string|max:5000',
             'reply_to' => 'nullable|exists:project_messages,id',
+            'audio' => 'nullable|file|mimes:webm,mp3,mp4,m4a,aac,ogg,wav|max:10240', // 10MB max
+            'audio_duration' => 'nullable|integer|min:0|max:600', // Max 10 minutes
         ]);
+
+        // Ensure either content or audio is provided
+        $hasContent = $request->has('content') && trim($request->input('content', '')) !== '';
+        $hasAudio = $request->hasFile('audio');
+        
+        if (!$hasContent && !$hasAudio) {
+            return response()->json(['error' => 'Either content or audio must be provided'], 422);
+        }
+
+        $attachmentPath = null;
+        $attachmentType = null;
+        $attachmentName = null;
+        $audioDuration = null;
+
+        // Handle audio file upload
+        if ($request->hasFile('audio')) {
+            $audioFile = $request->file('audio');
+            
+            // Validate file was uploaded successfully
+            if (!$audioFile->isValid()) {
+                return response()->json(['error' => 'Invalid audio file'], 422);
+            }
+            
+            $extension = $audioFile->getClientOriginalExtension() ?: 'webm';
+            $attachmentName = 'voice_message_' . time() . '_' . uniqid() . '.' . $extension;
+            $attachmentPath = $audioFile->storeAs('project_messages/audio', $attachmentName, 'public');
+            
+            if (!$attachmentPath) {
+                \Log::error('Failed to store audio file', [
+                    'original_name' => $audioFile->getClientOriginalName(),
+                    'size' => $audioFile->getSize(),
+                ]);
+                return response()->json(['error' => 'Failed to store audio file'], 500);
+            }
+            
+            $attachmentType = 'audio';
+            $audioDuration = (int) $request->input('audio_duration', 0);
+            
+            \Log::info('Audio file stored successfully', [
+                'path' => $attachmentPath,
+                'size' => $audioFile->getSize(),
+                'duration' => $audioDuration,
+            ]);
+        }
 
         $message = ProjectMessage::create([
             'project_id' => $project->id,
             'user_id' => Auth::id(),
-            'content' => $request->content,
+            'content' => $request->content ?? '',
             'reply_to' => $request->reply_to ?? null,
+            'attachment_path' => $attachmentPath,
+            'attachment_type' => $attachmentType,
+            'attachment_name' => $attachmentName,
+            'audio_duration' => $audioDuration,
         ]);
 
         $message->load(['user:id,name,image', 'replyTo.user:id,name']);
@@ -985,6 +1039,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => [],
                     'user' => [
                         'id' => $message->user->id,
@@ -1012,6 +1070,10 @@ class ProjectController extends Controller
                         'name' => $message->replyTo->user->name,
                     ],
                 ] : null,
+                'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                'attachment_type' => $message->attachment_type,
+                'attachment_name' => $message->attachment_name,
+                'audio_duration' => $message->audio_duration,
                 'reactions' => [],
                 'user' => [
                     'id' => $message->user->id,
@@ -1172,6 +1234,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => $reactionsGrouped,
                     'user' => [
                         'id' => $message->user->id,

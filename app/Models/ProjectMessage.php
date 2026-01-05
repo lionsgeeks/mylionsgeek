@@ -13,6 +13,10 @@ class ProjectMessage extends Model
         'user_id',
         'content',
         'reply_to',
+        'attachment_path',
+        'attachment_type',
+        'attachment_name',
+        'audio_duration',
     ];
 
     /**
