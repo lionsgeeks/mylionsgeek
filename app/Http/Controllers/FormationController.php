@@ -61,11 +61,16 @@ class FormationController extends Controller
     public function show(Formation $training)
 {
    $usersNull = User::whereNull('formation_id')->get();
-   $models = \App\Models\Models::latest()->get();
+   
+   // Get courses that belong to this training through exercises
+   $courses = \App\Models\Course::whereHas('exercices', function($query) use ($training) {
+       $query->where('training_id', $training->id);
+   })->with('exercices')->get();
+   
     return inertia('admin/training/[id]', [
         'training' => $training->load('coach', 'users'),
         'usersNull'=>$usersNull,
-        'models' => $models
+        'courses' => $courses
     ]);
 }
 

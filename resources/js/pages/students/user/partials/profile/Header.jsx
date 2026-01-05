@@ -26,13 +26,6 @@ const Header = ({ user, userFunctionality }) => {
     // Filter social links based on user formation and allowed platforms
     const allowedPlatforms = ['instagram', 'linkedin', 'portfolio', 'behance'];
     
-    // Add GitHub only for coding users
-    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || 
-                         user?.formation?.toLowerCase().includes('coding');
-    
-    if (isCodingUser) {
-        allowedPlatforms.push('github');
-    }
 
     const filteredSocialLinks = (user?.social_links || []).filter(link => 
         allowedPlatforms.includes(link.title)
@@ -238,7 +231,7 @@ const Header = ({ user, userFunctionality }) => {
                                     >
                                         <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>
                                     </button>
-                                    {user?.isFollowing && (
+                                    {/* {user?.isFollowing && (
                                         <button
                                             onClick={handleMessageClick}
                                             className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors w-full sm:w-auto"
@@ -246,7 +239,7 @@ const Header = ({ user, userFunctionality }) => {
                                             <MessageCircle className="w-4 h-4" />
                                             <span className="text-sm font-medium">Message</span>
                                         </button>
-                                    )}
+                                    )} */}
                                 </>
                             )}
                         </div>
@@ -315,7 +308,7 @@ const Header = ({ user, userFunctionality }) => {
                                         >
                                             <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>
                                         </button>
-                                        {user?.isFollowing && (
+                                        {/* {user?.isFollowing && (
                                             <button
                                                 onClick={handleMessageClick}
                                                 className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
@@ -323,7 +316,7 @@ const Header = ({ user, userFunctionality }) => {
                                                 <MessageCircle className="w-4 h-4" />
                                                 <span className="text-sm font-medium">Message</span>
                                             </button>
-                                        )}
+                                        )} */}
                                     </>
                                 )}
 
