@@ -23,6 +23,8 @@ const platforms = [
 ];
 
 const LeftColumn = ({ user }) => {
+    console.log(user?.social_links);
+    
     const [openAbout, setOpenAbout] = useState(false)
     const [openSocialModal, setOpenSocialModal] = useState(false)
     const [editingSocial, setEditingSocial] = useState(null)
@@ -32,7 +34,7 @@ const LeftColumn = ({ user }) => {
     const [draggedItem, setDraggedItem] = useState(null)
     const [socialLinks, setSocialLinks] = useState(user?.social_links || [])
     const { auth } = usePage().props
-    const visibleLinks = socialLinks.slice(0, 2)
+    // const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id
 
     // Check if user is a coding user
@@ -166,7 +168,7 @@ const LeftColumn = ({ user }) => {
                             </p>
                         ) : (
                             <>
-                                {visibleLinks.map((link, index) => {
+                                {socialLinks.map((link, index) => {
                                     const IconComponent = platformIcons[link.title] || ExternalLink;
                                     return (
                                         <div
@@ -231,7 +233,7 @@ const LeftColumn = ({ user }) => {
                                     )
                                 })}
 
-                                {socialLinks.length > 2 && (
+                                {/* {socialLinks.length > 2 && (
                                     <button
                                         type="button"
                                         className="text-sm font-semibold text-alpha hover:underline"
@@ -239,7 +241,7 @@ const LeftColumn = ({ user }) => {
                                     >
                                         Show all ({socialLinks.length})
                                     </button>
-                                )}
+                                )} */}
                             </>
                         )}
                     </div>
@@ -251,6 +253,7 @@ const LeftColumn = ({ user }) => {
                     onOpen={openSocialModal}
                     onOpenChange={setOpenSocialModal}
                     initialLink={editingSocial}
+                    availiblePlatfroms={availablePlatforms}
                 />
             )}
             {openAllSocials && (
