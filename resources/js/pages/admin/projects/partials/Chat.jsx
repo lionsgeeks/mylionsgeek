@@ -9,6 +9,8 @@ import { MessageSquare, Send, Smile, Reply, X, Edit2, Trash2, Check, XCircle } f
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useAblyChannel from '@/hooks/useAblyChannel';
 import { cn } from '@/lib/utils';
+import VoiceRecorder from '@/components/chat/VoiceRecorder';
+import VoiceMessage from '@/components/chat/VoiceMessage';
 
 const Chat = ({ projectId, messages: initialMessages = [] }) => {
     const page = usePage();
@@ -83,10 +85,14 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                     return prev;
                 }
                 console.log('✅ Adding new message to chat');
-                // Ensure reactions is always an array
+                // Ensure reactions is always an array and include audio data
                 return [...prev, {
                     ...data,
                     reactions: data.reactions || [],
+                    attachment_path: data.attachment_path || null,
+                    attachment_type: data.attachment_type || null,
+                    attachment_name: data.attachment_name || null,
+                    audio_duration: data.audio_duration || null,
                 }];
             });
             // Auto-scroll to bottom when new message arrives
@@ -105,23 +111,28 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             }
             
             setMessages((prev) => {
-                const messageExists = prev.some(msg => msg.id === data.message_id);
+                // Convert message_id to number for comparison (in case it's a string)
+                const targetMessageId = Number(data.message_id);
+                const messageExists = prev.some(msg => Number(msg.id) === targetMessageId);
+                
                 if (!messageExists) {
-                    console.warn('⚠️ Reaction update received for non-existent message:', data.message_id, '- message may have been deleted');
+                    console.warn('⚠️ Reaction update received for non-existent message:', targetMessageId, '- Available message IDs:', prev.map(m => m.id));
                     return prev;
                 }
                 
                 const updated = prev.map(msg => {
-                    if (msg.id === data.message_id) {
-                        console.log('✅ Updating reactions for message:', data.message_id, 'New reactions:', data.reactions);
+                    if (Number(msg.id) === targetMessageId) {
+                        const reactionsArray = Array.isArray(data.reactions) ? data.reactions : [];
+                        console.log('✅ Updating reactions for message:', targetMessageId, 'New reactions:', reactionsArray);
                         return { 
                             ...msg, 
-                            reactions: Array.isArray(data.reactions) ? data.reactions : [] 
+                            reactions: reactionsArray
                         };
                     }
                     return msg;
                 });
                 
+                console.log('✅ Reactions updated in real-time');
                 return updated;
             });
         };
@@ -138,6 +149,10 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                             updated_at: data.updated_at,
                             reactions: data.reactions || [],
                             reply_to: data.reply_to,
+                            attachment_path: data.attachment_path || msg.attachment_path,
+                            attachment_type: data.attachment_type || msg.attachment_type,
+                            attachment_name: data.attachment_name || msg.attachment_name,
+                            audio_duration: data.audio_duration || msg.audio_duration,
                         }
                         : msg
                 );
@@ -206,41 +221,205 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         }
     }, [chatOpen, messages]);
 
+    const [audioBlob, setAudioBlob] = useState(null);
+    const [audioDuration, setAudioDuration] = useState(0);
+    const voiceRecorderRef = useRef(null);
+    const audioBlobReadyRef = useRef(false);
+    const audioBlobPromiseRef = useRef(null);
+
+    const handleRecordingComplete = async (blob, duration, mimeType) => {
+        console.log('Chat: handleRecordingComplete called', { 
+            blobSize: blob.size, 
+            duration, 
+            mimeType 
+        });
+
+        if (!blob || blob.size === 0) {
+            console.error('Invalid audio blob');
+            if (audioBlobPromiseRef.current) {
+                audioBlobPromiseRef.current.reject(new Error('Invalid audio blob'));
+                audioBlobPromiseRef.current = null;
+            }
+            return;
+        }
+
+        // Ensure duration is a valid integer
+        let validDuration = Math.round(duration || 1);
+        if (!isFinite(validDuration) || validDuration <= 0 || validDuration > 600) {
+            console.warn('Invalid duration, using fallback:', validDuration);
+            validDuration = 1; // Minimum 1 second
+        }
+
+        console.log('Using duration:', validDuration);
+
+        // Store the audio blob and duration
+        setAudioBlob(blob);
+        setAudioDuration(validDuration);
+        audioBlobReadyRef.current = true;
+        
+        // Resolve the promise if waiting
+        if (audioBlobPromiseRef.current) {
+            audioBlobPromiseRef.current.resolve({ blob, duration: validDuration });
+            audioBlobPromiseRef.current = null;
+        }
+    };
+
+    const handleRecordingCancel = () => {
+        setAudioBlob(null);
+        setAudioDuration(0);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !projectId || isSending) return;
-
+        
+        console.log('📤 Send button clicked', {
+            projectId,
+            isSending,
+            hasText: !!newMessage.trim(),
+            hasAudio: !!audioBlob,
+            isRecording: voiceRecorderRef.current?.isRecording,
+            canSend: voiceRecorderRef.current?.canSend
+        });
+        
+        if (!projectId || isSending) {
+            console.log('❌ Cannot send: missing projectId or already sending');
+            return;
+        }
+        
+        // If recording, stop recording first and wait for blob
+        let recordedAudio = null;
+        let recordedDuration = 0;
+        
+        if (voiceRecorderRef.current?.isRecording && voiceRecorderRef.current?.canSend) {
+            console.log('📤 Send clicked during recording - stopping first...');
+            audioBlobReadyRef.current = false;
+            
+            // Create a promise to wait for the blob
+            let resolvePromise, rejectPromise;
+            const blobPromise = new Promise((resolve, reject) => {
+                resolvePromise = resolve;
+                rejectPromise = reject;
+            });
+            audioBlobPromiseRef.current = { resolve: resolvePromise, reject: rejectPromise };
+            
+            if (voiceRecorderRef.current.stopAndSend) {
+                voiceRecorderRef.current.stopAndSend();
+                
+                // Wait for blob with timeout
+                try {
+                    const result = await Promise.race([
+                        blobPromise,
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Timeout waiting for audio')), 3000)
+                        )
+                    ]);
+                    recordedAudio = result.blob;
+                    recordedDuration = result.duration;
+                    console.log('✅ Audio blob ready:', { size: recordedAudio.size, duration: recordedDuration });
+                } catch (err) {
+                    console.error('❌ Failed to get audio blob:', err);
+                    audioBlobPromiseRef.current = null;
+                    return;
+                }
+            } else {
+                console.error('❌ stopAndSend function not available');
+                return;
+            }
+        }
+        
+        // Get current values
         const content = newMessage.trim();
+        const audio = recordedAudio || audioBlob;
+        const duration = recordedDuration || audioDuration;
+        const replyId = replyingTo?.id;
+        
+        console.log('📦 Preparing to send:', { 
+            hasContent: !!content, 
+            hasAudio: !!audio,
+            contentLength: content.length,
+            audioSize: audio?.size 
+        });
+        
+        // Check if we have something to send
+        if (!content && !audio) {
+            console.log('❌ Nothing to send');
+            return;
+        }
+        
+        // Clear inputs
         setNewMessage('');
+        setAudioBlob(null);
+        setAudioDuration(0);
         setReplyingTo(null);
+        audioBlobReadyRef.current = false;
         setIsSending(true);
 
         try {
+            const formData = new FormData();
+            
+            // Always send content, even if empty (backend requires either content or audio)
+            formData.append('content', content || '');
+            
+            if (audio) {
+                let extension = 'webm';
+                const blobType = audio.type || '';
+                if (blobType.includes('mp4') || blobType.includes('m4a')) {
+                    extension = 'm4a';
+                } else if (blobType.includes('mp3')) {
+                    extension = 'mp3';
+                } else if (blobType.includes('ogg')) {
+                    extension = 'ogg';
+                } else if (blobType.includes('wav')) {
+                    extension = 'wav';
+                }
+                formData.append('audio', audio, `voice_message.${extension}`);
+                formData.append('audio_duration', duration || 1);
+            }
+            
+            if (replyId) {
+                formData.append('reply_to', replyId);
+            }
+            
+            console.log('📤 FormData prepared:', {
+                hasContent: formData.has('content'),
+                contentValue: content || '(empty)',
+                hasAudio: formData.has('audio'),
+                hasDuration: formData.has('audio_duration'),
+                duration: duration || 1
+            });
+
+            console.log('📤 Sending message...', { hasContent: !!content, hasAudio: !!audio });
+
             const response = await fetch(`/admin/projects/${projectId}/messages`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ 
-                    content,
-                    reply_to: replyingTo?.id || null,
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
-                throw new Error('Failed to send message');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to send message');
             }
 
-            // Don't add message here - it will be received via Ably broadcast
-            // This prevents duplicate messages
+            console.log('✅ Message sent successfully');
         } catch (error) {
-            console.error('Failed to send message:', error);
-            // Restore message on error
+            console.error('❌ Failed to send message:', error);
+            // Restore on error
             setNewMessage(content);
+            if (audio) {
+                setAudioBlob(audio);
+                setAudioDuration(duration);
+                audioBlobReadyRef.current = true;
+            }
+            if (replyingTo) {
+                setReplyingTo(replyingTo);
+            }
+            alert('Failed to send: ' + error.message);
         } finally {
             setIsSending(false);
         }
@@ -516,13 +695,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                         <MessageSquare className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="lg:h-screen lg:w-1/3 xl:w-1/4 p-4">
-                    <SheetHeader>
-                        <SheetTitle>Team Chat</SheetTitle>
-                        <SheetDescription>Chat with your team members</SheetDescription>
+                <SheetContent side="right" className="lg:h-screen lg:w-1/3 xl:w-1/4 p-0 flex flex-col bg-gradient-to-b from-background to-muted/20">
+                    <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+                        <SheetTitle className="text-xl font-semibold">Team Chat</SheetTitle>
+                        <SheetDescription className="text-sm">Chat with your team members</SheetDescription>
                     </SheetHeader>
-                    <div className="flex-1 mt-4 mb-4 lg:h-[calc(100vh-200px)] overflow-y-auto scrollbar-hide" ref={scrollAreaRef}>
-                        <div className="space-y-4 pr-2">
+                    <div className="flex-1 mt-2 mb-2 lg:h-[calc(100vh-200px)] overflow-y-auto scrollbar-hide px-4" ref={scrollAreaRef}>
+                        <div className="space-y-3 pr-2 pb-2">
                             {messages.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     No messages yet. Start the conversation!
@@ -612,12 +791,23 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     </div>
                                                 ) : (
                                                 <div className={cn(
-                                                    "rounded-lg px-3 py-2 text-sm relative",
+                                                    "rounded-xl px-4 py-3 text-sm relative group/message-bubble transition-all duration-200",
+                                                    "shadow-sm hover:shadow-md",
                                                     isCurrentUser 
-                                                        ? "bg-primary text-primary-foreground rounded-br-sm" 
-                                                        : "bg-muted rounded-bl-sm"
+                                                        ? "bg-gradient-to-br from-primary to-primary/95 text-primary-foreground rounded-br-sm border border-primary/20" 
+                                                        : "bg-gradient-to-br from-muted to-muted/80 rounded-bl-sm border border-border/50"
                                                 )}>
-                                                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                    {message.attachment_type === 'audio' && message.attachment_path ? (
+                                                        <VoiceMessage
+                                                            audioUrl={message.attachment_path}
+                                                            duration={message.audio_duration}
+                                                            isCurrentUser={isCurrentUser}
+                                                        />
+                                                    ) : (
+                                                        message.content && (
+                                                            <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                                                        )
+                                                    )}
                                                         {message.updated_at && message.updated_at !== message.timestamp && (
                                                             <span className={cn(
                                                                 "text-xs block mt-1",
@@ -627,12 +817,40 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                             </span>
                                                         )}
                                                     <div className={cn(
-                                                        "flex items-center gap-1 mt-1",
+                                                        "flex items-center gap-2 mt-1.5",
                                                         isCurrentUser ? "justify-end" : "justify-start"
                                                     )}>
+                                                        {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
+                                                            <div className={cn(
+                                                                "flex flex-wrap gap-1",
+                                                                isCurrentUser ? "order-2" : "order-1"
+                                                            )}>
+                                                                {message.reactions.map((reactionGroup, idx) => {
+                                                                    const userReacted = reactionGroup.users && 
+                                                                        Array.isArray(reactionGroup.users) && 
+                                                                        reactionGroup.users.includes(auth?.user?.name);
+                                                                    return (
+                                                                        <button
+                                                                            key={`${reactionGroup.reaction}-${idx}`}
+                                                                            onClick={() => handleToggleReaction(message.id, reactionGroup.reaction)}
+                                                                            className={cn(
+                                                                                "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 hover:scale-105 transition-all cursor-pointer",
+                                                                                userReacted
+                                                                                    ? "bg-primary/20 border-primary/50 text-primary shadow-sm" 
+                                                                                    : "bg-background border-border hover:bg-muted"
+                                                                            )}
+                                                                            title={reactionGroup.users?.join(', ') || ''}
+                                                                        >
+                                                                            <span className="text-sm">{reactionGroup.reaction}</span>
+                                                                            <span className="font-medium">{reactionGroup.count || 0}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                         <span className={cn(
                                                             "text-xs",
-                                                            isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
+                                                            isCurrentUser ? "text-primary-foreground/70 order-1" : "text-muted-foreground order-2"
                                                         )}>
                                                             {new Date(message.timestamp).toLocaleTimeString(undefined, {
                                                                 hour: "2-digit",
@@ -641,34 +859,6 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         </span>
                                                     </div>
                                                 </div>
-                                                )}
-                                                {message.reactions && Array.isArray(message.reactions) && message.reactions.length > 0 && (
-                                                    <div className={cn(
-                                                        "flex flex-wrap gap-1 mt-1",
-                                                        isCurrentUser ? "justify-end" : "justify-start"
-                                                    )}>
-                                                        {message.reactions.map((reactionGroup, idx) => {
-                                                            const userReacted = reactionGroup.users && 
-                                                                Array.isArray(reactionGroup.users) && 
-                                                                reactionGroup.users.includes(auth?.user?.name);
-                                                            return (
-                                                                <button
-                                                                    key={`${reactionGroup.reaction}-${idx}`}
-                                                                    onClick={() => handleToggleReaction(message.id, reactionGroup.reaction)}
-                                                                    className={cn(
-                                                                        "text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 hover:bg-muted transition-colors cursor-pointer",
-                                                                        userReacted
-                                                                            ? "bg-primary/10 border-primary text-primary" 
-                                                                            : "bg-background border-border"
-                                                                    )}
-                                                                    title={reactionGroup.users?.join(', ') || ''}
-                                                                >
-                                                                    <span>{reactionGroup.reaction}</span>
-                                                                    <span>{reactionGroup.count || 0}</span>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
                                                 )}
                                                 <div className={cn(
                                                     "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -679,12 +869,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-6 w-6 p-0"
+                                                                className="h-7 w-7 p-0 hover:bg-muted"
+                                                                title="Add reaction"
                                                             >
-                                                                <Smile className="h-3 w-3" />
+                                                                <Smile className="h-4 w-4" />
                                                             </Button>
                                                         </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-2" align={isCurrentUser ? "end" : "start"}>
+                                                        <PopoverContent className="w-auto p-3" align={isCurrentUser ? "end" : "start"}>
                                                             <div className="flex gap-2">
                                                                 {reactions.map((reaction) => {
                                                                     const hasReaction = message.reactions?.some(
@@ -700,8 +891,8 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                                                 setTimeout(() => setShowReactionPicker(null), 100);
                                                                             }}
                                                                             className={cn(
-                                                                                "text-xl hover:scale-125 transition-transform p-1 rounded",
-                                                                                hasReaction && "bg-primary/10"
+                                                                                "text-2xl hover:scale-125 transition-transform p-2 rounded hover:bg-muted",
+                                                                                hasReaction && "bg-primary/20 ring-2 ring-primary/30"
                                                                             )}
                                                                             title={reaction}
                                                                         >
@@ -720,7 +911,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     >
                                                         <Reply className="h-3 w-3" />
                                                     </Button>
-                                                    {isCurrentUser && editingMessage?.id !== message.id && (
+                                                    {isCurrentUser && editingMessage?.id !== message.id && message.attachment_type !== 'audio' && (
                                                         <>
                                                             <Button
                                                                 variant="ghost"
@@ -757,9 +948,9 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
-                    <SheetFooter className="flex-col gap-2">
+                    <SheetFooter className="flex-col gap-2 px-4 pb-4 pt-2 border-t border-border/50 bg-background/80 backdrop-blur-sm">
                         {replyingTo && (
-                            <div className="w-full p-2 bg-muted rounded-lg flex items-center justify-between">
+                            <div className="w-full p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg flex items-center justify-between shadow-sm">
                                 <div className="flex-1">
                                     <div className="text-xs text-muted-foreground">Replying to {replyingTo.user.name}</div>
                                     <div className="text-sm truncate">{replyingTo.content}</div>
@@ -774,17 +965,174 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                 </Button>
                             </div>
                         )}
-                        <form onSubmit={handleSubmit} className="flex gap-2 w-full">
-                            <Input
-                                placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Type something..."}
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                className="flex-1"
+                        {voiceRecorderRef.current?.isRecording ? (
+                            <VoiceRecorder
+                                onRecordingComplete={handleRecordingComplete}
+                                onCancel={handleRecordingCancel}
+                                disabled={isSending}
+                                onStopRecordingRef={voiceRecorderRef}
+                                onSendAudioDirect={async (blob, duration, mimeType) => {
+                                    console.log('🚀 onSendAudioDirect called - sending audio directly...', {
+                                        blobSize: blob?.size,
+                                        duration: duration,
+                                        mimeType: mimeType
+                                    });
+                                    
+                                    // Clear any existing audio state first
+                                    setAudioBlob(null);
+                                    setAudioDuration(0);
+                                    audioBlobReadyRef.current = false;
+                                    
+                                    // Send audio directly to chat
+                                    const formData = new FormData();
+                                    formData.append('content', '');
+                                    
+                                    let extension = 'webm';
+                                    if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+                                        extension = 'm4a';
+                                    } else if (mimeType.includes('mp3')) {
+                                        extension = 'mp3';
+                                    } else if (mimeType.includes('ogg')) {
+                                        extension = 'ogg';
+                                    } else if (mimeType.includes('wav')) {
+                                        extension = 'wav';
+                                    }
+                                    
+                                    formData.append('audio', blob, `voice_message.${extension}`);
+                                    formData.append('audio_duration', duration || 1);
+                                    
+                                    if (replyingTo?.id) {
+                                        formData.append('reply_to', replyingTo.id);
+                                    }
+                                    
+                                    setIsSending(true);
+                                    try {
+                                        const response = await fetch(`/admin/projects/${projectId}/messages`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Accept': 'application/json',
+                                                'X-Requested-With': 'XMLHttpRequest',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                            },
+                                            credentials: 'same-origin',
+                                            body: formData,
+                                        });
+                                        
+                                        if (!response.ok) {
+                                            const errorData = await response.json().catch(() => ({}));
+                                            throw new Error(errorData.error || 'Failed to send message');
+                                        }
+                                        
+                                        console.log('✅ Audio sent successfully via onSendAudioDirect');
+                                        setReplyingTo(null);
+                                    } catch (error) {
+                                        console.error('❌ Failed to send audio via onSendAudioDirect:', error);
+                                        alert('Failed to send audio: ' + error.message);
+                                    } finally {
+                                        setIsSending(false);
+                                    }
+                                }}
                             />
-                            <Button type="submit" size="icon" className="h-9 w-9" disabled={isSending || !newMessage.trim()}>
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="flex gap-2 w-full">
+                                <VoiceRecorder
+                                    onRecordingComplete={handleRecordingComplete}
+                                    onCancel={handleRecordingCancel}
+                                    disabled={isSending}
+                                    onStopRecordingRef={voiceRecorderRef}
+                                    onSendAudioDirect={async (blob, duration, mimeType) => {
+                                        console.log('🚀 onSendAudioDirect called from idle state - sending audio directly...', {
+                                            blobSize: blob?.size,
+                                            duration: duration,
+                                            mimeType: mimeType
+                                        });
+                                        
+                                        // Clear any existing audio state first
+                                        setAudioBlob(null);
+                                        setAudioDuration(0);
+                                        audioBlobReadyRef.current = false;
+                                        
+                                        // Send audio directly to chat
+                                        const formData = new FormData();
+                                        formData.append('content', newMessage.trim() || '');
+                                        
+                                        let extension = 'webm';
+                                        if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
+                                            extension = 'm4a';
+                                        } else if (mimeType.includes('mp3')) {
+                                            extension = 'mp3';
+                                        } else if (mimeType.includes('ogg')) {
+                                            extension = 'ogg';
+                                        } else if (mimeType.includes('wav')) {
+                                            extension = 'wav';
+                                        }
+                                        
+                                        formData.append('audio', blob, `voice_message.${extension}`);
+                                        formData.append('audio_duration', duration || 1);
+                                        
+                                        if (replyingTo?.id) {
+                                            formData.append('reply_to', replyingTo.id);
+                                        }
+                                        
+                                        setIsSending(true);
+                                        try {
+                                            const response = await fetch(`/admin/projects/${projectId}/messages`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Accept': 'application/json',
+                                                    'X-Requested-With': 'XMLHttpRequest',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                },
+                                                credentials: 'same-origin',
+                                                body: formData,
+                                            });
+                                            
+                                            if (!response.ok) {
+                                                const errorData = await response.json().catch(() => ({}));
+                                                throw new Error(errorData.error || 'Failed to send message');
+                                            }
+                                            
+                                            console.log('✅ Audio sent successfully via onSendAudioDirect (idle state)');
+                                            setNewMessage('');
+                                            setReplyingTo(null);
+                                        } catch (error) {
+                                            console.error('❌ Failed to send audio via onSendAudioDirect (idle state):', error);
+                                            alert('Failed to send audio: ' + error.message);
+                                        } finally {
+                                            setIsSending(false);
+                                        }
+                                    }}
+                                />
+                                <Input
+                                    placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Type something..."}
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    className="flex-1 rounded-lg border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                                    disabled={isSending}
+                                />
+                                <Button 
+                                    type="submit" 
+                                    size="icon" 
+                                    className={cn(
+                                        "h-9 w-9 rounded-lg transition-all duration-200",
+                                        "bg-primary text-primary-foreground hover:bg-primary/90",
+                                        "hover:scale-110 active:scale-95 shadow-md hover:shadow-lg",
+                                        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    )}
+                                    disabled={
+                                        isSending || 
+                                        (
+                                            !newMessage.trim() && 
+                                            !audioBlob && 
+                                            !(voiceRecorderRef.current?.isRecording && voiceRecorderRef.current?.canSend)
+                                        )
+                                    }
+                                    title="Send message"
+                                >
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            </form>
+                        )}
                     </SheetFooter>
                 </SheetContent>
             </Sheet>

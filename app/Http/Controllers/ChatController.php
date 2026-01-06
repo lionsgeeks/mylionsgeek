@@ -19,29 +19,56 @@ class ChatController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        // Get IDs of users that the current user follows
-        $followingIds = \App\Models\Follower::where('follower_id', $user->id)
-            ->pluck('followed_id')
-            ->toArray();
+            // Get IDs of users that the current user follows
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
 
-        $conversations = Conversation::where(function ($query) use ($user, $followingIds) {
-            $query->where('user_one_id', $user->id)
-                ->whereIn('user_two_id', $followingIds);
-        })->orWhere(function ($query) use ($user, $followingIds) {
-            $query->where('user_two_id', $user->id)
-                ->whereIn('user_one_id', $followingIds);
-        })
-            ->with(['userOne', 'userTwo', 'messages' => function ($query) {
-                $query->latest()->limit(1);
-            }])
+            // If no following IDs, return empty array
+            if (empty($followingIds)) {
+                return response()->json([
+                    'conversations' => [],
+                ]);
+            }
+
+            $conversations = Conversation::where(function ($query) use ($user, $followingIds) {
+                $query->where('user_one_id', $user->id)
+                    ->whereIn('user_two_id', $followingIds);
+            })->orWhere(function ($query) use ($user, $followingIds) {
+                $query->where('user_two_id', $user->id)
+                    ->whereIn('user_one_id', $followingIds);
+            })
+            ->with(['userOne', 'userTwo'])
             ->orderBy('last_message_at', 'desc')
             ->get()
             ->map(function ($conversation) use ($user) {
-                $otherUser = $conversation->getOtherUser($user->id);
+                // Ensure relationships are loaded
+                if (!$conversation->relationLoaded('userOne')) {
+                    $conversation->load('userOne');
+                }
+                if (!$conversation->relationLoaded('userTwo')) {
+                    $conversation->load('userTwo');
+                }
+                
+                // Determine other user manually for safety
+                $otherUser = $conversation->user_one_id == $user->id 
+                    ? $conversation->userTwo 
+                    : $conversation->userOne;
+                
+                if (!$otherUser) {
+                    // Skip this conversation if we can't determine the other user
+                    return null;
+                }
+                
                 $unreadCount = $conversation->getUnreadCountForUser($user->id);
-                $lastMessage = $conversation->messages->first();
+                
+                // Get the actual last message (most recent by created_at)
+                $lastMessage = Message::where('conversation_id', $conversation->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
 
                 return [
                     'id' => $conversation->id,
@@ -62,17 +89,31 @@ class ChatController extends Controller
                     'last_message_at' => $conversation->last_message_at?->toISOString(),
                     'created_at' => $conversation->created_at->toISOString(),
                 ];
-            });
+            })
+            ->filter(function ($conversation) {
+                return $conversation !== null;
+            })
+            ->values(); // Re-index the array
 
-        if (request()->header('X-Inertia')) {
-            return redirect()->back()->with([
+            if (request()->header('X-Inertia')) {
+                return redirect()->back()->with([
+                    'conversations' => $conversations,
+                ]);
+            }
+
+            return response()->json([
                 'conversations' => $conversations,
             ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('ChatController@index error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Failed to fetch conversations',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'conversations' => $conversations,
-        ]);
     }
 
     /**
@@ -198,13 +239,40 @@ class ChatController extends Controller
             });
 
         // Mark messages as read
-        $conversation->messages()
+        $updatedCount = $conversation->messages()
             ->where('sender_id', '!=', $user->id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
                 'read_at' => now(),
             ]);
+
+        // Broadcast seen status via Ably if messages were marked as read
+        if ($updatedCount > 0) {
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read to include in the event
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
+                    $channel->publish('seen', [
+                        'user_id' => $user->id,
+                        'conversation_id' => $conversationId,
+                        'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast seen status via Ably: ' . $e->getMessage());
+            }
+        }
 
         // Always return JSON for fetch requests
         return response()->json([
@@ -332,10 +400,47 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
+        // When you reply, mark all previous messages from the other user as read
+        // This means you've seen their messages
+        $readCount = $conversation->messages()
+            ->where('sender_id', '!=', $user->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
         // Update conversation's last_message_at
         $conversation->update([
             'last_message_at' => now(),
         ]);
+
+        // Broadcast seen status if messages were marked as read
+        if ($readCount > 0) {
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
+                    $channel->publish('seen', [
+                        'user_id' => $user->id,
+                        'conversation_id' => $conversationId,
+                        'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast seen status when sending message: ' . $e->getMessage());
+            }
+        }
 
         $message->load('sender:id,name,image');
 
@@ -374,6 +479,28 @@ class ChatController extends Controller
         return response()->json([
             'message' => $messageData,
         ], 201);
+    }
+
+    /**
+     * Get IDs of users that the current user follows
+     */
+    public function getFollowingIds()
+    {
+        try {
+            $user = Auth::user();
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
+
+            return response()->json([
+                'following_ids' => $followingIds,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch following IDs',
+                'following_ids' => []
+            ], 500);
+        }
     }
 
     /**
@@ -432,10 +559,19 @@ class ChatController extends Controller
                 if ($ablyKey) {
                     $ably = new AblyRest($ablyKey);
                     $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read to include in the event
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
                     $channel->publish('seen', [
                         'user_id' => $user->id,
                         'conversation_id' => $conversationId,
                         'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
                     ]);
                 }
             } catch (\Exception $e) {

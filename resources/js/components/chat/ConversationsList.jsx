@@ -21,6 +21,9 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+    const searchTimeoutRef = useRef(null);
     const ablySubscriptionsRef = useRef(new Map());
 
     // Get CSRF token
@@ -56,6 +59,16 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Refresh conversations when window regains focus to ensure last_message is up to date
+    useEffect(() => {
+        const handleFocus = () => {
+            fetchConversations();
+        };
+        
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
+
     // Real-time updates for all conversations - Tssma3 3la kol conversations bach n3rfo b3d updates
     useEffect(() => {
         if (conversations.length === 0) return;
@@ -74,6 +87,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 // Global listener will handle showing toasts unconditionally
                 
                 setConversations(prev => {
+                    // Sort conversations by last_message_at to move updated conversation to top
                     const updated = prev.map(conv => {
                         if (conv.id === conversation.id) {
                             // Increment unread if message is from other user and not selected
@@ -87,7 +101,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                 ...conv,
                                 last_message: {
                                     id: messageData.id,
-                                    body: messageData.body || '📎 Attachment',
+                                    body: messageData.body || '',
                                     sender_id: messageData.sender_id,
                                     attachment_type: messageData.attachment_type,
                                     created_at: messageData.created_at,
@@ -97,6 +111,13 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                             };
                         }
                         return conv;
+                    });
+                    
+                    // Sort by last_message_at descending to show most recent conversations first
+                    return updated.sort((a, b) => {
+                        const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+                        const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+                        return timeB - timeA;
                     });
 
                     // Update total unread count
@@ -159,7 +180,11 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 },
             });
 
-            if (!response.ok) throw new Error('Failed to fetch conversations');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Failed to fetch conversations:', errorData);
+                throw new Error(errorData.message || 'Failed to fetch conversations');
+            }
 
             const data = await response.json();
             const fetchedConversations = data.conversations || [];
@@ -171,6 +196,8 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             }
         } catch (error) {
             console.error('Failed to fetch conversations:', error);
+            // Set empty array on error to prevent UI issues
+            setConversations([]);
         } finally {
             setLoading(false);
         }
@@ -191,15 +218,114 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
             const data = await response.json();
             setSelectedConversation(data.conversation);
+            
+            // Refresh conversations list to get latest last_message
+            fetchConversations();
         } catch (error) {
             console.error('Failed to fetch conversation:', error);
         }
     };
 
+    // Search for users when typing
+    useEffect(() => {
+        // Clear previous timeout
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        // If search query is empty, clear results
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            setIsSearchingUsers(false);
+            return;
+        }
+
+        // Debounce search
+        setIsSearchingUsers(true);
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&type=students`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    setSearchResults([]);
+                    return;
+                }
+
+                const data = await response.json();
+                const users = data.results || [];
+                
+                // Get following IDs to filter users
+                const followingResponse = await fetch('/chat/following-ids', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+                
+                let followingIds = [];
+                if (followingResponse.ok) {
+                    const followingData = await followingResponse.json();
+                    followingIds = followingData.following_ids || [];
+                }
+                
+                // Filter users: exclude current user and only show users we follow
+                const filteredUsers = users.filter(user => 
+                    user.id !== currentUser.id && 
+                    followingIds.includes(user.id)
+                );
+                
+                setSearchResults(filteredUsers);
+            } catch (error) {
+                console.error('Failed to search users:', error);
+                setSearchResults([]);
+            } finally {
+                setIsSearchingUsers(false);
+            }
+        }, 300);
+    }, [searchQuery, currentUser.id]);
+
     const filteredConversations = conversations.filter(conv => 
         conv.other_user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Handle user selection from search
+    const handleUserSelect = async (userId) => {
+        try {
+            setSearchQuery(''); // Clear search
+            setSearchResults([]);
+            
+            const response = await fetch(`/chat/conversation/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                alert(errorData.error || 'Failed to start conversation');
+                return;
+            }
+
+            const data = await response.json();
+            setSelectedConversation(data.conversation);
+            
+            // Refresh conversations list
+            fetchConversations();
+        } catch (error) {
+            console.error('Failed to start conversation:', error);
+            alert('Failed to start conversation. Please try again.');
+        }
+    };
 
     // Skeleton loader
     const ConversationListSkeleton = () => (
@@ -220,7 +346,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
     );
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-background rounded-xl">
+        <div className="flex h-full w-full overflow-hidden bg-background">
             {/* Left Sidebar - Conversations */}
             <div className={cn(
                 "flex flex-col border-r bg-background transition-all duration-300 flex-shrink-0",
@@ -246,12 +372,50 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Search"
+                            placeholder="Search conversations or users..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10 h-11 text-sm bg-muted/50 border-muted focus:bg-background"
                         />
                     </div>
+                    
+                    {/* User Search Results */}
+                    {searchQuery.trim() && searchResults.length > 0 && (
+                        <div className="mt-2 space-y-1 max-h-64 overflow-y-auto">
+                            <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
+                                Start conversation with:
+                            </div>
+                            {searchResults.map((user) => (
+                                <button
+                                    key={user.id}
+                                    onClick={() => handleUserSelect(user.id)}
+                                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                                >
+                                    <Avatar
+                                        className="h-10 w-10 flex-shrink-0"
+                                        image={user.image || user.avatar}
+                                        name={user.name}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{user.name}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    
+                    {searchQuery.trim() && isSearchingUsers && (
+                        <div className="mt-2 px-2 py-3 text-sm text-muted-foreground text-center">
+                            Searching...
+                        </div>
+                    )}
+                    
+                    {searchQuery.trim() && !isSearchingUsers && searchResults.length === 0 && filteredConversations.length === 0 && (
+                        <div className="mt-2 px-2 py-3 text-sm text-muted-foreground text-center">
+                            No users found. Make sure you're following them first.
+                        </div>
+                    )}
                 </div>
 
                 {/* Conversations List */}
@@ -270,6 +434,8 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                 <ConversationItem
                                     key={conversation.id}
                                     conversation={conversation}
+                                    currentUserId={currentUser.id}
+                                    otherUserName={conversation.other_user.name}
                                     isSelected={selectedConversation?.id === conversation.id}
                                     onClick={() => handleConversationClick(conversation.id, conversation.other_user.id)}
                                     onDeleted={() => {
@@ -331,20 +497,26 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
 export default ConversationsList;
 
-function ConversationItem({ conversation, isSelected, onClick, onDeleted }) {
+function ConversationItem({ conversation, currentUserId, otherUserName, isSelected, onClick, onDeleted }) {
     // Format last message preview
     const getLastMessagePreview = () => {
         if (!conversation.last_message) return 'No messages yet';
         
-        const { body, attachment_type } = conversation.last_message;
+        const { body, attachment_type, sender_id } = conversation.last_message;
+        const isFromCurrentUser = sender_id === currentUserId;
+        const prefix = isFromCurrentUser ? 'You: ' : `${otherUserName}: `;
         
-        if (attachment_type === 'image') return '📷 Image';
-        if (attachment_type === 'video') return '🎥 Video';
-        if (attachment_type === 'audio') return '🎤 Voice message';
-        if (attachment_type === 'file') return '📎 File';
-        if (body) return body;
+        if (attachment_type === 'image') return prefix + '📷 Image';
+        if (attachment_type === 'video') return prefix + '🎥 Video';
+        if (attachment_type === 'audio') return prefix + '🎤 Voice message';
+        if (attachment_type === 'file') return prefix + '📎 File';
+        if (body) {
+            // Show more of the message (up to 80 characters for better visibility)
+            const preview = body.length > 80 ? body.substring(0, 80) + '...' : body;
+            return prefix + preview;
+        }
         
-        return '📎 Attachment';
+        return prefix + '📎 Attachment';
     };
 
     return (
@@ -408,11 +580,11 @@ function ConversationItem({ conversation, isSelected, onClick, onDeleted }) {
                     </div>
                     {conversation.last_message && (
                         <p className={cn(
-                            "text-xs truncate leading-relaxed",
+                            "text-xs truncate leading-relaxed max-w-full",
                             conversation.unread_count > 0 
                                 ? "font-medium text-foreground/90" 
                                 : "text-muted-foreground"
-                        )}>
+                        )} title={getLastMessagePreview()}>
                             {getLastMessagePreview()}
                         </p>
                     )}
