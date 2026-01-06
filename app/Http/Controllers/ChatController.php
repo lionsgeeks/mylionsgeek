@@ -237,13 +237,40 @@ class ChatController extends Controller
             });
 
         // Mark messages as read
-        $conversation->messages()
+        $updatedCount = $conversation->messages()
             ->where('sender_id', '!=', $user->id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
                 'read_at' => now(),
             ]);
+
+        // Broadcast seen status via Ably if messages were marked as read
+        if ($updatedCount > 0) {
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read to include in the event
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
+                    $channel->publish('seen', [
+                        'user_id' => $user->id,
+                        'conversation_id' => $conversationId,
+                        'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast seen status via Ably: ' . $e->getMessage());
+            }
+        }
 
         // Always return JSON for fetch requests
         return response()->json([
@@ -371,10 +398,47 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
+        // When you reply, mark all previous messages from the other user as read
+        // This means you've seen their messages
+        $readCount = $conversation->messages()
+            ->where('sender_id', '!=', $user->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
         // Update conversation's last_message_at
         $conversation->update([
             'last_message_at' => now(),
         ]);
+
+        // Broadcast seen status if messages were marked as read
+        if ($readCount > 0) {
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
+                    $channel->publish('seen', [
+                        'user_id' => $user->id,
+                        'conversation_id' => $conversationId,
+                        'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to broadcast seen status when sending message: ' . $e->getMessage());
+            }
+        }
 
         $message->load('sender:id,name,image');
 
@@ -493,10 +557,19 @@ class ChatController extends Controller
                 if ($ablyKey) {
                     $ably = new AblyRest($ablyKey);
                     $channel = $ably->channels->get("chat:conversation:{$conversationId}");
+                    
+                    // Get the last message that was marked as read to include in the event
+                    $lastReadMessage = $conversation->messages()
+                        ->where('sender_id', '!=', $user->id)
+                        ->where('is_read', true)
+                        ->orderBy('read_at', 'desc')
+                        ->first();
+                    
                     $channel->publish('seen', [
                         'user_id' => $user->id,
                         'conversation_id' => $conversationId,
                         'read_at' => now()->toISOString(),
+                        'last_message_id' => $lastReadMessage ? $lastReadMessage->id : null,
                     ]);
                 }
             } catch (\Exception $e) {
