@@ -59,6 +59,16 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Refresh conversations when window regains focus to ensure last_message is up to date
+    useEffect(() => {
+        const handleFocus = () => {
+            fetchConversations();
+        };
+        
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
+
     // Real-time updates for all conversations - Tssma3 3la kol conversations bach n3rfo b3d updates
     useEffect(() => {
         if (conversations.length === 0) return;
@@ -77,6 +87,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 // Global listener will handle showing toasts unconditionally
                 
                 setConversations(prev => {
+                    // Sort conversations by last_message_at to move updated conversation to top
                     const updated = prev.map(conv => {
                         if (conv.id === conversation.id) {
                             // Increment unread if message is from other user and not selected
@@ -90,7 +101,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                 ...conv,
                                 last_message: {
                                     id: messageData.id,
-                                    body: messageData.body || '📎 Attachment',
+                                    body: messageData.body || '',
                                     sender_id: messageData.sender_id,
                                     attachment_type: messageData.attachment_type,
                                     created_at: messageData.created_at,
@@ -100,6 +111,13 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                             };
                         }
                         return conv;
+                    });
+                    
+                    // Sort by last_message_at descending to show most recent conversations first
+                    return updated.sort((a, b) => {
+                        const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+                        const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+                        return timeB - timeA;
                     });
 
                     // Update total unread count
@@ -200,6 +218,9 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
             const data = await response.json();
             setSelectedConversation(data.conversation);
+            
+            // Refresh conversations list to get latest last_message
+            fetchConversations();
         } catch (error) {
             console.error('Failed to fetch conversation:', error);
         }
@@ -413,6 +434,8 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                 <ConversationItem
                                     key={conversation.id}
                                     conversation={conversation}
+                                    currentUserId={currentUser.id}
+                                    otherUserName={conversation.other_user.name}
                                     isSelected={selectedConversation?.id === conversation.id}
                                     onClick={() => handleConversationClick(conversation.id, conversation.other_user.id)}
                                     onDeleted={() => {
@@ -474,20 +497,26 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
 export default ConversationsList;
 
-function ConversationItem({ conversation, isSelected, onClick, onDeleted }) {
+function ConversationItem({ conversation, currentUserId, otherUserName, isSelected, onClick, onDeleted }) {
     // Format last message preview
     const getLastMessagePreview = () => {
         if (!conversation.last_message) return 'No messages yet';
         
-        const { body, attachment_type } = conversation.last_message;
+        const { body, attachment_type, sender_id } = conversation.last_message;
+        const isFromCurrentUser = sender_id === currentUserId;
+        const prefix = isFromCurrentUser ? 'You: ' : `${otherUserName}: `;
         
-        if (attachment_type === 'image') return '📷 Image';
-        if (attachment_type === 'video') return '🎥 Video';
-        if (attachment_type === 'audio') return '🎤 Voice message';
-        if (attachment_type === 'file') return '📎 File';
-        if (body) return body;
+        if (attachment_type === 'image') return prefix + '📷 Image';
+        if (attachment_type === 'video') return prefix + '🎥 Video';
+        if (attachment_type === 'audio') return prefix + '🎤 Voice message';
+        if (attachment_type === 'file') return prefix + '📎 File';
+        if (body) {
+            // Show more of the message (up to 80 characters for better visibility)
+            const preview = body.length > 80 ? body.substring(0, 80) + '...' : body;
+            return prefix + preview;
+        }
         
-        return '📎 Attachment';
+        return prefix + '📎 Attachment';
     };
 
     return (
@@ -551,11 +580,11 @@ function ConversationItem({ conversation, isSelected, onClick, onDeleted }) {
                     </div>
                     {conversation.last_message && (
                         <p className={cn(
-                            "text-xs truncate leading-relaxed",
+                            "text-xs truncate leading-relaxed max-w-full",
                             conversation.unread_count > 0 
                                 ? "font-medium text-foreground/90" 
                                 : "text-muted-foreground"
-                        )}>
+                        )} title={getLastMessagePreview()}>
                             {getLastMessagePreview()}
                         </p>
                     )}

@@ -41,9 +41,7 @@ class ChatController extends Controller
                 $query->where('user_two_id', $user->id)
                     ->whereIn('user_one_id', $followingIds);
             })
-            ->with(['userOne', 'userTwo', 'messages' => function ($query) {
-                $query->latest()->limit(1);
-            }])
+            ->with(['userOne', 'userTwo'])
             ->orderBy('last_message_at', 'desc')
             ->get()
             ->map(function ($conversation) use ($user) {
@@ -66,7 +64,11 @@ class ChatController extends Controller
                 }
                 
                 $unreadCount = $conversation->getUnreadCountForUser($user->id);
-                $lastMessage = $conversation->messages->first();
+                
+                // Get the actual last message (most recent by created_at)
+                $lastMessage = Message::where('conversation_id', $conversation->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
 
                 return [
                     'id' => $conversation->id,
