@@ -10,6 +10,8 @@ import FollowModal from '../../../../../components/FollowModal';
 import ProfilePictureModal from '../../../../../components/ProfilePictureModal';
 
 const Header = ({ user, userFunctionality }) => {
+    console.log(user);
+    
     const [openEdit, setOpenEdit] = useState(false);
     const [openFollowModal, setOpenFollowModal] = useState([]);
     const [openProfilePicture, setOpenProfilePicture] = useState(false);
