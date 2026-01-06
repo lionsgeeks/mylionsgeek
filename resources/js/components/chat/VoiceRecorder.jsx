@@ -413,50 +413,78 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
 
     if (isRecording) {
         return (
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-3 w-full">
                 <div 
                     ref={cancelZoneRef}
-                    className="flex-1 flex items-center gap-3 bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-2"
+                    className="flex-1 flex items-center gap-4 bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border-2 border-destructive/30 rounded-xl px-5 py-3.5 shadow-lg backdrop-blur-sm"
                 >
-                    <div className="flex items-center gap-2 flex-1">
-                        <div className="relative">
-                            <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-                            <div className="absolute inset-0 w-3 h-3 bg-destructive rounded-full animate-ping opacity-75" />
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Animated recording indicator */}
+                        <div className="relative flex-shrink-0">
+                            <div className="w-4 h-4 bg-destructive rounded-full animate-pulse shadow-lg shadow-destructive/50" />
+                            <div className="absolute inset-0 w-4 h-4 bg-destructive rounded-full animate-ping opacity-60" />
+                            <div className="absolute inset-0 w-4 h-4 bg-destructive/30 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
                         </div>
-                        <span className="text-sm font-medium text-destructive">
-                            {formatTime(recordingTime)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                            {canSend ? 'Release or click stop to send' : 'Recording... (min 1s)'}
-                        </span>
+                        
+                        {/* Time display */}
+                        <div className="flex items-baseline gap-2 min-w-0">
+                            <span className="text-lg font-bold text-destructive tabular-nums tracking-tight">
+                                {formatTime(recordingTime)}
+                            </span>
+                            <span className="text-xs font-medium text-destructive/70 whitespace-nowrap">
+                                {canSend ? 'Ready to send' : 'Recording...'}
+                            </span>
+                        </div>
+                        
+                        {/* Waveform visualization */}
+                        <div className="flex items-center gap-1 flex-1 justify-center">
+                            {[...Array(5)].map((_, i) => (
+                                <div
+                                    key={i}
+                                    className="w-1 bg-destructive/60 rounded-full animate-pulse"
+                                    style={{
+                                        height: `${20 + Math.sin(i * 0.8) * 15}px`,
+                                        animationDelay: `${i * 0.1}s`,
+                                        animationDuration: '0.6s'
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
-                {canSend && (
+                
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {canSend && (
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                                console.log('🛑 Stop button clicked - stopping and auto-sending...');
+                                stopRecordingAndSend();
+                            }}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 px-4"
+                            disabled={isUploading}
+                            title="Stop recording and send"
+                        >
+                            {isUploading ? (
+                                <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                'Send'
+                            )}
+                        </Button>
+                    )}
                     <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                            console.log('🛑 Stop button clicked - stopping and auto-sending...');
-                            // Stop recording - it will auto-send (one step, like text messages)
-                            stopRecordingAndSend();
-                        }}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleCancel}
+                        className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10 border border-destructive/20 transition-all duration-200 hover:scale-110 active:scale-95"
                         disabled={isUploading}
-                        title="Stop recording and send"
+                        title="Cancel recording"
                     >
-                        Stop
+                        <X className="h-4 w-4" />
                     </Button>
-                )}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCancel}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    disabled={isUploading}
-                    title="Cancel recording"
-                >
-                    <X className="h-4 w-4" />
-                </Button>
+                </div>
             </div>
         );
     }
@@ -467,8 +495,10 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             variant="ghost"
             size="icon"
             className={cn(
-                "h-9 w-9 relative",
-                disabled && "opacity-50 cursor-not-allowed"
+                "h-9 w-9 relative rounded-full transition-all duration-200",
+                "hover:bg-primary/10 hover:scale-110 active:scale-95",
+                "border border-border/50 hover:border-primary/30",
+                disabled && "opacity-50 cursor-not-allowed hover:scale-100"
             )}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
@@ -481,7 +511,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             {isUploading ? (
                 <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             ) : (
-                <Mic className="h-5 w-5" />
+                <Mic className="h-5 w-5 text-primary" />
             )}
         </Button>
     );

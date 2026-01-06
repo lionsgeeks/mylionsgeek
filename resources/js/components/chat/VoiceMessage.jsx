@@ -15,11 +15,16 @@ export default function VoiceMessage({
     const audioRef = useRef(null);
     const progressIntervalRef = useRef(null);
 
-    // Format time as MM:SS
+    // Format time as 0:00:06 (HH:MM:SS or MM:SS)
     const formatTime = (seconds) => {
         if (!seconds || isNaN(seconds)) return '0:00';
-        const mins = Math.floor(seconds / 60);
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
+        
+        if (hours > 0) {
+            return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
@@ -155,8 +160,10 @@ export default function VoiceMessage({
 
     return (
         <div className={cn(
-            "flex items-center gap-3 p-3 rounded-lg",
-            isCurrentUser ? "bg-primary/10" : "bg-muted"
+            "flex items-center gap-3",
+            isCurrentUser 
+                ? "text-primary-foreground" 
+                : "text-foreground"
         )}>
             <audio
                 ref={audioRef}
@@ -165,48 +172,31 @@ export default function VoiceMessage({
                 className="hidden"
             />
             
-            <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                    "h-10 w-10 rounded-full flex-shrink-0",
-                    isCurrentUser 
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
-                        : "bg-background hover:bg-muted"
-                )}
+            {/* Simple circular play button */}
+            <button
                 onClick={togglePlayback}
+                className={cn(
+                    "h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200",
+                    "hover:opacity-80 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    isCurrentUser 
+                        ? "bg-white text-foreground focus:ring-primary/50" 
+                        : "bg-white text-foreground border border-border/20 focus:ring-muted-foreground/30"
+                )}
             >
                 {isPlaying ? (
-                    <Pause className="h-5 w-5" />
+                    <Pause className="h-4 w-4 fill-current stroke-current" />
                 ) : (
-                    <Play className="h-5 w-5 ml-0.5" />
+                    <Play className="h-4 w-4 ml-0.5 fill-current stroke-current" />
                 )}
-            </Button>
+            </button>
 
+            {/* Duration display */}
             <div className="flex-1 min-w-0">
-                {/* Progress bar */}
-                <div className="relative h-2 bg-muted rounded-full overflow-hidden mb-1">
-                    <div
-                        className={cn(
-                            "h-full rounded-full transition-all duration-100",
-                            isCurrentUser ? "bg-primary" : "bg-foreground/60"
-                        )}
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
-                
-                {/* Time labels */}
-                <div className="flex items-center justify-between text-xs">
-                    <span className={cn(
-                        isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}>
-                        {formatTime(currentTime || 0)}
-                    </span>
-                    <span className={cn(
-                        isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}>
-                        {formatTime(duration || 0)}
-                    </span>
+                <div className={cn(
+                    "text-sm font-medium tabular-nums",
+                    isCurrentUser ? "text-primary-foreground" : "text-foreground"
+                )}>
+                    {formatTime(duration || 0)}
                 </div>
             </div>
         </div>

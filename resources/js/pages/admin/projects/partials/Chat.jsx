@@ -695,13 +695,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                         <MessageSquare className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="lg:h-screen lg:w-1/3 xl:w-1/4 p-4">
-                    <SheetHeader>
-                        <SheetTitle>Team Chat</SheetTitle>
-                        <SheetDescription>Chat with your team members</SheetDescription>
+                <SheetContent side="right" className="lg:h-screen lg:w-1/3 xl:w-1/4 p-0 flex flex-col bg-gradient-to-b from-background to-muted/20">
+                    <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+                        <SheetTitle className="text-xl font-semibold">Team Chat</SheetTitle>
+                        <SheetDescription className="text-sm">Chat with your team members</SheetDescription>
                     </SheetHeader>
-                    <div className="flex-1 mt-4 mb-4 lg:h-[calc(100vh-200px)] overflow-y-auto scrollbar-hide" ref={scrollAreaRef}>
-                        <div className="space-y-4 pr-2">
+                    <div className="flex-1 mt-2 mb-2 lg:h-[calc(100vh-200px)] overflow-y-auto scrollbar-hide px-4" ref={scrollAreaRef}>
+                        <div className="space-y-3 pr-2 pb-2">
                             {messages.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     No messages yet. Start the conversation!
@@ -791,10 +791,11 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     </div>
                                                 ) : (
                                                 <div className={cn(
-                                                    "rounded-lg px-3 py-2 text-sm relative group/message-bubble",
+                                                    "rounded-xl px-4 py-3 text-sm relative group/message-bubble transition-all duration-200",
+                                                    "shadow-sm hover:shadow-md",
                                                     isCurrentUser 
-                                                        ? "bg-primary text-primary-foreground rounded-br-sm" 
-                                                        : "bg-muted rounded-bl-sm"
+                                                        ? "bg-gradient-to-br from-primary to-primary/95 text-primary-foreground rounded-br-sm border border-primary/20" 
+                                                        : "bg-gradient-to-br from-muted to-muted/80 rounded-bl-sm border border-border/50"
                                                 )}>
                                                     {message.attachment_type === 'audio' && message.attachment_path ? (
                                                         <VoiceMessage
@@ -804,7 +805,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                         />
                                                     ) : (
                                                         message.content && (
-                                                            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                                                            <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
                                                         )
                                                     )}
                                                         {message.updated_at && message.updated_at !== message.timestamp && (
@@ -910,7 +911,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                                     >
                                                         <Reply className="h-3 w-3" />
                                                     </Button>
-                                                    {isCurrentUser && editingMessage?.id !== message.id && (
+                                                    {isCurrentUser && editingMessage?.id !== message.id && message.attachment_type !== 'audio' && (
                                                         <>
                                                             <Button
                                                                 variant="ghost"
@@ -947,9 +948,9 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
-                    <SheetFooter className="flex-col gap-2">
+                    <SheetFooter className="flex-col gap-2 px-4 pb-4 pt-2 border-t border-border/50 bg-background/80 backdrop-blur-sm">
                         {replyingTo && (
-                            <div className="w-full p-2 bg-muted rounded-lg flex items-center justify-between">
+                            <div className="w-full p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg flex items-center justify-between shadow-sm">
                                 <div className="flex-1">
                                     <div className="text-xs text-muted-foreground">Replying to {replyingTo.user.name}</div>
                                     <div className="text-sm truncate">{replyingTo.content}</div>
@@ -1106,13 +1107,18 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                                     placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : "Type something..."}
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    className="flex-1"
+                                    className="flex-1 rounded-lg border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                                     disabled={isSending}
                                 />
                                 <Button 
                                     type="submit" 
                                     size="icon" 
-                                    className="h-9 w-9"
+                                    className={cn(
+                                        "h-9 w-9 rounded-lg transition-all duration-200",
+                                        "bg-primary text-primary-foreground hover:bg-primary/90",
+                                        "hover:scale-110 active:scale-95 shadow-md hover:shadow-lg",
+                                        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    )}
                                     disabled={
                                         isSending || 
                                         (
