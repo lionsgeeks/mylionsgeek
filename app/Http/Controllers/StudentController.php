@@ -40,8 +40,14 @@ class StudentController extends Controller
     public function getUserInfo($id)
     {
         $user = User::find($id);
-        $userExperience = User::with('experiences')->findOrFail($id);
-        $userEducation = User::with('educations')->findOrFail($id);
+        $userExperience = User::with(['experiences' => function ($query) {
+            $query->orderBy('start_year', 'desc')->orderBy('start_month', 'desc');
+        }])->findOrFail($id);
+        $userEducation = User::with([
+            'educations' => function ($query) {
+                $query->orderBy('start_year', 'desc')->orderBy('start_month', 'desc');
+            }
+        ])->findOrFail($id);
         $userSocialLinks = User::with(['socialLinks' => function ($query) {
             $query->ordered();
         }])->findOrFail($id);
