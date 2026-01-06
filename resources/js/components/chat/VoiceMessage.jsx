@@ -190,14 +190,61 @@ export default function VoiceMessage({
                 )}
             </button>
 
+            {/* Waveform bars - always visible, animated when playing */}
+            <div className="flex items-end gap-1 h-6 px-2">
+                {[...Array(5)].map((_, i) => {
+                    // Different base heights for visual variety
+                    const baseHeights = [12, 18, 14, 20, 16];
+                    const baseHeight = baseHeights[i];
+                    
+                    return (
+                        <div
+                            key={i}
+                            className={cn(
+                                "w-1 rounded-full transition-all duration-300",
+                                isCurrentUser 
+                                    ? "bg-primary-foreground" 
+                                    : "bg-foreground"
+                            )}
+                            style={{
+                                height: isPlaying ? undefined : `${baseHeight}px`,
+                                animation: isPlaying 
+                                    ? `waveform ${0.6 + i * 0.1}s ease-in-out infinite`
+                                    : 'none',
+                                animationDelay: isPlaying ? `${i * 0.15}s` : '0s',
+                                minHeight: '8px',
+                                opacity: isPlaying ? 1 : 0.6
+                            }}
+                        />
+                    );
+                })}
+            </div>
+
             {/* Duration display */}
-            <div className="flex-1 min-w-0">
-                <div className={cn(
-                    "text-sm font-medium tabular-nums",
-                    isCurrentUser ? "text-primary-foreground" : "text-foreground"
-                )}>
-                    {formatTime(duration || 0)}
-                </div>
+            <div className="flex-1 min-w-0 flex flex-col">
+                {isPlaying ? (
+                    <>
+                        <div className={cn(
+                            "text-xs font-medium tabular-nums",
+                            isCurrentUser ? "text-primary-foreground/90" : "text-foreground/90"
+                        )}>
+                            {formatTime(currentTime || 0)}
+                        </div>
+                        <div className={cn(
+                            "text-xs tabular-nums opacity-70",
+                            isCurrentUser ? "text-primary-foreground/70" : "text-foreground/70"
+                        )}>
+                            {formatTime(duration || 0)}
+                        </div>
+                    </>
+                ) : (
+                    <div className={cn(
+                        "text-sm font-medium tabular-nums",
+                        isCurrentUser ? "text-primary-foreground" : "text-foreground"
+                    )}>
+                        {formatTime(duration || 0)}
+                    </div>
+                )}
             </div>
         </div>
     );
