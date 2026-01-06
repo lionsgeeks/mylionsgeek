@@ -19,27 +19,52 @@ class ChatController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        // Get IDs of users that the current user follows
-        $followingIds = \App\Models\Follower::where('follower_id', $user->id)
-            ->pluck('followed_id')
-            ->toArray();
+            // Get IDs of users that the current user follows
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
 
-        $conversations = Conversation::where(function ($query) use ($user, $followingIds) {
-            $query->where('user_one_id', $user->id)
-                ->whereIn('user_two_id', $followingIds);
-        })->orWhere(function ($query) use ($user, $followingIds) {
-            $query->where('user_two_id', $user->id)
-                ->whereIn('user_one_id', $followingIds);
-        })
+            // If no following IDs, return empty array
+            if (empty($followingIds)) {
+                return response()->json([
+                    'conversations' => [],
+                ]);
+            }
+
+            $conversations = Conversation::where(function ($query) use ($user, $followingIds) {
+                $query->where('user_one_id', $user->id)
+                    ->whereIn('user_two_id', $followingIds);
+            })->orWhere(function ($query) use ($user, $followingIds) {
+                $query->where('user_two_id', $user->id)
+                    ->whereIn('user_one_id', $followingIds);
+            })
             ->with(['userOne', 'userTwo', 'messages' => function ($query) {
                 $query->latest()->limit(1);
             }])
             ->orderBy('last_message_at', 'desc')
             ->get()
             ->map(function ($conversation) use ($user) {
-                $otherUser = $conversation->getOtherUser($user->id);
+                // Ensure relationships are loaded
+                if (!$conversation->relationLoaded('userOne')) {
+                    $conversation->load('userOne');
+                }
+                if (!$conversation->relationLoaded('userTwo')) {
+                    $conversation->load('userTwo');
+                }
+                
+                // Determine other user manually for safety
+                $otherUser = $conversation->user_one_id == $user->id 
+                    ? $conversation->userTwo 
+                    : $conversation->userOne;
+                
+                if (!$otherUser) {
+                    // Skip this conversation if we can't determine the other user
+                    return null;
+                }
+                
                 $unreadCount = $conversation->getUnreadCountForUser($user->id);
                 $lastMessage = $conversation->messages->first();
 
@@ -62,17 +87,31 @@ class ChatController extends Controller
                     'last_message_at' => $conversation->last_message_at?->toISOString(),
                     'created_at' => $conversation->created_at->toISOString(),
                 ];
-            });
+            })
+            ->filter(function ($conversation) {
+                return $conversation !== null;
+            })
+            ->values(); // Re-index the array
 
-        if (request()->header('X-Inertia')) {
-            return redirect()->back()->with([
+            if (request()->header('X-Inertia')) {
+                return redirect()->back()->with([
+                    'conversations' => $conversations,
+                ]);
+            }
+
+            return response()->json([
                 'conversations' => $conversations,
             ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('ChatController@index error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Failed to fetch conversations',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'conversations' => $conversations,
-        ]);
     }
 
     /**
@@ -374,6 +413,28 @@ class ChatController extends Controller
         return response()->json([
             'message' => $messageData,
         ], 201);
+    }
+
+    /**
+     * Get IDs of users that the current user follows
+     */
+    public function getFollowingIds()
+    {
+        try {
+            $user = Auth::user();
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
+
+            return response()->json([
+                'following_ids' => $followingIds,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch following IDs',
+                'following_ids' => []
+            ], 500);
+        }
     }
 
     /**
