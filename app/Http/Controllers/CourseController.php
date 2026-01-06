@@ -41,31 +41,7 @@ class CourseController extends Controller
             'description' => $validated['description'] ?? null,
         ];
 
-        $coursesDir = public_path('/storage/img/courses');
-        if (!file_exists($coursesDir)) {
-            mkdir($coursesDir, 0755, true);
-        }
-
-        if ($request->hasFile('badge1')) {
-            $file = $request->file('badge1');
-            $filename = time() . '_badge1_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($coursesDir, $filename);
-            $data['badge1'] = $filename;
-        }
-
-        if ($request->hasFile('badge2')) {
-            $file = $request->file('badge2');
-            $filename = time() . '_badge2_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($coursesDir, $filename);
-            $data['badge2'] = $filename;
-        }
-
-        if ($request->hasFile('badge3')) {
-            $file = $request->file('badge3');
-            $filename = time() . '_badge3_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($coursesDir, $filename);
-            $data['badge3'] = $filename;
-        }
+        
 
         Course::create($data);
 

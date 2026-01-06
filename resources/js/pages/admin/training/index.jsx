@@ -560,11 +560,11 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                 <h2 className="text-lg font-bold text-dark dark:text-light mb-4">
                                                     Trainings Statistics
                                                 </h2>
-                                                <div className="grid grid-cols-5 gap-6">
+                                                <div className="grid grid-cols-4 gap-6">
                                                     {[
                                                         { label: 'Students', value: totalStudents },
                                                         { label: 'Trainings', value: trainingsTotal },
-                                                        { label: 'Pending', value: pendingCount },
+                                                        // { label: 'Pending', value: pendingCount },
                                                         { label: 'Active', value: trainingsActiv },
                                                         { label: 'Done', value: completedCount },
                                                     ].map((stat, i) => (

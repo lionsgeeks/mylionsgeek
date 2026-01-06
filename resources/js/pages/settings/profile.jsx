@@ -35,15 +35,9 @@ const platformIcons = {
 
 const platforms = [
     { value: 'instagram', label: 'Instagram', domains: ['instagram.com', 'instagr.am'] },
-    { value: 'facebook', label: 'Facebook', domains: ['facebook.com', 'fb.com'] },
-    { value: 'twitter', label: 'Twitter', domains: ['twitter.com', 'x.com'] },
     { value: 'github', label: 'GitHub', domains: ['github.com'] },
     { value: 'linkedin', label: 'LinkedIn', domains: ['linkedin.com'] },
     { value: 'behance', label: 'Behance', domains: ['behance.net'] },
-    { value: 'pinterest', label: 'Pinterest', domains: ['pinterest.com', 'pinterest.co'] },
-    { value: 'discord', label: 'Discord', domains: ['discord.com', 'discord.gg'] },
-    { value: 'threads', label: 'Threads', domains: ['threads.net'] },
-    { value: 'reddit', label: 'Reddit', domains: ['reddit.com'] },
     { value: 'portfolio', label: 'Portfolio', domains: [] }, // Portfolio doesn't require specific domains
 ];
 
@@ -63,9 +57,9 @@ export default function Profile({ mustVerifyEmail, status }) {
     const [deletingSocial, setDeletingSocial] = useState(null)
     const links = auth?.user?.social_links || [];
     const visibleLinks = links.slice(0, 2);
-    
+
     // Filter out platforms that are already added
-    const availablePlatforms = platforms.filter(platform => 
+    const availablePlatforms = platforms.filter(platform =>
         !links.some(link => link.title === platform.value)
     );
 
@@ -280,6 +274,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                         onOpen={openSocialModal}
                         onOpenChange={setOpenSocialModal}
                         initialLink={editingSocial}
+                        availiblePlatfroms={availablePlatforms}
                     />
                 )}
                 {openDeleteSocial && (

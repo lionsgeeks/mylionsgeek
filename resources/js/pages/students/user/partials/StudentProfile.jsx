@@ -6,6 +6,7 @@ import RightColumn from './profile/RightColumn';
 
 const StudentProfile = ({ user }) => {
     const currentUser = user.user
+    
 
 
     const userFunctionality = (user) => {
