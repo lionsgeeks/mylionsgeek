@@ -53,7 +53,7 @@ export default function StudentExercises({ training, exercices }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    post('/student/exercises/submit', {
+    post('/students/exercises/submit', {
       onSuccess: () => {
         closeSubmissionModal();
         router.reload();
@@ -68,7 +68,7 @@ export default function StudentExercises({ training, exercices }) {
 
   const confirmDelete = () => {
     if (submissionToDelete) {
-      router.delete(`/student/exercises/submissions/${submissionToDelete.id}`, {
+      router.delete(`/students/exercises/submissions/${submissionToDelete.id}`, {
         onSuccess: () => {
           setDeleteModalOpen(false);
           setSubmissionToDelete(null);
@@ -80,7 +80,7 @@ export default function StudentExercises({ training, exercices }) {
 
   const handleRequestReview = (submission) => {
     setRequestingReview(true);
-    router.post(`/student/exercises/submissions/${submission.id}/request-review`, {}, {
+    router.post(`/students/exercises/submissions/${submission.id}/request-review`, {}, {
       onSuccess: () => {
         setRequestingReview(false);
         router.reload();

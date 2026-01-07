@@ -49,6 +49,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
     const [remotePosition, setRemotePosition] = useState(false);
     const [dateError, setDateError] = useState('');
     const [formError, setFormError] = useState('');
+    const [error, setError] = useState(null);
     const { stopScrolling } = helpers()
     const { data, setData, processing, errors } = useForm({
         title: '',
@@ -89,13 +90,12 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
             return;
         }
 
-        router.post(`/users/experience`, data, {
+        router.post(`/students/experience`, data, {
             onSuccess: () => {
                 onOpenChange(false)
             },
             onError: (errors) => {
-                setFormError('Failed to create experience. Please try again.');
-                console.log('Form errors:', errors);
+                setError(error)
             }
         })
     }
@@ -155,7 +155,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 placeholder="Ex: Retail Sales Manager"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.title} className="mt-1" />
+                            <InputError message={error?.title} className="mt-1" />
                         </div>
 
                         {/* Employment Type */}
@@ -175,7 +175,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                     </option>
                                 ))}
                             </select>
-                            <InputError message={errors.employment_type} className="mt-1" />
+                            <InputError message={error?.employment_type} className="mt-1" />
                             <p className="text-xs text-beta/70 dark:text-light/70 mt-1">Learn more about employment types.</p>
                         </div>
 
@@ -192,7 +192,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 placeholder="Ex: Microsoft"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.company} className="mt-1" />
+                            <InputError message={error?.company} className="mt-1" />
                         </div>
 
                         {/* Currently Working Checkbox */}
@@ -227,7 +227,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.start_month} className="mt-1" />
+                                <InputError message={error?.start_month} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -245,7 +245,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.start_year} className="mt-1" />
+                                <InputError message={error?.start_year} className="mt-1" />
                             </div>
                         </div>
 
@@ -268,7 +268,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.end_month} className="mt-1" />
+                                    <InputError message={error?.end_month} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -286,7 +286,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.end_year} className="mt-1" />
+                                    <InputError message={error?.end_year} className="mt-1" />
                                 </div>
                             </div>
                         )}
@@ -328,7 +328,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 placeholder="Ex: London, United Kingdom"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.location} className="mt-1" />
+                            <InputError message={error?.location} className="mt-1" />
                         </div>
 
                         {/* Description */}
@@ -344,7 +344,7 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
                                 placeholder="Tell your major duties and successes, highlighting specific projects."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
-                            <InputError message={errors.description} className="mt-1" />
+                            <InputError message={error?.description} className="mt-1" />
                         </div>
                     </div>
 

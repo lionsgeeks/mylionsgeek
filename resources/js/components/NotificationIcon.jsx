@@ -44,7 +44,7 @@ export default function NotificationIcon() {
                 const data = await response.json();
                 const apiNotifications = data.notifications || [];
 
-                // console.log('Fetched notifications:', apiNotifications.length, apiNotifications);
+                // //console.log('Fetched notifications:', apiNotifications.length, apiNotifications);
 
                 apiNotifications.forEach((notif) => {
                     try {

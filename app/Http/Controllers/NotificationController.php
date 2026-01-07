@@ -162,7 +162,7 @@ class NotificationController extends Controller
 
                     foreach ($projectNotifications as $notif) {
                         if ($notif->student && $notif->project) {
-                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            $link = $notif->path ?? "/students/project/{$notif->project_id}";
                             
                             $notifications[] = [
                                 'id' => 'project-submission-' . $notif->id,
@@ -317,7 +317,7 @@ class NotificationController extends Controller
                     'sender_name' => $senderName,
                     'sender_image' => $senderImage,
                     'message' => "{$senderName} started following you",
-                    'link' => "/student/{$notif->follower_id}",
+                    'link' => "/students/{$notif->follower_id}",
                     'icon_type' => 'user',
                     'created_at' => $notif->created_at->toISOString(),
                     'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
@@ -336,7 +336,7 @@ class NotificationController extends Controller
 
                     foreach ($projectStatusNotifications as $notif) {
                         if ($notif->project) {
-                            $link = $notif->path ?? "/student/project/{$notif->project_id}";
+                            $link = $notif->path ?? "/students/project/{$notif->project_id}";
                             $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
                             
                             $iconType = $notif->status === 'approved' ? 'check-circle' : 'x-circle';

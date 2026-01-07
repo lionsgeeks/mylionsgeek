@@ -118,7 +118,7 @@ export default function ProjectShow({ project }) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>   router.visit(`/student/project/${project.id}`)}
+                            onClick={() =>   router.visit(`/students/project/${project.id}`)}
                             className="h-9 w-9"
                         >
                             <ArrowLeft className="h-5 w-5" />
@@ -163,7 +163,7 @@ export default function ProjectShow({ project }) {
                     {/* Owner Actions */}
                     {(isOwner && (project.status === 'pending' || project.status === 'rejected')) && (
                         <Button
-                            onClick={() => router.visit(`/student/projects?edit=${project.id}`)}
+                            onClick={() => router.visit(`/students/projects?edit=${project.id}`)}
                             className="bg-[var(--color-alpha)] text-black hover:text-white dark:hover:text-black"
                         >
                             <Edit className="w-4 h-4 mr-2" />

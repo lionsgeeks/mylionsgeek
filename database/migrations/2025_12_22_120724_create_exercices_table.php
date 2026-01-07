@@ -17,8 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('file')->nullable();
             $table->string('file_type')->nullable(); // image, pdf, video
-            $table->foreignId('training_id')->constrained('formations')->onDelete('cascade');
-            $table->foreignId('model_id')->nullable()->constrained('models')->onDelete('set null');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
             $table->timestamps();
         });
     }

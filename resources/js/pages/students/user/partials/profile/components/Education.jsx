@@ -6,7 +6,7 @@ import { helpers } from '../../../../../../components/utils/helpers';
 import { EducationMenuModal } from '../../../../../../components/EducationMenuModal';
 
 const Education = ({ user }) => {
-    console.log(user);
+    //console.log(user);
 
     const { auth } = usePage().props
     const [openModal, setOpenModal] = useState(false)

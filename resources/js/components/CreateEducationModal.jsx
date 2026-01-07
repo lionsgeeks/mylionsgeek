@@ -38,6 +38,7 @@ const YEARS = generateYears();
 const CreateEducationModal = ({ onOpen, onOpenChange }) => {
     const [currentlyStudying, setCurrentlyStudying] = useState(false);
     const [dateError, setDateError] = useState('');
+    const [error, setError] = useState(null);
     const { stopScrolling } = helpers()
     const { data, setData, processing, errors } = useForm({
         school: '',
@@ -78,16 +79,16 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
         }
 
         try {
-            router.post(`/users/education`, data, {
+            router.post(`/students/education`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
                 },
                 onError: (error) => {
-                    console.log(error);
+                    setError(error)
                 }
             })
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     }
 
@@ -97,6 +98,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
             [e.target.name]: e.target.value
         });
     };
+    
 
     return (
         <>
@@ -130,7 +132,8 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 placeholder="Ex: Harvard University"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.school} className="mt-1" />
+                            <InputError message={error?.school} className="mt-1" />
+                            {/* {console.log(error.school)} */}
                         </div>
 
                         {/* Degree */}
@@ -146,7 +149,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 placeholder="Ex: Bachelor's"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.degree} className="mt-1" />
+                            <InputError message={error?.degree} className="mt-1" />
                         </div>
 
                         {/* Field of Study */}
@@ -162,7 +165,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 placeholder="Ex: Computer Science"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.fieldOfStudy} className="mt-1" />
+                            <InputError message={error?.fieldOfStudy} className="mt-1" />
                         </div>
 
                         {/* Currently Studying Checkbox */}
@@ -197,7 +200,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startMonth} className="mt-1" />
+                                <InputError message={error?.startMonth} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -215,7 +218,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startYear} className="mt-1" />
+                                <InputError message={error?.startYear} className="mt-1" />
                             </div>
                         </div>
 
@@ -238,7 +241,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endMonth} className="mt-1" />
+                                    <InputError message={error?.endMonth} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -256,7 +259,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endYear} className="mt-1" />
+                                    <InputError message={error?.endYear} className="mt-1" />
                                 </div>
                             </div>
                         )}
@@ -284,7 +287,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 placeholder="Describe your academic achievements, activities, honors, or relevant coursework."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
-                            <InputError message={errors.description} className="mt-1" />
+                            <InputError message={error?.description} className="mt-1" />
                         </div>
                     </div>
 

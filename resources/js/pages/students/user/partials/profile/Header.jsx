@@ -10,7 +10,7 @@ import FollowModal from '../../../../../components/FollowModal';
 import ProfilePictureModal from '../../../../../components/ProfilePictureModal';
 
 const Header = ({ user, userFunctionality }) => {
-    console.log(user);
+    //console.log(user);
     
     const [openEdit, setOpenEdit] = useState(false);
     const [openFollowModal, setOpenFollowModal] = useState([]);
@@ -71,7 +71,7 @@ const Header = ({ user, userFunctionality }) => {
         formData.append('cover', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
-        router.post(`/users/changeCover/${userId}`, formData, {
+        router.post(`/students/changeCover/${userId}`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
             },
@@ -92,17 +92,17 @@ const Header = ({ user, userFunctionality }) => {
         formData.append('image', file); // Append the selected file to FormData
 
         // Send the POST request with the form data
-        router.post(`/student/users/changeProfileImage/${userId}`, formData, {
+        router.post(`/students/changeProfileImage/${userId}`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
             },
             onSuccess: () => {
                 //('Cover changed successfully');
-                console.log('Image changed successfully');
+                //console.log('Image changed successfully');
             },
             onError: (error) => {
                 //('Cover not changed', error);
-                console.log('Image change error: ' + error);
+                //console.log('Image change error: ' + error);
             }
         });
     };
@@ -359,7 +359,7 @@ const Header = ({ user, userFunctionality }) => {
             </div>
             {openEdit && (
                 <>
-                    {console.log('Header - user data passed to EditModal:', user)}
+                    {/* //console.log('Header - user data passed to EditModal:', user)} */}
                     <EditUserModal 
                         open={openEdit} 
                         editedUser={user} 

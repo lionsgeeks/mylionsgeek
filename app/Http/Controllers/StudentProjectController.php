@@ -196,7 +196,7 @@ class StudentProjectController extends Controller
             ->update(['read_at' => now()]);
 
         // Create notification for the student
-        $projectPath = "/student/project/{$studentProject->id}";
+        $projectPath = "/students/project/{$studentProject->id}";
         $message = "Your project \"{$studentProject->title}\" has been approved!";
         
         ProjectStatusNotification::create([
@@ -233,7 +233,7 @@ class StudentProjectController extends Controller
             ->update(['read_at' => now()]);
 
         // Create notification for the student
-        $projectPath = "/student/project/{$studentProject->id}";
+        $projectPath = "/students/project/{$studentProject->id}";
         $message = "Your project \"{$studentProject->title}\" has been rejected.";
         
         ProjectStatusNotification::create([
@@ -367,7 +367,7 @@ class StudentProjectController extends Controller
      */
     private function notifyAdminsAndCoaches(StudentProject $project, User $student)
     {
-        $projectPath = "/student/project/{$project->id}";
+        $projectPath = "/students/project/{$project->id}";
         $message = "{$student->name} submitted a new project: " . ($project->title ?? 'Untitled Project');
 
         // Get all admins

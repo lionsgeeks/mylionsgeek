@@ -36,13 +36,13 @@ export function useUnoRoom(auth, updateGameStateFromData) {
         if (!isConnected || !roomId) return;
 
         try {
-            console.log('🔄 Fetching game state from server...');
+            //console.log('🔄 Fetching game state from server...');
             const response = await axios.get(`/api/games/state/${roomId}`);
             if (response.data.exists && response.data.game_state) {
-                console.log('✅ Game state fetched, updating...');
+                //console.log('✅ Game state fetched, updating...');
                 updateGameStateFromData(response.data.game_state);
             } else {
-                console.log('ℹ️ No existing game state found');
+                //console.log('ℹ️ No existing game state found');
             }
         } catch (error) {
             console.error('❌ Failed to fetch game state:', error);

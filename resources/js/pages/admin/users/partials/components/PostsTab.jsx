@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PostCard from "../../../../../components/post/PostCard";
 
 export default function PostsTab({ posts, user }) {
-  console.log(posts);
+  //console.log(posts);
   return (
     <>
       <div className="mx-auto p-4 bg-[#fafafa] dark:bg-[#171717] min-h-screen">

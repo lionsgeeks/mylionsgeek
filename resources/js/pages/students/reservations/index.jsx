@@ -91,7 +91,7 @@ export default function ReservationsPage() {
   };
 
   const breadcrumbs = [
-    { title: 'My Reservations', href: '/student/reservations' }
+    { title: 'My Reservations', href: '/students/reservations' }
   ];
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -108,7 +108,7 @@ export default function ReservationsPage() {
               if (row.type === 'cowork' || row.place_type === 'cowork') {
                 return;
               }
-              router.visit(`/student/reservations/${row.id}/details`);
+              router.visit(`/students/reservations/${row.id}/details`);
             }}
             renderActions={(row) => (
               !row.canceled && (
@@ -124,7 +124,7 @@ export default function ReservationsPage() {
             emptyState={
               <div className="flex flex-col items-center gap-3">
                 <span>No reservations yet. Time to book your first one!</span>
-                <Button variant="default" onClick={() => router.visit('/student/spaces')}>
+                <Button variant="default" onClick={() => router.visit('/students/spaces')}>
                   Reserve Now
                 </Button>
               </div>
