@@ -159,6 +159,21 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     },
                 }).catch(err => console.error('Failed to mark as read:', err));
             }
+            
+            // When other user sends a message, it means they've seen your messages
+            // So mark all your sent messages as read immediately
+            if (isFromOtherUser) {
+                setMessages(prev => prev.map(msg => {
+                    if (msg.sender_id === currentUser.id && !msg.is_read) {
+                        return {
+                            ...msg,
+                            is_read: true,
+                            read_at: messageData.created_at, // Use the new message's timestamp
+                        };
+                    }
+                    return msg;
+                }));
+            }
 
             scrollToBottom();
         };
@@ -168,20 +183,57 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             setMessages(prev => prev.filter(msg => msg.id !== data.message_id));
         };
 
-        // Handle seen status updates
+        // Handle seen status updates - updates when ANY user marks messages as read
         const handleSeen = (data) => {
-            if (data.user_id !== currentUser.id) {
-                setSeenStatus(prev => ({
-                    ...prev,
-                    [conversation.id]: {
-                        read_at: data.read_at,
-                        user_id: data.user_id,
-                    },
-                }));
+            console.log('📖 Seen event received:', data);
+            
+            // Update seen status for the conversation
+            setSeenStatus(prev => ({
+                ...prev,
+                [conversation.id]: {
+                    read_at: data.read_at,
+                    user_id: data.user_id,
+                },
+            }));
 
-                // Update message read status
+            // If the other user marked messages as read, update our sent messages
+            if (data.user_id !== currentUser.id) {
+                // Update ALL messages sent by current user that were sent before or at the read_at time
+                // This ensures read receipts update in real-time
+                const readAtTime = new Date(data.read_at).getTime();
+                
+                setMessages(prev => {
+                    let updatedCount = 0;
+                    const updated = prev.map(msg => {
+                        if (msg.sender_id === currentUser.id) {
+                            const msgTime = new Date(msg.created_at).getTime();
+                            // Update if message was sent before or at the read time
+                            if (msgTime <= readAtTime) {
+                                // Always update to the latest read_at timestamp
+                                const currentReadAt = msg.read_at ? new Date(msg.read_at).getTime() : 0;
+                                if (!msg.is_read || currentReadAt < readAtTime) {
+                                    updatedCount++;
+                                    return {
+                                        ...msg,
+                                        is_read: true,
+                                        read_at: data.read_at,
+                                    };
+                                }
+                            }
+                        }
+                        return msg;
+                    });
+                    
+                    if (updatedCount > 0) {
+                        console.log(`✅ Updated ${updatedCount} message(s) to read status`);
+                    }
+                    
+                    return updated;
+                });
+            } else {
+                // If current user marked messages as read, update received messages
                 setMessages(prev => prev.map(msg => {
-                    if (msg.sender_id === currentUser.id && !msg.is_read) {
+                    if (msg.sender_id !== currentUser.id && !msg.is_read) {
                         return {
                             ...msg,
                             is_read: true,
@@ -284,23 +336,42 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 const pendingMessages = prev.filter(m => m.pending && pendingTempIdsRef.current.has(m.tempId));
                 const existingIds = new Set(fetchedMessages.map(m => m.id));
                 
+                // Update read status for existing messages that were just fetched
+                // This ensures read receipts update immediately when messages are marked as read
+                const updatedPrev = prev.map(msg => {
+                    const fetchedMsg = fetchedMessages.find(m => m.id === msg.id);
+                    if (fetchedMsg && fetchedMsg.is_read && fetchedMsg.read_at) {
+                        return {
+                            ...msg,
+                            is_read: fetchedMsg.is_read,
+                            read_at: fetchedMsg.read_at,
+                        };
+                    }
+                    return msg;
+                });
+                
                 // Filter pending li jawawoch (dakhalo f fetchedMessages)
                 const stillPending = pendingMessages.filter(m => !existingIds.has(m.tempId));
                 
-                // Merge fetched w pending
-                return [...fetchedMessages, ...stillPending];
+                // Merge: use updatedPrev for existing messages, add new fetched messages, and keep still pending
+                const existingInUpdated = new Set(updatedPrev.map(m => m.id));
+                const newFetched = fetchedMessages.filter(m => !existingInUpdated.has(m.id));
+                return [...updatedPrev, ...newFetched, ...stillPending];
             });
 
-            // Mark as read
-            await fetch(`/chat/conversation/${conversation.id}/read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                },
-            });
+            // Mark messages as read when conversation is opened (if chatbox is visible and focused)
+            // This will broadcast seen status via Ably automatically
+            if (!document.hidden && document.hasFocus()) {
+                await fetch(`/chat/conversation/${conversation.id}/read`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                }).catch(err => console.error('Failed to mark as read:', err));
+            }
         } catch (error) {
             console.error('Failed to fetch messages:', error);
         } finally {
@@ -620,14 +691,28 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             const data = await response.json();
             const newMessageData = data.message;
 
-            // Replace optimistic message with real one
+            // When you send a message, mark all previous messages from the other user as read
+            // This happens on the backend, but we also update the UI immediately
             setMessages(prev => {
                 // Remove optimistic message
                 const filtered = prev.filter(msg => msg.tempId !== tempId);
+                
+                // Mark all messages from other user as read (since you replied, you've seen them)
+                const updated = filtered.map(msg => {
+                    if (msg.sender_id !== currentUser.id && !msg.is_read) {
+                        return {
+                            ...msg,
+                            is_read: true,
+                            read_at: new Date().toISOString(),
+                        };
+                    }
+                    return msg;
+                });
+                
                 // Add real message (avoid duplicates)
-                const exists = filtered.some(msg => msg.id === newMessageData.id);
+                const exists = updated.some(msg => msg.id === newMessageData.id);
                 if (!exists) {
-                    return [...filtered, {
+                    return [...updated, {
                         ...newMessageData,
                         sender: newMessageData.sender || {
                             id: currentUser.id,
@@ -636,7 +721,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         }
                     }];
                 }
-                return filtered;
+                return updated;
             });
 
             // Clean up temp ID

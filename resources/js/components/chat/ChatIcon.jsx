@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePage } from '@inertiajs/react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/ablyManager';
 import { initializeGlobalChatListener, subscribeToConversationForNotifications, unsubscribeFromConversationNotifications } from '@/lib/globalChatListener';
 import ConversationsList from './ConversationsList';
@@ -50,7 +50,11 @@ export default function ChatIcon() {
                     },
                 });
 
-                if (!response.ok) return;
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('Failed to fetch conversations:', errorData);
+                    return;
+                }
 
                 const data = await response.json();
                 const conversations = data.conversations || [];
@@ -130,9 +134,10 @@ export default function ChatIcon() {
                 </Button>
             </DialogTrigger>
             <DialogContent 
-                className="w-full h-full max-w-none max-h-none p-0 gap-0 m-0 rounded-none translate-x-[-50%] translate-y-[-50%] top-[50%] left-[50%] overflow-hidden shadow-2xl border-2 md:!w-[70vw] md:!h-[90vh] md:!max-w-[70vw] md:!max-h-[90vh] md:rounded-xl md:translate-x-[-50%] md:translate-y-[-50%] md:top-[50%] md:left-[50%] !grid-rows-none"
+                className="!w-[95vw] !h-[95vh] !max-w-none !max-h-none p-0 gap-0 rounded-xl overflow-hidden shadow-2xl border-2 md:!w-[70vw] md:!h-[90vh] md:!max-w-[70vw] md:!max-h-[90vh] !grid !grid-rows-1"
                 showCloseButton={false}
             >
+                <DialogTitle className="sr-only">Messages</DialogTitle>
                 <ConversationsList 
                     ref={conversationsListRef}
                     onCloseChat={() => setIsOpen(false)}

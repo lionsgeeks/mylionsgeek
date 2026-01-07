@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -29,7 +30,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $userId = Auth::id();
-        
+
         // Filter projects: show only projects where user is owner or team member
         $query = Project::with(['creator', 'users:id,name,image', 'tasks'])
             ->withCount(['tasks', 'users'])
@@ -70,7 +71,7 @@ class ProjectController extends Controller
                     $userQuery->where('users.id', $userId);
                 });
         });
-        
+
         $stats = [
             'total' => $accessibleProjectsQuery->count(),
             'active' => (clone $accessibleProjectsQuery)->where('status', 'active')->count(),
@@ -138,7 +139,7 @@ class ProjectController extends Controller
             // Create predefined tasks if any were selected
             if ($request->has('predefined_tasks')) {
                 $predefinedTasks = $request->predefined_tasks;
-                
+
                 // Handle different input types: string (JSON), array, or null/empty
                 if (is_string($predefinedTasks) && !empty($predefinedTasks)) {
                     $decoded = json_decode($predefinedTasks, true);
@@ -146,7 +147,7 @@ class ProjectController extends Controller
                 } elseif (!is_array($predefinedTasks)) {
                     $predefinedTasks = [];
                 }
-                
+
                 // Ensure we have a valid array with items
                 if (is_array($predefinedTasks) && count($predefinedTasks) > 0) {
                     // Map task values to their titles
@@ -194,17 +195,17 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         $userId = Auth::id();
-        
+
         // Check if user has access: owner or team member
         $isOwner = $project->created_by === $userId;
         $isTeamMember = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $userId)
             ->exists();
-        
+
         if (!$isOwner && !$isTeamMember) {
             abort(403, 'You do not have access to this project.');
         }
-        
+
         $project->load([
             'creator',
             'users',
@@ -222,7 +223,7 @@ class ProjectController extends Controller
             ->map(function ($projectUser) use ($project) {
                 // Check if this user is the project owner (created_by or has owner role)
                 $isOwner = $project->created_by === $projectUser->user_id || $projectUser->role === 'owner';
-                
+
                 return [
                     'id' => $projectUser->user->id,
                     'name' => $projectUser->user->name ?? 'Unknown',
@@ -239,12 +240,12 @@ class ProjectController extends Controller
         $tasks = $project->tasks()->with(['assignedTo', 'creator'])->get();
         $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
-        
+
         // Get current user's role in this project
         $currentUserProjectRole = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $userId)
             ->first();
-        
+
         // Check if user is project owner or has admin/owner role
         $isProjectAdmin = $currentUserProjectRole && in_array($currentUserProjectRole->role, ['owner', 'admin']);
         $canManageTeam = $isOwner || $isProjectAdmin;
@@ -257,7 +258,7 @@ class ProjectController extends Controller
             'notes' => $notes,
             'currentUserProjectRole' => $currentUserProjectRole ? $currentUserProjectRole->role : null,
             'canManageTeam' => $canManageTeam,
-            'isProjectOwner' => $isProjectOwner
+            'isProjectOwner' => $isOwner
         ]);
     }
 
@@ -272,11 +273,11 @@ class ProjectController extends Controller
         $isTeamMember = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $userId)
             ->exists();
-        
+
         if (!$isOwner && !$isTeamMember) {
             abort(403, 'You do not have access to this project.');
         }
-        
+
         try {
             $request->validate([
                 'name' => 'required|string|max:255',
@@ -325,11 +326,11 @@ class ProjectController extends Controller
         // Only owner can delete the project
         $userId = Auth::id();
         $isOwner = $project->created_by === $userId;
-        
+
         if (!$isOwner) {
             abort(403, 'Only the project owner can delete this project.');
         }
-        
+
         try {
             // Delete project photo if it exists
             if ($project->photo) {
@@ -387,138 +388,138 @@ class ProjectController extends Controller
                 return back()->with('error', 'Please provide at least one email address or username to invite.');
             }
 
-        $invitationsSent = 0;
-        $invitationsCreated = 0;
-        $emailsLogged = 0;
-        $errors = [];
-        $mailDriver = config('mail.default');
+            $invitationsSent = 0;
+            $invitationsCreated = 0;
+            $emailsLogged = 0;
+            $errors = [];
+            $mailDriver = config('mail.default');
 
-        // Process email invitations - always create invitations, never add directly
-        foreach ($emails as $email) {
-            // Check if user is already in project
-            $user = User::where('email', $email)->first();
-            if ($user && $project->users()->where('user_id', $user->id)->exists()) {
-                $errors[] = "{$email} is already a member of this project.";
-                continue;
-            }
-
-            // Check if invitation already exists and is still valid
-            $existingInvitation = ProjectInvitation::where('project_id', $project->id)
-                ->where('email', $email)
-                ->where('is_used', false)
-                ->where('expires_at', '>', now())
-                ->first();
-
-            if ($existingInvitation) {
-                $errors[] = "An invitation has already been sent to {$email}.";
-                continue;
-            }
-
-            // Create invitation
-            $invitation = ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
-            $invitationsCreated++;
-
-            // Send email invitation
-            try {
-                $mailHost = config('mail.mailers.smtp.host');
-                $mailPort = config('mail.mailers.smtp.port');
-                $mailEncryption = config('mail.mailers.smtp.encryption');
-                $mailFrom = config('mail.from.address');
-
-                Log::info("Attempting to send project invitation email to: {$email}");
-                Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}, From: {$mailFrom}");
-
-                Mail::to($email)->send(new ProjectInvitationMail($project, $invitation, $message));
-
-                if ($mailDriver === 'log') {
-                    Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
-                    $emailsLogged++;
-                } else {
-                    Log::info("✅ Project invitation email sent successfully to: {$email}");
-                    $invitationsSent++;
+            // Process email invitations - always create invitations, never add directly
+            foreach ($emails as $email) {
+                // Check if user is already in project
+                $user = User::where('email', $email)->first();
+                if ($user && $project->users()->where('user_id', $user->id)->exists()) {
+                    $errors[] = "{$email} is already a member of this project.";
+                    continue;
                 }
-            } catch (\Exception $e) {
-                $errorMessage = $e->getMessage();
-                Log::error("❌ Failed to send project invitation email to {$email}: {$errorMessage}");
-                Log::error('Exception class: ' . get_class($e));
-                Log::error('Exception trace: ' . $e->getTraceAsString());
 
-                // Provide more helpful error messages
-                if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
-                    $errors[] = "Failed to connect to mail server. Check your SMTP settings in .env file.";
-                } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
-                    $errors[] = "SMTP authentication failed. Check your MAIL_USERNAME and MAIL_PASSWORD in .env file.";
-                } else {
-                    $errors[] = "Failed to send invitation to {$email}: {$errorMessage}";
+                // Check if invitation already exists and is still valid
+                $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+                    ->where('email', $email)
+                    ->where('is_used', false)
+                    ->where('expires_at', '>', now())
+                    ->first();
+
+                if ($existingInvitation) {
+                    $errors[] = "An invitation has already been sent to {$email}.";
+                    continue;
                 }
-            }
-        }
 
-        // Process username invitations - always create invitations, never add directly
-        foreach ($usernames as $username) {
-            $user = User::where('name', $username)->first();
+                // Create invitation
+                $invitation = ProjectInvitation::createInvitation($project->id, $email, null, $role, $message);
+                $invitationsCreated++;
 
-            if (!$user) {
-                $errors[] = "User @{$username} not found.";
-                continue;
-            }
+                // Send email invitation
+                try {
+                    $mailHost = config('mail.mailers.smtp.host');
+                    $mailPort = config('mail.mailers.smtp.port');
+                    $mailEncryption = config('mail.mailers.smtp.encryption');
+                    $mailFrom = config('mail.from.address');
 
-            // Check if user is already in project
-            if ($project->users()->where('user_id', $user->id)->exists()) {
-                $errors[] = "@{$username} is already a member of this project.";
-                continue;
-            }
+                    Log::info("Attempting to send project invitation email to: {$email}");
+                    Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}, From: {$mailFrom}");
 
-            // Check if invitation already exists and is still valid
-            $existingInvitation = ProjectInvitation::where('project_id', $project->id)
-                ->where('username', $username)
-                ->where('is_used', false)
-                ->where('expires_at', '>', now())
-                ->first();
+                    Mail::to($email)->send(new ProjectInvitationMail($project, $invitation, $message));
 
-            if ($existingInvitation) {
-                $errors[] = "An invitation has already been sent to @{$username}.";
-                continue;
-            }
+                    if ($mailDriver === 'log') {
+                        Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
+                        $emailsLogged++;
+                    } else {
+                        Log::info("✅ Project invitation email sent successfully to: {$email}");
+                        $invitationsSent++;
+                    }
+                } catch (\Exception $e) {
+                    $errorMessage = $e->getMessage();
+                    Log::error("❌ Failed to send project invitation email to {$email}: {$errorMessage}");
+                    Log::error('Exception class: ' . get_class($e));
+                    Log::error('Exception trace: ' . $e->getTraceAsString());
 
-            // Create invitation
-            $invitation = ProjectInvitation::createInvitation($project->id, $user->email, $username, $role, $message);
-            $invitationsCreated++;
-
-            // Send email invitation
-            try {
-                $mailHost = config('mail.mailers.smtp.host');
-                $mailPort = config('mail.mailers.smtp.port');
-                $mailEncryption = config('mail.mailers.smtp.encryption');
-
-                Log::info("Attempting to send project invitation email to: {$user->email} (@{$username})");
-                Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}");
-
-                Mail::to($user->email)->send(new ProjectInvitationMail($project, $invitation, $message));
-
-                if ($mailDriver === 'log') {
-                    Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
-                    $emailsLogged++;
-                } else {
-                    Log::info("✅ Project invitation email sent successfully to: {$user->email} (@{$username})");
-                    $invitationsSent++;
-                }
-            } catch (\Exception $e) {
-                $errorMessage = $e->getMessage();
-                Log::error("❌ Failed to send project invitation email to {$user->email}: {$errorMessage}");
-                Log::error('Exception class: ' . get_class($e));
-                Log::error('Exception trace: ' . $e->getTraceAsString());
-
-                // Provide more helpful error messages
-                if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
-                    $errors[] = "Failed to connect to mail server for @{$username}. Check your SMTP settings.";
-                } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
-                    $errors[] = "SMTP authentication failed for @{$username}. Check your mail credentials.";
-                } else {
-                    $errors[] = "Failed to send invitation to @{$username}: {$errorMessage}";
+                    // Provide more helpful error messages
+                    if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
+                        $errors[] = "Failed to connect to mail server. Check your SMTP settings in .env file.";
+                    } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
+                        $errors[] = "SMTP authentication failed. Check your MAIL_USERNAME and MAIL_PASSWORD in .env file.";
+                    } else {
+                        $errors[] = "Failed to send invitation to {$email}: {$errorMessage}";
+                    }
                 }
             }
-        }
+
+            // Process username invitations - always create invitations, never add directly
+            foreach ($usernames as $username) {
+                $user = User::where('name', $username)->first();
+
+                if (!$user) {
+                    $errors[] = "User @{$username} not found.";
+                    continue;
+                }
+
+                // Check if user is already in project
+                if ($project->users()->where('user_id', $user->id)->exists()) {
+                    $errors[] = "@{$username} is already a member of this project.";
+                    continue;
+                }
+
+                // Check if invitation already exists and is still valid
+                $existingInvitation = ProjectInvitation::where('project_id', $project->id)
+                    ->where('username', $username)
+                    ->where('is_used', false)
+                    ->where('expires_at', '>', now())
+                    ->first();
+
+                if ($existingInvitation) {
+                    $errors[] = "An invitation has already been sent to @{$username}.";
+                    continue;
+                }
+
+                // Create invitation
+                $invitation = ProjectInvitation::createInvitation($project->id, $user->email, $username, $role, $message);
+                $invitationsCreated++;
+
+                // Send email invitation
+                try {
+                    $mailHost = config('mail.mailers.smtp.host');
+                    $mailPort = config('mail.mailers.smtp.port');
+                    $mailEncryption = config('mail.mailers.smtp.encryption');
+
+                    Log::info("Attempting to send project invitation email to: {$user->email} (@{$username})");
+                    Log::info("Mail config - Driver: {$mailDriver}, Host: {$mailHost}, Port: {$mailPort}, Encryption: {$mailEncryption}");
+
+                    Mail::to($user->email)->send(new ProjectInvitationMail($project, $invitation, $message));
+
+                    if ($mailDriver === 'log') {
+                        Log::warning("Email logged to storage/logs/laravel.log (driver: log) - Email was NOT actually sent!");
+                        $emailsLogged++;
+                    } else {
+                        Log::info("✅ Project invitation email sent successfully to: {$user->email} (@{$username})");
+                        $invitationsSent++;
+                    }
+                } catch (\Exception $e) {
+                    $errorMessage = $e->getMessage();
+                    Log::error("❌ Failed to send project invitation email to {$user->email}: {$errorMessage}");
+                    Log::error('Exception class: ' . get_class($e));
+                    Log::error('Exception trace: ' . $e->getTraceAsString());
+
+                    // Provide more helpful error messages
+                    if (str_contains($errorMessage, 'Connection') || str_contains($errorMessage, 'timeout')) {
+                        $errors[] = "Failed to connect to mail server for @{$username}. Check your SMTP settings.";
+                    } elseif (str_contains($errorMessage, 'Authentication') || str_contains($errorMessage, 'password')) {
+                        $errors[] = "SMTP authentication failed for @{$username}. Check your mail credentials.";
+                    } else {
+                        $errors[] = "Failed to send invitation to @{$username}: {$errorMessage}";
+                    }
+                }
+            }
 
             // Build response message
             if ($invitationsCreated > 0) {
@@ -528,10 +529,10 @@ class ProjectController extends Controller
                     $messages[] = "{$invitationsSent} invitation email(s) sent successfully.";
                 }
 
-            if ($emailsLogged > 0) {
-                $logPath = storage_path('logs/laravel.log');
-                $messages[] = "⚠️ {$emailsLogged} invitation(s) created but emails were NOT sent (logged only). Mail driver is set to 'log'. To actually send emails, configure SMTP in your .env file. Check {$logPath} to see the email content.";
-            }
+                if ($emailsLogged > 0) {
+                    $logPath = storage_path('logs/laravel.log');
+                    $messages[] = "⚠️ {$emailsLogged} invitation(s) created but emails were NOT sent (logged only). Mail driver is set to 'log'. To actually send emails, configure SMTP in your .env file. Check {$logPath} to see the email content.";
+                }
 
                 if (!empty($errors)) {
                     $messages[] = implode(' ', $errors);
@@ -582,7 +583,10 @@ class ProjectController extends Controller
 
         // Find user by email
         $user = User::where('email', $email)->first();
-
+        if (!$user) {
+            session()->flash('error', 'email  not found');
+            return Inertia::location(url()->previous());
+        }
         // Check if user is already in project
         if ($user && $project->users()->where('user_id', $user->id)->exists()) {
             return back()->with('error', 'User is already a member of this project.');
@@ -635,14 +639,14 @@ class ProjectController extends Controller
     {
         // Check if user is the project owner
         $isProjectOwner = $project->created_by === $user->id;
-        
+
         // Check if user has owner role in project
         $projectUser = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $user->id)
             ->first();
-        
+
         $hasOwnerRole = $projectUser && $projectUser->role === 'owner';
-        
+
         if ($isProjectOwner || $hasOwnerRole) {
             return back()->with('error', 'Cannot remove the project owner from the project.');
         }
@@ -663,14 +667,14 @@ class ProjectController extends Controller
 
         // Check if user is the project owner
         $isProjectOwner = $project->created_by === $user->id;
-        
+
         // Check if user has owner role in project
         $projectUser = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $user->id)
             ->first();
-        
+
         $hasOwnerRole = $projectUser && $projectUser->role === 'owner';
-        
+
         if ($isProjectOwner || $hasOwnerRole) {
             return back()->with('error', 'Cannot change the role of the project owner.');
         }
@@ -887,9 +891,9 @@ class ProjectController extends Controller
     public function getMessages(Project $project)
     {
         // Verify user is a member of the project
-        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+        $isMember = $project->users()->where('users.id', Auth::id())->exists()
             || $project->created_by === Auth::id();
-        
+
         if (!$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -923,6 +927,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => $reactionsGrouped,
                     'user' => [
                         'id' => $message->user->id,
@@ -941,23 +949,73 @@ class ProjectController extends Controller
     public function sendMessage(Request $request, Project $project)
     {
         // Verify user is a member of the project
-        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+        $isMember = $project->users()->where('users.id', Auth::id())->exists()
             || $project->created_by === Auth::id();
-        
+
         if (!$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $request->validate([
-            'content' => 'required|string|max:5000',
+            'content' => 'nullable|string|max:5000',
             'reply_to' => 'nullable|exists:project_messages,id',
+            'audio' => 'nullable|file|mimes:webm,mp3,mp4,m4a,aac,ogg,wav|max:10240', // 10MB max
+            'audio_duration' => 'nullable|integer|min:0|max:600', // Max 10 minutes
         ]);
+
+        // Ensure either content or audio is provided
+        $hasContent = $request->has('content') && trim($request->input('content', '')) !== '';
+        $hasAudio = $request->hasFile('audio');
+        
+        if (!$hasContent && !$hasAudio) {
+            return response()->json(['error' => 'Either content or audio must be provided'], 422);
+        }
+
+        $attachmentPath = null;
+        $attachmentType = null;
+        $attachmentName = null;
+        $audioDuration = null;
+
+        // Handle audio file upload
+        if ($request->hasFile('audio')) {
+            $audioFile = $request->file('audio');
+            
+            // Validate file was uploaded successfully
+            if (!$audioFile->isValid()) {
+                return response()->json(['error' => 'Invalid audio file'], 422);
+            }
+            
+            $extension = $audioFile->getClientOriginalExtension() ?: 'webm';
+            $attachmentName = 'voice_message_' . time() . '_' . uniqid() . '.' . $extension;
+            $attachmentPath = $audioFile->storeAs('project_messages/audio', $attachmentName, 'public');
+            
+            if (!$attachmentPath) {
+                \Log::error('Failed to store audio file', [
+                    'original_name' => $audioFile->getClientOriginalName(),
+                    'size' => $audioFile->getSize(),
+                ]);
+                return response()->json(['error' => 'Failed to store audio file'], 500);
+            }
+            
+            $attachmentType = 'audio';
+            $audioDuration = (int) $request->input('audio_duration', 0);
+            
+            \Log::info('Audio file stored successfully', [
+                'path' => $attachmentPath,
+                'size' => $audioFile->getSize(),
+                'duration' => $audioDuration,
+            ]);
+        }
 
         $message = ProjectMessage::create([
             'project_id' => $project->id,
             'user_id' => Auth::id(),
-            'content' => $request->content,
+            'content' => $request->content ?? '',
             'reply_to' => $request->reply_to ?? null,
+            'attachment_path' => $attachmentPath,
+            'attachment_type' => $attachmentType,
+            'attachment_name' => $attachmentName,
+            'audio_duration' => $audioDuration,
         ]);
 
         $message->load(['user:id,name,image', 'replyTo.user:id,name']);
@@ -968,7 +1026,7 @@ class ProjectController extends Controller
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
                 $channel = $ably->channels->get("project:{$project->id}");
-                
+
                 $broadcastData = [
                     'id' => $message->id,
                     'content' => $message->content,
@@ -981,6 +1039,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => [],
                     'user' => [
                         'id' => $message->user->id,
@@ -988,7 +1050,7 @@ class ProjectController extends Controller
                         'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
                     ],
                 ];
-                
+
                 $channel->publish('new-message', $broadcastData);
             }
         } catch (\Exception $e) {
@@ -1008,6 +1070,10 @@ class ProjectController extends Controller
                         'name' => $message->replyTo->user->name,
                     ],
                 ] : null,
+                'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                'attachment_type' => $message->attachment_type,
+                'attachment_name' => $message->attachment_name,
+                'audio_duration' => $message->audio_duration,
                 'reactions' => [],
                 'user' => [
                     'id' => $message->user->id,
@@ -1024,9 +1090,9 @@ class ProjectController extends Controller
     public function toggleReaction(Request $request, Project $project, $messageId)
     {
         // Verify user is a member of the project
-        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+        $isMember = $project->users()->where('users.id', Auth::id())->exists()
             || $project->created_by === Auth::id();
-        
+
         if (!$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -1054,7 +1120,7 @@ class ProjectController extends Controller
             ProjectMessageReaction::where('message_id', $messageId)
                 ->where('user_id', Auth::id())
                 ->delete();
-            
+
             // Add new reaction
             ProjectMessageReaction::create([
                 'message_id' => $messageId,
@@ -1072,7 +1138,7 @@ class ProjectController extends Controller
                 'count' => $reactions->count(),
                 'users' => $reactions->pluck('user.name')->toArray(),
             ];
-        })->values();
+        })->values()->toArray();
 
         // Broadcast reaction update via Ably to all users in the project
         try {
@@ -1081,17 +1147,17 @@ class ProjectController extends Controller
                 $ably = new AblyRest($ablyKey);
                 $channelName = "project:{$project->id}";
                 $channel = $ably->channels->get($channelName);
-                
+
                 $broadcastData = [
-                    'message_id' => $messageId,
+                    'message_id' => (int) $messageId,
                     'reactions' => $reactionsGrouped,
                     'action' => $action,
                     'reaction' => $request->reaction,
                     'user_id' => Auth::id(),
                 ];
-                
+
                 $channel->publish('message-reaction-updated', $broadcastData);
-                
+
                 Log::info('✅ Broadcasted reaction update via Ably', [
                     'channel' => $channelName,
                     'message_id' => $messageId,
@@ -1116,9 +1182,9 @@ class ProjectController extends Controller
     public function updateMessage(Request $request, Project $project, $messageId)
     {
         // Verify user is a member of the project
-        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+        $isMember = $project->users()->where('users.id', Auth::id())->exists()
             || $project->created_by === Auth::id();
-        
+
         if (!$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -1146,7 +1212,7 @@ class ProjectController extends Controller
                 'count' => $reactions->count(),
                 'users' => $reactions->pluck('user.name')->toArray(),
             ];
-        })->values();
+        })->values()->toArray();
 
         // Broadcast message update via Ably
         try {
@@ -1154,7 +1220,7 @@ class ProjectController extends Controller
             if ($ablyKey) {
                 $ably = new AblyRest($ablyKey);
                 $channel = $ably->channels->get("project:{$project->id}");
-                
+
                 $broadcastData = [
                     'id' => $message->id,
                     'content' => $message->content,
@@ -1168,6 +1234,10 @@ class ProjectController extends Controller
                             'name' => $message->replyTo->user->name,
                         ],
                     ] : null,
+                    'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                    'attachment_type' => $message->attachment_type,
+                    'attachment_name' => $message->attachment_name,
+                    'audio_duration' => $message->audio_duration,
                     'reactions' => $reactionsGrouped,
                     'user' => [
                         'id' => $message->user->id,
@@ -1175,7 +1245,7 @@ class ProjectController extends Controller
                         'avatar' => $message->user->image ? asset('storage/' . $message->user->image) : null,
                     ],
                 ];
-                
+
                 $channel->publish('message-updated', $broadcastData);
             }
         } catch (\Exception $e) {
@@ -1213,9 +1283,9 @@ class ProjectController extends Controller
     public function deleteMessage(Project $project, $messageId)
     {
         // Verify user is a member of the project
-        $isMember = $project->users()->where('users.id', Auth::id())->exists() 
+        $isMember = $project->users()->where('users.id', Auth::id())->exists()
             || $project->created_by === Auth::id();
-        
+
         if (!$isMember) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -1234,15 +1304,15 @@ class ProjectController extends Controller
                 $ably = new AblyRest($ablyKey);
                 $channelName = "project:{$project->id}";
                 $channel = $ably->channels->get($channelName);
-                
+
                 $broadcastData = [
                     'message_id' => $messageId,
                     'project_id' => $project->id,
                     'deleted_by' => Auth::id(),
                 ];
-                
+
                 $channel->publish('message-deleted', $broadcastData);
-                
+
                 Log::info('✅ Broadcasted message deletion via Ably', [
                     'channel' => $channelName,
                     'message_id' => $messageId,

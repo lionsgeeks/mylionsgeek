@@ -134,9 +134,9 @@ export function AppHeader({ breadcrumbs = [] }) {
 
                     <div className="ml-auto flex items-center space-x-2">
                         <div className="flex items-center gap-4">
-                            {/* <ChatIcon /> */}
+                            <ChatIcon />
                             <NotificationIcon />
-                    
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="size-10 rounded-full p-1">
