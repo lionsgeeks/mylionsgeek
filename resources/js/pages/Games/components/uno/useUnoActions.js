@@ -244,7 +244,7 @@ export function useUnoActions({
                 game_state: gameState,
             })
             .then(() => {
-                //console.log('✅ Game state saved and broadcasted to all players');
+                console.log('✅ Game state saved and broadcasted to all players');
             })
             .catch((error) => {
                 console.error('❌ Failed to update game state:', error);
@@ -309,7 +309,7 @@ export function useUnoActions({
                     game_type: 'uno',
                     game_state: gameState,
                 })
-                .then(() => //console.log('✅ Pending draw state saved'))
+                .then(() => console.log('✅ Pending draw state saved'))
                 .catch((err) => console.error('❌ Failed to update:', err));
             }
             return;
@@ -393,7 +393,7 @@ export function useUnoActions({
                 game_type: 'uno',
                 game_state: gameState,
             })
-            .then(() => //console.log('✅ Draw card state saved'))
+            .then(() => console.log('✅ Draw card state saved'))
             .catch((error) => console.error('❌ Failed to update:', error));
         }
     }, [gameStarted, winner, players, currentPlayerIndex, assignedPlayerIndex, deck, discardPile, currentColor, playDirection, pendingDraw, unoCalled, needsUnoCall, isConnected, roomId, drawCards, fullGameStateRef, setDeck, setDiscardPile, setPlayers, setCurrentPlayerIndex, setPendingDraw, setDrawnCardIndex, setUnoCalled, setNeedsUnoCall]);
@@ -451,7 +451,7 @@ export function useUnoActions({
                     game_type: 'uno',
                     game_state: gameState,
                 })
-                .then(() => //console.log('✅ UNO call saved'))
+                .then(() => console.log('✅ UNO call saved'))
                 .catch((error) => console.error('❌ Failed to sync UNO call:', error));
             }
         }

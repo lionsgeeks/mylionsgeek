@@ -6,9 +6,7 @@ import {
     initializeDeck,
     shuffleDeck,
     dealCards,
-    isPlayable,
     getNextPlayerIndex,
-    getCardImage,
 } from './utils';
 
 /**
@@ -188,7 +186,7 @@ export function useUnoGame(auth, roomId, playerName) {
             return;
         }
 
-        //console.log('🔄 Updating game state from server/Ably:', {
+        console.log('🔄 Updating game state from server/Ably:', {
             currentPlayerIndex: state.currentPlayerIndex,
             gameStarted: state.gameStarted,
             playersCount: state.players?.length,
@@ -291,14 +289,14 @@ export function useUnoGame(auth, roomId, playerName) {
     // Subscribe to Ably real-time updates
     useEffect(() => {
         if (!ablyConnected || !roomId) {
-            //console.log('⏳ Waiting for Ably connection or roomId...', { ablyConnected, roomId });
+            console.log('⏳ Waiting for Ably connection or roomId...', { ablyConnected, roomId });
             return;
         }
 
         //console.log('🔔 Setting up Ably subscriptions for real-time updates - Room:', roomId);
 
         const handleGameStateUpdate = (data) => {
-            //console.log('📨 REAL-TIME UPDATE RECEIVED via Ably:', {
+            console.log('📨 REAL-TIME UPDATE RECEIVED via Ably:', {
                 hasGameState: !!data?.game_state,
                 currentPlayerIndex: data?.game_state?.currentPlayerIndex,
                 timestamp: new Date().toISOString()

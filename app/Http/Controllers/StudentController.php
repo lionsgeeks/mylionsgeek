@@ -361,14 +361,14 @@ class StudentController extends Controller
 
         $request->validate([
             'title' => 'string|required',
-            'description' => 'string|nullable',
-            'company' => 'string|nullable',
-            'employment_type' => 'string|nullable',
+            'description' => 'string|required',
+            'company' => 'string|required',
+            'employment_type' => 'string|required',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
             'end_year' => 'string|nullable',
-            'location' => 'string|nullable',
+            'location' => 'string|required',
         ]);
         $experience->update([
             'title' => $request->title,
