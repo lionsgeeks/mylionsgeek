@@ -81,7 +81,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                             <SheetContent side="left" className="bg-sidebar flex h-full w-64 flex-col items-stretch justify-between">
                                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <Link href="/feed" prefetch className="flex items-center space-x-2">
+                                    <Link href="/students/feed" prefetch className="flex items-center space-x-2">
                                         <AppLogo />
                                     </Link>
                                 </SheetHeader>
@@ -102,7 +102,7 @@ export function AppHeader({ breadcrumbs = [] }) {
                         </Sheet>
                     </div>
 
-                    <Link href="/feed" prefetch className="flex items-center space-x-2">
+                    <Link href="/students/feed" prefetch className="flex items-center space-x-2">
                         <AppLogo />
                     </Link>
                     <SearchDialog className="hidden sm:flex ml-4 dark:bg-light/10 dark:hover:bg-light/10 bg-dark_gray/4" />

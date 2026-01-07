@@ -41,7 +41,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
 
                     <ChatIcon />
                     <NotificationIcon />
-                    <Link href="/feed" prefetch className="flex items-center">
+                    <Link href="/students/feed" prefetch className="flex items-center">
                         <Button variant="ghost" size="icon" className="flex h-9 w-9 items-center justify-center rounded-md" aria-label="Home">
                             <Home className="h-5 w-5 flex-shrink-0" />
                         </Button>

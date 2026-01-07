@@ -58,7 +58,7 @@ class AuthenticatedSessionController extends Controller
 
         // Role-based redirect + force reload
         if ($user->role === 'student') {
-            return Inertia::location('/feed');
+            return Inertia::location('/students/feed');
         }
         return Inertia::location('/admin/dashboard');
 

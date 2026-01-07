@@ -680,7 +680,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                   />
                 </div>
 
-                <label className="px-3 py-2.5 rounded-lg border border-alpha/30 bg-white dark:bg-dark text-sm cursor-pointer select-none">
+                {/* <label className="px-3 py-2.5 rounded-lg border border-alpha/30 bg-white dark:bg-dark text-sm cursor-pointer select-none">
                   <span className="inline-flex items-center gap-2">
                     <Paperclip size={16} />
                   </span>
@@ -712,7 +712,7 @@ function CommentsModal({ postId, open, onClose, onCommentAdded, onCommentRemoved
                       }
                     }}
                   />
-                </label>
+                </label> */}
 
                 <button
                   type="submit"
