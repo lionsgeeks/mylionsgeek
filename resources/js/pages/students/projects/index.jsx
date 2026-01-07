@@ -288,7 +288,7 @@ export default function ProjectsIndex({ projects, models = [] }) {
                                         if (e.target.closest('button') || e.target.closest('a')) {
                                             return;
                                         }
-                                        router.visit(`/student/project/${project.id}`);
+                                        router.visit(`/students/project/${project.id}`);
                                     }}
                                 >
                                     <div className="flex flex-col gap-4 relative">
@@ -340,7 +340,7 @@ export default function ProjectsIndex({ projects, models = [] }) {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        router.visit(`/student/project/${project.id}`);
+                                                        router.visit(`/students/project/${project.id}`);
                                                     }}
                                                     className="text-[var(--color-alpha)] hover:underline text-sm flex items-center gap-1"
                                                 >

@@ -285,7 +285,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                         description="This action cannot be undone. This will permanently delete this link."
                         onConfirm={() => {
                             if (!deletingSocial?.id) return;
-                            return router.delete(`/users/social-links/${deletingSocial.id}`);
+                            return router.delete(`/students/social-links/${deletingSocial.id}`);
                         }}
                     />
                 )}

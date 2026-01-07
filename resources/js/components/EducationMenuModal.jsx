@@ -22,15 +22,15 @@ export function EducationMenuModal({ education }) {
     const deleteEducation = (id) => {
         try {
             // Update existing education
-            router.delete(`/users/education/${id}`, {
+            router.delete(`/students/education/${id}`, {
                 onSuccess: () => {
                 },
                 onError: (error) => {
-                    console.log(error);
+                    //console.log(error);
                 }
             });
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     }
     return (

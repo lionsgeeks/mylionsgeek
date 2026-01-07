@@ -36,7 +36,7 @@ export default function TicTacToe() {
         ['game-state-updated', 'game-reset'],
         {
             onConnected: () => {
-                console.log('✅ Ably connected for game room:', roomId, 'Channel:', gameChannelName);
+                //console.log('✅ Ably connected for game room:', roomId, 'Channel:', gameChannelName);
             },
             onError: (error) => {
                 console.error('❌ Ably connection error:', error);
@@ -441,7 +441,7 @@ export default function TicTacToe() {
             };
             
             try {
-                console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Symbol:', symbol);
+                //console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Symbol:', symbol);
                 // Save to database and broadcast via Ably
                 // Server will:
                 // 1. Save to database (preserving players array)
@@ -451,8 +451,8 @@ export default function TicTacToe() {
                     game_state: currentState,
                 });
                 
-                console.log('✅ Move saved! Server broadcasted to all players via Ably');
-                console.log('📡 Other player should receive update NOW via Ably subscription');
+                //console.log('✅ Move saved! Server broadcasted to all players via Ably');
+                //console.log('📡 Other player should receive update NOW via Ably subscription');
                 
                 // Ably broadcasts immediately after DB save
                 // The other player (Yahya if Ayman moved, or Ayman if Yahya moved) receives update instantly
@@ -516,17 +516,17 @@ export default function TicTacToe() {
         // When server saves to database, it broadcasts via Ably, and we update here
         // This is called IMMEDIATELY when any player makes a move - NO REFRESH NEEDED
         const handleGameStateUpdate = (data) => {
-            console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
+            //console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
             if (data && data.game_state) {
                 // Always update from server's authoritative state (from database)
                 const state = data.game_state;
                 
-                console.log('📋 Updating game state from Ably - Board:', state.board, 'isXNext:', state.isXNext);
+                //console.log('📋 Updating game state from Ably - Board:', state.board, 'isXNext:', state.isXNext);
                 
                 // Update all state from Ably message - this is the database state
                 // This happens IMMEDIATELY when X makes a move, so O sees it instantly
                 if (state.board && Array.isArray(state.board)) {
-                    console.log('✅ Setting board to:', state.board);
+                    //console.log('✅ Setting board to:', state.board);
                     setBoard(state.board);
                 }
                 
@@ -576,10 +576,10 @@ export default function TicTacToe() {
 
         // Subscribe to game state updates - exactly like messages subscribe
         // This ensures when Ayman (X) plays, Yahya (O) sees it, and vice versa
-        console.log('🔔 Registering Ably subscriptions for room:', roomId);
+        //console.log('🔔 Registering Ably subscriptions for room:', roomId);
         subscribe('game-state-updated', handleGameStateUpdate);
         subscribe('game-reset', handleGameReset);
-        console.log('✅ Ably subscriptions registered - ready for live updates');
+        //console.log('✅ Ably subscriptions registered - ready for live updates');
 
         return () => {
             // Cleanup handled by useAblyChannelGames

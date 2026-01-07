@@ -24,16 +24,16 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
     //! update about
     const updateAbout = () => {
         try {
-            router.post(`/users/about/${user?.id}`, data, {
+            router.post(`/students/about/${user?.id}`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
                 },
                 onError: (errors) => {
-                    console.log('About update errors:', errors);
+                    //console.log('About update errors:', errors);
                 }
             })
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     }
     const maxChars = 500;

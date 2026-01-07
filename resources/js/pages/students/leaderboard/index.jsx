@@ -44,7 +44,7 @@ export default function Leaderboard() {
       });
 
       const url = `/leaderboard/data?${params}`;
-      console.log('Fetching leaderboard data from:', url);
+      //console.log('Fetching leaderboard data from:', url);
       
       const res = await fetch(url);
       
@@ -53,11 +53,11 @@ export default function Leaderboard() {
       }
       
       const data = await res.json();
-      console.log('Leaderboard data received:', data);
-      console.log('Number of users:', data.data?.length || 0);
+      //console.log('Leaderboard data received:', data);
+      //console.log('Number of users:', data.data?.length || 0);
       
       if (data.data && data.data.length > 0) {
-        console.log('First user data sample:', data.data[0]);
+        //console.log('First user data sample:', data.data[0]);
       }
 
       // Store all data for client-side filtering
@@ -137,18 +137,18 @@ export default function Leaderboard() {
   }, [filteredData]);
 
   useEffect(() => {
-    console.log('Leaderboard component mounted, fetching data...');
+    //console.log('Leaderboard component mounted, fetching data...');
     fetchLeaderboardData();
     fetchTopWinners();
   }, [fetchLeaderboardData, fetchTopWinners]);
 
   // Debug: Log when leaderboardData changes
   useEffect(() => {
-    console.log('Leaderboard data updated:', {
-      count: leaderboardData.length,
-      firstUser: leaderboardData[0] || null,
-      allData: leaderboardData
-    });
+    // console.log('Leaderboard data updated:', {
+    //   count: leaderboardData.length,
+    //   firstUser: leaderboardData[0] || null,
+    //   allData: leaderboardData
+    // });
   }, [leaderboardData]);
 
   // Keyboard shortcuts

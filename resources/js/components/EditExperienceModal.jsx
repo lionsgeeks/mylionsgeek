@@ -104,27 +104,27 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
         try {
             if (isEditMode) {
                 // Update existing experience
-                router.put(`/users/experience/${item.id}`, data, {
+                router.put(`/students/experience/${item.id}`, data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
                     onError: (error) => {
-                        console.log(error);
+                        //console.log(error);
                     }
                 });
             } else {
                 // Create new experience
-                router.post('/users/experience', data, {
+                router.post('/students/experience', data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
                     onError: (error) => {
-                        console.log(error);
+                        //console.log(error);
                     }
                 });
             }
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     };
 

@@ -96,7 +96,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 isOpen={isAppointmentModalOpen}
                 onClose={() => setIsAppointmentModalOpen(false)}
                 onSuccess={(selectedPerson) => {
-                    console.log('Appointment booked with:', selectedPerson);
+                    //console.log('Appointment booked with:', selectedPerson);
 
                 }}
             />

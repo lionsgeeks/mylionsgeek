@@ -47,7 +47,7 @@ export function useUnoGame(auth, roomId, playerName) {
         ['game-state-updated', 'game-reset'],
         {
             onConnected: () => {
-                console.log('✅ Ably connected for game room:', roomId);
+                //console.log('✅ Ably connected for game room:', roomId);
             },
             onError: (error) => {
                 console.error('❌ Ably connection error:', error);
@@ -188,7 +188,7 @@ export function useUnoGame(auth, roomId, playerName) {
             return;
         }
 
-        console.log('🔄 Updating game state from server/Ably:', {
+        //console.log('🔄 Updating game state from server/Ably:', {
             currentPlayerIndex: state.currentPlayerIndex,
             gameStarted: state.gameStarted,
             playersCount: state.players?.length,
@@ -264,7 +264,7 @@ export function useUnoGame(auth, roomId, playerName) {
             currentColor: state.currentColor !== undefined ? state.currentColor : currentColor,
         };
 
-        console.log('✅ Game state updated from server');
+        //console.log('✅ Game state updated from server');
     }, [playerName, assignedPlayerIndex, gameStarted, isFullscreen, currentPlayerIndex, deck, discardPile, players, playDirection, currentColor]);
 
     // Fetch initial game state
@@ -272,13 +272,13 @@ export function useUnoGame(auth, roomId, playerName) {
         if (!ablyConnected || !roomId) return;
 
         try {
-            console.log('🔄 Fetching game state from server...');
+            //console.log('🔄 Fetching game state from server...');
             const response = await axios.get(`/api/games/state/${roomId}`);
             if (response.data.exists && response.data.game_state) {
-                console.log('✅ Game state fetched, updating...');
+                //console.log('✅ Game state fetched, updating...');
                 updateGameStateFromData(response.data.game_state);
             } else {
-                console.log('ℹ️ No existing game state found');
+                //console.log('ℹ️ No existing game state found');
             }
         } catch (error) {
             console.error('❌ Failed to fetch game state:', error);
@@ -291,14 +291,14 @@ export function useUnoGame(auth, roomId, playerName) {
     // Subscribe to Ably real-time updates
     useEffect(() => {
         if (!ablyConnected || !roomId) {
-            console.log('⏳ Waiting for Ably connection or roomId...', { ablyConnected, roomId });
+            //console.log('⏳ Waiting for Ably connection or roomId...', { ablyConnected, roomId });
             return;
         }
 
-        console.log('🔔 Setting up Ably subscriptions for real-time updates - Room:', roomId);
+        //console.log('🔔 Setting up Ably subscriptions for real-time updates - Room:', roomId);
 
         const handleGameStateUpdate = (data) => {
-            console.log('📨 REAL-TIME UPDATE RECEIVED via Ably:', {
+            //console.log('📨 REAL-TIME UPDATE RECEIVED via Ably:', {
                 hasGameState: !!data?.game_state,
                 currentPlayerIndex: data?.game_state?.currentPlayerIndex,
                 timestamp: new Date().toISOString()
@@ -312,7 +312,7 @@ export function useUnoGame(auth, roomId, playerName) {
         };
 
         const handleGameReset = (data) => {
-            console.log('🔄 Game reset received via Ably');
+            //console.log('🔄 Game reset received via Ably');
             if (data && data.game_state) {
                 handleGameStateUpdate(data);
             }
@@ -321,10 +321,10 @@ export function useUnoGame(auth, roomId, playerName) {
         subscribe('game-state-updated', handleGameStateUpdate);
         subscribe('game-reset', handleGameReset);
 
-        console.log('✅ Ably subscriptions active - ready for 100% real-time updates');
+        //console.log('✅ Ably subscriptions active - ready for 100% real-time updates');
 
         return () => {
-            console.log('🧹 Cleaning up Ably subscriptions');
+            //console.log('🧹 Cleaning up Ably subscriptions');
         };
     }, [ablyConnected, roomId, subscribe, updateGameStateFromData]);
 

@@ -21,7 +21,7 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
     formData.append('cover', file); // Append the selected file to FormData
 
     // Send the POST request with the form data
-    router.post(`/users/changeCover/${userId}`, formData, {
+    router.post(`/changeCover/${userId}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',  // Make sure the request is sent as multipart
       },

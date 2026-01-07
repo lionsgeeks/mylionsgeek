@@ -46,7 +46,7 @@ const BoardTable = ({ isRefreshing, leaderboardData, NoResults, searchText, fetc
                                     leaderboardData.map((user, index) => {
                                         // Debug logging for first user
                                         if (index === 0) {
-                                            console.log('Rendering first user:', {
+                                            //console.log('Rendering first user:', {
                                                 user,
                                                 total_seconds: user.data?.total_seconds,
                                                 daily_average: user.data?.daily_average,

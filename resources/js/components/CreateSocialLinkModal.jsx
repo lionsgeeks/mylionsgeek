@@ -91,7 +91,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
         if (!validateUrl()) return;
 
         if (isEdit) {
-            put(`/users/social-links/${initialLink.id}`, {
+            put(`/students/social-links/${initialLink.id}`, {
                 onSuccess: () => {
                     onOpenChange(false);
                     reset();
@@ -102,7 +102,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
             return;
         }
 
-        post('/users/social-links', {
+        post('/students/social-links', {
             onSuccess: () => {
                 onOpenChange(false);
                 reset();

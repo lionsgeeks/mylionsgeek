@@ -129,7 +129,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const addSocialLink = () => {
         if (!validateSocialUrl()) return;
 
-        router.post('/users/social-links', {
+        router.post('/studets/social-links', {
             title: newSocialPlatform,
             url: newSocialUrl,
         }, {
@@ -145,7 +145,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     };
 
     const deleteSocialLink = (linkId) => {
-        router.delete(`/users/social-links/${linkId}`, {
+        router.delete(`/students/social-links/${linkId}`, {
             onSuccess: () => {
                 // Social links will be updated via Inertia
             }
@@ -175,11 +175,11 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             form.append('image', formData?.image);
         }
 
-        router.post(`/users/update/${editedUser.id}`, form, {
+        router.post(`/students/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
                 onClose();
-                console.log('success');
+                //console.log('success');
             },
             onError: (err) => {
                 setErrors(err);

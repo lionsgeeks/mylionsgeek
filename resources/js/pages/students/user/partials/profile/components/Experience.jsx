@@ -18,7 +18,7 @@ const Experience = ({ user }) => {
         return date.toLocaleString('en-US', { month: 'long' });
     }
     const experienceDurationFormat = (experience) => {
-        console.log(experience);
+        //console.log(experience);
 
         if (!experience) return '';
 

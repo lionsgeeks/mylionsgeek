@@ -31,7 +31,7 @@ export function AppHeader({ breadcrumbs = [] }) {
     const mainNavItems = [
         {
             title: 'Home',
-            url: '/feed',
+            url: '/students/feed',
             icon: Home,
         },
         {
@@ -41,15 +41,15 @@ export function AppHeader({ breadcrumbs = [] }) {
         },
         {
             title: 'Spaces ',
-            url: '/student/spaces',
+            url: '/students/spaces',
             icon: Building2,
 
         },
-        { title: 'Reservations', url: '/student/reservations', icon: Timer },
+        { title: 'Reservations', url: '/students/reservations', icon: Timer },
 
         {
             title: 'Projects',
-            url: '/student/projects',
+            url: '/students/projects',
             icon: Folder
         },
         // {

@@ -19,7 +19,7 @@ export default function ChatHeader({ conversation, onClose, onBack, onToolboxTog
                 </Button>
             )}
             <button
-                onClick={() => router.visit(`/student/${conversation.other_user.id}`)}
+                onClick={() => router.visit(`/students/${conversation.other_user.id}`)}
                 className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
             >
                 <Avatar

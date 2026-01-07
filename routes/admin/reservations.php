@@ -14,10 +14,10 @@ use App\Http\Controllers\ReservationsController;
 // USER ACTION ENDPOINTS (PROTECTED)
 // =====================
 Route::middleware(['auth'])->group(function () {
-    Route::get('/student/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('student.reservations');
+    Route::get('/students/reservations', [\App\Http\Controllers\ReservationsController::class, 'myReservations'])->name('student.reservations');
     Route::post('/reservations/{reservation}/cancel', [\App\Http\Controllers\ReservationsController::class, 'cancelOwn'])->name('user.reservations.cancel');
     Route::put('/reservations/{reservation}/update', [ReservationsController::class, 'update'])->name('reservations.update');
-    Route::get('/student/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('student.reservations.details');
+    Route::get('/students/reservations/{reservation}/details', [ReservationsController::class, 'show'])->name('student.reservations.details');
 });
 // =====================
 // USER READ-ONLY DETAILS (PROTECTED)

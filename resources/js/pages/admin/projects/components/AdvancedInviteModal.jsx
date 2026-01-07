@@ -254,8 +254,8 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
             message: data.message || ''
         };
 
-        console.log('Submitting invitation:', submissionData);
-        console.log('Current form data:', data);
+        //console.log('Submitting invitation:', submissionData);
+        //console.log('Current form data:', data);
 
         setIsSubmitting(true);
 

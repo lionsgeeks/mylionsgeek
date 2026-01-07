@@ -112,7 +112,7 @@ const [processingId, setProcessingId] = useState(null);
             .then(r => r.json())
             .then(async (data) => {
                 const newDiscipline = data?.discipline ?? null;
-                console.log(' NEW DISCIPLINE:', newDiscipline);
+                //console.log(' NEW DISCIPLINE:', newDiscipline);
                 // Set summary state
                 setSummary({
                     discipline: newDiscipline,
@@ -159,10 +159,10 @@ const [processingId, setProcessingId] = useState(null);
                                 console.error('Failed to send discipline notification:', error);
                             }
                             } else {
-                        console.log(' Change too small:', change);
+                        //console.log(' Change too small:', change);
                     }
                 } else {
-                    console.log(' No old discipline in localStorage (first time)');
+                    //console.log(' No old discipline in localStorage (first time)');
 
                     }
 
@@ -467,7 +467,7 @@ const [processingId, setProcessingId] = useState(null);
                                             <div className="flex gap-2 flex-wrap mb-1">
                                                 {project.project && (
                                                     <a
-                                                        href={`/student/project/${project.id}`}
+                                                        href={`/students/project/${project.id}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-[var(--color-alpha)] hover:underline text-sm font-medium"

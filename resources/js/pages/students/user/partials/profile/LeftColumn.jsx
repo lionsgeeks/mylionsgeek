@@ -23,7 +23,7 @@ const platforms = [
 ];
 
 const LeftColumn = ({ user }) => {
-    console.log(user?.social_links);
+    //console.log(user?.social_links);
     
     const [openAbout, setOpenAbout] = useState(false)
     const [openSocialModal, setOpenSocialModal] = useState(false)
@@ -89,7 +89,7 @@ const LeftColumn = ({ user }) => {
     };
 
     const updateSocialLinksOrder = (links) => {
-        fetch('/users/social-links/reorder', {
+        fetch('/students/social-links/reorder', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ const LeftColumn = ({ user }) => {
             return response.json();
         })
         .then(data => {
-            console.log('Social links reordered successfully');
+            //console.log('Social links reordered successfully');
         })
         .catch(error => {
             console.error('Failed to reorder social links:', error);
@@ -284,7 +284,7 @@ const LeftColumn = ({ user }) => {
                     description="This action cannot be undone. This will permanently delete this link."
                     onConfirm={() => {
                         if (!deletingSocial?.id) return;
-                        return router.delete(`/users/social-links/${deletingSocial.id}`);
+                        return router.delete(`/students/social-links/${deletingSocial.id}`);
                     }}
                 />
             )}

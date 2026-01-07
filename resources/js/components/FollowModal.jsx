@@ -108,7 +108,7 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                                     </div>
                                 </Link>
                                 {/* <button
-                                    onClick={() => console.log(student?.isFollowing)}
+                                    onClick={() => //console.log(student?.isFollowing)}
                                     className={`px-6 py-1.5 z-50 rounded-lg text-sm font-semibold transition-colors ${student.isFollowing
                                         ? 'bg-light dark:bg-dark text-beta dark:text-light hover:bg-alpha/20'
                                         : 'bg-alpha text-b hover:bg-alpha/80'

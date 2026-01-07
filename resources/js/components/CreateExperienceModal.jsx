@@ -89,13 +89,13 @@ const CreateExperienceModal = ({ onChange, onOpenChange, id  }) => {
             return;
         }
 
-        router.post(`/users/experience`, data, {
+        router.post(`/students/experience`, data, {
             onSuccess: () => {
                 onOpenChange(false)
             },
             onError: (errors) => {
                 setFormError('Failed to create experience. Please try again.');
-                console.log('Form errors:', errors);
+                //console.log('Form errors:', errors);
             }
         })
     }

@@ -42,7 +42,7 @@ export default function RockPaperScissors() {
         ['game-state-updated', 'game-reset'],
         {
             onConnected: () => {
-                console.log('✅ Ably connected for game room:', roomId);
+                //console.log('✅ Ably connected for game room:', roomId);
             },
             onError: (error) => {
                 console.error('❌ Ably connection error:', error);
@@ -167,7 +167,7 @@ export default function RockPaperScissors() {
             };
             
             try {
-                console.log('📤 Sending pick to server - Room:', roomId, 'Player:', playerName, 'Player:', player);
+                //console.log('📤 Sending pick to server - Room:', roomId, 'Player:', playerName, 'Player:', player);
                 // Save to database and broadcast via Ably
                 // Server will:
                 // 1. Save to database (preserving players array)
@@ -177,8 +177,8 @@ export default function RockPaperScissors() {
                     game_state: currentState,
                 });
                 
-                console.log('✅ Pick saved! Server broadcasted to all players via Ably');
-                console.log('📡 Other player should receive update NOW via Ably subscription');
+                //console.log('✅ Pick saved! Server broadcasted to all players via Ably');
+                //console.log('📡 Other player should receive update NOW via Ably subscription');
             } catch (error) {
                 console.error('❌ Failed to save pick:', error);
                 // Revert optimistic update on error
@@ -373,7 +373,7 @@ export default function RockPaperScissors() {
         // When server saves to database, it broadcasts via Ably, and we update here
         // This is called IMMEDIATELY when any player makes a pick - NO REFRESH NEEDED
         const handleGameStateUpdate = (data) => {
-            console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
+            //console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
             if (data && data.game_state) {
                 // Always update from server's authoritative state (from database)
                 updateGameStateFromData(data.game_state);
@@ -388,10 +388,10 @@ export default function RockPaperScissors() {
 
         // Subscribe to game state updates - exactly like messages subscribe
         // This ensures when Player 1 picks, Player 2 sees it, and vice versa
-        console.log('🔔 Registering Ably subscriptions for room:', roomId);
+        //console.log('🔔 Registering Ably subscriptions for room:', roomId);
         subscribe('game-state-updated', handleGameStateUpdate);
         subscribe('game-reset', handleGameReset);
-        console.log('✅ Ably subscriptions registered - ready for live updates');
+        //console.log('✅ Ably subscriptions registered - ready for live updates');
 
         return () => {
             // Cleanup handled by useAblyChannelGames

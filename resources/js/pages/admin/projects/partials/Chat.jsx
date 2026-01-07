@@ -37,7 +37,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         {
             onConnected: () => {
                 if (projectId) {
-                    console.log('✅ Connected to project chat channel:', channelName);
+                    //console.log('✅ Connected to project chat channel:', channelName);
                 }
             },
             onError: (error) => {
@@ -74,15 +74,15 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         if (!subscribe || !projectId) return;
 
         const handleNewMessage = (data) => {
-            console.log('📨 Received new message via Ably:', data);
+            //console.log('📨 Received new message via Ably:', data);
             // Check if message already exists to prevent duplicates
             setMessages((prev) => {
                 const exists = prev.some(msg => msg.id === data.id);
                 if (exists) {
-                    console.log('⚠️ Duplicate message detected, skipping');
+                    //console.log('⚠️ Duplicate message detected, skipping');
                     return prev;
                 }
-                console.log('✅ Adding new message to chat');
+                //console.log('✅ Adding new message to chat');
                 // Ensure reactions is always an array
                 return [...prev, {
                     ...data,
@@ -98,7 +98,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         const handleReactionUpdate = (data) => {
-            console.log('📨 Received reaction update via Ably (real-time for all users):', data);
+            //console.log('📨 Received reaction update via Ably (real-time for all users):', data);
             if (!data || !data.message_id) {
                 console.warn('⚠️ Invalid reaction update data:', data);
                 return;
@@ -113,7 +113,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                 
                 const updated = prev.map(msg => {
                     if (msg.id === data.message_id) {
-                        console.log('✅ Updating reactions for message:', data.message_id, 'New reactions:', data.reactions);
+                        //console.log('✅ Updating reactions for message:', data.message_id, 'New reactions:', data.reactions);
                         return { 
                             ...msg, 
                             reactions: Array.isArray(data.reactions) ? data.reactions : [] 
@@ -127,7 +127,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         const handleMessageUpdate = (data) => {
-            console.log('📨 Received message update via Ably:', data);
+            //console.log('📨 Received message update via Ably:', data);
             setMessages((prev) => {
                 const updated = prev.map(msg => 
                     msg.id === data.id 
@@ -143,13 +143,13 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                 );
                 const found = prev.find(msg => msg.id === data.id);
                 if (found) {
-                    console.log('✅ Message updated in real-time');
+                    //console.log('✅ Message updated in real-time');
                 }
                 return updated;
             });
             // Cancel edit mode if editing this message
             if (editingMessage?.id === data.id) {
-                console.log('🔄 Cancelling edit mode after real-time update');
+                //console.log('🔄 Cancelling edit mode after real-time update');
                 setEditingMessage(null);
                 setEditContent('');
                 setIsEditing(false);
@@ -157,7 +157,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         const handleMessageDelete = (data) => {
-            console.log('📨 Received message deletion via Ably (real-time for all users):', data);
+            //console.log('📨 Received message deletion via Ably (real-time for all users):', data);
             if (!data || !data.message_id) {
                 console.warn('⚠️ Invalid deletion data:', data);
                 return;
@@ -166,17 +166,17 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             setMessages((prev) => {
                 const messageExists = prev.some(msg => msg.id === data.message_id);
                 if (!messageExists) {
-                    console.log('ℹ️ Message already deleted or not found:', data.message_id, '- may have been optimistically deleted');
+                    //console.log('ℹ️ Message already deleted or not found:', data.message_id, '- may have been optimistically deleted');
                     return prev; // Message already deleted (optimistic update)
                 }
                 const filtered = prev.filter(msg => msg.id !== data.message_id);
-                console.log('✅ Message deleted in real-time - synced for all users');
+                //console.log('✅ Message deleted in real-time - synced for all users');
                 return filtered;
             });
             
             // Cancel edit mode if editing this message
             if (editingMessage?.id === data.message_id) {
-                console.log('🔄 Cancelling edit mode after message deletion');
+                //console.log('🔄 Cancelling edit mode after message deletion');
                 setEditingMessage(null);
                 setEditContent('');
                 setIsEditing(false);
@@ -184,12 +184,12 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
         };
 
         // Register the callbacks for real-time updates
-        console.log('📡 Registering Ably event handlers for real-time updates');
+        //console.log('📡 Registering Ably event handlers for real-time updates');
         subscribe('new-message', handleNewMessage);
         subscribe('message-reaction-updated', handleReactionUpdate);
         subscribe('message-updated', handleMessageUpdate);
         subscribe('message-deleted', handleMessageDelete);
-        console.log('✅ All real-time event handlers registered');
+        //console.log('✅ All real-time event handlers registered');
 
         // Cleanup
         return () => {
@@ -261,7 +261,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
 
     const handleSaveEdit = async () => {
         if (!editContent.trim() || !projectId || !editingMessage || isEditing) {
-            console.log('⚠️ Cannot save edit:', { 
+            //console.log('⚠️ Cannot save edit:', { 
                 hasContent: !!editContent.trim(), 
                 hasProjectId: !!projectId, 
                 hasEditingMessage: !!editingMessage, 
@@ -272,7 +272,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
 
         const content = editContent.trim();
         const messageId = editingMessage.id;
-        console.log('💾 Saving message edit:', { messageId, content });
+        //console.log('💾 Saving message edit:', { messageId, content });
         setIsEditing(true);
 
         // Optimistically update the UI
@@ -304,7 +304,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             }
 
             const result = await response.json();
-            console.log('✅ Message updated successfully:', result);
+            //console.log('✅ Message updated successfully:', result);
 
             // Close edit mode - real-time update will sync the final state
             setEditingMessage(null);
@@ -343,7 +343,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             return;
         }
 
-        console.log('🗑️ Deleting message:', messageId);
+        //console.log('🗑️ Deleting message:', messageId);
 
         // Optimistically remove the message from UI for immediate feedback
         setMessages((prev) => prev.filter(msg => msg.id !== messageId));
@@ -371,7 +371,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
                 throw new Error(errorData.error || 'Failed to delete message');
             }
 
-            console.log('✅ Message deleted successfully - real-time update will sync for all users');
+            //console.log('✅ Message deleted successfully - real-time update will sync for all users');
             // Real-time update will sync the deletion across all clients via Ably
         } catch (error) {
             console.error('Failed to delete message:', error);
@@ -401,7 +401,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
     const handleToggleReaction = async (messageId, reaction) => {
         if (!projectId) return;
 
-        console.log('👍 Toggling reaction:', { messageId, reaction, userId: auth?.user?.id });
+        //console.log('👍 Toggling reaction:', { messageId, reaction, userId: auth?.user?.id });
 
         // Optimistically update the UI for immediate feedback
         setMessages((prev) => 
@@ -481,7 +481,7 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
             // Close reaction picker
             setShowReactionPicker(null);
             
-            console.log('✅ Reaction toggle successful - real-time update will sync for all users');
+            //console.log('✅ Reaction toggle successful - real-time update will sync for all users');
             // The real update will come via Ably and sync for all users
         } catch (error) {
             console.error('Failed to toggle reaction:', error);

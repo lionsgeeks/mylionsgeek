@@ -181,7 +181,7 @@ const PlaceIndex = ({
         }
         setLoadingEvents(false);
     }, [calendarPlace]);
-    ////console.log(places);
+    //////console.log(places);
     const meetingCount = places.filter(p => p.place_type === "meeting_room").length;
     const studioCount = places.filter(p => p.place_type === "studio").length + meetingCount;
     const coworkCount = places.filter(p => p.place_type === "cowork").length;

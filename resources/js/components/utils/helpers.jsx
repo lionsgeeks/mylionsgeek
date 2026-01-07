@@ -46,23 +46,23 @@ const normalizePostImagePath = (rawPath = '') => {
 const addOrRemoveFollow = (userId, isFollowing) => {
     if (isFollowing) {
         try {
-            router.delete(`/users/unfollow/${userId}`, {}, {
+            router.delete(`/students/unfollow/${userId}`, {}, {
                 onSuccess: () => {
-                    console.log('you are now unfollow');
+                    //console.log('you are now unfollow');
                 }
             })
         } catch (error) {
-            console.log('unfollow error : ' + error);
+            //console.log('unfollow error : ' + error);
         }
     } else {
         try {
-            router.post(`/users/follow/${userId}`, {}, {
+            router.post(`/students/follow/${userId}`, {}, {
                 onSuccess: () => {
-                    // console.log('you are now follow');
+                    // //console.log('you are now follow');
                 }
             })
         } catch (error) {
-            // console.log('Follow error : ' + error);
+            // //console.log('Follow error : ' + error);
         }
     }
 }
