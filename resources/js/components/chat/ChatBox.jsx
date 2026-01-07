@@ -77,6 +77,12 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
         // Handle new messages from other users
         const handleNewMessage = (messageData) => {
+            // Safety check: only process messages for the current conversation
+            // This prevents messages from other conversations from appearing if there's a race condition
+            if (messageData.conversation_id && messageData.conversation_id !== conversation.id) {
+                return;
+            }
+            
             const isFromOtherUser = messageData.sender_id !== currentUser.id;
             
             // Show notification if chatbox is closed or minimized
@@ -256,6 +262,14 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     // Fetch messages - b3d ma y3tiw 3la conversation
     useEffect(() => {
+        // Clear messages immediately when switching conversations
+        // Only keep pending messages that might be for this conversation
+        setMessages(prev => {
+            // Keep only pending messages (they should be for current conversation if recently sent)
+            return prev.filter(m => m.pending && pendingTempIdsRef.current.has(m.tempId));
+        });
+        
+        // Fetch messages for the new conversation
         fetchMessages();
     }, [conversation.id]);
 
@@ -330,33 +344,17 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             const data = await response.json();
             const fetchedMessages = data.messages || [];
 
-            // Merge m3a pending messages (optimistic updates) - b7al b9a send
+            // Set messages for current conversation - only merge with pending messages for this conversation
             setMessages(prev => {
-                // Jib pending messages li mazal ma jawawoch
+                // Only keep pending messages that are truly pending (not yet confirmed by server)
                 const pendingMessages = prev.filter(m => m.pending && pendingTempIdsRef.current.has(m.tempId));
                 const existingIds = new Set(fetchedMessages.map(m => m.id));
                 
-                // Update read status for existing messages that were just fetched
-                // This ensures read receipts update immediately when messages are marked as read
-                const updatedPrev = prev.map(msg => {
-                    const fetchedMsg = fetchedMessages.find(m => m.id === msg.id);
-                    if (fetchedMsg && fetchedMsg.is_read && fetchedMsg.read_at) {
-                        return {
-                            ...msg,
-                            is_read: fetchedMsg.is_read,
-                            read_at: fetchedMsg.read_at,
-                        };
-                    }
-                    return msg;
-                });
-                
-                // Filter pending li jawawoch (dakhalo f fetchedMessages)
+                // Filter out pending messages that have been confirmed (exist in fetchedMessages)
                 const stillPending = pendingMessages.filter(m => !existingIds.has(m.tempId));
                 
-                // Merge: use updatedPrev for existing messages, add new fetched messages, and keep still pending
-                const existingInUpdated = new Set(updatedPrev.map(m => m.id));
-                const newFetched = fetchedMessages.filter(m => !existingInUpdated.has(m.id));
-                return [...updatedPrev, ...newFetched, ...stillPending];
+                // Return fetched messages plus any still-pending messages
+                return [...fetchedMessages, ...stillPending];
             });
 
             // Mark messages as read when conversation is opened (if chatbox is visible and focused)
