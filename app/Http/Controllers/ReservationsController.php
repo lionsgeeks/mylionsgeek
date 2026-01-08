@@ -23,6 +23,7 @@ use App\Mail\ReservationTimeAcceptedAdminMail;
 use App\Mail\ReservationTimeDeclinedAdminMail;
 use App\Mail\ReservationTimeProposalMail;
 use App\Mail\ReservationTimeSuggestedAdminMail;
+use App\Models\AccessRequestNotification;
 
 class ReservationsController extends Controller
 {
@@ -3757,5 +3758,108 @@ class ReservationsController extends Controller
         if (!is_array($data)) return false;
         if (!isset($data['ts']) || $data['ts'] < time() - 60 * 60 * 24 * 7) return false;
         return $data;
-}
+    }
+
+    /**
+     * Request access for studio or cowork
+     */
+    public function requestAccess(Request $request)
+    {
+        $validated = $request->validate([
+            'access_type' => 'required|string|in:studio,cowork,both',
+            'message' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Check if there's already a pending request
+        $existingRequest = AccessRequestNotification::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('requested_access_type', $validated['access_type'])
+            ->first();
+
+        if ($existingRequest) {
+            return response()->json([
+                'error' => 'You already have a pending access request. Please wait for admin approval.',
+            ], 400);
+        }
+
+        // Create access request notification
+        $notification = AccessRequestNotification::create([
+            'user_id' => $user->id,
+            'requested_access_type' => $validated['access_type'],
+            'message' => $validated['message'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Access request submitted successfully. An admin will review your request.',
+            'notification_id' => $notification->id,
+        ]);
+    }
+
+    /**
+     * Approve access request
+     */
+    public function approveAccessRequest(int $notificationId)
+    {
+        $notification = AccessRequestNotification::findOrFail($notificationId);
+        
+        if ($notification->status !== 'pending') {
+            return back()->with('error', 'This access request has already been processed.');
+        }
+
+        $user = DB::table('users')->where('id', $notification->user_id)->first();
+        if (!$user) {
+            return back()->with('error', 'User not found.');
+        }
+
+        // Update user access based on requested type
+        $updateData = [];
+        if ($notification->requested_access_type === 'studio' || $notification->requested_access_type === 'both') {
+            $updateData['access_studio'] = 1;
+        }
+        if ($notification->requested_access_type === 'cowork' || $notification->requested_access_type === 'both') {
+            $updateData['access_cowork'] = 1;
+        }
+
+        if (!empty($updateData)) {
+            $updateData['updated_at'] = now()->toDateTimeString();
+            DB::table('users')->where('id', $notification->user_id)->update($updateData);
+        }
+
+        // Update notification
+        $notification->update([
+            'status' => 'approved',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Access request approved successfully.');
+    }
+
+    /**
+     * Deny access request
+     */
+    public function denyAccessRequest(int $notificationId)
+    {
+        $notification = AccessRequestNotification::findOrFail($notificationId);
+        
+        if ($notification->status !== 'pending') {
+            return back()->with('error', 'This access request has already been processed.');
+        }
+
+        // Update notification
+        $notification->update([
+            'status' => 'denied',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Access request denied.');
+    }
 }

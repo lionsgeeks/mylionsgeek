@@ -46,6 +46,12 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio
         ->name('admin.places.reservations');
 
     // Store reservation with teams & equipment
+    
+    // Access request management
+    Route::post('/access-requests/{notification}/approve', [ReservationsController::class, 'approveAccessRequest'])
+        ->name('admin.access-requests.approve');
+    Route::post('/access-requests/{notification}/deny', [ReservationsController::class, 'denyAccessRequest'])
+        ->name('admin.access-requests.deny');
 });
 Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
     Route::post('/reservations/store', [ReservationsController::class, 'store'])
