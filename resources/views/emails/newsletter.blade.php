@@ -106,7 +106,7 @@
 
         <p style="margin-top: 40px; font-size: 15px; color: #555;">
             Best regards,<br>
-            The <strong>LionsGeek</strong> Team  / (AB) 🦁
+             <strong>LionsGeek</strong> Team
         </p>
     </div>
 @endsection
