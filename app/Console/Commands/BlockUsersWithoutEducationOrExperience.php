@@ -91,7 +91,6 @@ class BlockUsersWithoutEducationOrExperience extends Command
                     ->whereIn('id', $usersToBlock)
                     ->update([
                         'access_studio' => 0,
-                        'access_cowork' => 0,
                         'updated_at' => now()->toDateTimeString(),
                     ]);
 

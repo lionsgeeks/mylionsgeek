@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePage, Link } from '@inertiajs/react';
-import { Bell, Clock, Calendar, User, Briefcase, Lock } from 'lucide-react';
+import { Bell, Clock, Calendar, User, Briefcase, Lock, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,9 @@ export default function NotificationIcon() {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [ablyClient, setAblyClient] = useState(null);
+    const [denyModalOpen, setDenyModalOpen] = useState(false);
+    const [denyNotificationId, setDenyNotificationId] = useState(null);
+    const [denialReason, setDenialReason] = useState('');
 
     const userRoles = useMemo(() => {
         const role = auth?.user?.role;
@@ -213,6 +216,10 @@ export default function NotificationIcon() {
                 // Handle "access-request-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 4 && parts[0] === 'access' && parts[1] === 'request' && parts[2] === 'response') {
+                // Handle "access-request-response-123"
+                type = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                id = parts[3];
             } else {
                 // Handle simple types like "follow-123"
                 type = parts[0];
@@ -264,6 +271,10 @@ export default function NotificationIcon() {
                 return Clock;
             case 'lock':
                 return Lock;
+            case 'check-circle':
+                return CheckCircle;
+            case 'x-circle':
+                return XCircle;
             case 'user':
             default:
                 return User;
@@ -280,6 +291,10 @@ export default function NotificationIcon() {
                 return 'text-[var(--color-alpha)]';
             case 'lock':
                 return 'text-yellow-600';
+            case 'check-circle':
+                return 'text-green-600';
+            case 'x-circle':
+                return 'text-red-600';
             case 'user':
             default:
                 return 'text-[var(--color-alpha)]';
@@ -287,6 +302,7 @@ export default function NotificationIcon() {
     };
 
     return (
+        <>
         <DropdownMenu open={isOpen} onOpenChange={handleDropdownClose}>
             <DropdownMenuTrigger asChild>
                 <Button
@@ -356,21 +372,45 @@ export default function NotificationIcon() {
                                     e.stopPropagation();
                                     if (!notification.notificationId) return;
                                     
+                                    // Open modal to get denial reason
+                                    setDenyNotificationId(notification.notificationId);
+                                    setDenyModalOpen(true);
+                                };
+
+                                const handleConfirmDeny = async () => {
+                                    if (!denyNotificationId || !denialReason.trim()) {
+                                        alert('Please provide a reason for denial');
+                                        return;
+                                    }
+                                    
                                     try {
-                                        const response = await fetch(`/admin/access-requests/${notification.notificationId}/deny`, {
+                                        const response = await fetch(`/admin/access-requests/${denyNotificationId}/deny`, {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json',
                                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                                             },
+                                            body: JSON.stringify({
+                                                denial_reason: denialReason,
+                                            }),
                                         });
                                         
                                         if (response.ok) {
-                                            markAsRead(notification);
+                                            const notificationToMark = notifications.find(n => n.notificationId === denyNotificationId);
+                                            if (notificationToMark) {
+                                                markAsRead(notificationToMark);
+                                            }
+                                            setDenyModalOpen(false);
+                                            setDenyNotificationId(null);
+                                            setDenialReason('');
                                             fetchNotifications();
+                                        } else {
+                                            const data = await response.json();
+                                            alert(data.error || 'Failed to deny access request');
                                         }
                                     } catch (error) {
                                         console.error('Failed to deny access:', error);
+                                        alert('An error occurred. Please try again.');
                                     }
                                 };
 
@@ -409,6 +449,11 @@ export default function NotificationIcon() {
                                                 <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
                                                     Requested: {notification.accessType === 'studio' ? 'Studio' : notification.accessType === 'cowork' ? 'Cowork' : 'Studio & Cowork'}
                                                 </p>
+                                            )}
+                                            {notification.type === 'access_request_response' && notification.denial_reason && (
+                                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
+                                                    <strong>Reason:</strong> {notification.denial_reason}
+                                                </div>
                                             )}
                                             {isAccessRequest && (
                                                 <div className="flex gap-2 mt-2">
@@ -461,5 +506,45 @@ export default function NotificationIcon() {
                 </ScrollArea>
             </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Denial Reason Modal */}
+        {denyModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+                    <h3 className="text-lg font-semibold mb-4 text-[var(--color-foreground)]">
+                        Deny Access Request
+                    </h3>
+                    <p className="text-sm text-[var(--color-muted-foreground)] mb-4">
+                        Please provide a reason for denying this access request. The user will see this reason in their notification.
+                    </p>
+                    <textarea
+                        value={denialReason}
+                        onChange={(e) => setDenialReason(e.target.value)}
+                        placeholder="Enter reason for denial..."
+                        className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-foreground)] mb-4 min-h-[100px] resize-y"
+                        maxLength={500}
+                    />
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            onClick={() => {
+                                setDenyModalOpen(false);
+                                setDenyNotificationId(null);
+                                setDenialReason('');
+                            }}
+                            className="px-4 py-2 text-sm font-semibold border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-muted)] transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmDeny}
+                            className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                        >
+                            Deny Access
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

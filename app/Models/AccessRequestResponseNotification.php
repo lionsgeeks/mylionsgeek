@@ -5,22 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class AccessRequestNotification extends Model
+class AccessRequestResponseNotification extends Model
 {
     protected $fillable = [
         'user_id',
-        'requested_access_type', // 'studio', 'cowork', or 'both'
-        'message',
-        'status', // 'pending', 'approved', 'denied'
+        'access_request_notification_id',
+        'status', // 'approved' or 'denied'
         'denial_reason',
         'reviewed_by',
-        'reviewed_at',
+        'message_notification',
+        'path',
         'read_at',
     ];
 
     protected $casts = [
         'read_at' => 'datetime',
-        'reviewed_at' => 'datetime',
     ];
 
     /**
@@ -29,6 +28,14 @@ class AccessRequestNotification extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get the access request notification
+     */
+    public function accessRequest(): BelongsTo
+    {
+        return $this->belongsTo(AccessRequestNotification::class, 'access_request_notification_id');
     }
 
     /**

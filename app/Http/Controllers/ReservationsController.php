@@ -24,6 +24,7 @@ use App\Mail\ReservationTimeDeclinedAdminMail;
 use App\Mail\ReservationTimeProposalMail;
 use App\Mail\ReservationTimeSuggestedAdminMail;
 use App\Models\AccessRequestNotification;
+use App\Models\AccessRequestResponseNotification;
 
 class ReservationsController extends Controller
 {
@@ -3839,25 +3840,65 @@ class ReservationsController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        // Create notification for the user
+        $accessTypeLabel = match($notification->requested_access_type) {
+            'studio' => 'Studio',
+            'cowork' => 'Cowork',
+            'both' => 'Studio & Cowork',
+            default => 'Access'
+        };
+
+        AccessRequestResponseNotification::create([
+            'user_id' => $notification->user_id,
+            'access_request_notification_id' => $notification->id,
+            'status' => 'approved',
+            'reviewed_by' => auth()->id(),
+            'message_notification' => "Your {$accessTypeLabel} access request has been approved!",
+            'path' => '/student/spaces',
+        ]);
+
         return back()->with('success', 'Access request approved successfully.');
     }
 
     /**
      * Deny access request
      */
-    public function denyAccessRequest(int $notificationId)
+    public function denyAccessRequest(Request $request, int $notificationId)
     {
+        $validated = $request->validate([
+            'denial_reason' => 'required|string|max:500',
+        ]);
+
         $notification = AccessRequestNotification::findOrFail($notificationId);
         
         if ($notification->status !== 'pending') {
             return back()->with('error', 'This access request has already been processed.');
         }
 
-        // Update notification
+        // Update notification with denial reason
         $notification->update([
             'status' => 'denied',
+            'denial_reason' => $validated['denial_reason'],
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now(),
+        ]);
+
+        // Create notification for the user
+        $accessTypeLabel = match($notification->requested_access_type) {
+            'studio' => 'Studio',
+            'cowork' => 'Cowork',
+            'both' => 'Studio & Cowork',
+            default => 'Access'
+        };
+
+        AccessRequestResponseNotification::create([
+            'user_id' => $notification->user_id,
+            'access_request_notification_id' => $notification->id,
+            'status' => 'denied',
+            'denial_reason' => $validated['denial_reason'],
+            'reviewed_by' => auth()->id(),
+            'message_notification' => "Your {$accessTypeLabel} access request has been denied.",
+            'path' => '/student/spaces',
         ]);
 
         return back()->with('success', 'Access request denied.');

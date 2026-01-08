@@ -14,6 +14,7 @@ use App\Models\FollowNotification;
 use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
 use App\Models\AccessRequestNotification;
+use App\Models\AccessRequestResponseNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -305,6 +306,43 @@ class NotificationController extends Controller
                 }
             }
 
+            // 3.5. ACCESS REQUEST RESPONSE NOTIFICATIONS (Users who requested access)
+            if (Schema::hasTable('access_request_response_notifications')) {
+                try {
+                    $accessResponseNotifications = AccessRequestResponseNotification::with(['reviewer', 'accessRequest'])
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($accessResponseNotifications as $notif) {
+                        $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
+                        $message = $notif->message_notification;
+                        
+                        // Add denial reason to message if denied
+                        if ($notif->status === 'denied' && $notif->denial_reason) {
+                            $message .= ' Reason: ' . $notif->denial_reason;
+                        }
+
+                        $notifications[] = [
+                            'id' => 'access-request-response-' . $notif->id,
+                            'type' => 'access_request_response',
+                            'sender_name' => $reviewerName,
+                            'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
+                            'message' => $message,
+                            'link' => $notif->path ?? '/student/spaces',
+                            'icon_type' => $notif->status === 'approved' ? 'check-circle' : 'x-circle',
+                            'status' => $notif->status,
+                            'denial_reason' => $notif->denial_reason,
+                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching access request response notifications: ' . $e->getMessage());
+                }
+            }
+
             // 4. POST NOTIFICATIONS (All users)
             $postNotifications = PostNotification::with(['sender', 'post'])
                 ->where('user_id', $user->id)
@@ -486,6 +524,17 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'access_request_response':
+                    if (Schema::hasTable('access_request_response_notifications')) {
+                        $notification = AccessRequestResponseNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 case 'discipline_change':
                     $roles = is_array($user->role) ? $user->role : [$user->role];
                     $isAdmin = in_array('admin', $roles);
@@ -560,6 +609,13 @@ class NotificationController extends Controller
             // Mark all project status notifications as read (for students)
             if (Schema::hasTable('project_status_notifications')) {
                 ProjectStatusNotification::where('student_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all access request response notifications as read (for users)
+            if (Schema::hasTable('access_request_response_notifications')) {
+                AccessRequestResponseNotification::where('user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }
