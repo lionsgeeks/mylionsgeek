@@ -52,7 +52,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         ['new-message', 'message-deleted', 'seen', 'typing', 'recording'],
         {
             onConnected: () => {
-                console.log('Ably connected for conversation:', conversation.id);
+                //console.log('Ably connected for conversation:', conversation.id);
                 // Request notification permission on first connection
                 requestNotificationPermission();
             },
@@ -89,7 +89,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             if (isFromOtherUser) {
                 // Desktop notification
                 if (hasNotificationPermission() && (document.hidden || !document.hasFocus())) {
-                    console.log(messageData);
+                    //console.log(messageData);
                     showDesktopNotification(
                         `${messageData.sender?.name || 'New message'}`,
                         {

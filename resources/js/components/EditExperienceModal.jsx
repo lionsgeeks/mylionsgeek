@@ -49,6 +49,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
     const [currentlyWorking, setCurrentlyWorking] = useState(!item?.end_month && !item?.end_year);
     const [remotePosition, setRemotePosition] = useState(false);
     const [dateError, setDateError] = useState('');
+    const [error, setError] = useState(null);
     const { stopScrolling } = helpers();
 
     const { data, setData, processing, errors } = useForm({
@@ -104,27 +105,30 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
         try {
             if (isEditMode) {
                 // Update existing experience
-                router.put(`/users/experience/${item.id}`, data, {
+                router.put(`/students/experience/${item.id}`, data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
                     onError: (error) => {
-                        console.log(error);
+                        //console.log(error);
+                        setError(error)
+                        // console.log(error);
+                        
                     }
                 });
             } else {
                 // Create new experience
-                router.post('/users/experience', data, {
+                router.post('/students/experience', data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
                     onError: (error) => {
-                        console.log(error);
+                        //console.log(error);
                     }
                 });
             }
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     };
 
@@ -169,7 +173,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                 placeholder="Ex: Retail Sales Manager"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.title} className="mt-1" />
+                            <InputError message={error?.title} className="mt-1" />
                         </div>
 
                         {/* Employment Type */}
@@ -189,7 +193,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                     </option>
                                 ))}
                             </select>
-                            <InputError message={errors.employment_type} className="mt-1" />
+                            <InputError message={error?.employment_type} className="mt-1" />
                             <p className="text-xs text-beta/70 dark:text-light/70 mt-1">Learn more about employment types.</p>
                         </div>
 
@@ -206,7 +210,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                 placeholder="Ex: Microsoft"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.company} className="mt-1" />
+                            <InputError message={error?.company} className="mt-1" />
                         </div>
 
                         {/* Currently Working Checkbox */}
@@ -241,7 +245,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.start_month} className="mt-1" />
+                                <InputError message={error?.start_month} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -259,7 +263,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.start_year} className="mt-1" />
+                                <InputError message={error?.start_year} className="mt-1" />
                             </div>
                         </div>
 
@@ -282,7 +286,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.end_month} className="mt-1" />
+                                    <InputError message={error?.end_month} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
@@ -300,7 +304,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.end_year} className="mt-1" />
+                                    <InputError message={error?.end_year} className="mt-1" />
                                 </div>
                             </div>
                         )}
@@ -342,7 +346,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                 placeholder="Ex: London, United Kingdom"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.location} className="mt-1" />
+                            <InputError message={error?.location} className="mt-1" />
                         </div>
 
                         {/* Description */}
@@ -358,7 +362,7 @@ const EditExperienceModal = ({ onChange, onOpenChange, item }) => {
                                 placeholder="Tell your major duties and successes, highlighting specific projects."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
-                            <InputError message={errors.description} className="mt-1" />
+                            <InputError message={error?.description} className="mt-1" />
                         </div>
                     </div>
 

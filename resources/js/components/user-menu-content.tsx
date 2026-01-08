@@ -6,9 +6,8 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, Dock, User as UserIcon, Book, SkipBack, LayoutGrid } from 'lucide-react';
+import { LogOut, Settings, Dock, User as UserIcon, Book, LayoutGrid } from 'lucide-react';
 import { AddDocumentModal } from './add-document-modal';
-import { Button } from '@headlessui/react';
 import BookAppointment from '@/components/book-appointment';
 import Rolegard from './rolegard';
 

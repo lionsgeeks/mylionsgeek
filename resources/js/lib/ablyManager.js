@@ -35,11 +35,11 @@ export const initializeAbly = async () => {
         });
 
         ablyInstance.connection.on('connected', () => {
-            console.log('Ably connected globally');
+            //console.log('Ably connected globally');
         });
 
         ablyInstance.connection.on('disconnected', () => {
-            console.log('Ably disconnected');
+            //console.log('Ably disconnected');
         });
 
         ablyInstance.connection.on('failed', (error) => {

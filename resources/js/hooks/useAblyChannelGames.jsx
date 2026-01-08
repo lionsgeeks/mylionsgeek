@@ -91,18 +91,18 @@ export default function useAblyChannelGames(channelName, events = ['game-state-u
             }
 
             try {
-                console.log('🔔 Setting up Ably channel:', channelName, 'Events:', events);
+                //console.log('🔔 Setting up Ably channel:', channelName, 'Events:', events);
                 const channel = ably.channels.get(channelName);
                 channelRef.current = channel;
 
                 // Subscribe to all specified events - EXACTLY like useAblyChannel
                 events.forEach((eventName) => {
-                    console.log('📡 Subscribing to event:', eventName, 'on channel:', channelName);
+                    //console.log('📡 Subscribing to event:', eventName, 'on channel:', channelName);
                     channel.subscribe(eventName, (message) => {
-                        console.log('📨 Received message on', eventName, ':', message.data);
+                        //console.log('📨 Received message on', eventName, ':', message.data);
                         const callback = callbacksRef.current.get(eventName);
                         if (callback) {
-                            console.log('✅ Calling callback for', eventName);
+                            //console.log('✅ Calling callback for', eventName);
                             try {
                                 callback(message.data);
                             } catch (error) {
@@ -114,7 +114,7 @@ export default function useAblyChannelGames(channelName, events = ['game-state-u
                     });
                 });
 
-                console.log('✅ Channel subscription active for:', channelName);
+                //console.log('✅ Channel subscription active for:', channelName);
                 if (options.onSubscribed) {
                     options.onSubscribed(channel);
                 }
@@ -159,18 +159,18 @@ export default function useAblyChannelGames(channelName, events = ['game-state-u
 
     // Subscribe to a specific event - EXACTLY like useAblyChannel
     const subscribe = useCallback((eventName, callback) => {
-        console.log('📝 Registering callback for event:', eventName, 'Channel ready:', !!channelRef.current);
+        //console.log('📝 Registering callback for event:', eventName, 'Channel ready:', !!channelRef.current);
         callbacksRef.current.set(eventName, callback);
         
         // If channel is already set up, subscribe immediately
         if (channelRef.current) {
-            console.log('✅ Channel ready, subscribing immediately to:', eventName);
+            //console.log('✅ Channel ready, subscribing immediately to:', eventName);
             channelRef.current.subscribe(eventName, (message) => {
-                console.log('📨 Message received via immediate subscription:', eventName, message.data);
+                //console.log('📨 Message received via immediate subscription:', eventName, message.data);
                 callback(message.data);
             });
         } else {
-            console.log('⏳ Channel not ready yet, callback stored for later');
+            //console.log('⏳ Channel not ready yet, callback stored for later');
         }
         // If channel not set up yet, callback is stored in ref
         // It will be used when channel subscription is established in useEffect

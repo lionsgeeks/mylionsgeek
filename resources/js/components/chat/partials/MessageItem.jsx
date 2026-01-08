@@ -63,7 +63,7 @@ export default function MessageItem({
             <div className={cn("flex mb-4 group relative", isCurrentUser ? "justify-end" : "justify-start")}>
                 {!isCurrentUser && (
                     <button
-                        onClick={() => router.visit(`/student/${otherUser.id}`)}
+                        onClick={() => router.visit(`/students/${otherUser.id}`)}
                         className="flex-shrink-0 mr-2 hover:opacity-80 transition-opacity"
                     >
                         <Avatar
@@ -229,7 +229,7 @@ export default function MessageItem({
                 </div>
                 {isCurrentUser && (
                     <button
-                        onClick={() => router.visit(`/student/${currentUser.id}`)}
+                        onClick={() => router.visit(`/students/${currentUser.id}`)}
                         className="flex-shrink-0 ml-2 hover:opacity-80 transition-opacity"
                     >
                         <Avatar

@@ -39,7 +39,7 @@ export default function ConnectFour() {
         ['game-state-updated', 'game-reset'],
         {
             onConnected: () => {
-                console.log('✅ Ably connected for game room:', roomId);
+                //console.log('✅ Ably connected for game room:', roomId);
             },
             onError: (error) => {
                 console.error('❌ Ably connection error:', error);
@@ -121,7 +121,7 @@ export default function ConnectFour() {
                         };
                         
                         try {
-                            console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Player:', currentPlayer);
+                            //console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Player:', currentPlayer);
                             // Save to database and broadcast via Ably
                             // Server will:
                             // 1. Save to database (preserving players array)
@@ -130,8 +130,8 @@ export default function ConnectFour() {
                                 game_type: 'connectfour',
                                 game_state: currentState,
                             }).then(() => {
-                                console.log('✅ Move saved! Server broadcasted to all players via Ably');
-                                console.log('📡 Other player should receive update NOW via Ably subscription');
+                                //console.log('✅ Move saved! Server broadcasted to all players via Ably');
+                                //console.log('📡 Other player should receive update NOW via Ably subscription');
                             }).catch(error => {
                                 console.error('❌ Failed to save move:', error);
                                 // Revert optimistic update on error
@@ -424,7 +424,7 @@ export default function ConnectFour() {
         // When server saves to database, it broadcasts via Ably, and we update here
         // This is called IMMEDIATELY when any player makes a move - NO REFRESH NEEDED
         const handleGameStateUpdate = (data) => {
-            console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
+            //console.log('🎮 LIVE UPDATE RECEIVED via Ably:', data);
             if (data && data.game_state) {
                 // Always update from server's authoritative state (from database)
                 updateGameStateFromData(data.game_state);
@@ -439,10 +439,10 @@ export default function ConnectFour() {
 
         // Subscribe to game state updates - exactly like messages subscribe
         // This ensures when Player 1 drops, Player 2 sees it, and vice versa
-        console.log('🔔 Registering Ably subscriptions for room:', roomId);
+        //console.log('🔔 Registering Ably subscriptions for room:', roomId);
         subscribe('game-state-updated', handleGameStateUpdate);
         subscribe('game-reset', handleGameReset);
-        console.log('✅ Ably subscriptions registered - ready for live updates');
+        //console.log('✅ Ably subscriptions registered - ready for live updates');
 
         return () => {
             // Cleanup handled by useAblyChannelGames

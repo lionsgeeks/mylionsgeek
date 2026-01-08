@@ -38,16 +38,17 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
     const isEditMode = !!item?.id;
     const [currentlyStudying, setCurrentlyStudying] = useState(!item?.end_month && !item?.end_year);
     const [dateError, setDateError] = useState('');
+    const [error, setError] = useState(null)
     const { stopScrolling } = helpers();
 
     const { data, setData, processing, errors } = useForm({
         school: item?.school || '',
         degree: item?.degree || '',
         fieldOfStudy: item?.field_of_study || '',
-        startMonth: item?.start_month || '',
-        startYear: item?.start_year || '',
-        endMonth: item?.end_month || '',
-        endYear: item?.end_year || '',
+        start_month: item?.start_month || '',
+        start_year: item?.start_year || '',
+        end_month: item?.end_month || '',
+        end_year: item?.end_year || '',
         description: item?.description || '',
     });
 
@@ -58,9 +59,9 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
 
     // Validate date range
     useEffect(() => {
-        if (!currentlyStudying && data.startMonth && data.startYear && data.endMonth && data.endYear) {
-            const startDate = new Date(parseInt(data.startYear), parseInt(data.startMonth) - 1);
-            const endDate = new Date(parseInt(data.endYear), parseInt(data.endMonth) - 1);
+        if (!currentlyStudying && data.start_month && data.start_year && data.end_month && data.end_year) {
+            const startDate = new Date(parseInt(data.start_year), parseInt(data.start_month) - 1);
+            const endDate = new Date(parseInt(data.end_year), parseInt(data.end_month) - 1);
 
             if (startDate > endDate) {
                 setDateError('End date must be after start date');
@@ -70,15 +71,15 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
         } else {
             setDateError('');
         }
-    }, [data.startMonth, data.startYear, data.endMonth, data.endYear, currentlyStudying]);
+    }, [data.start_month, data.start_year, data.end_month, data.end_year, currentlyStudying]);
 
     // Clear end date when currently studying is checked
     useEffect(() => {
         if (currentlyStudying) {
             setData({
                 ...data,
-                endMonth: '',
-                endYear: ''
+                end_month: '',
+                end_year: ''
             });
         }
     }, [currentlyStudying]);
@@ -92,17 +93,19 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
         try {
             if (isEditMode) {
                 // Update existing education
-                router.put(`/users/education/${item.id}`, data, {
+                router.put(`/students/education/${item.id}`, data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
                     onError: (error) => {
+                        setError(error)
                         console.log(error);
+
                     }
                 });
             } else {
                 // Create new education
-                router.post('/users/education', data, {
+                router.post('/students/education', data, {
                     onSuccess: () => {
                         onOpenChange(false);
                     },
@@ -157,7 +160,8 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                 placeholder="Ex: Harvard University"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.school} className="mt-1" />
+                            {/* <span className={`${error?.school && 'text-error'}`}>{error?.school}</span> */}
+                            <InputError message={error?.school} className="mt-1" />
                         </div>
 
                         {/* Degree */}
@@ -173,7 +177,7 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                 placeholder="Ex: Bachelor's"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.degree} className="mt-1" />
+                            <InputError message={error?.degree} className="mt-1" />
                         </div>
 
                         {/* Field of Study */}
@@ -189,7 +193,7 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                 placeholder="Ex: Computer Science"
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                             />
-                            <InputError message={errors.fieldOfStudy} className="mt-1" />
+                            <InputError message={error?.fieldOfStudy} className="mt-1" />
                         </div>
 
                         {/* Currently Studying Checkbox */}
@@ -213,8 +217,8 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                     Start date*
                                 </label>
                                 <select
-                                    name="startMonth"
-                                    value={data.startMonth}
+                                    name="start_month"
+                                    value={data.start_month}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
@@ -224,15 +228,15 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startMonth} className="mt-1" />
+                                <InputError message={error?.start_month} className="mt-1" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
                                     Year
                                 </label>
                                 <select
-                                    name="startYear"
-                                    value={data.startYear}
+                                    name="start_year"
+                                    value={data.start_year}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                 >
@@ -242,7 +246,7 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <InputError message={errors.startYear} className="mt-1" />
+                                <InputError message={error?.start_year} className="mt-1" />
                             </div>
                         </div>
 
@@ -254,8 +258,8 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                         End date (or expected)*
                                     </label>
                                     <select
-                                        name="endMonth"
-                                        value={data.endMonth}
+                                        name="end_month"
+                                        value={data.end_month}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
@@ -265,15 +269,15 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endMonth} className="mt-1" />
+                                    <InputError message={error?.end_month} className="mt-1" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
                                         Year
                                     </label>
                                     <select
-                                        name="endYear"
-                                        value={data.endYear}
+                                        name="end_year"
+                                        value={data.end_year}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
                                     >
@@ -283,7 +287,7 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                             </option>
                                         ))}
                                     </select>
-                                    <InputError message={errors.endYear} className="mt-1" />
+                                    <InputError message={error?.end_year} className="mt-1" />
                                 </div>
                             </div>
                         )}
@@ -311,7 +315,7 @@ const EditEducationModal = ({ onOpen, onOpenChange, item }) => {
                                 placeholder="Describe your academic achievements, activities, honors, or relevant coursework."
                                 className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
                             />
-                            <InputError message={errors.description} className="mt-1" />
+                            <InputError message={error?.description} className="mt-1" />
                         </div>
                     </div>
 

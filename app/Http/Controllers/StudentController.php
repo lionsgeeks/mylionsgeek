@@ -278,7 +278,7 @@ class StudentController extends Controller
         }
 
         $request->validate([
-            'about' => 'nullable|string|max:500',
+            'about' => 'string|max:500|min:100|required',
         ]);
 
         $user = User::findOrFail($id);
@@ -309,7 +309,7 @@ class StudentController extends Controller
                 'sender_name' => $follower->name,
                 'sender_image' => $follower->image,
                 'message' => $message,
-                'link' => "/student/{$follower->id}",
+                'link' => "/students/{$follower->id}",
                 'icon_type' => 'user',
                 'created_at' => $notification->created_at->toISOString(),
                 'follower_id' => $follower->id,
@@ -325,14 +325,14 @@ class StudentController extends Controller
         $user = Auth::user();
         $request->validate([
             'title' => 'string|required',
-            'description' => 'string|nullable',
-            'employment_type' => 'string|nullable',
-            'company' => 'string|nullable',
+            'description' => 'string|required',
+            'employment_type' => 'string|required',
+            'company' => 'string|required',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
             'end_year' => 'string|nullable',
-            'location' => 'string|nullable',
+            'location' => 'string|required',
         ]);
         $experience = Experience::create([
             'title' => $request->title,
@@ -361,14 +361,14 @@ class StudentController extends Controller
 
         $request->validate([
             'title' => 'string|required',
-            'description' => 'string|nullable',
-            'company' => 'string|nullable',
-            'employment_type' => 'string|nullable',
+            'description' => 'string|required',
+            'company' => 'string|required',
+            'employment_type' => 'string|required',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
             'end_year' => 'string|nullable',
-            'location' => 'string|nullable',
+            'location' => 'string|required',
         ]);
         $experience->update([
             'title' => $request->title,
@@ -401,13 +401,13 @@ class StudentController extends Controller
         $user = Auth::user();
         $request->validate([
             'school' => 'string|required',
-            'degree' => 'string|nullable',
-            'fieldOfStudy' => 'string|nullable',
+            'degree' => 'string|required',
+            'fieldOfStudy' => 'string|required',
             'startMonth' => 'string|required',
             'startYear' => 'string|required',
             'endMonth' => 'string|nullable',
             'endYear' => 'string|nullable',
-            'description' => 'string|nullable',
+            'description' => 'string|required',
         ]);
 
         $education = Education::create([
@@ -433,16 +433,15 @@ class StudentController extends Controller
         if (!$user->educations()->where('education_id', $id)->exists()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-
         $request->validate([
             'school' => 'string|required',
-            'degree' => 'string|nullable',
-            'fieldOfStudy' => 'string|nullable',
+            'degree' => 'string|required',
+            'fieldOfStudy' => 'string|required',
             'start_month' => 'string|required',
             'start_year' => 'string|required',
             'end_month' => 'string|nullable',
             'endYear' => 'string|nullable',
-            'description' => 'string|nullable',
+            'description' => 'string|required',
         ]);
 
         $education->update([

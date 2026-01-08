@@ -754,7 +754,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         <div
                                             key={user.id}
                                             className="flex items-center justify-between p-3 border border-alpha/20 rounded-lg hover:border-alpha/40 transition-colors cursor-pointer"
-                                            onClick={() => router.visit(`/users/${user.id}`)}
+                                            onClick={() => router.visit(`/students/${user.id}`)}
                                         >
                                             <div className="flex items-center space-x-3">
                                                 <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">

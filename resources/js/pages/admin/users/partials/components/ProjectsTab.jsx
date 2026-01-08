@@ -52,7 +52,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
 
       // For portfolio (student) projects, redirect to details page
       if (type === 'portfolio' && project.id) {
-        router.visit(`/student/project/${project.id}`);
+        router.visit(`/students/project/${project.id}`);
       }
       // For collaborative projects, keep the expand/collapse behavior for now
       else if (type === 'collab') {
@@ -78,7 +78,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.visit(`/student/project/${project.id}`);
+                  router.visit(`/students/project/${project.id}`);
                 }}
                 className="flex items-center gap-1 text-[var(--color-alpha)] hover:underline font-semibold text-sm"
               >
@@ -89,7 +89,7 @@ export default function ProjectsTab({ userProjects = { data: [], meta: {} }, col
             )}
             {link && (
               <a
-                href={`/student/project/${project.id}`}
+                href={`/students/project/${project.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}

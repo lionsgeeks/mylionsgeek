@@ -2,9 +2,11 @@ import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
 import { router, useForm } from '@inertiajs/react';
+import InputError from '@/components/input-error';
 
 export default function AboutModal({ onOpen, onOpenChange, user }) {
     const { stopScrolling } = helpers()
+    const [error, setError] = useState(null)
     const { data, setData, post, processing, errors } = useForm({
         about: user?.about || '',
     });
@@ -24,16 +26,19 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
     //! update about
     const updateAbout = () => {
         try {
-            router.post(`/users/about/${user?.id}`, data, {
+            router.post(`/students/about/${user?.id}`, data, {
                 onSuccess: () => {
                     onOpenChange(false)
                 },
-                onError: (errors) => {
-                    console.log('About update errors:', errors);
+                onError: (error) => {
+                    //console.log('About update errors:', errors);
+                    setError(error)
+                    console.log(error);
+                    
                 }
             })
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     }
     const maxChars = 500;
@@ -83,11 +88,7 @@ export default function AboutModal({ onOpen, onOpenChange, user }) {
                             rows="10"
                             placeholder="Write about yourself..."
                         />
-                        {errors.about && (
-                            <p className="text-error text-xs mt-1">
-                                {errors.about}
-                            </p>
-                        )}
+                        <InputError message={error?.about} className="mt-1" />
                     </div>
 
                     {/* Character Count */}

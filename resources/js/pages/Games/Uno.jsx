@@ -112,7 +112,7 @@ export default function Uno() {
                 game_state: gameStateData,
             })
             .then(() => {
-                console.log('✅ Game started and broadcasted to all players');
+                //console.log('✅ Game started and broadcasted to all players');
             })
             .catch((error) => {
                 console.error('❌ Failed to start game:', error);

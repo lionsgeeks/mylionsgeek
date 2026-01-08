@@ -19,7 +19,7 @@ const PostCardMainContent = ({ post, user, addOrRemoveFollow, timeAgo, takeToUse
     const displayText = hasMore && !isExpanded
         ? post.description.slice(0, 200) + '...'
         : post.description;
-    // console.log(displayText);
+    // //console.log(displayText);
     return (
         <>
             <div className="mt-3 px-4">

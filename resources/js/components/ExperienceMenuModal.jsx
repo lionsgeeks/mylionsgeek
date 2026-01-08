@@ -22,15 +22,15 @@ export function ExperienceMenuModal({ experience }) {
     const deleteExperience = (id) => {
         try {
             // Update existing experience
-            router.delete(`/users/experience/${id}`, {
+            router.delete(`/students/experience/${id}`, {
                 onSuccess: () => {
                 },
                 onError: (error) => {
-                    console.log(error);
+                    //console.log(error);
                 }
             });
         } catch (error) {
-            console.log(error);
+            //console.log(error);
         }
     }
     return (
