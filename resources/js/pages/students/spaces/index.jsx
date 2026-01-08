@@ -67,11 +67,20 @@ export default function SpacesPage() {
     const hasUnlimitedAccess = normalizedRoles.some((role) => PRIVILEGED_ACCESS_ROLES.includes(role));
     const canAccessStudio = hasUnlimitedAccess || resolveAccessFlag('access_studio');
     const canAccessCowork = hasUnlimitedAccess || resolveAccessFlag('access_cowork');
+    
+    // Check if user has media field (required for studio access requests)
+    const userField = auth?.user?.field ? String(auth.user.field).toLowerCase().trim() : '';
+    const isMediaStudent = userField === 'media';
 
     const requireAccess = useCallback((target) => {
         if (target === 'studio' && !canAccessStudio) {
-            setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
-            setAccessErrorType('studio');
+            if (isMediaStudent) {
+                setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
+                setAccessErrorType('studio');
+            } else {
+                setAccessError('Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.');
+                setAccessErrorType(null); // Don't allow request access for non-media students
+            }
             return false;
         }
         if (target === 'cowork' && !canAccessCowork) {
@@ -82,7 +91,7 @@ export default function SpacesPage() {
         setAccessError('');
         setAccessErrorType(null);
         return true;
-    }, [canAccessStudio, canAccessCowork]);
+    }, [canAccessStudio, canAccessCowork, isMediaStudent]);
 
     const openStudioModal = useCallback((payload) => {
         if (!requireAccess('studio')) {
@@ -532,7 +541,7 @@ export default function SpacesPage() {
                     <div className="mb-4 flex items-start justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
                         <span className="flex-1">{accessError}</span>
                         <div className="flex items-center gap-2 ml-4">
-                            {accessErrorType && (
+                            {accessErrorType && isMediaStudent && (
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -567,13 +576,20 @@ export default function SpacesPage() {
 
                 {type === 'studio' && !canAccessStudio && (
                     <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100 flex items-center justify-between">
-                        <span>You currently do not have studio reservation access. Please contact the staff if you believe this is an error.</span>
-                        <button
-                            onClick={() => handleRequestAccess('studio')}
-                            className="ml-4 px-4 py-2 bg-alpha text-black rounded-lg font-semibold hover:bg-alpha/90 transition"
-                        >
-                            Request Access
-                        </button>
+                        <span>
+                            {isMediaStudent 
+                                ? 'You currently do not have studio reservation access. Please contact the staff if you believe this is an error.'
+                                : 'Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.'
+                            }
+                        </span>
+                        {isMediaStudent && (
+                            <button
+                                onClick={() => handleRequestAccess('studio')}
+                                className="ml-4 px-4 py-2 bg-alpha text-black rounded-lg font-semibold hover:bg-alpha/90 transition"
+                            >
+                                Request Access
+                            </button>
+                        )}
                     </div>
                 )}
                 {type === 'cowork' && !canAccessCowork && (

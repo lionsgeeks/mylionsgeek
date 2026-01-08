@@ -3776,6 +3776,16 @@ class ReservationsController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        // Check if user is requesting studio access - only media students can request studio access
+        if ($validated['access_type'] === 'studio' || $validated['access_type'] === 'both') {
+            $userField = strtolower(trim($user->field ?? ''));
+            if ($userField !== 'media') {
+                return response()->json([
+                    'error' => 'Studio access requests are only available for students with the "media" field. Please contact the staff if you believe this is an error.',
+                ], 403);
+            }
+        }
+
         // Check if there's already a pending request
         $existingRequest = AccessRequestNotification::where('user_id', $user->id)
             ->where('status', 'pending')
