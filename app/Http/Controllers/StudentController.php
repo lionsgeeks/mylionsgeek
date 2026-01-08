@@ -278,7 +278,7 @@ class StudentController extends Controller
         }
 
         $request->validate([
-            'about' => 'nullable|string|max:500',
+            'about' => 'string|max:500|min:100|required',
         ]);
 
         $user = User::findOrFail($id);
