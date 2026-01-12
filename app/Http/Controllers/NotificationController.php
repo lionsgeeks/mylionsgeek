@@ -16,6 +16,7 @@ use App\Models\ProjectStatusNotification;
 use App\Models\AccessRequestNotification;
 use App\Models\AccessRequestResponseNotification;
 use App\Models\TaskAssignmentNotification;
+use App\Models\ProjectMessageNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -470,6 +471,37 @@ class NotificationController extends Controller
                 }
             }
 
+            // 8. PROJECT MESSAGE NOTIFICATIONS (Users who receive project chat messages)
+            if (Schema::hasTable('project_message_notifications')) {
+                try {
+                    $projectMessageNotifications = ProjectMessageNotification::with(['sender', 'project'])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectMessageNotifications as $notif) {
+                        if ($notif->sender && $notif->project) {
+                            $link = $notif->path ?? "/admin/projects/{$notif->project_id}";
+                            
+                            $notifications[] = [
+                                'id' => 'project-message-' . $notif->id,
+                                'type' => 'project_message',
+                                'sender_name' => $notif->sender->name ?? 'Unknown',
+                                'sender_image' => $notif->sender->image ?? null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => 'message-square',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project message notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -605,6 +637,18 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'project-message':
+                case 'project_message':
+                    if (Schema::hasTable('project_message_notifications')) {
+                        $notification = ProjectMessageNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -660,6 +704,13 @@ class NotificationController extends Controller
             // Mark all task assignment notifications as read (for users)
             if (Schema::hasTable('task_assignment_notifications')) {
                 TaskAssignmentNotification::where('assigned_to_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all project message notifications as read (for users)
+            if (Schema::hasTable('project_message_notifications')) {
+                ProjectMessageNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

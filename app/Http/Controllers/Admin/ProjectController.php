@@ -11,6 +11,7 @@ use App\Models\ProjectInvitation;
 use App\Models\ProjectUser;
 use App\Models\ProjectMessage;
 use App\Models\ProjectMessageReaction;
+use App\Models\ProjectMessageNotification;
 use App\Mail\ProjectInvitationMail;
 use Ably\AblyRest;
 use Illuminate\Http\Request;
@@ -1019,6 +1020,74 @@ class ProjectController extends Controller
         ]);
 
         $message->load(['user:id,name,image', 'replyTo.user:id,name']);
+
+        // Get all project members (creator + team members) excluding the sender
+        $projectMembers = collect();
+        
+        // Add creator if not the sender
+        if ($project->created_by && $project->created_by != Auth::id()) {
+            $creator = User::find($project->created_by);
+            if ($creator) {
+                $projectMembers->push($creator);
+            }
+        }
+        
+        // Add team members excluding the sender
+        $teamMembers = $project->users()->where('users.id', '!=', Auth::id())->get();
+        $projectMembers = $projectMembers->merge($teamMembers)->unique('id');
+
+        // Create notifications for all project members
+        $sender = Auth::user();
+        $messageText = $message->content ?: ($message->attachment_type === 'audio' ? 'sent a voice message' : 'sent an attachment');
+        $notificationMessage = "{$sender->name} sent a message in project \"{$project->name}\": {$messageText}";
+        $path = "/admin/projects/{$project->id}";
+
+        foreach ($projectMembers as $member) {
+            try {
+                $notification = ProjectMessageNotification::create([
+                    'project_id' => $project->id,
+                    'message_id' => $message->id,
+                    'notified_user_id' => $member->id,
+                    'sender_user_id' => Auth::id(),
+                    'message_notification' => $notificationMessage,
+                    'path' => $path,
+                ]);
+
+                // Broadcast notification via Ably for real-time updates
+                try {
+                    $ablyKey = config('services.ably.key');
+                    if ($ablyKey) {
+                        $ably = new AblyRest($ablyKey);
+                        $channel = $ably->channels->get("notifications:{$member->id}");
+                        
+                        $channel->publish('new_notification', [
+                            'id' => 'project-message-' . $notification->id,
+                            'type' => 'project_message',
+                            'sender_name' => $sender->name,
+                            'sender_image' => $sender->image,
+                            'message' => $notificationMessage,
+                            'link' => $path,
+                            'icon_type' => 'message-square',
+                            'created_at' => $notification->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => null,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to broadcast project message notification via Ably', [
+                        'error' => $e->getMessage(),
+                        'notification_id' => $notification->id ?? null,
+                        'user_id' => $member->id
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to create project message notification', [
+                    'error' => $e->getMessage(),
+                    'project_id' => $project->id,
+                    'message_id' => $message->id,
+                    'user_id' => $member->id
+                ]);
+            }
+        }
 
         // Broadcast message via Ably
         try {

@@ -268,10 +268,10 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
 
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
-                            <Tabs defaultValue="overview" onValueChange={setActiveTab} value={activeTab}>
+                            <Tabs defaultValue="tasks" onValueChange={setActiveTab} value={activeTab}>
                                 <TabsList className="grid grid-cols-6 w-full">
-                                    <TabsTrigger value="overview">Overview</TabsTrigger>
                                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                                    <TabsTrigger value="overview">Overview</TabsTrigger>
                                     <TabsTrigger value="files">Attachments</TabsTrigger>
                                     {/* <TabsTrigger value="attachments">Attachments</TabsTrigger> */}
                                     <TabsTrigger value="notes">Notes</TabsTrigger>

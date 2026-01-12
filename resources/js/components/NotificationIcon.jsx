@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePage, Link } from '@inertiajs/react';
-import { Bell, Clock, Calendar, User, Briefcase, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { Bell, Clock, Calendar, User, Briefcase, Lock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -224,6 +224,10 @@ export default function NotificationIcon() {
                 // Handle "task-assignment-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'project' && parts[1] === 'message') {
+                // Handle "project-message-123"
+                type = `${parts[0]}-${parts[1]}`;
+                id = parts[2];
             } else {
                 // Handle simple types like "follow-123"
                 type = parts[0];
@@ -279,6 +283,8 @@ export default function NotificationIcon() {
                 return CheckCircle;
             case 'x-circle':
                 return XCircle;
+            case 'message-square':
+                return MessageSquare;
             case 'user':
             default:
                 return User;
@@ -299,6 +305,8 @@ export default function NotificationIcon() {
                 return 'text-green-600';
             case 'x-circle':
                 return 'text-red-600';
+            case 'message-square':
+                return 'text-blue-500';
             case 'user':
             default:
                 return 'text-[var(--color-alpha)]';
