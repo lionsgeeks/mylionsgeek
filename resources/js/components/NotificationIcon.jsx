@@ -220,6 +220,10 @@ export default function NotificationIcon() {
                 // Handle "access-request-response-123"
                 type = `${parts[0]}-${parts[1]}-${parts[2]}`;
                 id = parts[3];
+            } else if (parts.length === 3 && parts[0] === 'task' && parts[1] === 'assignment') {
+                // Handle "task-assignment-123"
+                type = `${parts[0]}-${parts[1]}`;
+                id = parts[2];
             } else {
                 // Handle simple types like "follow-123"
                 type = parts[0];

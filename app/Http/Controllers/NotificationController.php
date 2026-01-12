@@ -15,6 +15,7 @@ use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
 use App\Models\AccessRequestNotification;
 use App\Models\AccessRequestResponseNotification;
+use App\Models\TaskAssignmentNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -438,6 +439,37 @@ class NotificationController extends Controller
                 }
             }
 
+            // 7. TASK ASSIGNMENT NOTIFICATIONS (Users assigned to tasks)
+            if (Schema::hasTable('task_assignment_notifications')) {
+                try {
+                    $taskAssignmentNotifications = TaskAssignmentNotification::with(['task', 'assignedByUser'])
+                        ->where('assigned_to_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($taskAssignmentNotifications as $notif) {
+                        if ($notif->assignedByUser) {
+                            $link = $notif->path ?? "/admin/projects";
+                            
+                            $notifications[] = [
+                                'id' => 'task-assignment-' . $notif->id,
+                                'type' => 'task_assignment',
+                                'sender_name' => $notif->assignedByUser->name ?? 'Unknown',
+                                'sender_image' => $notif->assignedByUser->image ?? null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => 'briefcase',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching task assignment notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -561,6 +593,18 @@ class NotificationController extends Controller
                         $notification->save();
                     }
                     break;
+                case 'task-assignment':
+                case 'task_assignment':
+                    if (Schema::hasTable('task_assignment_notifications')) {
+                        $notification = TaskAssignmentNotification::where('id', $id)
+                            ->where('assigned_to_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -609,6 +653,13 @@ class NotificationController extends Controller
             // Mark all project status notifications as read (for students)
             if (Schema::hasTable('project_status_notifications')) {
                 ProjectStatusNotification::where('student_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all task assignment notifications as read (for users)
+            if (Schema::hasTable('task_assignment_notifications')) {
+                TaskAssignmentNotification::where('assigned_to_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }
