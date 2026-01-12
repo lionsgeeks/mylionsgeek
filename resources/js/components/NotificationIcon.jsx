@@ -146,6 +146,11 @@ export default function NotificationIcon() {
                     };
 
                     setNotifications(prev => [newNotification, ...prev].slice(0, 50));
+                    
+                    // Dispatch custom event for other components to listen
+                    window.dispatchEvent(new CustomEvent('ably-notification', {
+                        detail: newNotification
+                    }));
                 });
 
             } catch (error) {

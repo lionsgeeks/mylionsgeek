@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
@@ -942,6 +943,30 @@ class ProjectController extends Controller
             });
 
         return response()->json(['messages' => $messages]);
+    }
+
+    /**
+     * Get unread message count for a project
+     */
+    public function getUnreadMessageCount(Project $project)
+    {
+        try {
+            $userId = Auth::id();
+            
+            if (!Schema::hasTable('project_message_notifications')) {
+                return response()->json(['count' => 0]);
+            }
+
+            $count = ProjectMessageNotification::where('project_id', $project->id)
+                ->where('notified_user_id', $userId)
+                ->whereNull('read_at')
+                ->count();
+
+            return response()->json(['count' => $count]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get unread message count: ' . $e->getMessage());
+            return response()->json(['count' => 0]);
+        }
     }
 
     /**
