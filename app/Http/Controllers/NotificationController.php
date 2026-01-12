@@ -13,6 +13,10 @@ use App\Models\PostNotification;
 use App\Models\FollowNotification;
 use App\Models\ProjectSubmissionNotification;
 use App\Models\ProjectStatusNotification;
+use App\Models\AccessRequestNotification;
+use App\Models\AccessRequestResponseNotification;
+use App\Models\TaskAssignmentNotification;
+use App\Models\ProjectMessageNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -182,6 +186,44 @@ class NotificationController extends Controller
                 }
             }
 
+            //  1.6. ACCESS REQUEST NOTIFICATIONS (Admin only)
+            if ($isAdmin && Schema::hasTable('access_request_notifications')) {
+                try {
+                    $accessRequests = AccessRequestNotification::with('user')
+                        ->where('status', 'pending')
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($accessRequests as $notif) {
+                        if ($notif->user) {
+                            $accessTypeLabel = match($notif->requested_access_type) {
+                                'studio' => 'Studio',
+                                'cowork' => 'Cowork',
+                                'both' => 'Studio & Cowork',
+                                default => 'Access'
+                            };
+                            
+                            $notifications[] = [
+                                'id' => 'access-request-' . $notif->id,
+                                'type' => 'access_request',
+                                'sender_name' => $notif->user->name ?? 'Unknown',
+                                'sender_image' => $notif->user->image ?? null,
+                                'message' => $notif->message ?? "{$notif->user->name} requested {$accessTypeLabel} access",
+                                'link' => "/admin/users/{$notif->user_id}",
+                                'icon_type' => 'lock',
+                                'access_type' => $notif->requested_access_type,
+                                'notification_id' => $notif->id,
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching access request notifications: ' . $e->getMessage());
+                }
+            }
+
             //  2. PENDING RESERVATIONS (Studio Responsable)
             if ($isStudioResponsable && Schema::hasTable('reservations')) {
                 $pendingReservations = DB::table('reservations')
@@ -263,6 +305,43 @@ class NotificationController extends Controller
                             'icon_type' => 'calendar',
                         ];
                     }
+                }
+            }
+
+            // 3.5. ACCESS REQUEST RESPONSE NOTIFICATIONS (Users who requested access)
+            if (Schema::hasTable('access_request_response_notifications')) {
+                try {
+                    $accessResponseNotifications = AccessRequestResponseNotification::with(['reviewer', 'accessRequest'])
+                        ->where('user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($accessResponseNotifications as $notif) {
+                        $reviewerName = $notif->reviewer ? $notif->reviewer->name : 'Admin';
+                        $message = $notif->message_notification;
+                        
+                        // Add denial reason to message if denied
+                        if ($notif->status === 'denied' && $notif->denial_reason) {
+                            $message .= ' Reason: ' . $notif->denial_reason;
+                        }
+
+                        $notifications[] = [
+                            'id' => 'access-request-response-' . $notif->id,
+                            'type' => 'access_request_response',
+                            'sender_name' => $reviewerName,
+                            'sender_image' => $notif->reviewer ? $notif->reviewer->image : null,
+                            'message' => $message,
+                            'link' => $notif->path ?? '/student/spaces',
+                            'icon_type' => $notif->status === 'approved' ? 'check-circle' : 'x-circle',
+                            'status' => $notif->status,
+                            'denial_reason' => $notif->denial_reason,
+                            'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                            'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching access request response notifications: ' . $e->getMessage());
                 }
             }
 
@@ -361,6 +440,68 @@ class NotificationController extends Controller
                 }
             }
 
+            // 7. TASK ASSIGNMENT NOTIFICATIONS (Users assigned to tasks)
+            if (Schema::hasTable('task_assignment_notifications')) {
+                try {
+                    $taskAssignmentNotifications = TaskAssignmentNotification::with(['task', 'assignedByUser'])
+                        ->where('assigned_to_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($taskAssignmentNotifications as $notif) {
+                        if ($notif->assignedByUser) {
+                            $link = $notif->path ?? "/admin/projects";
+                            
+                            $notifications[] = [
+                                'id' => 'task-assignment-' . $notif->id,
+                                'type' => 'task_assignment',
+                                'sender_name' => $notif->assignedByUser->name ?? 'Unknown',
+                                'sender_image' => $notif->assignedByUser->image ?? null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => 'briefcase',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching task assignment notifications: ' . $e->getMessage());
+                }
+            }
+
+            // 8. PROJECT MESSAGE NOTIFICATIONS (Users who receive project chat messages)
+            if (Schema::hasTable('project_message_notifications')) {
+                try {
+                    $projectMessageNotifications = ProjectMessageNotification::with(['sender', 'project'])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($projectMessageNotifications as $notif) {
+                        if ($notif->sender && $notif->project) {
+                            $link = $notif->path ?? "/admin/projects/{$notif->project_id}";
+                            
+                            $notifications[] = [
+                                'id' => 'project-message-' . $notif->id,
+                                'type' => 'project_message',
+                                'sender_name' => $notif->sender->name ?? 'Unknown',
+                                'sender_image' => $notif->sender->image ?? null,
+                                'message' => $notif->message_notification,
+                                'link' => $link,
+                                'icon_type' => 'message-square',
+                                'created_at' => $notif->created_at->format('Y-m-d H:i:s'),
+                                'read_at' => $notif->read_at ? $notif->read_at->format('Y-m-d H:i:s') : null,
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching project message notifications: ' . $e->getMessage());
+                }
+            }
+
             // Sort by created_at (newest first)
             usort($notifications, function ($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -436,6 +577,28 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'access_request':
+                    $roles = is_array($user->role) ? $user->role : [$user->role];
+                    $isAdmin = in_array('admin', $roles);
+                    if ($isAdmin && Schema::hasTable('access_request_notifications')) {
+                        $notification = AccessRequestNotification::where('id', $id)->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'access_request_response':
+                    if (Schema::hasTable('access_request_response_notifications')) {
+                        $notification = AccessRequestResponseNotification::where('id', $id)
+                            ->where('user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 case 'discipline_change':
                     $roles = is_array($user->role) ? $user->role : [$user->role];
                     $isAdmin = in_array('admin', $roles);
@@ -460,6 +623,30 @@ class NotificationController extends Controller
                     if ($notification) {
                         $notification->read_at = now();
                         $notification->save();
+                    }
+                    break;
+                case 'task-assignment':
+                case 'task_assignment':
+                    if (Schema::hasTable('task_assignment_notifications')) {
+                        $notification = TaskAssignmentNotification::where('id', $id)
+                            ->where('assigned_to_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
+                case 'project-message':
+                case 'project_message':
+                    if (Schema::hasTable('project_message_notifications')) {
+                        $notification = ProjectMessageNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
                     }
                     break;
                 default:
@@ -513,6 +700,30 @@ class NotificationController extends Controller
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }
+
+            // Mark all task assignment notifications as read (for users)
+            if (Schema::hasTable('task_assignment_notifications')) {
+                TaskAssignmentNotification::where('assigned_to_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all project message notifications as read (for users)
+            if (Schema::hasTable('project_message_notifications')) {
+                ProjectMessageNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all access request response notifications as read (for users)
+            if (Schema::hasTable('access_request_response_notifications')) {
+                AccessRequestResponseNotification::where('user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Don't auto-mark access request notifications as read - they should only be marked when action is taken
+            // Access request notifications will be marked as read individually when approve/deny actions are performed
 
             // Mark all discipline notifications as read
             $roles = is_array($user->role) ? $user->role : [$user->role];

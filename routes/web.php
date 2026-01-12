@@ -34,6 +34,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
     Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
     Route::post('/appointments/book', [ReservationsController::class, 'bookAppointment'])->name('appointments.book');
+    Route::post('/access-requests', [ReservationsController::class, 'requestAccess'])->name('access-requests.create');
 
     Route::get('/api/search', [ApiSearchController::class, 'index']);
 
