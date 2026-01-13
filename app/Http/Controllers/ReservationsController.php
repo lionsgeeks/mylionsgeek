@@ -141,6 +141,7 @@ class ReservationsController extends Controller
                 'title' => $r->title ?? null,
                 'description' => $r->description ?? null,
                 'approved' => (bool) ($r->approved ?? 0),
+                'studio_responsable_approved' => (bool) ($r->studio_responsable_approved ?? 0),
                 'start_signed' => (bool) ($r->start_signed ?? 0),
                 'end_signed' => (bool) ($r->end_signed ?? 0),
                 'canceled' => (bool) ($r->canceled ?? 0),
@@ -185,8 +186,10 @@ class ReservationsController extends Controller
         }
 
         // Studio reservations subset with equipment & team info
+        // Include both studio and exterior reservations for studio responsable
         $studioReservations = $enriched->filter(function ($row) {
-            return ($row['type'] ?? null) === 'studio';
+            $type = ($row['type'] ?? null);
+            return $type === 'studio' || $type === 'exterior';
         })->values();
 
         // Meeting room reservations (type=meeting_room with meeting_room_id)
@@ -223,20 +226,83 @@ class ReservationsController extends Controller
             return back()->with('error', 'User not found');
         }
 
-        // Update the reservation
-        DB::table('reservations')->where('id', $reservation)->update([
-            'approved' => 1,
-            'approve_id' => auth()->id(),
-            'canceled' => 0,
-            'updated_at' => now(),
-        ]);
+        // Get current user and their roles
+        $currentUser = auth()->user();
+        $userRoles = is_array($currentUser->role) ? $currentUser->role : (is_string($currentUser->role) ? json_decode($currentUser->role, true) ?? [$currentUser->role] : [$currentUser->role]);
+        $isStudioResponsable = in_array('studio_responsable', $userRoles);
+        $isAdmin = in_array('admin', $userRoles) || in_array('super_admin', $userRoles);
 
-        // Send approval email to reservation owner
-        try {
-            $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
-        } catch (\Exception $e) {
-            // Log the error but don't fail the approval
-            \Log::error('Failed to send approval email: ' . $e->getMessage());
+        // Handle two-step approval for exterior reservations
+        if ($reservationData->type === 'exterior') {
+            // Check if already fully approved
+            if ($reservationData->approved ?? false) {
+                return back()->with('error', 'Reservation already fully approved.');
+            }
+            
+            // Admin can approve directly (skip studio responsable step if not already approved)
+            if ($isAdmin) {
+                $updateData = [
+                    'approved' => 1,
+                    'approve_id' => auth()->id(),
+                    'canceled' => 0,
+                    'updated_at' => now(),
+                ];
+                
+                // If studio responsable hasn't approved yet, mark as approved by admin directly
+                if (!($reservationData->studio_responsable_approved ?? false)) {
+                    $updateData['studio_responsable_approved'] = 1;
+                    $updateData['studio_responsable_approve_id'] = auth()->id();
+                }
+                
+                DB::table('reservations')->where('id', $reservation)->update($updateData);
+                
+                // Send approval email to reservation owner
+                try {
+                    $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
+                } catch (\Exception $e) {
+                    // Log the error but don't fail the approval
+                    \Log::error('Failed to send approval email: ' . $e->getMessage());
+                }
+                
+                return back()->with('success', 'Exterior reservation approved successfully.');
+            }
+            
+            // Studio responsable can only approve first step
+            if ($isStudioResponsable) {
+                if ($reservationData->studio_responsable_approved ?? false) {
+                    return back()->with('error', 'Reservation already approved by studio responsable. Waiting for admin approval.');
+                }
+                
+                DB::table('reservations')->where('id', $reservation)->update([
+                    'studio_responsable_approved' => 1,
+                    'studio_responsable_approve_id' => auth()->id(),
+                    'updated_at' => now(),
+                ]);
+                
+                return back()->with('success', 'Reservation approved by studio responsable. Waiting for admin approval.');
+            }
+            
+            return back()->with('error', 'Only studio responsable or admin can approve this reservation.');
+        } else {
+            // Regular studio reservations: single-step approval (admin or studio responsable)
+            if (!$isStudioResponsable && !$isAdmin) {
+                return back()->with('error', 'You do not have permission to approve reservations.');
+            }
+            
+            DB::table('reservations')->where('id', $reservation)->update([
+                'approved' => 1,
+                'approve_id' => auth()->id(),
+                'canceled' => 0,
+                'updated_at' => now(),
+            ]);
+            
+            // Send approval email to reservation owner
+            try {
+                $this->sendMailToReservationOwner($user, new ReservationApprovedMail($user, $reservationData));
+            } catch (\Exception $e) {
+                // Log the error but don't fail the approval
+                \Log::error('Failed to send approval email: ' . $e->getMessage());
+            }
         }
 
         // Log equipment usage to activity_log (one row per equipment) on approval
@@ -815,10 +881,12 @@ class ReservationsController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'studio_id' => 'required|integer|exists:studios,id',
+        // Determine if this is an external reservation
+        $isExternal = $request->has('type') && $request->type === 'exterior';
+        
+        $validationRules = [
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => $isExternal ? 'required|string' : 'nullable|string',
             'day' => 'required|date',
             'start' => 'required|string',
             'end' => 'required|string',
@@ -826,31 +894,44 @@ class ReservationsController extends Controller
             'team_members.*' => 'integer|exists:users,id',
             'equipment' => 'nullable|array',
             'equipment.*' => 'integer|exists:equipment,id',
-        ]);
+            'type' => 'nullable|string|in:studio,exterior',
+        ];
+
+        // studio_id is required for studio reservations, nullable for exterior
+        if ($isExternal) {
+            $validationRules['studio_id'] = 'nullable';
+        } else {
+            $validationRules['studio_id'] = 'required|integer|exists:studios,id';
+        }
+
+        $validated = $request->validate($validationRules);
 
         $currentUser = auth()->user();
-        if (!$this->userHasAccessFlag($currentUser, 'access_studio')) {
+        
+        // Only check studio access for studio reservations, not exterior
+        if (!$isExternal && !$this->userHasAccessFlag($currentUser, 'access_studio')) {
             return back()->with('error', 'You do not have permission to reserve a studio.');
         }
 
         try {
             $reservationId = null;
 
-            DB::transaction(function () use ($validated, &$reservationId) {
+            DB::transaction(function () use ($validated, $isExternal, &$reservationId) {
                 $lastId = (int) (DB::table('reservations')->max('id') ?? 0);
                 $reservationId = $lastId + 1;
 
                 DB::table('reservations')->insert([
                     'id' => $reservationId,
-                    'studio_id' => $validated['studio_id'],
+                    'studio_id' => $isExternal ? null : $validated['studio_id'],
                     'user_id' => auth()->id(),
                     'title' => $validated['title'],
                     'description' => $validated['description'] ?? '',
                     'day' => $validated['day'],
                     'start' => $validated['start'],
                     'end' => $validated['end'],
-                    'type' => 'studio',
-                    'approved' => 0,
+                    'type' => $isExternal ? 'exterior' : ($validated['type'] ?? 'studio'),
+                    'approved' => 0, // Exterior reservations require two-step approval: studio responsable then admin
+                    'studio_responsable_approved' => 0, // First step: studio responsable approval
                     'canceled' => 0,
                     'passed' => 0,
                     'start_signed' => 0,
