@@ -47,6 +47,7 @@ export default function SpacesPage() {
     const [accessErrorType, setAccessErrorType] = useState(null); // 'studio' or 'cowork'
     const [selectionError, setSelectionError] = useState('');
     const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+    const [isExternalReservationModalOpen, setIsExternalReservationModalOpen] = useState(false);
     const [requestingAccess, setRequestingAccess] = useState(false);
 
     const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
@@ -610,12 +611,20 @@ export default function SpacesPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
                     <p className="text-sm text-muted-foreground mt-1 hidden md:block">Browse available studios and cowork tables, or open a calendar to reserve.</p>
                 </div>
-                    <Button
-                        className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
-                        onClick={() => setIsAppointmentModalOpen(true)}
-                    >
-                        Book an appointment
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
+                            onClick={() => setIsExternalReservationModalOpen(true)}
+                        >
+                            External Reservation
+                        </Button>
+                        <Button
+                            className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
+                            onClick={() => setIsAppointmentModalOpen(true)}
+                        >
+                            Book an appointment
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="inline-flex items-center rounded-xl border border-neutral-200 justify-center w-[94%] mx-3 md:w-fit dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
@@ -882,6 +891,26 @@ export default function SpacesPage() {
                         teamMemberOptions={teamMemberOptions}
                         blockedStudioIds={type === 'studio' ? blockedStudioIds : []}
                         onTimeChange={type === 'studio' ? handleStudioTimeChange : undefined}
+                        userRouteMode
+                    />
+                )}
+
+                {/* External Reservation Modal */}
+                {isExternalReservationModalOpen && (
+                    <ReservationModal
+                        isOpen={isExternalReservationModalOpen}
+                        onClose={() => setIsExternalReservationModalOpen(false)}
+                        studio={null}
+                        selectedRange={selectedRange}
+                        onSuccess={() => {
+                            setIsExternalReservationModalOpen(false);
+                            router.reload();
+                        }}
+                        studios={[]}
+                        equipmentOptions={equipmentOptions}
+                        teamMemberOptions={teamMemberOptions}
+                        blockedStudioIds={[]}
+                        isExternal={true}
                         userRouteMode
                     />
                 )}

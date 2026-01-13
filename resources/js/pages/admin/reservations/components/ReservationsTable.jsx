@@ -116,6 +116,8 @@ const ReservationsTable = ({
                                     <Badge variant="destructive">Canceled</Badge>
                                 ) : r.approved ? (
                                     <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
+                                ) : r.type === 'exterior' && r.studio_responsable_approved ? (
+                                    <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300">Pending (Studio Approved)</Badge>
                                 ) : (
                                     <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Pending</Badge>
                                 )}
