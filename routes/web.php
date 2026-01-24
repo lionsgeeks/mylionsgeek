@@ -217,12 +217,14 @@ Route::get('/appointments/suggest/{token}/accept', [ReservationsController::clas
 
 
 // Notifications API Routes
-
-
-Route::get('/api/notifications', [NotificationController::class, 'index'])->name('api.notifications');
-Route::post('/api/notifications/{type}/{id}/read', [NotificationController::class, 'markAsRead'])->name('api.notifications.mark-read');
-Route::post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
-Route::get('/api/notifications/ably-token', [NotificationController::class, 'getAblyToken'])->middleware('auth')->name('api.notifications.ably-token');
+// These routes work for both web (auth middleware) and mobile API (auth:sanctum middleware)
+// Using auth:sanctum which supports both web sessions and API tokens
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/api/notifications', [NotificationController::class, 'index'])->name('api.notifications');
+    Route::post('/api/notifications/{type}/{id}/read', [NotificationController::class, 'markAsRead'])->name('api.notifications.mark-read');
+    Route::post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
+    Route::get('/api/notifications/ably-token', [NotificationController::class, 'getAblyToken'])->name('api.notifications.ably-token');
+});
 
 
 require __DIR__ . '/settings.php';
