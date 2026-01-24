@@ -32,7 +32,9 @@ class ProjectController extends Controller
                     'created_at' => $project->created_at ? (is_string($project->created_at) ? $project->created_at : $project->created_at->toDateTimeString()) : null,
                     'updated_at' => $project->updated_at ? (is_string($project->updated_at) ? $project->updated_at : $project->updated_at->toDateTimeString()) : null,
                 ];
-            });
+            })
+            ->values()
+            ->toArray();
 
         return response()->json(['projects' => $projects]);
     }
