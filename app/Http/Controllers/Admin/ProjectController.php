@@ -1078,6 +1078,37 @@ class ProjectController extends Controller
                     'path' => $path,
                 ]);
 
+                // Send Expo push notification
+                try {
+                    $memberUser = \App\Models\User::find($member->id);
+                    if ($memberUser) {
+                        $memberUser->refresh();
+                        if ($memberUser->expo_push_token) {
+                            $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                            \Illuminate\Support\Facades\Log::info('Sending push notification for project message', [
+                                'member_id' => $member->id,
+                                'project_id' => $project->id,
+                            ]);
+                            $success = $pushService->sendToUser($memberUser, 'New Project Message', $notificationMessage, [
+                                'type' => 'project_message',
+                                'notification_id' => $notification->id,
+                                'project_id' => $project->id,
+                                'message_id' => $message->id,
+                                'sender_user_id' => Auth::id(),
+                            ]);
+                            if (!$success) {
+                                \Illuminate\Support\Facades\Log::warning('Push notification send returned false for project message');
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for project message', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'notification_id' => $notification->id ?? null,
+                    ]);
+                }
+
                 // Broadcast notification via Ably for real-time updates
                 try {
                     $ablyKey = config('services.ably.key');

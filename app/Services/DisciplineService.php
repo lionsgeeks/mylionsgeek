@@ -230,13 +230,56 @@ class DisciplineService
             $message = "{$user->name} - discipline reached 0%";
         }
 
-        return DisciplineNotification::create([
+        $notification = DisciplineNotification::create([
             'user_id' => $user->id,
             'message_notification' => $message,
             'discipline_change' => round($newDiscipline, 2), // Store actual value with decimals
             'path' => null,
             'type' => null,
         ]);
+
+        // Send Expo push notification
+        if ($notification) {
+            try {
+                // Refresh user to get latest expo_push_token
+                $user->refresh();
+                
+                if ($user->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    
+                    \Illuminate\Support\Facades\Log::info('Sending push notification for discipline change', [
+                        'user_id' => $user->id,
+                    ]);
+                    
+                    $success = $pushService->sendToUser($user, 'Discipline Update', $message, [
+                        'type' => 'discipline_change',
+                        'notification_id' => $notification->id,
+                        'discipline_value' => round($newDiscipline, 2),
+                        'change_type' => $type,
+                    ]);
+                    
+                    if (!$success) {
+                        \Illuminate\Support\Facades\Log::warning('Push notification send returned false for discipline change', [
+                            'user_id' => $user->id,
+                            'notification_id' => $notification->id,
+                        ]);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::info('User does not have Expo push token, skipping push notification', [
+                        'user_id' => $user->id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for discipline change', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'notification_id' => $notification->id ?? null,
+                ]);
+                // Don't fail notification creation if push fails
+            }
+        }
+
+        return $notification;
     }
 
     /**

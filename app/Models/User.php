@@ -47,6 +47,7 @@ class User extends Authenticatable
         'wakatime_api_key',
         'last_online',
         'activation_token',
+        'expo_push_token', // Expo push notification token
         // 'xp'
     ];
 

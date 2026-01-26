@@ -3887,6 +3887,40 @@ class ReservationsController extends Controller
             'status' => 'pending',
         ]);
 
+        // Send Expo push notification to admins about new access request
+        try {
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            $accessTypeLabel = match($validated['access_type']) {
+                'studio' => 'Studio',
+                'cowork' => 'Cowork',
+                'both' => 'Studio & Cowork',
+                default => 'Access'
+            };
+            
+            foreach ($admins as $admin) {
+                $admin->refresh();
+                if ($admin->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    \Illuminate\Support\Facades\Log::info('Sending push notification to admin for new access request', [
+                        'admin_id' => $admin->id,
+                        'user_id' => $user->id,
+                    ]);
+                    $pushService->sendToUser($admin, 'New Access Request', "{$user->name} requested {$accessTypeLabel} access", [
+                        'type' => 'access_request',
+                        'notification_id' => $notification->id,
+                        'user_id' => $user->id,
+                        'user_name' => $user->name,
+                        'access_type' => $validated['access_type'],
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for access request', [
+                'error' => $e->getMessage(),
+                'notification_id' => $notification->id ?? null,
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Access request submitted successfully. An admin will review your request.',
@@ -3939,7 +3973,7 @@ class ReservationsController extends Controller
             default => 'Access'
         };
 
-        AccessRequestResponseNotification::create([
+        $responseNotification = AccessRequestResponseNotification::create([
             'user_id' => $notification->user_id,
             'access_request_notification_id' => $notification->id,
             'status' => 'approved',
@@ -3947,6 +3981,35 @@ class ReservationsController extends Controller
             'message_notification' => "Your {$accessTypeLabel} access request has been approved!",
             'path' => '/student/spaces',
         ]);
+
+        // Send Expo push notification
+        try {
+            $user = \App\Models\User::find($notification->user_id);
+            if ($user) {
+                $user->refresh();
+                if ($user->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    \Illuminate\Support\Facades\Log::info('Sending push notification for access request approval', [
+                        'user_id' => $user->id,
+                    ]);
+                    $success = $pushService->sendToUser($user, 'Access Request Approved', "Your {$accessTypeLabel} access request has been approved!", [
+                        'type' => 'access_request_response',
+                        'notification_id' => $responseNotification->id,
+                        'status' => 'approved',
+                        'access_type' => $notification->requested_access_type,
+                    ]);
+                    if (!$success) {
+                        \Illuminate\Support\Facades\Log::warning('Push notification send returned false for access request approval');
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for access request approval', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'notification_id' => $responseNotification->id ?? null,
+            ]);
+        }
 
         return back()->with('success', 'Access request approved successfully.');
     }
@@ -3982,7 +4045,7 @@ class ReservationsController extends Controller
             default => 'Access'
         };
 
-        AccessRequestResponseNotification::create([
+        $responseNotification = AccessRequestResponseNotification::create([
             'user_id' => $notification->user_id,
             'access_request_notification_id' => $notification->id,
             'status' => 'denied',
@@ -3991,6 +4054,36 @@ class ReservationsController extends Controller
             'message_notification' => "Your {$accessTypeLabel} access request has been denied.",
             'path' => '/student/spaces',
         ]);
+
+        // Send Expo push notification
+        try {
+            $user = \App\Models\User::find($notification->user_id);
+            if ($user) {
+                $user->refresh();
+                if ($user->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    \Illuminate\Support\Facades\Log::info('Sending push notification for access request denial', [
+                        'user_id' => $user->id,
+                    ]);
+                    $success = $pushService->sendToUser($user, 'Access Request Denied', "Your {$accessTypeLabel} access request has been denied.", [
+                        'type' => 'access_request_response',
+                        'notification_id' => $responseNotification->id,
+                        'status' => 'denied',
+                        'denial_reason' => $validated['denial_reason'],
+                        'access_type' => $notification->requested_access_type,
+                    ]);
+                    if (!$success) {
+                        \Illuminate\Support\Facades\Log::warning('Push notification send returned false for access request denial');
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for access request denial', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'notification_id' => $responseNotification->id ?? null,
+            ]);
+        }
 
         return back()->with('success', 'Access request denied.');
     }
