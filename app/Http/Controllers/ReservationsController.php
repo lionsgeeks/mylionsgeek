@@ -940,6 +940,100 @@ class ReservationsController extends Controller
                     'updated_at' => now()->toDateTimeString(),
                 ]);
 
+                // Send Expo push notification to studio responsables
+                try {
+                    \Illuminate\Support\Facades\Log::info('Attempting to send push notification for reservation', [
+                        'reservation_id' => $reservationId,
+                        'user_id' => auth()->id(),
+                    ]);
+                    
+                    // Get all users who should be notified (studio responsables and admins)
+                    // Roles can be stored as string or JSON array, so we need to check both
+                    $notifyUsers = \App\Models\User::where(function($query) {
+                        $query->where('role', 'studio_responsable')
+                            ->orWhereJsonContains('role', 'studio_responsable')
+                            ->orWhere('role', 'admin')
+                            ->orWhereJsonContains('role', 'admin')
+                            ->orWhere('role', 'super_admin')
+                            ->orWhereJsonContains('role', 'super_admin');
+                    })->get();
+                    
+                    \Illuminate\Support\Facades\Log::info('Found users to notify for reservation', [
+                        'count' => $notifyUsers->count(),
+                        'ids' => $notifyUsers->pluck('id')->toArray(),
+                        'emails' => $notifyUsers->pluck('email')->toArray(),
+                    ]);
+                    
+                    $reservationUser = \App\Models\User::find(auth()->id());
+                    
+                    if ($reservationUser) {
+                        $reservationTitle = $validated['title'] ?? "Reservation #{$reservationId}";
+                        $reservationMessage = "{$reservationUser->name} submitted a new reservation: {$reservationTitle}";
+                        
+                        foreach ($notifyUsers as $notifyUser) {
+                            // Refresh user to get latest expo_push_token
+                            $notifyUser->refresh();
+                            
+                            \Illuminate\Support\Facades\Log::info('Processing user for push notification', [
+                                'user_id' => $notifyUser->id,
+                                'user_email' => $notifyUser->email,
+                                'has_expo_token' => !empty($notifyUser->expo_push_token),
+                                'token_preview' => $notifyUser->expo_push_token ? substr($notifyUser->expo_push_token, 0, 30) . '...' : null,
+                            ]);
+                            
+                            if ($notifyUser->expo_push_token) {
+                                $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                                
+                                \Illuminate\Support\Facades\Log::info('Sending push notification for reservation', [
+                                    'notify_user_id' => $notifyUser->id,
+                                    'reservation_id' => $reservationId,
+                                    'user_id' => auth()->id(),
+                                    'message' => $reservationMessage,
+                                ]);
+                                
+                                $success = $pushService->sendToUser($notifyUser, 'New Reservation', $reservationMessage, [
+                                    'type' => 'reservation',
+                                    'reservation_id' => $reservationId,
+                                    'user_id' => auth()->id(),
+                                    'user_name' => $reservationUser->name,
+                                    'title' => $reservationTitle,
+                                    'day' => $validated['day'],
+                                    'start' => $validated['start'],
+                                    'end' => $validated['end'],
+                                ]);
+                                
+                                if (!$success) {
+                                    \Illuminate\Support\Facades\Log::warning('Push notification send returned false for reservation', [
+                                        'notify_user_id' => $notifyUser->id,
+                                        'reservation_id' => $reservationId,
+                                    ]);
+                                } else {
+                                    \Illuminate\Support\Facades\Log::info('Push notification sent successfully for reservation', [
+                                        'notify_user_id' => $notifyUser->id,
+                                        'reservation_id' => $reservationId,
+                                    ]);
+                                }
+                            } else {
+                                \Illuminate\Support\Facades\Log::info('User does not have Expo push token, skipping push notification', [
+                                    'user_id' => $notifyUser->id,
+                                    'user_email' => $notifyUser->email,
+                                ]);
+                            }
+                        }
+                    } else {
+                        \Illuminate\Support\Facades\Log::warning('Reservation user not found for push notification', [
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for reservation', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'reservation_id' => $reservationId,
+                    ]);
+                    // Don't fail reservation creation if push fails
+                }
+
                 // Insert team members
                 if (!empty($validated['team_members'])) {
                     $teamData = array_map(function ($userId) use ($reservationId) {
@@ -3230,6 +3324,36 @@ class ReservationsController extends Controller
                     'created_at' => now()->toDateTimeString(),
                     'updated_at' => now()->toDateTimeString(),
                 ]);
+
+                // Send push notification to admin (person_email) about new appointment request
+                try {
+                    $adminUser = \App\Models\User::where('email', $personEmail)->first();
+                    if ($adminUser) {
+                        $adminUser->refresh();
+                        if ($adminUser->expo_push_token) {
+                            $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                            $appointmentMessage = "{$user->name} requested an appointment - {$validated['day']} {$validated['start']}-{$validated['end']}";
+                            \Illuminate\Support\Facades\Log::info('Sending push notification to admin for new appointment', [
+                                'admin_id' => $adminUser->id,
+                                'appointment_id' => $appointmentId,
+                            ]);
+                            $pushService->sendToUser($adminUser, 'New Appointment Request', $appointmentMessage, [
+                                'type' => 'appointment',
+                                'appointment_id' => $appointmentId,
+                                'user_id' => $user->id,
+                                'user_name' => $user->name,
+                                'day' => $validated['day'],
+                                'start' => $validated['start'],
+                                'end' => $validated['end'],
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for appointment', [
+                        'error' => $e->getMessage(),
+                        'appointment_id' => $appointmentId,
+                    ]);
+                }
             }
 
             $approveUrl = route('appointments.approve', ['token' => $token]);
