@@ -199,7 +199,7 @@ class StudentProjectController extends Controller
         $projectPath = "/students/project/{$studentProject->id}";
         $message = "Your project \"{$studentProject->title}\" has been approved!";
         
-        ProjectStatusNotification::create([
+        $notification = ProjectStatusNotification::create([
             'project_id' => $studentProject->id,
             'student_id' => $studentProject->user_id,
             'reviewer_id' => $reviewer->id,
@@ -207,6 +207,37 @@ class StudentProjectController extends Controller
             'message_notification' => $message,
             'path' => $projectPath,
         ]);
+
+        // Send Expo push notification
+        try {
+            $student = \App\Models\User::find($studentProject->user_id);
+            if ($student) {
+                $student->refresh();
+                if ($student->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    \Illuminate\Support\Facades\Log::info('Sending push notification for project approval', [
+                        'user_id' => $student->id,
+                        'project_id' => $studentProject->id,
+                    ]);
+                    $success = $pushService->sendToUser($student, 'Project Approved', $message, [
+                        'type' => 'project_status',
+                        'notification_id' => $notification->id,
+                        'project_id' => $studentProject->id,
+                        'status' => 'approved',
+                        'reviewer_id' => $reviewer->id,
+                    ]);
+                    if (!$success) {
+                        \Illuminate\Support\Facades\Log::warning('Push notification send returned false for project approval');
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for project approval', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'notification_id' => $notification->id ?? null,
+            ]);
+        }
 
         return back()->with('success', 'Project approved!');
     }
@@ -236,7 +267,7 @@ class StudentProjectController extends Controller
         $projectPath = "/students/project/{$studentProject->id}";
         $message = "Your project \"{$studentProject->title}\" has been rejected.";
         
-        ProjectStatusNotification::create([
+        $notification = ProjectStatusNotification::create([
             'project_id' => $studentProject->id,
             'student_id' => $studentProject->user_id,
             'reviewer_id' => $reviewer->id,
@@ -245,6 +276,36 @@ class StudentProjectController extends Controller
             'message_notification' => $message,
             'path' => $projectPath,
         ]);
+
+        // Send Expo push notification
+        try {
+            $student = \App\Models\User::find($studentProject->user_id);
+            if ($student) {
+                $student->refresh();
+                if ($student->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    \Illuminate\Support\Facades\Log::info('Sending push notification for project rejection', [
+                        'user_id' => $student->id,
+                        'project_id' => $studentProject->id,
+                    ]);
+                    $success = $pushService->sendToUser($student, 'Project Rejected', $message, [
+                        'type' => 'project_status',
+                        'notification_id' => $notification->id,
+                        'project_id' => $studentProject->id,
+                        'status' => 'rejected',
+                        'rejection_reason' => $rejectionReason,
+                    ]);
+                    if (!$success) {
+                        \Illuminate\Support\Facades\Log::warning('Push notification send returned false for project rejection');
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for project rejection', [
+                'error' => $e->getMessage(),
+                'notification_id' => $notification->id ?? null,
+            ]);
+        }
 
         return back()->with('success', 'Project rejected!');
     }
@@ -416,26 +477,71 @@ class StudentProjectController extends Controller
 
         // Create notifications for admins
         foreach ($admins as $admin) {
-            ProjectSubmissionNotification::create([
+            $notification = ProjectSubmissionNotification::create([
                 'project_id' => $project->id,
                 'student_id' => $student->id,
                 'notified_user_id' => $admin->id,
                 'message_notification' => $message,
                 'path' => $projectPath,
             ]);
+
+            // Send Expo push notification
+            try {
+                $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                $pushService->sendToUser($admin, 'New Project Submission', $message, [
+                    'type' => 'project_submission',
+                    'notification_id' => $notification->id,
+                    'project_id' => $project->id,
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for project submission', [
+                    'error' => $e->getMessage(),
+                    'notification_id' => $notification->id ?? null,
+                ]);
+            }
         }
 
         // Create notifications for coaches
         foreach ($coaches as $coach) {
             // Don't create duplicate notification if coach is also an admin
             if (!$admins->contains('id', $coach->id)) {
-                ProjectSubmissionNotification::create([
+                $notification = ProjectSubmissionNotification::create([
                     'project_id' => $project->id,
                     'student_id' => $student->id,
                     'notified_user_id' => $coach->id,
                     'message_notification' => $message,
                     'path' => $projectPath,
                 ]);
+
+                // Send Expo push notification
+                try {
+                    $coach->refresh();
+                    if ($coach->expo_push_token) {
+                        $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                        \Illuminate\Support\Facades\Log::info('Sending push notification for project submission to coach', [
+                            'coach_id' => $coach->id,
+                            'project_id' => $project->id,
+                        ]);
+                        $success = $pushService->sendToUser($coach, 'New Project Submission', $message, [
+                            'type' => 'project_submission',
+                            'notification_id' => $notification->id,
+                            'project_id' => $project->id,
+                            'student_id' => $student->id,
+                            'student_name' => $student->name,
+                        ]);
+                        if (!$success) {
+                            \Illuminate\Support\Facades\Log::warning('Push notification send returned false for project submission');
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for project submission', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'notification_id' => $notification->id ?? null,
+                    ]);
+                }
             }
         }
     }

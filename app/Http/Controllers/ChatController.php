@@ -400,6 +400,98 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
+        // Send Expo push notification
+        if ($message) {
+            try {
+                \Illuminate\Support\Facades\Log::info('Attempting to send push notification for chat message', [
+                    'message_id' => $message->id,
+                    'conversation_id' => $conversation->id,
+                    'sender_id' => $user->id,
+                    'user_one_id' => $conversation->user_one_id,
+                    'user_two_id' => $conversation->user_two_id,
+                ]);
+                
+                // Use the correct field names: user_one_id and user_two_id
+                $recipientId = $conversation->user_one_id == $user->id ? $conversation->user_two_id : $conversation->user_one_id;
+                \Illuminate\Support\Facades\Log::info('Calculated recipient ID', ['recipient_id' => $recipientId]);
+                
+                $recipient = \App\Models\User::find($recipientId);
+                
+                if ($recipient && $user) {
+                    \Illuminate\Support\Facades\Log::info('Recipient and sender found', [
+                        'recipient_id' => $recipient->id,
+                        'recipient_email' => $recipient->email,
+                        'sender_id' => $user->id,
+                    ]);
+                    
+                    // Refresh recipient to get latest expo_push_token
+                    $recipient->refresh();
+                    
+                    \Illuminate\Support\Facades\Log::info('Recipient refreshed', [
+                        'recipient_id' => $recipient->id,
+                        'has_expo_token' => !empty($recipient->expo_push_token),
+                        'token_preview' => $recipient->expo_push_token ? substr($recipient->expo_push_token, 0, 30) . '...' : null,
+                    ]);
+                    
+                    if ($recipient->expo_push_token) {
+                        $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                        
+                        $messageBody = $request->body ?? ($attachmentName ? "Sent an attachment" : "Sent a message");
+                        $chatMessage = "{$user->name}: {$messageBody}";
+                        
+                        \Illuminate\Support\Facades\Log::info('Sending push notification for chat message', [
+                            'recipient_id' => $recipientId,
+                            'sender_id' => $user->id,
+                            'conversation_id' => $conversation->id,
+                            'message_id' => $message->id,
+                            'chat_message' => $chatMessage,
+                        ]);
+                        
+                        $success = $pushService->sendToUser($recipient, $user->name, $chatMessage, [
+                            'type' => 'chat_message',
+                            'conversation_id' => $conversation->id,
+                            'message_id' => $message->id,
+                            'sender_id' => $user->id,
+                            'sender_name' => $user->name,
+                        ]);
+                        
+                        if (!$success) {
+                            \Illuminate\Support\Facades\Log::warning('Push notification send returned false for chat message', [
+                                'recipient_id' => $recipientId,
+                                'message_id' => $message->id,
+                            ]);
+                        } else {
+                            \Illuminate\Support\Facades\Log::info('Push notification sent successfully for chat message', [
+                                'recipient_id' => $recipientId,
+                                'message_id' => $message->id,
+                            ]);
+                        }
+                    } else {
+                        \Illuminate\Support\Facades\Log::info('Recipient does not have Expo push token, skipping push notification', [
+                            'recipient_id' => $recipientId,
+                            'recipient_email' => $recipient->email,
+                        ]);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('Recipient or sender not found for push notification', [
+                        'recipient_found' => $recipient ? true : false,
+                        'sender_found' => $user ? true : false,
+                        'recipient_id' => $recipientId,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for chat message', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'conversation_id' => $conversation->id,
+                    'message_id' => $message->id ?? null,
+                ]);
+                // Don't fail message creation if push fails
+            }
+        } else {
+            \Illuminate\Support\Facades\Log::warning('Message not created, skipping push notification');
+        }
+
         // When you reply, mark all previous messages from the other user as read
         // This means you've seen their messages
         $readCount = $conversation->messages()

@@ -41,6 +41,14 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/reservations.php';
     require __DIR__ . '/api/leaderboard.php';
     require __DIR__ . '/api/search.php';
+    require __DIR__ . '/api/training.php';
+    
+    // Push token endpoint
+    Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
+    
+    // Test push notification endpoints (for debugging)
+    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test']);
+    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status']);
     
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {

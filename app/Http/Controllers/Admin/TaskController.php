@@ -656,6 +656,34 @@ class TaskController extends Controller
                 'assigned_by_user_id' => $assignedByUserId
             ]);
 
+            // Send Expo push notification
+            try {
+                $assignedToUser->refresh();
+                if ($assignedToUser->expo_push_token) {
+                    $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                    Log::info('Sending push notification for task assignment', [
+                        'assigned_to_user_id' => $assignedToUserId,
+                        'task_id' => $task->id,
+                    ]);
+                    $success = $pushService->sendToUser($assignedToUser, 'Task Assigned', $message, [
+                        'type' => 'task_assignment',
+                        'notification_id' => $notification->id,
+                        'task_id' => $task->id,
+                        'assigned_by_user_id' => $assignedByUserId,
+                        'assigned_by_name' => $assignedByUser->name,
+                    ]);
+                    if (!$success) {
+                        Log::warning('Push notification send returned false for task assignment');
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to send Expo push notification for task assignment', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'notification_id' => $notification->id ?? null,
+                ]);
+            }
+
             // Broadcast notification via Ably for real-time updates
             try {
                 $ablyKey = config('services.ably.key');

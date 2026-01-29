@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown, BookOpen, Award } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown, BookOpen, Award, QrCode, RefreshCw } from 'lucide-react';
 import { Users, CalendarDays, User, Trash2, Plus, UserPlus, Settings } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,7 @@ export default function Show({ training, usersNull, courses = [] }) {
     const [selectedUserIds, setSelectedUserIds] = useState([]);
     const [bulkRoles, setBulkRoles] = useState([]);
     const [bulkStatus, setBulkStatus] = useState('');
+    const [qrCodeDate, setQrCodeDate] = useState(new Date().toISOString().split('T')[0]);
 
 
 
@@ -714,6 +716,56 @@ export default function Show({ training, usersNull, courses = [] }) {
                             </div>
                         </div>
 
+                        {/* QR Code Card */}
+                        {(isCoachRole || isTrainingCoach) && (
+                            <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center space-x-2">
+                                        <QrCode className="text-alpha" size={20} />
+                                        <h3 className="text-lg font-bold text-dark dark:text-light">Attendance QR Code</h3>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setQrCodeDate(new Date().toISOString().split('T')[0])}
+                                        className="gap-1 h-8 px-2"
+                                    >
+                                        <RefreshCw size={14} />
+                                    </Button>
+                                </div>
+                                <div className="flex flex-col items-center space-y-3">
+                                    <div className="bg-white dark:bg-dark_gray p-4 rounded-xl border border-alpha/20 [&_svg]:dark:invert">
+                                        <QRCode
+                                            value={JSON.stringify({
+                                                training_id: training.id,
+                                                date: qrCodeDate
+                                            })}
+                                            size={200}
+                                            level="M"
+                                            bgColor="#FFFFFF"
+                                            fgColor="#000000"
+                                        />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="text-sm font-semibold text-dark dark:text-light">
+                                            {training.name}
+                                        </p>
+                                        <p className="text-xs text-dark/70 dark:text-light/70">
+                                            Date: {new Date(qrCodeDate).toLocaleDateString('en-US', {
+                                                weekday: 'long',
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            })}
+                                        </p>
+                                        <p className="text-xs text-dark/50 dark:text-light/50 mt-2">
+                                            Scan with mobile app to mark attendance
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Status */}
                         {training.status && (
                             <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-4 text-center">
@@ -907,7 +959,7 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                 {/* Attendance List Modal */}
                 <Dialog open={showAttendanceList} onOpenChange={setShowAttendanceList}>
-                    <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 p-4 sm:p-5 md:p-6 rounded-none sm:rounded-2xl">
+                    <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1150px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 p-4 sm:p-5 md:p-6 rounded-none sm:rounded-2xl">
                         <DialogHeader>
                             <DialogTitle className="text-2xl md:text-3xl font-extrabold text-dark dark:text-light">
                                 Attendance for {selectedDate && new Date(selectedDate).toLocaleDateString('en-US', {
