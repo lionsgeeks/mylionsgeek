@@ -4,9 +4,7 @@ const Rolegard = ({ children, authorized = [], except = [] }) => {
     const { auth } = usePage().props;
 
     // Kanshouf wach roles dyal user array ola la,  ila kanat string kandirha f array b role wa7ed
-    const userRoles = Array.isArray(auth?.user?.role)
-        ? auth.user.role
-        : [auth?.user?.role];
+    const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
 
     // Admins can see everything regardless of the following checks
     if (userRoles.includes('admin')) {
@@ -29,7 +27,5 @@ const Rolegard = ({ children, authorized = [], except = [] }) => {
 };
 
 export default Rolegard;
-
-
 
 // copyright reserved  l mehdi  forkani   use  this component  o d3iw  m3aya :)

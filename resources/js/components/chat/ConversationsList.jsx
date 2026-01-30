@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
-import { usePage } from '@inertiajs/react';
-import { Search, X, MessageCircle } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
 import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/ablyManager';
 import { subscribeToConversationForNotifications } from '@/lib/globalChatListener';
+import { cn } from '@/lib/utils';
+import { usePage } from '@inertiajs/react';
+import { formatDistanceToNow } from 'date-fns';
+import { MessageCircle, Search, X } from 'lucide-react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import ChatBox from './ChatBox';
-import { Button } from '@/components/ui/button';
 import ConversationDeletePopover from './partials/ConversationDeletePopover';
 
 // Component dial list dial conversations - ybdl conversations w y7al chatbox
@@ -39,19 +39,19 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 const response = await fetch(`/chat/conversation/${userId}`, {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
 
                 if (!response.ok) throw new Error('Failed to fetch conversation');
-                
+
                 const data = await response.json();
                 setSelectedConversation(data.conversation);
             } catch (error) {
                 console.error('Failed to open conversation:', error);
             }
-        }
+        },
     }));
 
     useEffect(() => {
@@ -64,7 +64,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         const handleFocus = () => {
             fetchConversations();
         };
-        
+
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
     }, []);
@@ -78,25 +78,23 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         // Subscribe to all conversation channels for real-time updates
         conversations.forEach((conversation) => {
             const channelName = `chat:conversation:${conversation.id}`;
-            
+
             // Handle new messages
             const handleNewMessage = (messageData) => {
                 const isFromOtherUser = messageData.sender_id !== currentUser.id;
-                
+
                 // Toast notifications are handled globally - no need to show here
                 // Global listener will handle showing toasts unconditionally
-                
-                setConversations(prev => {
+
+                setConversations((prev) => {
                     // Sort conversations by last_message_at to move updated conversation to top
-                    const updated = prev.map(conv => {
+                    const updated = prev.map((conv) => {
                         if (conv.id === conversation.id) {
                             // Increment unread if message is from other user and not selected
                             const isSelected = selectedConversation?.id === conv.id;
-                            
-                            const unreadCount = isSelected 
-                                ? conv.unread_count 
-                                : (isFromOtherUser ? (conv.unread_count || 0) + 1 : conv.unread_count);
-                            
+
+                            const unreadCount = isSelected ? conv.unread_count : isFromOtherUser ? (conv.unread_count || 0) + 1 : conv.unread_count;
+
                             return {
                                 ...conv,
                                 last_message: {
@@ -112,7 +110,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                         }
                         return conv;
                     });
-                    
+
                     // Sort by last_message_at descending to show most recent conversations first
                     return updated.sort((a, b) => {
                         const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
@@ -133,32 +131,34 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             // Handle message deletions
             const handleMessageDeleted = (data) => {
                 const { message_id } = data;
-                
-                setConversations(prev => prev.map(conv => {
-                    if (conv.id === conversation.id && conv.last_message?.id === message_id) {
-                        // If deleted message was the last one, refresh conversation
-                        fetchConversations();
-                    }
-                    return conv;
-                }));
+
+                setConversations((prev) =>
+                    prev.map((conv) => {
+                        if (conv.id === conversation.id && conv.last_message?.id === message_id) {
+                            // If deleted message was the last one, refresh conversation
+                            fetchConversations();
+                        }
+                        return conv;
+                    }),
+                );
             };
 
             // Subscribe to events for conversation updates
-            subscribeToChannel(channelName, 'new-message', handleNewMessage).then(unsub => {
+            subscribeToChannel(channelName, 'new-message', handleNewMessage).then((unsub) => {
                 if (unsub) unsubscribeFunctions.push(unsub);
             });
-            
-            subscribeToChannel(channelName, 'message-deleted', handleMessageDeleted).then(unsub => {
+
+            subscribeToChannel(channelName, 'message-deleted', handleMessageDeleted).then((unsub) => {
                 if (unsub) unsubscribeFunctions.push(() => unsubscribeFromChannel(channelName, 'message-deleted', handleMessageDeleted));
             });
-            
+
             // Subscribe to global notifications (toasts) - this handles unconditional toast showing
             subscribeToConversationForNotifications(conversation.id, conversation);
         });
 
         // Cleanup function
         return () => {
-            unsubscribeFunctions.forEach(unsub => {
+            unsubscribeFunctions.forEach((unsub) => {
                 try {
                     if (typeof unsub === 'function') unsub();
                 } catch (error) {
@@ -166,7 +166,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 }
             });
         };
-    }, [conversations.map(c => c.id).join(','), selectedConversation?.id, onUnreadCountChange, currentUser.id]);
+    }, [conversations.map((c) => c.id).join(','), selectedConversation?.id, onUnreadCountChange, currentUser.id]);
 
     // Fetch conversations b fetch
     const fetchConversations = React.useCallback(async () => {
@@ -175,7 +175,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             const response = await fetch('/chat', {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
@@ -209,7 +209,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             const response = await fetch(`/chat/conversation/${otherUserId}`, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
@@ -218,7 +218,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
             const data = await response.json();
             setSelectedConversation(data.conversation);
-            
+
             // Refresh conversations list to get latest last_message
             fetchConversations();
         } catch (error) {
@@ -247,7 +247,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                 const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&type=students`, {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
@@ -259,28 +259,25 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
                 const data = await response.json();
                 const users = data.results || [];
-                
+
                 // Get following IDs to filter users
                 const followingResponse = await fetch('/chat/following-ids', {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
-                
+
                 let followingIds = [];
                 if (followingResponse.ok) {
                     const followingData = await followingResponse.json();
                     followingIds = followingData.following_ids || [];
                 }
-                
+
                 // Filter users: exclude current user and only show users we follow
-                const filteredUsers = users.filter(user => 
-                    user.id !== currentUser.id && 
-                    followingIds.includes(user.id)
-                );
-                
+                const filteredUsers = users.filter((user) => user.id !== currentUser.id && followingIds.includes(user.id));
+
                 setSearchResults(filteredUsers);
             } catch (error) {
                 console.error('Failed to search users:', error);
@@ -291,9 +288,10 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         }, 300);
     }, [searchQuery, currentUser.id]);
 
-    const filteredConversations = conversations.filter(conv => 
-        conv.other_user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredConversations = conversations.filter(
+        (conv) =>
+            conv.other_user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            conv.other_user.email.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     // Handle user selection from search
@@ -301,11 +299,11 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
         try {
             setSearchQuery(''); // Clear search
             setSearchResults([]);
-            
+
             const response = await fetch(`/chat/conversation/${userId}`, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
@@ -318,7 +316,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
             const data = await response.json();
             setSelectedConversation(data.conversation);
-            
+
             // Refresh conversations list
             fetchConversations();
         } catch (error) {
@@ -329,11 +327,11 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
     // Skeleton loader
     const ConversationListSkeleton = () => (
-        <div className="p-2 space-y-1">
+        <div className="space-y-1 p-2">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/20">
-                    <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-                    <div className="flex-1 min-w-0 space-y-2">
+                <div key={i} className="flex w-full items-center gap-3 rounded-xl bg-muted/20 p-3">
+                    <Skeleton className="h-12 w-12 flex-shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex items-center justify-between">
                             <Skeleton className="h-4 w-2/3 rounded" />
                             <Skeleton className="h-3 w-12 rounded" />
@@ -348,88 +346,75 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
     return (
         <div className="flex h-full w-full overflow-hidden bg-background">
             {/* Left Sidebar - Conversations */}
-            <div className={cn(
-                "flex flex-col border-r bg-background transition-all duration-300 flex-shrink-0",
-                selectedConversation 
-                    ? "hidden md:flex w-full md:w-[40%] lg:w-[35%]" 
-                    : "w-full md:w-[40%] lg:w-[35%]"
-            )}>
+            <div
+                className={cn(
+                    'flex flex-shrink-0 flex-col border-r bg-background transition-all duration-300',
+                    selectedConversation ? 'hidden w-full md:flex md:w-[40%] lg:w-[35%]' : 'w-full md:w-[40%] lg:w-[35%]',
+                )}
+            >
                 {/* Header */}
-                <div className="px-5 py-4 border-b shrink-0 flex items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10">
-                    <h3 className="font-bold text-xl tracking-tight">Messages</h3>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onCloseChat}
-                        className="h-9 w-9 hover:bg-accent"
-                    >
+                <div className="flex shrink-0 items-center justify-between border-b bg-gradient-to-r from-primary/5 to-primary/10 px-5 py-4">
+                    <h3 className="text-xl font-bold tracking-tight">Messages</h3>
+                    <Button variant="ghost" size="icon" onClick={onCloseChat} className="h-9 w-9 hover:bg-accent">
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
 
                 {/* Search */}
-                <div className="px-5 py-3 border-b shrink-0 bg-background">
+                <div className="shrink-0 border-b bg-background px-5 py-3">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
                         <Input
                             placeholder="Search conversations or users..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 h-11 text-sm bg-muted/50 border-muted focus:bg-background"
+                            className="h-11 border-muted bg-muted/50 pl-10 text-sm focus:bg-background"
                         />
                     </div>
-                    
+
                     {/* User Search Results */}
                     {searchQuery.trim() && searchResults.length > 0 && (
-                        <div className="mt-2 space-y-1 max-h-64 overflow-y-auto">
-                            <div className="text-xs font-semibold text-muted-foreground px-2 py-1">
-                                Start conversation with:
-                            </div>
+                        <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+                            <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Start conversation with:</div>
                             {searchResults.map((user) => (
                                 <button
                                     key={user.id}
                                     onClick={() => handleUserSelect(user.id)}
-                                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-muted/50"
                                 >
-                                    <Avatar
-                                        className="h-10 w-10 flex-shrink-0"
-                                        image={user.image || user.avatar}
-                                        name={user.name}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{user.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                    <Avatar className="h-10 w-10 flex-shrink-0" image={user.image || user.avatar} name={user.name} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">{user.name}</p>
+                                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                                     </div>
                                 </button>
                             ))}
                         </div>
                     )}
-                    
+
                     {searchQuery.trim() && isSearchingUsers && (
-                        <div className="mt-2 px-2 py-3 text-sm text-muted-foreground text-center">
-                            Searching...
-                        </div>
+                        <div className="mt-2 px-2 py-3 text-center text-sm text-muted-foreground">Searching...</div>
                     )}
-                    
+
                     {searchQuery.trim() && !isSearchingUsers && searchResults.length === 0 && filteredConversations.length === 0 && (
-                        <div className="mt-2 px-2 py-3 text-sm text-muted-foreground text-center">
+                        <div className="mt-2 px-2 py-3 text-center text-sm text-muted-foreground">
                             No users found. Make sure you're following them first.
                         </div>
                     )}
                 </div>
 
                 {/* Conversations List */}
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollArea className="min-h-0 flex-1">
                     {loading ? (
                         <ConversationListSkeleton />
                     ) : filteredConversations.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full py-12 text-muted-foreground">
-                            <MessageCircle className="h-16 w-16 mb-4 opacity-20" />
+                        <div className="flex h-full flex-col items-center justify-center py-12 text-muted-foreground">
+                            <MessageCircle className="mb-4 h-16 w-16 opacity-20" />
                             <p className="text-sm font-medium">{searchQuery ? 'No conversations found' : 'No messages yet'}</p>
-                            <p className="text-xs mt-1 opacity-70">{searchQuery ? 'Try a different search' : 'Start a conversation'}</p>
+                            <p className="mt-1 text-xs opacity-70">{searchQuery ? 'Try a different search' : 'Start a conversation'}</p>
                         </div>
                     ) : (
-                        <div className="p-2 space-y-1">
+                        <div className="space-y-1 p-2">
                             {filteredConversations.map((conversation) => (
                                 <ConversationItem
                                     key={conversation.id}
@@ -439,7 +424,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                     isSelected={selectedConversation?.id === conversation.id}
                                     onClick={() => handleConversationClick(conversation.id, conversation.other_user.id)}
                                     onDeleted={() => {
-                                        setConversations(prev => prev.filter(c => c.id !== conversation.id));
+                                        setConversations((prev) => prev.filter((c) => c.id !== conversation.id));
                                         if (selectedConversation?.id === conversation.id) {
                                             setSelectedConversation(null);
                                         }
@@ -455,7 +440,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
             {/* Right Side - Chat Box */}
             {selectedConversation ? (
                 <>
-                    <div className="flex-1 hidden md:flex flex-col min-w-0">
+                    <div className="hidden min-w-0 flex-1 flex-col md:flex">
                         <ChatBox
                             conversation={selectedConversation}
                             onBack={() => {
@@ -466,7 +451,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                             isExpanded={false}
                         />
                     </div>
-                    <div className="md:hidden fixed inset-0 z-[100] bg-background flex flex-col">
+                    <div className="fixed inset-0 z-[100] flex flex-col bg-background md:hidden">
                         <ChatBox
                             conversation={selectedConversation}
                             onBack={() => {
@@ -479,13 +464,13 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                     </div>
                 </>
             ) : (
-                <div className="flex-1 hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10">
-                    <div className="text-center space-y-4 px-8">
-                        <div className="mx-auto w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="hidden flex-1 flex-col items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 md:flex">
+                    <div className="space-y-4 px-8 text-center">
+                        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-primary/10">
                             <MessageCircle className="h-12 w-12 text-primary/40" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-semibold text-foreground mb-2">Select a conversation</h3>
+                            <h3 className="mb-2 text-xl font-semibold text-foreground">Select a conversation</h3>
                             <p className="text-sm text-muted-foreground">Choose a conversation from the list to start messaging</p>
                         </div>
                     </div>
@@ -501,11 +486,11 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isSelect
     // Format last message preview
     const getLastMessagePreview = () => {
         if (!conversation.last_message) return 'No messages yet';
-        
+
         const { body, attachment_type, sender_id } = conversation.last_message;
         const isFromCurrentUser = sender_id === currentUserId;
         const prefix = isFromCurrentUser ? 'You: ' : `${otherUserName}: `;
-        
+
         if (attachment_type === 'image') return prefix + '📷 Image';
         if (attachment_type === 'video') return prefix + '🎥 Video';
         if (attachment_type === 'audio') return prefix + '🎤 Voice message';
@@ -515,58 +500,54 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isSelect
             const preview = body.length > 80 ? body.substring(0, 80) + '...' : body;
             return prefix + preview;
         }
-        
+
         return prefix + '📎 Attachment';
     };
 
     return (
-        <div className="relative group">
+        <div className="group relative">
             <button
                 onClick={onClick}
                 className={cn(
-                    "w-full flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 text-left border",
-                    isSelected 
-                        ? "bg-gradient-to-r from-primary/15 via-primary/10 to-transparent border-primary/30 shadow-md shadow-primary/10" 
-                        : "bg-muted/30 border-transparent hover:bg-muted/50 hover:border-muted hover:shadow-sm",
-                    conversation.unread_count > 0 && !isSelected && "bg-primary/5 border-primary/20"
+                    'flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-all duration-200',
+                    isSelected
+                        ? 'border-primary/30 bg-gradient-to-r from-primary/15 via-primary/10 to-transparent shadow-md shadow-primary/10'
+                        : 'border-transparent bg-muted/30 hover:border-muted hover:bg-muted/50 hover:shadow-sm',
+                    conversation.unread_count > 0 && !isSelected && 'border-primary/20 bg-primary/5',
                 )}
             >
                 <div className="relative flex-shrink-0">
                     <Avatar
                         className={cn(
-                            "h-14 w-14 flex-shrink-0 ring-2 transition-all",
-                            isSelected 
-                                ? "ring-primary/40 ring-offset-2" 
-                                : conversation.unread_count > 0
-                                    ? "ring-primary/30"
-                                    : "ring-transparent"
+                            'h-14 w-14 flex-shrink-0 ring-2 transition-all',
+                            isSelected ? 'ring-primary/40 ring-offset-2' : conversation.unread_count > 0 ? 'ring-primary/30' : 'ring-transparent',
                         )}
                         image={conversation.other_user.image}
                         name={conversation.other_user.name}
                     />
                     {conversation.unread_count > 0 && (
-                        <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] font-bold text-black ring-2 ring-background shadow-sm">
+                        <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] font-bold text-black shadow-sm ring-2 ring-background">
                             {conversation.unread_count > 99 ? '99+' : conversation.unread_count}
                         </span>
                     )}
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1.5 gap-2">
-                        <p className={cn(
-                            "text-sm font-semibold truncate",
-                            conversation.unread_count > 0 
-                                ? "font-bold text-foreground" 
-                                : "text-foreground/90"
-                        )}>
+                <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <p
+                            className={cn(
+                                'truncate text-sm font-semibold',
+                                conversation.unread_count > 0 ? 'font-bold text-foreground' : 'text-foreground/90',
+                            )}
+                        >
                             {conversation.other_user.name}
                         </p>
                         {conversation.last_message_at && (
-                            <span className={cn(
-                                "text-xs whitespace-nowrap flex-shrink-0 font-medium",
-                                conversation.unread_count > 0 
-                                    ? "text-primary" 
-                                    : "text-muted-foreground"
-                            )}>
+                            <span
+                                className={cn(
+                                    'flex-shrink-0 text-xs font-medium whitespace-nowrap',
+                                    conversation.unread_count > 0 ? 'text-primary' : 'text-muted-foreground',
+                                )}
+                            >
                                 {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })
                                     .replace('about ', '')
                                     .replace(' ago', '')
@@ -579,25 +560,21 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isSelect
                         )}
                     </div>
                     {conversation.last_message && (
-                        <p className={cn(
-                            "text-xs truncate leading-relaxed max-w-full",
-                            conversation.unread_count > 0 
-                                ? "font-medium text-foreground/90" 
-                                : "text-muted-foreground"
-                        )} title={getLastMessagePreview()}>
+                        <p
+                            className={cn(
+                                'max-w-full truncate text-xs leading-relaxed',
+                                conversation.unread_count > 0 ? 'font-medium text-foreground/90' : 'text-muted-foreground',
+                            )}
+                            title={getLastMessagePreview()}
+                        >
                             {getLastMessagePreview()}
                         </p>
                     )}
-                    {!conversation.last_message && (
-                        <p className="text-xs text-muted-foreground italic">Start a conversation</p>
-                    )}
+                    {!conversation.last_message && <p className="text-xs text-muted-foreground italic">Start a conversation</p>}
                 </div>
             </button>
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <ConversationDeletePopover 
-                    conversationId={conversation.id}
-                    onDeleted={onDeleted}
-                />
+            <div className="absolute top-3 right-3 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                <ConversationDeletePopover conversationId={conversation.id} onDeleted={onDeleted} />
             </div>
         </div>
     );

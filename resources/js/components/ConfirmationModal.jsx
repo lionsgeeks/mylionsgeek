@@ -1,15 +1,14 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const ConfirmationModal = ({
     isOpen,
     onClose,
     onConfirm,
-    title = "Confirm Action",
-    description = "Are you sure you want to proceed with this action?",
-    confirmText = "Confirm",
-    cancelText = "Cancel",
+    title = 'Confirm Action',
+    description = 'Are you sure you want to proceed with this action?',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
     isDestructive = false,
 }) => {
     return (
@@ -25,10 +24,7 @@ const ConfirmationModal = ({
                             {cancelText}
                         </Button>
                     </DialogClose>
-                    <Button 
-                        variant={isDestructive ? "destructive" : "default"} 
-                        onClick={onConfirm}
-                    >
+                    <Button variant={isDestructive ? 'destructive' : 'default'} onClick={onConfirm}>
                         {confirmText}
                     </Button>
                 </DialogFooter>

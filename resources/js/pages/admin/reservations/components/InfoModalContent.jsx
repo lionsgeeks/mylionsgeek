@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
 import { Avatar } from '@/components/ui/avatar';
+import { useEffect, useState } from 'react';
 
 const InfoModalContent = ({ reservationId, initial }) => {
     const [data, setData] = useState({
@@ -17,9 +17,9 @@ const InfoModalContent = ({ reservationId, initial }) => {
     }, [initial, reservationId]);
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-                <div className="text-muted-foreground mb-2">Equipments</div>
+                <div className="mb-2 text-muted-foreground">Equipments</div>
                 {data.equipments.length ? (
                     <div className="grid grid-cols-1 gap-3">
                         {data.equipments.map((e, idx) => (
@@ -31,7 +31,7 @@ const InfoModalContent = ({ reservationId, initial }) => {
                                 )}
                                 <div className="text-sm">
                                     <div className="font-medium break-words">{e?.reference || '—'}</div>
-                                    <div className="text-muted-foreground break-words">{e?.mark || '—'}</div>
+                                    <div className="break-words text-muted-foreground">{e?.mark || '—'}</div>
                                 </div>
                             </div>
                         ))}
@@ -41,13 +41,13 @@ const InfoModalContent = ({ reservationId, initial }) => {
                 )}
             </div>
             <div>
-                <div className="text-muted-foreground mb-2">Team {data.team_name ? `— ${data.team_name}` : ''}</div>
+                <div className="mb-2 text-muted-foreground">Team {data.team_name ? `— ${data.team_name}` : ''}</div>
                 {data.team_members.length ? (
                     <div className="grid grid-cols-1 gap-3">
                         {data.team_members.map((m, idx) => (
                             <div key={idx} className="flex items-center gap-3">
                                 <Avatar
-                                    className="w-10 h-10"
+                                    className="h-10 w-10"
                                     image={m?.image?.split('/').pop()}
                                     name={m?.name}
                                     lastActivity={m?.last_online || null}
@@ -67,4 +67,3 @@ const InfoModalContent = ({ reservationId, initial }) => {
 };
 
 export default InfoModalContent;
-

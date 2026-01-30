@@ -1,23 +1,34 @@
-import { useState, useEffect, useRef } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router, usePage } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, CalendarCheck, Play, ChevronDown, BookOpen, Award } from 'lucide-react';
-import { Users, CalendarDays, User, Trash2, Plus, UserPlus, Settings } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import AppLayout from '@/layouts/app-layout';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import { Head, router, usePage } from '@inertiajs/react';
+import {
+    Award,
+    BookOpen,
+    CalendarCheck,
+    CalendarDays,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    Play,
+    Plus,
+    Settings,
+    User,
+    UserPlus,
+    Users,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 // Use native fetch instead of axios
-import GeekyWheel from './partials/geekyWheel';
-import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import ExercicesModal from "@/components/EXP'S/exersices_modal";
 import CoursesModal from "@/components/EXP'S/courses_modal";
+import ExercicesModal from "@/components/EXP'S/exersices_modal";
+import { Checkbox } from '@/components/ui/checkbox';
+import RolesMultiSelect from '@/pages/admin/users/partials/RolesMultiSelect';
+import GeekyWheel from './partials/geekyWheel';
 
 export default function Show({ training, usersNull, courses = [] }) {
     const { auth } = usePage().props;
@@ -58,8 +69,6 @@ export default function Show({ training, usersNull, courses = [] }) {
     const [bulkRoles, setBulkRoles] = useState([]);
     const [bulkStatus, setBulkStatus] = useState('');
 
-
-
     // Map status to color styles for SelectTrigger
     const statusClass = (value) => {
         const v = String(value || '').toLowerCase();
@@ -98,9 +107,9 @@ export default function Show({ training, usersNull, courses = [] }) {
                 const res = await fetch(`/training/${training.id}/attendance-events`);
                 const data = await res.json();
                 if (Array.isArray(data.events)) {
-                    setEvents(data.events.map(e => ({ ...e })));
+                    setEvents(data.events.map((e) => ({ ...e })));
                 }
-            } catch (e) { }
+            } catch (e) {}
         }
         fetchEvents();
     }, [training.id]);
@@ -153,28 +162,26 @@ export default function Show({ training, usersNull, courses = [] }) {
 
     //   attendance
 
-
     async function AddAttendance(dateStr) {
         try {
-            const csrf =
-            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const res = await fetch('/attendances', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrf,
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                formation_id: training.id,
-                attendance_day: dateStr,
-            }),
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    formation_id: training.id,
+                    attendance_day: dateStr,
+                }),
             });
 
             if (!res.ok) {
-            throw new Error(`Failed to create/load attendance (${res.status})`);
+                throw new Error(`Failed to create/load attendance (${res.status})`);
             }
 
             const data = await res.json();
@@ -186,59 +193,60 @@ export default function Show({ training, usersNull, courses = [] }) {
             const byUserId = new Map(existing.map((l) => [l.user_id, l]));
 
             students.forEach((s) => {
-            const key = `${dateStr}-${s.id}`;
-            const saved = byUserId.get(s.id);
-            const base = getDefaultSlots(s);
+                const key = `${dateStr}-${s.id}`;
+                const saved = byUserId.get(s.id);
+                const base = getDefaultSlots(s);
 
-            initialized[key] = {
-                morning: saved?.morning ?? base.morning,
-                lunch: saved?.lunch ?? base.lunch,
-                evening: saved?.evening ?? base.evening,
-                notes: saved?.note
-                ? String(saved.note).split(' | ').filter(Boolean)
-                : base.notes,
-                user_id: s.id,
-            };
+                initialized[key] = {
+                    morning: saved?.morning ?? base.morning,
+                    lunch: saved?.lunch ?? base.lunch,
+                    evening: saved?.evening ?? base.evening,
+                    notes: saved?.note ? String(saved.note).split(' | ').filter(Boolean) : base.notes,
+                    user_id: s.id,
+                };
             });
 
             setAttendanceData((prev) => ({ ...prev, ...initialized }));
 
             if (existing.length === 0) {
-            const dataToSave = students.map((s) => {
-                const base = getDefaultSlots(s);
-                return {
-                user_id: s.id,
-                attendance_day: dateStr,
-                attendance_id: Number(data.attendance_id),
-                morning: base.morning,
-                lunch: base.lunch,
-                evening: base.evening,
-                note: null,
-                };
-            });
+                const dataToSave = students.map((s) => {
+                    const base = getDefaultSlots(s);
+                    return {
+                        user_id: s.id,
+                        attendance_day: dateStr,
+                        attendance_id: Number(data.attendance_id),
+                        morning: base.morning,
+                        lunch: base.lunch,
+                        evening: base.evening,
+                        note: null,
+                    };
+                });
 
-            fetch('/admin/attendance/save', {
-                method: 'POST',
-                headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrf,
-                'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({ attendance: dataToSave }),
-            }).catch(() => {});
+                fetch('/admin/attendance/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ attendance: dataToSave }),
+                }).catch(() => {});
             }
 
             setShowAttendanceList(true);
-        } catch (err) {
-        }
-        }
-
+        } catch (err) {}
+    }
 
     //   atteandacelist
     async function handleSave() {
         const dataToSave = Object.entries(attendanceData).map(([key, value]) => {
-            const studentId = value?.user_id ?? (() => { const i = key.lastIndexOf('-'); return i !== -1 ? key.slice(i + 1) : key; })();
+            const studentId =
+                value?.user_id ??
+                (() => {
+                    const i = key.lastIndexOf('-');
+                    return i !== -1 ? key.slice(i + 1) : key;
+                })();
             return {
                 user_id: studentId,
                 attendance_day: selectedDate,
@@ -246,7 +254,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                 morning: value.morning,
                 lunch: value.lunch,
                 evening: value.evening,
-                note: Array.isArray(value.notes) ? value.notes.join(' | ') : (value.notes || null),
+                note: Array.isArray(value.notes) ? value.notes.join(' | ') : value.notes || null,
             };
         });
 
@@ -269,8 +277,8 @@ export default function Show({ training, usersNull, courses = [] }) {
                 const evRes = await fetch(`/training/${training.id}/attendance-events`);
                 const evData = await evRes.json();
                 if (Array.isArray(evData.events)) setEvents(evData.events);
-            } catch { }
-        } catch (err) { }
+            } catch {}
+        } catch (err) {}
     }
 
     // Wheel functions
@@ -309,7 +317,7 @@ export default function Show({ training, usersNull, courses = [] }) {
 
     const removeWinner = () => {
         if (selectedWinner) {
-            setWheelParticipants(prev => prev.filter(p => p.id !== selectedWinner.id));
+            setWheelParticipants((prev) => prev.filter((p) => p.id !== selectedWinner.id));
             setSelectedWinner(null);
             setShowWinnerModal(false);
         }
@@ -328,67 +336,64 @@ export default function Show({ training, usersNull, courses = [] }) {
     };
 
     const getDefaultSlots = (student) => {
-    const status = String(student?.status || '').toLowerCase();
-    if (status === 'left') {
-        return { morning: 'absent', lunch: 'absent', evening: 'absent', notes: [] };
-    }
-    return { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
+        const status = String(student?.status || '').toLowerCase();
+        if (status === 'left') {
+            return { morning: 'absent', lunch: 'absent', evening: 'absent', notes: [] };
+        }
+        return { morning: 'present', lunch: 'present', evening: 'present', notes: [] };
     };
     // Notes helpers: add/remove chip-style notes per student
     const addNote = (studentKey, noteText) => {
-    const text = (noteText || '').trim();
-    if (!text) return;
+        const text = (noteText || '').trim();
+        if (!text) return;
 
-    setAttendanceData((prev) => {
-        const student = students.find((s) => s.id === studentKey);
-        const base = getDefaultSlots(student);
-        const prevForStudent = prev[studentKey] || base;
+        setAttendanceData((prev) => {
+            const student = students.find((s) => s.id === studentKey);
+            const base = getDefaultSlots(student);
+            const prevForStudent = prev[studentKey] || base;
 
-        const existingNotes = Array.isArray(prevForStudent.notes)
-        ? prevForStudent.notes
-        : (prevForStudent.notes ? [prevForStudent.notes] : []);
+            const existingNotes = Array.isArray(prevForStudent.notes) ? prevForStudent.notes : prevForStudent.notes ? [prevForStudent.notes] : [];
 
-        return {
-        ...prev,
-        [studentKey]: {
-            ...prevForStudent,
-            notes: [...existingNotes, text],
-        },
-        };
-    });
+            return {
+                ...prev,
+                [studentKey]: {
+                    ...prevForStudent,
+                    notes: [...existingNotes, text],
+                },
+            };
+        });
     };
 
-
     const removeNote = (studentKey, index) => {
-    setAttendanceData((prev) => {
-        const student = students.find((s) => s.id === studentKey);
-        const base = getDefaultSlots(student);
-        const prevForStudent = prev[studentKey] || base;
+        setAttendanceData((prev) => {
+            const student = students.find((s) => s.id === studentKey);
+            const base = getDefaultSlots(student);
+            const prevForStudent = prev[studentKey] || base;
 
-        const existingNotes = Array.isArray(prevForStudent.notes)
-        ? [...prevForStudent.notes]
-        : (prevForStudent.notes ? [prevForStudent.notes] : []);
+            const existingNotes = Array.isArray(prevForStudent.notes)
+                ? [...prevForStudent.notes]
+                : prevForStudent.notes
+                  ? [prevForStudent.notes]
+                  : [];
 
-        existingNotes.splice(index, 1);
+            existingNotes.splice(index, 1);
 
-        return {
-        ...prev,
-        [studentKey]: {
-            ...prevForStudent,
-            notes: existingNotes,
-        },
-        };
-    });
+            return {
+                ...prev,
+                [studentKey]: {
+                    ...prevForStudent,
+                    notes: existingNotes,
+                },
+            };
+        });
     };
     // Filter enrolled students
     const filteredStudents = students.filter(
-        s =>
-            s.name.toLowerCase().includes(filter.toLowerCase()) ||
-            s.email.toLowerCase().includes(filter.toLowerCase())
+        (s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.email.toLowerCase().includes(filter.toLowerCase()),
     );
 
     // Filter available users to exclude admins, coaches, and already assigned students
-    const filteredAvailableUsers = availableUsers.filter(user => {
+    const filteredAvailableUsers = availableUsers.filter((user) => {
         // Exclude admins (assuming role field exists)
         if (user.role.includes('admin') || user.role.includes('moderateur')) return false;
 
@@ -396,7 +401,7 @@ export default function Show({ training, usersNull, courses = [] }) {
         if (user.role.includes('coach')) return false;
 
         // Exclude users already assigned to this training
-        const isAlreadyAssigned = students.some(student => student.id === user.id);
+        const isAlreadyAssigned = students.some((student) => student.id === user.id);
         if (isAlreadyAssigned) return false;
 
         // Apply search filter
@@ -410,18 +415,21 @@ export default function Show({ training, usersNull, courses = [] }) {
 
     // Delete student
 
-
     // Add student from modal
     const handleAddStudent = (user) => {
-        router.post(`/trainings/${training.id}/students`, { student_id: user.id }, {
-            onSuccess: () => {
-                setStudents(prev => [...prev, user]);
-                setAvailableUsers(prev => prev.filter(u => u.id !== user.id));
-            }
-        });
+        router.post(
+            `/trainings/${training.id}/students`,
+            { student_id: user.id },
+            {
+                onSuccess: () => {
+                    setStudents((prev) => [...prev, user]);
+                    setAvailableUsers((prev) => prev.filter((u) => u.id !== user.id));
+                },
+            },
+        );
     };
     const handleDelete = (userId) => {
-        const student = students.find(s => s.id === userId);
+        const student = students.find((s) => s.id === userId);
         setStudentToDelete(student);
         setShowDeleteConfirm(true);
     };
@@ -430,48 +438,45 @@ export default function Show({ training, usersNull, courses = [] }) {
         if (studentToDelete) {
             router.delete(`/trainings/${training.id}/students/${studentToDelete.id}`, {
                 onSuccess: () => {
-                    setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
-                    setAvailableUsers(prev => [...prev, studentToDelete]);
+                    setStudents((prev) => prev.filter((s) => s.id !== studentToDelete.id));
+                    setAvailableUsers((prev) => [...prev, studentToDelete]);
                     setShowDeleteConfirm(false);
                     setStudentToDelete(null);
-                }
+                },
             });
         }
     };
-
 
     return (
         <AppLayout>
             <Head title={training.name} />
 
-            <div className="p-6 min-h-screen">
+            <div className="min-h-screen p-6">
                 {/* Header */}
-                <div className="mb-6 sm:mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                        <h1 className="text-2xl sm:text-3xl font-extrabold text-dark dark:text-light leading-tight break-words">
-                            {training.name}
-                        </h1>
-                        <p className="text-dark/70 mt-1 sm:mt-2 dark:text-light/70">{training.category}</p>
+                        <h1 className="text-2xl leading-tight font-extrabold break-words text-dark sm:text-3xl dark:text-light">{training.name}</h1>
+                        <p className="mt-1 text-dark/70 sm:mt-2 dark:text-light/70">{training.category}</p>
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
                         <ExercicesModal trainingId={training.id} courses={courses} />
                         <Button
                             onClick={() => setIsModalOpen(true)}
-                            className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
+                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
                         >
                             <Plus size={16} />
                             <span>Add Student</span>
                         </Button>
                         <Button
                             onClick={() => setShowAttendance(true)}
-                            className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
+                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
                         >
                             <CalendarCheck size={16} />
                             <span>Attendance</span>
                         </Button>
                         <Button
                             onClick={() => setShowBulkUpdateModal(true)}
-                            className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
+                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:flex-none"
                         >
                             <Settings size={16} />
                             <span>Update Users</span>
@@ -481,18 +486,21 @@ export default function Show({ training, usersNull, courses = [] }) {
                         <div className="relative flex-1 sm:flex-initial" ref={dropdownRef}>
                             <Button
                                 onClick={() => setShowPlayDropdown(!showPlayDropdown)}
-                                className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] transition-all duration-300 w-full sm:w-auto"
+                                className="w-full gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black transition-all duration-300 hover:bg-transparent hover:text-[var(--color-alpha)] sm:w-auto"
                             >
                                 <Play size={16} />
                                 <span className="hidden sm:inline">Play</span>
-                                <ChevronDown size={16} className={`transform transition-transform duration-300 ${showPlayDropdown ? 'rotate-180' : ''}`} />
+                                <ChevronDown
+                                    size={16}
+                                    className={`transform transition-transform duration-300 ${showPlayDropdown ? 'rotate-180' : ''}`}
+                                />
                             </Button>
 
                             {showPlayDropdown && (
-                                <div className="absolute right-0 mt-2 w-full sm:w-48 bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 rounded-xl shadow-xl z-50 animate-in slide-in-from-top-2 duration-200">
+                                <div className="absolute right-0 z-50 mt-2 w-full rounded-xl border border-alpha/20 bg-light text-dark shadow-xl duration-200 animate-in slide-in-from-top-2 sm:w-48 dark:bg-dark dark:text-light">
                                     <button
                                         onClick={openGeekyWheel}
-                                        className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-t-xl transition-colors text-dark dark:text-light font-semibold"
+                                        className="w-full rounded-t-xl px-4 py-3 text-left font-semibold text-dark transition-colors hover:bg-alpha/10 dark:text-light"
                                     >
                                         Geeky Wheel
                                     </button>
@@ -501,7 +509,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             setShowPlayDropdown(false);
                                             router.visit(`/training/${training.id}/geeko`);
                                         }}
-                                        className="w-full text-left px-4 py-3 hover:bg-alpha/10 rounded-b-xl transition-colors text-dark dark:text-light font-semibold"
+                                        className="w-full rounded-b-xl px-4 py-3 text-left font-semibold text-dark transition-colors hover:bg-alpha/10 dark:text-light"
                                     >
                                         Geeko
                                     </button>
@@ -512,84 +520,81 @@ export default function Show({ training, usersNull, courses = [] }) {
                 </div>
 
                 {/* Hero Image */}
-                <div className="w-full h-64 rounded-2xl overflow-hidden border border-alpha/20 mb-8">
+                <div className="mb-8 h-64 w-full overflow-hidden rounded-2xl border border-alpha/20">
                     {training.img ? (
                         <img
                             src={
-                                training.category?.toLowerCase() === "coding"
-                                    ? "/assets/images/training/coding.jpg"
-                                    : training.category?.toLowerCase() === "media"
-                                        ? "/assets/images/training/media.jpg"
-                                        : training.img
-                                            ? `/storage/img/training/${training.img}`
-                                            : "/assets/images/training/default.jpg"
+                                training.category?.toLowerCase() === 'coding'
+                                    ? '/assets/images/training/coding.jpg'
+                                    : training.category?.toLowerCase() === 'media'
+                                      ? '/assets/images/training/media.jpg'
+                                      : training.img
+                                        ? `/storage/img/training/${training.img}`
+                                        : '/assets/images/training/default.jpg'
                             }
                             alt={training.name}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-alpha to-alpha/70 flex items-center justify-center text-light font-bold text-xl">
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-alpha to-alpha/70 text-xl font-bold text-light">
                             {training.name}
                         </div>
                     )}
                 </div>
 
                 {/* Courses Section */}
-                <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6 mb-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold">
-                            Courses ({courses.length})
-                        </h2>
+                <div className="mb-8 rounded-2xl border border-alpha/20 bg-light p-6 text-dark dark:bg-dark dark:text-light">
+                    <div className="mb-6 flex items-center justify-between">
+                        <h2 className="text-xl font-bold">Courses ({courses.length})</h2>
                         <CoursesModal />
                     </div>
-                    
+
                     {courses.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {courses.map((course) => (
-                                <div key={course.id} className="bg-light/50 dark:bg-dark/50 rounded-xl border border-alpha/10 p-4 hover:border-alpha/30 transition-colors">
-                                    <div className="flex items-start justify-between mb-3">
+                                <div
+                                    key={course.id}
+                                    className="rounded-xl border border-alpha/10 bg-light/50 p-4 transition-colors hover:border-alpha/30 dark:bg-dark/50"
+                                >
+                                    <div className="mb-3 flex items-start justify-between">
                                         <div>
-                                            <h3 className="font-semibold text-lg text-dark dark:text-light">
-                                                {course.name}
-                                            </h3>
+                                            <h3 className="text-lg font-semibold text-dark dark:text-light">{course.name}</h3>
                                             {course.description && (
-                                                <p className="text-sm text-dark/70 dark:text-light/70 mt-1 line-clamp-2">
-                                                    {course.description}
-                                                </p>
+                                                <p className="mt-1 line-clamp-2 text-sm text-dark/70 dark:text-light/70">{course.description}</p>
                                             )}
                                         </div>
                                     </div>
-                                    
+
                                     {/* Badges Display */}
-                                    <div className="flex items-center gap-2 mt-3">
+                                    <div className="mt-3 flex items-center gap-2">
                                         {course.badge1 && (
-                                            <img 
-                                                src={`/storage/img/courses/${course.badge1}`} 
-                                                alt="Badge 1" 
-                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            <img
+                                                src={`/storage/img/courses/${course.badge1}`}
+                                                alt="Badge 1"
+                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
                                             />
                                         )}
                                         {course.badge2 && (
-                                            <img 
-                                                src={`/storage/img/courses/${course.badge2}`} 
-                                                alt="Badge 2" 
-                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            <img
+                                                src={`/storage/img/courses/${course.badge2}`}
+                                                alt="Badge 2"
+                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
                                             />
                                         )}
                                         {course.badge3 && (
-                                            <img 
-                                                src={`/storage/img/courses/${course.badge3}`} 
-                                                alt="Badge 3" 
-                                                className="w-8 h-8 rounded-full object-cover border border-alpha/20"
+                                            <img
+                                                src={`/storage/img/courses/${course.badge3}`}
+                                                alt="Badge 3"
+                                                className="h-8 w-8 rounded-full border border-alpha/20 object-cover"
                                             />
                                         )}
                                         {!course.badge1 && !course.badge2 && !course.badge3 && (
-                                            <div className="w-8 h-8 rounded-full bg-alpha/10 flex items-center justify-center">
-                                                <Award className="w-4 h-4 text-alpha" />
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-alpha/10">
+                                                <Award className="h-4 w-4 text-alpha" />
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     {/* Exercises Count */}
                                     {course.exercices && course.exercices.length > 0 && (
                                         <div className="mt-3 text-xs text-dark/60 dark:text-light/60">
@@ -600,29 +605,23 @@ export default function Show({ training, usersNull, courses = [] }) {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-8">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-alpha/10 flex items-center justify-center">
-                                <BookOpen className="w-8 h-8 text-alpha" />
+                        <div className="py-8 text-center">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-alpha/10">
+                                <BookOpen className="h-8 w-8 text-alpha" />
                             </div>
-                            <p className="text-dark/70 dark:text-light/70">
-                                No courses assigned to this training yet.
-                            </p>
-                            <p className="text-sm text-dark/50 dark:text-light/50 mt-1">
-                                Add exercises and assign them to courses to see them here.
-                            </p>
+                            <p className="text-dark/70 dark:text-light/70">No courses assigned to this training yet.</p>
+                            <p className="mt-1 text-sm text-dark/50 dark:text-light/50">Add exercises and assign them to courses to see them here.</p>
                         </div>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                     {/* Left Side – Students List */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-6 lg:col-span-2">
                         {students.length > 0 && (
-                            <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-2xl border border-alpha/20 p-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-xl font-bold">
-                                        Enrolled Students ({students.length})
-                                    </h2>
+                            <div className="rounded-2xl border border-alpha/20 bg-light p-6 text-dark dark:bg-dark dark:text-light">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h2 className="text-xl font-bold">Enrolled Students ({students.length})</h2>
                                 </div>
 
                                 {/* Filter Input */}
@@ -630,25 +629,25 @@ export default function Show({ training, usersNull, courses = [] }) {
                                     type="text"
                                     placeholder="Filter by name or email..."
                                     value={filter}
-                                    onChange={e => setFilter(e.target.value)}
+                                    onChange={(e) => setFilter(e.target.value)}
                                     className="mb-6"
                                 />
 
                                 <ul className="space-y-3">
-                                    {filteredStudents.map(user => (
+                                    {filteredStudents.map((user) => (
                                         <li key={user.id} className="flex items-center justify-between space-x-3">
                                             <div
-                                                className="flex items-center space-x-3 cursor-pointer hover:bg-alpha/5 p-2 rounded-lg transition-colors flex-1"
+                                                className="flex flex-1 cursor-pointer items-center space-x-3 rounded-lg p-2 transition-colors hover:bg-alpha/5"
                                                 onClick={() => router.visit(`/admin/users/${user.id}`)}
                                             >
-                                                <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-light">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-dark dark:text-light">{user.name}</p>
                                                     <p className="text-sm text-dark/70 dark:text-light/70">{user.email}</p>
                                                     <button
-                                                        className="mt-1 inline-block text-red-600 hover:text-red-700 text-xs md:hidden"
+                                                        className="mt-1 inline-block text-xs text-red-600 hover:text-red-700 md:hidden"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleDelete(user.id);
@@ -661,7 +660,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                             <Button
                                                 variant="outline"
                                                 onClick={() => handleDelete(user.id)}
-                                                className="hidden md:inline-flex gap-1 px-3 py-1 text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
+                                                className="hidden gap-1 border-red-600 px-3 py-1 text-red-600 hover:bg-red-50 md:inline-flex dark:hover:bg-red-900/10"
                                             >
                                                 Remove
                                             </Button>
@@ -675,10 +674,14 @@ export default function Show({ training, usersNull, courses = [] }) {
                     {/* Right Side – Info */}
                     <div className="space-y-6">
                         {/* Coach Card */}
-                        <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-6 flex items-center space-x-4">
-                            <div className="w-14 h-14 rounded-full bg-alpha flex items-center justify-center text-light font-bold text-lg">
+                        <div className="flex items-center space-x-4 rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-alpha text-lg font-bold text-light">
                                 {training.coach
-                                    ? training.coach.name.split(' ').map(n => n[0]).join('').toUpperCase()
+                                    ? training.coach.name
+                                          .split(' ')
+                                          .map((n) => n[0])
+                                          .join('')
+                                          .toUpperCase()
                                     : 'C'}
                             </div>
                             <div>
@@ -688,7 +691,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                         </div>
 
                         {/* Course Info */}
-                        <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-6 space-y-4">
+                        <div className="space-y-4 rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
                             <div className="flex items-center space-x-3">
                                 <CalendarDays className="text-alpha" />
                                 <div>
@@ -716,8 +719,8 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                         {/* Status */}
                         {training.status && (
-                            <div className="bg-light dark:bg-dark rounded-2xl border border-alpha/20 p-4 text-center">
-                                <span className="px-4 py-2 rounded-full text-sm font-bold bg-alpha/10 text-alpha">
+                            <div className="rounded-2xl border border-alpha/20 bg-light p-4 text-center dark:bg-dark">
+                                <span className="rounded-full bg-alpha/10 px-4 py-2 text-sm font-bold text-alpha">
                                     {training.status.toUpperCase()}
                                 </span>
                             </div>
@@ -728,36 +731,29 @@ export default function Show({ training, usersNull, courses = [] }) {
                 {/* Modal for adding students */}
 
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
+                    <DialogContent className="max-w-lg border border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                         <DialogHeader>
                             <DialogTitle className="text-2xl">Add Student</DialogTitle>
                         </DialogHeader>
 
                         {/* Search Filter */}
                         <div className="mt-4">
-                            <Input
-                                type="text"
-                                placeholder="Search by name..."
-                                value={modalFilter}
-                                onChange={e => setModalFilter(e.target.value)}
-                            />
+                            <Input type="text" placeholder="Search by name..." value={modalFilter} onChange={(e) => setModalFilter(e.target.value)} />
                         </div>
 
                         <div className="mt-4 max-h-96 overflow-y-auto">
                             <div className="space-y-2">
                                 {filteredAvailableUsers.length === 0 ? (
-                                    <div className="px-4 py-6 text-center text-dark/50 dark:text-light/60">
-                                        No available students
-                                    </div>
+                                    <div className="px-4 py-6 text-center text-dark/50 dark:text-light/60">No available students</div>
                                 ) : (
-                                    filteredAvailableUsers.map(user => (
+                                    filteredAvailableUsers.map((user) => (
                                         <div
                                             key={user.id}
-                                            className="flex items-center justify-between p-3 border border-alpha/20 rounded-lg hover:border-alpha/40 transition-colors cursor-pointer"
+                                            className="flex cursor-pointer items-center justify-between rounded-lg border border-alpha/20 p-3 transition-colors hover:border-alpha/40"
                                             onClick={() => router.visit(`/students/${user.id}`)}
                                         >
                                             <div className="flex items-center space-x-3">
-                                                <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-light">
                                                     {user.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
@@ -770,7 +766,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                     handleAddStudent(user);
                                                 }}
                                                 variant="outline"
-                                                className="inline-flex items-center gap-2 px-3 py-1 font-semibold text-sm"
+                                                className="inline-flex items-center gap-2 px-3 py-1 text-sm font-semibold"
                                             >
                                                 <UserPlus size={16} />
                                                 Add
@@ -781,29 +777,28 @@ export default function Show({ training, usersNull, courses = [] }) {
                             </div>
                         </div>
                         <div className="mt-4 text-right">
-                            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
+                            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                                Close
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>
 
                 {/* Attendance Modal with FullCalendar */}
                 <Dialog open={showAttendance} onOpenChange={setShowAttendance}>
-                    <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 flex flex-col gap-4 sm:gap-5 p-4 sm:p-6 md:p-8 rounded-none sm:rounded-2xl shadow-xl">
-
+                    <DialogContent className="flex h-[100svh] w-full max-w-full flex-col gap-4 overflow-x-hidden overflow-y-auto rounded-none border border-alpha/20 bg-light p-4 text-dark shadow-xl sm:h-auto sm:max-w-[95vw] sm:gap-5 sm:rounded-2xl sm:p-6 md:p-8 lg:max-w-[1100px] dark:bg-dark dark:text-light">
                         {/* Header */}
                         <DialogHeader>
-                            <DialogTitle className="text-3xl lg:text-4xl font-extrabold text-dark dark:text-light">
+                            <DialogTitle className="text-3xl font-extrabold text-dark lg:text-4xl dark:text-light">
                                 Training Attendance Calendar
                             </DialogTitle>
-                            <p className="text-dark/70 dark:text-light/70 text-lg lg:text-xl">
-                                Click on any day to manage attendance for that date
-                            </p>
+                            <p className="text-lg text-dark/70 lg:text-xl dark:text-light/70">Click on any day to manage attendance for that date</p>
                         </DialogHeader>
 
                         {/* Calendar */}
                         {/* Custom calendar toolbar */}
                         <div className="flex flex-col gap-3">
-                            <div className="text-center text-sm sm:text-base md:text-lg font-semibold">{calendarTitle}</div>
+                            <div className="text-center text-sm font-semibold sm:text-base md:text-lg">{calendarTitle}</div>
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                     <Button variant="outline" onClick={() => calendarApi && calendarApi.prev()} className="p-2">
@@ -818,9 +813,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Button
-                                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                        className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                         onClick={() => {
-                                            const api = calendarApi || (calendarRef.current && typeof calendarRef.current.getApi === 'function' ? calendarRef.current.getApi() : null);
+                                            const api =
+                                                calendarApi ||
+                                                (calendarRef.current && typeof calendarRef.current.getApi === 'function'
+                                                    ? calendarRef.current.getApi()
+                                                    : null);
                                             if (api && typeof api.changeView === 'function') {
                                                 api.changeView('dayGridMonth');
                                                 if (typeof api.today === 'function') {
@@ -836,7 +835,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                         </div>
 
                         <div
-                            className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 p-2 sm:p-3 md:p-4 shadow-sm overflow-y-auto overflow-x-auto"
+                            className="overflow-x-auto overflow-y-auto rounded-xl border border-alpha/20 bg-light p-2 text-dark shadow-sm sm:p-3 md:p-4 dark:bg-dark dark:text-light"
                             style={{ height: 'calc(100svh - 260px)' }}
                         >
                             {calendarError && (
@@ -871,14 +870,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                     setShowAttendanceList(true);
                                 }}
                                 dateClick={(info) => {
-
                                     setCalendarError('');
                                     setSelectedDate(info.dateStr);
                                     AddAttendance(info.dateStr);
                                     setShowAttendance(false);
                                     setShowAttendanceList(true);
                                 }}
-
                                 height="100%"
                                 headerToolbar={{ left: '', center: '', right: '' }}
                                 dayMaxEvents={true}
@@ -889,15 +886,11 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 dayHeaderClassNames="bg-secondary/50 text-dark dark:text-light font-semibold text-[13px]"
                                 todayClassNames="bg-alpha/20 border border-alpha/60"
                                 dayCellContent={(info) => (
-                                    <div className="flex items-center justify-center h-full font-semibold text-dark dark:text-light">
+                                    <div className="flex h-full items-center justify-center font-semibold text-dark dark:text-light">
                                         {info.dayNumberText}
                                     </div>
                                 )}
-                                dayHeaderContent={(info) => (
-                                    <div className="text-center font-bold text-dark dark:text-light">
-                                        {info.text}
-                                    </div>
-                                )}
+                                dayHeaderContent={(info) => <div className="text-center font-bold text-dark dark:text-light">{info.text}</div>}
                             />
                         </div>
 
@@ -907,22 +900,24 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                 {/* Attendance List Modal */}
                 <Dialog open={showAttendanceList} onOpenChange={setShowAttendanceList}>
-                    <DialogContent className="w-full max-w-full sm:max-w-[95vw] lg:max-w-[1100px] h-[100svh] sm:h-auto overflow-y-auto overflow-x-hidden bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 p-4 sm:p-5 md:p-6 rounded-none sm:rounded-2xl">
+                    <DialogContent className="h-[100svh] w-full max-w-full overflow-x-hidden overflow-y-auto rounded-none border border-alpha/20 bg-light p-4 text-dark sm:h-auto sm:max-w-[95vw] sm:rounded-2xl sm:p-5 md:p-6 lg:max-w-[1100px] dark:bg-dark dark:text-light">
                         <DialogHeader>
-                            <DialogTitle className="text-2xl md:text-3xl font-extrabold text-dark dark:text-light">
-                                Attendance for {selectedDate && new Date(selectedDate).toLocaleDateString('en-US', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                })}
+                            <DialogTitle className="text-2xl font-extrabold text-dark md:text-3xl dark:text-light">
+                                Attendance for{' '}
+                                {selectedDate &&
+                                    new Date(selectedDate).toLocaleDateString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                    })}
                             </DialogTitle>
-                            <p className="text-dark/70 dark:text-light/70 text-sm md:text-base">Mark attendance for each student</p>
+                            <p className="text-sm text-dark/70 md:text-base dark:text-light/70">Mark attendance for each student</p>
                         </DialogHeader>
                         <div className="mt-4">
-                            <div className="bg-light text-dark dark:bg-dark dark:text-light rounded-xl border border-alpha/20 h-[52vh] overflow-y-auto overflow-x-hidden shadow-sm -ml-3 md:-ml-4">
+                            <div className="-ml-3 h-[52vh] overflow-x-hidden overflow-y-auto rounded-xl border border-alpha/20 bg-light text-dark shadow-sm md:-ml-4 dark:bg-dark dark:text-light">
                                 {/* Mobile cards layout */}
-                                <div className="block md:hidden p-3 pr-4 space-y-3">
+                                <div className="block space-y-3 p-3 pr-4 md:hidden">
                                     {students.map((student) => {
                                         const studentKey = `${selectedDate}-${student.id}`;
                                         const currentData = attendanceData[studentKey] || {
@@ -933,13 +928,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         };
                                         return (
                                             <div key={student.id} className="rounded-lg border border-alpha/20 p-3">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-9 h-9 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                                                <div className="mb-3 flex items-center gap-3">
+                                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-alpha font-bold text-light">
                                                         {student.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-semibold text-dark dark:text-light truncate">{student.name}</p>
-                                                        <p className="text-xs text-dark/70 dark:text-light/70 truncate">{student.email}</p>
+                                                        <p className="truncate font-semibold text-dark dark:text-light">{student.name}</p>
+                                                        <p className="truncate text-xs text-dark/70 dark:text-light/70">{student.email}</p>
                                                     </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2">
@@ -947,10 +942,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         value={currentData.morning ?? 'present'}
                                                         onValueChange={(val) => {
                                                             const newData = { ...currentData, morning: val };
-                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                         }}
                                                     >
-                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
+                                                        <SelectTrigger
+                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
+                                                        >
                                                             <SelectValue placeholder="9:30 - 11:00" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -965,10 +962,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         value={currentData.lunch ?? 'present'}
                                                         onValueChange={(val) => {
                                                             const newData = { ...currentData, lunch: val };
-                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                         }}
                                                     >
-                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
+                                                        <SelectTrigger
+                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
+                                                        >
                                                             <SelectValue placeholder="11:30 - 13:00" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -983,10 +982,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         value={currentData.evening ?? 'present'}
                                                         onValueChange={(val) => {
                                                             const newData = { ...currentData, evening: val };
-                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                         }}
                                                     >
-                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
+                                                        <SelectTrigger
+                                                            className={`h-10 rounded-xl border text-sm ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
+                                                        >
                                                             <SelectValue placeholder="14:00 - 17:00" />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -997,20 +998,24 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         </SelectContent>
                                                     </Select>
 
-                                                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark p-2">
-                                                        {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
-                                                            <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
-                                                                {n}
-                                                                <button
-                                                                    type="button"
-                                                                    className="text-red-500 hover:text-red-600"
-                                                                    onClick={() => removeNote(studentKey, idx)}
+                                                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light p-2 dark:bg-dark">
+                                                        {Array.isArray(currentData.notes) &&
+                                                            currentData.notes.map((n, idx) => (
+                                                                <span
+                                                                    key={idx}
+                                                                    className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs"
                                                                 >
-                                                                    ×
-                                                                </button>
-                                                            </span>
-                                                        ))}
-                                                        <div className="flex w-full sm:w-auto items-center gap-2">
+                                                                    {n}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-red-500 hover:text-red-600"
+                                                                        onClick={() => removeNote(studentKey, idx)}
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                        <div className="flex w-full items-center gap-2 sm:w-auto">
                                                             <input
                                                                 type="text"
                                                                 placeholder="Add note"
@@ -1025,14 +1030,16 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                             />
                                                             <button
                                                                 type="button"
-                                                                className="px-3 py-1 rounded-md bg-alpha/10 text-black dark:text-white hover:bg-alpha/20 text-xs font-medium transition-colors"
+                                                                className="rounded-md bg-alpha/10 px-3 py-1 text-xs font-medium text-black transition-colors hover:bg-alpha/20 dark:text-white"
                                                                 onClick={(e) => {
-                                                                    const input = (e.currentTarget.previousElementSibling);
+                                                                    const input = e.currentTarget.previousElementSibling;
                                                                     const val = input && 'value' in input ? input.value : '';
                                                                     addNote(studentKey, val);
                                                                     if (input && 'value' in input) input.value = '';
                                                                 }}
-                                                            >Add</button>
+                                                            >
+                                                                Add
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1045,7 +1052,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                 <div className="hidden md:block">
                                     <div className="overflow-x-hidden">
                                         <table className="w-full text-sm">
-                                            <thead className="bg-secondary/50 sticky top-0 z-10">
+                                            <thead className="sticky top-0 z-10 bg-secondary/50">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left font-semibold text-dark dark:text-light">Student</th>
                                                     <th className="px-4 py-3 text-center font-semibold text-dark dark:text-light">9:30 - 11:00</th>
@@ -1064,15 +1071,19 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                         notes: '',
                                                     };
                                                     return (
-                                                        <tr key={student.id} className="hover:bg-accent/30 transition-colors">
+                                                        <tr key={student.id} className="transition-colors hover:bg-accent/30">
                                                             <td className="px-4 py-3">
                                                                 <div className="flex items-center space-x-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                                                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-light">
                                                                         {student.name.charAt(0).toUpperCase()}
                                                                     </div>
                                                                     <div>
-                                                                        <p className="font-bold text-base text-dark dark:text-light">{student.name}</p>
-                                                                        <p className="text-xs md:text-sm text-dark/70 dark:text-light/70">{student.email}</p>
+                                                                        <p className="text-base font-bold text-dark dark:text-light">
+                                                                            {student.name}
+                                                                        </p>
+                                                                        <p className="text-xs text-dark/70 md:text-sm dark:text-light/70">
+                                                                            {student.email}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -1082,10 +1093,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                         value={currentData.morning ?? 'present'}
                                                                         onValueChange={(val) => {
                                                                             const newData = { ...currentData, morning: val };
-                                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                                         }}
                                                                     >
-                                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}>
+                                                                        <SelectTrigger
+                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.morning ?? 'present') || 'border-alpha/30'}`}
+                                                                        >
                                                                             <SelectValue placeholder="Morning" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1103,10 +1116,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                         value={currentData.lunch ?? 'present'}
                                                                         onValueChange={(val) => {
                                                                             const newData = { ...currentData, lunch: val };
-                                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                                         }}
                                                                     >
-                                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}>
+                                                                        <SelectTrigger
+                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.lunch ?? 'present') || 'border-alpha/30'}`}
+                                                                        >
                                                                             <SelectValue placeholder="11:30 - 13:00" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1124,10 +1139,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                         value={currentData.evening ?? 'present'}
                                                                         onValueChange={(val) => {
                                                                             const newData = { ...currentData, evening: val };
-                                                                            setAttendanceData(prev => ({ ...prev, [studentKey]: newData }));
+                                                                            setAttendanceData((prev) => ({ ...prev, [studentKey]: newData }));
                                                                         }}
                                                                     >
-                                                                        <SelectTrigger className={`h-10 rounded-xl text-sm border focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}>
+                                                                        <SelectTrigger
+                                                                            className={`h-10 rounded-xl border text-sm focus:ring-[var(--color-alpha)]/40 ${statusClass(currentData.evening ?? 'present') || 'border-alpha/30'}`}
+                                                                        >
                                                                             <SelectValue placeholder="14:00 - 17:00" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
@@ -1141,19 +1158,23 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                             </td>
 
                                                             <td className="px-4 py-3 text-center">
-                                                                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light dark:bg-dark px-2 py-2 text-sm">
-                                                                    {Array.isArray(currentData.notes) && currentData.notes.map((n, idx) => (
-                                                                        <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs">
-                                                                            {n}
-                                                                            <button
-                                                                                type="button"
-                                                                                className="text-red-500 hover:text-red-600"
-                                                                                onClick={() => removeNote(studentKey, idx)}
+                                                                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-alpha/30 bg-light px-2 py-2 text-sm dark:bg-dark">
+                                                                    {Array.isArray(currentData.notes) &&
+                                                                        currentData.notes.map((n, idx) => (
+                                                                            <span
+                                                                                key={idx}
+                                                                                className="inline-flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1 text-xs"
                                                                             >
-                                                                                ×
-                                                                            </button>
-                                                                        </span>
-                                                                    ))}
+                                                                                {n}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="text-red-500 hover:text-red-600"
+                                                                                    onClick={() => removeNote(studentKey, idx)}
+                                                                                >
+                                                                                    ×
+                                                                                </button>
+                                                                            </span>
+                                                                        ))}
                                                                     <input
                                                                         type="text"
                                                                         placeholder="Add note"
@@ -1168,29 +1189,22 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                                     />
                                                                 </div>
                                                             </td>
-
-
                                                         </tr>
                                                     );
                                                 })}
                                             </tbody>
                                         </table>
-
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-alpha/20 mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center pr-3 md:pr-6 py-3">
-                            <div className="text-sm md:text-base text-dark/70 dark:text-light/70">
-                                Total Students: <span className="font-bold text-xl">{students.length}</span>
+                        <div className="sticky bottom-0 mt-6 flex flex-col gap-3 border-t border-alpha/20 bg-light py-3 pr-3 sm:flex-row sm:items-center sm:justify-between md:pr-6 dark:bg-dark">
+                            <div className="text-sm text-dark/70 md:text-base dark:text-light/70">
+                                Total Students: <span className="text-xl font-bold">{students.length}</span>
                             </div>
-                            <div className="flex flex-col sm:flex-row sm:space-x-4 gap-2 sm:gap-0">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setShowAttendanceList(false)}
-                                    className="px-6 py-2 w-full sm:w-auto"
-                                >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:gap-0 sm:space-x-4">
+                                <Button variant="outline" onClick={() => setShowAttendanceList(false)} className="w-full px-6 py-2 sm:w-auto">
                                     Cancel
                                 </Button>
                                 <Button
@@ -1198,13 +1212,12 @@ export default function Show({ training, usersNull, courses = [] }) {
                                         // Save attendance logic here
                                         handleSave();
                                     }}
-                                    className="px-6 py-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] w-full sm:w-auto"
+                                    className="w-full border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-6 py-2 text-black hover:bg-transparent hover:text-[var(--color-alpha)] sm:w-auto"
                                 >
                                     Save Attendance
                                 </Button>
                             </div>
                         </div>
-
                     </DialogContent>
                 </Dialog>
 
@@ -1221,11 +1234,10 @@ export default function Show({ training, usersNull, courses = [] }) {
                     showWinnerModal={showWinnerModal}
                     spinWheel={spinWheel}
                     wheelRotation={wheelRotation}
-
                 />
                 {/* Delete Confirmation Modal */}
                 <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                    <DialogContent className="max-w-md bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
+                    <DialogContent className="max-w-md border border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                         <DialogHeader>
                             <DialogTitle className="text-lg">Confirm Deletion</DialogTitle>
                         </DialogHeader>
@@ -1235,50 +1247,49 @@ export default function Show({ training, usersNull, courses = [] }) {
                             </p>
                         </div>
                         <div className="mt-6 flex justify-end space-x-3">
-                            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                            <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmDelete}>Remove Student</Button>
+                            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                                Cancel
+                            </Button>
+                            <Button className="bg-red-500 text-white hover:bg-red-600" onClick={confirmDelete}>
+                                Remove Student
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>
 
                 {/* Bulk Update Users Modal */}
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>
-                    <DialogContent className="w-full max-w-2xl max-h-[80vh] overflow-y-auto bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
+                    <DialogContent className="max-h-[80vh] w-full max-w-2xl overflow-y-auto border border-alpha/20 bg-light text-dark dark:bg-dark dark:text-light">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-semibold">Update Users - {training.name}</DialogTitle>
-                            <p className="text-sm text-dark/70 dark:text-light/70">
-                                Select users and update their roles and/or status
-                            </p>
+                            <p className="text-sm text-dark/70 dark:text-light/70">Select users and update their roles and/or status</p>
                         </DialogHeader>
 
-                        <div className="space-y-6 mt-4">
+                        <div className="mt-4 space-y-6">
                             {/* Select All Checkbox */}
-                            <div className="flex items-center space-x-2 pb-3 border-b border-alpha/20">
+                            <div className="flex items-center space-x-2 border-b border-alpha/20 pb-3">
                                 <Checkbox
                                     id="select-all"
                                     checked={selectedUserIds.length === students.length && students.length > 0}
                                     onCheckedChange={(checked) => {
                                         if (checked) {
-                                            setSelectedUserIds(students.map(s => s.id));
+                                            setSelectedUserIds(students.map((s) => s.id));
                                         } else {
                                             setSelectedUserIds([]);
                                         }
                                     }}
                                 />
-                                <label
-                                    htmlFor="select-all"
-                                    className="text-sm font-medium cursor-pointer"
-                                >
+                                <label htmlFor="select-all" className="cursor-pointer text-sm font-medium">
                                     Select All ({students.length} users)
                                 </label>
                             </div>
 
                             {/* Users List with Checkboxes */}
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                            <div className="max-h-60 space-y-2 overflow-y-auto">
                                 {students.map((student) => (
                                     <div
                                         key={student.id}
-                                        className="flex items-center space-x-3 p-3 rounded-lg border border-alpha/20 hover:bg-alpha/5 transition-colors"
+                                        className="flex items-center space-x-3 rounded-lg border border-alpha/20 p-3 transition-colors hover:bg-alpha/5"
                                     >
                                         <Checkbox
                                             id={`user-${student.id}`}
@@ -1287,20 +1298,20 @@ export default function Show({ training, usersNull, courses = [] }) {
                                                 if (checked) {
                                                     setSelectedUserIds([...selectedUserIds, student.id]);
                                                 } else {
-                                                    setSelectedUserIds(selectedUserIds.filter(id => id !== student.id));
+                                                    setSelectedUserIds(selectedUserIds.filter((id) => id !== student.id));
                                                 }
                                             }}
                                         />
-                                        <div className="flex items-center space-x-3 flex-1">
-                                            <div className="w-10 h-10 rounded-full bg-alpha text-light flex items-center justify-center font-bold">
+                                        <div className="flex flex-1 items-center space-x-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-alpha font-bold text-light">
                                                 {student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <p className="font-semibold text-dark dark:text-light">{student.name}</p>
                                                 <p className="text-xs text-dark/70 dark:text-light/70">{student.email}</p>
-                                                <div className="text-xs text-dark/60 dark:text-light/60 mt-1">
-                                                    Role: {Array.isArray(student.role) ? student.role.join(', ') : student.role || 'N/A'} |
-                                                    Status: {student.status || 'N/A'}
+                                                <div className="mt-1 text-xs text-dark/60 dark:text-light/60">
+                                                    Role: {Array.isArray(student.role) ? student.role.join(', ') : student.role || 'N/A'} | Status:{' '}
+                                                    {student.status || 'N/A'}
                                                 </div>
                                             </div>
                                         </div>
@@ -1310,21 +1321,19 @@ export default function Show({ training, usersNull, courses = [] }) {
 
                             {/* Update Options */}
                             {selectedUserIds.length > 0 && (
-                                <div className="space-y-4 pt-4 border-t border-alpha/20">
+                                <div className="space-y-4 border-t border-alpha/20 pt-4">
                                     <div>
-                                        <label className="text-sm font-medium mb-2 block">Update Roles (optional)</label>
-                                        <RolesMultiSelect
-                                            roles={bulkRoles}
-                                            onChange={setBulkRoles}
-                                        />
-                                        <p className="text-xs text-dark/60 dark:text-light/60 mt-1">
-                                            Leave empty to keep existing roles
-                                        </p>
+                                        <label className="mb-2 block text-sm font-medium">Update Roles (optional)</label>
+                                        <RolesMultiSelect roles={bulkRoles} onChange={setBulkRoles} />
+                                        <p className="mt-1 text-xs text-dark/60 dark:text-light/60">Leave empty to keep existing roles</p>
                                     </div>
 
                                     <div>
-                                        <label className="text-sm font-medium mb-2 block">Update Status (optional)</label>
-                                        <Select value={bulkStatus || undefined} onValueChange={(value) => setBulkStatus(value === 'keep-existing' ? '' : value)}>
+                                        <label className="mb-2 block text-sm font-medium">Update Status (optional)</label>
+                                        <Select
+                                            value={bulkStatus || undefined}
+                                            onValueChange={(value) => setBulkStatus(value === 'keep-existing' ? '' : value)}
+                                        >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Select status (optional)" />
                                             </SelectTrigger>
@@ -1342,7 +1351,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                             )}
                         </div>
 
-                        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-alpha/20">
+                        <div className="mt-6 flex justify-end space-x-3 border-t border-alpha/20 pt-4">
                             <Button
                                 variant="outline"
                                 onClick={() => {
@@ -1385,7 +1394,7 @@ export default function Show({ training, usersNull, courses = [] }) {
                                     });
                                 }}
                                 disabled={selectedUserIds.length === 0 || (bulkRoles.length === 0 && (!bulkStatus || bulkStatus === 'keep-existing'))}
-                                className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Update {selectedUserIds.length} User{selectedUserIds.length !== 1 ? 's' : ''}
                             </Button>
@@ -1428,7 +1437,6 @@ export default function Show({ training, usersNull, courses = [] }) {
             </div>
           </DialogContent>
         </Dialog> */}
-
             </div>
         </AppLayout>
     );

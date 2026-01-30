@@ -1,17 +1,8 @@
-import React, { useMemo, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import React, { useMemo, useState } from 'react';
 
 export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
     const [exportFields, setExportFields] = useState({
@@ -31,9 +22,9 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
         const selected = Object.entries(exportFields)
             .filter(([, v]) => v)
             .map(([k]) => k)
-            .join(",");
+            .join(',');
 
-        return selected.length ? selected : "reference,mark,equipment_type,state";
+        return selected.length ? selected : 'reference,mark,equipment_type,state';
     }, [exportFields]);
 
     const buildExportUrl = (includeFilters = true) => {
@@ -52,10 +43,8 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
         return `/admin/equipements/export?${params.toString()}`;
     };
 
-
-
     const triggerExportAll = () => {
-        window.open(buildExportUrl(false), "_blank");
+        window.open(buildExportUrl(false), '_blank');
     };
 
     // Reset filters when dialog opens
@@ -75,7 +64,7 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
 
                 <div className="space-y-6">
                     {/* Filters Section */}
-                    <div className="space-y-4  pb-4">
+                    <div className="space-y-4 pb-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="filter-type">Equipment Type</Label>
@@ -108,8 +97,6 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
                             </div>
                         </div>
                     </div>
-
-
                 </div>
 
                 <DialogFooter>
@@ -119,7 +106,7 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
 
                     <Button
                         onClick={triggerExportAll}
-                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                        className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                     >
                         Export
                     </Button>
@@ -128,4 +115,3 @@ export default function ExportEquipmentDialog({ open, setOpen, types = [] }) {
         </Dialog>
     );
 }
-

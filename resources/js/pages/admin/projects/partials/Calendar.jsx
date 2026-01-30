@@ -1,8 +1,6 @@
-import React from 'react';
-import FullCalendar from '@fullcalendar/react';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
 
 const Calendar = ({ events = [], onEventClick }) => {
     const startOfToday = new Date();
@@ -15,7 +13,7 @@ const Calendar = ({ events = [], onEventClick }) => {
     };
 
     return (
-        <div className="h-[50vh] mb-6">
+        <div className="mb-6 h-[50vh]">
             <FullCalendar
                 plugins={[timeGridPlugin, interactionPlugin]}
                 initialView="timeGridDay"
@@ -24,22 +22,22 @@ const Calendar = ({ events = [], onEventClick }) => {
                 headerToolbar={{
                     left: 'prev,next today',
                     center: 'title',
-                    right: ''
+                    right: '',
                 }}
                 height="100%"
                 events={events}
                 eventContent={(eventInfo) => {
                     const progress = eventInfo.event.extendedProps?.progress;
                     const showProgress = progress !== undefined && progress > 0;
-                    
+
                     return (
-                        <div className="p-1 flex flex-col h-full">
-                            <div className="text-xs font-medium truncate flex-1">{eventInfo.event.title}</div>
+                        <div className="flex h-full flex-col p-1">
+                            <div className="flex-1 truncate text-xs font-medium">{eventInfo.event.title}</div>
                             {showProgress && (
-                                <div className="w-full mt-2 pt-2 border-t border-white/20">
-                                    <div className="w-full bg-white/30 dark:bg-black/30 rounded-full h-1.5">
-                                        <div 
-                                            className="bg-white h-1.5 rounded-full transition-all duration-300" 
+                                <div className="mt-2 w-full border-t border-white/20 pt-2">
+                                    <div className="h-1.5 w-full rounded-full bg-white/30 dark:bg-black/30">
+                                        <div
+                                            className="h-1.5 rounded-full bg-white transition-all duration-300"
                                             style={{ width: `${progress}%` }}
                                         ></div>
                                     </div>

@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Mic, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled, onStopRecordingRef, onSendAudioDirect }) {
     const [isRecording, setIsRecording] = useState(false);
@@ -10,7 +10,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState(null);
     const shouldSendDirectlyRef = useRef(false);
-    
+
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const streamRef = useRef(null);
@@ -34,11 +34,11 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             streamRef.current = stream;
 
             // Use WebM format (widely supported, good compression)
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
-                ? 'audio/webm' 
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
                 : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-                ? 'audio/webm;codecs=opus'
-                : 'audio/mp4'; // Fallback
+                  ? 'audio/webm;codecs=opus'
+                  : 'audio/mp4'; // Fallback
 
             const mediaRecorder = new MediaRecorder(stream, {
                 mimeType: mimeType,
@@ -57,10 +57,10 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
 
             mediaRecorder.onstop = async () => {
                 console.log('MediaRecorder stopped. Audio chunks:', audioChunksRef.current.length);
-                
+
                 // Wait a bit to ensure all chunks are collected
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
                 if (audioChunksRef.current.length > 0) {
                     console.log('Processing recording complete...');
                     await handleRecordingComplete();
@@ -70,10 +70,10 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                     setIsRecording(false);
                     setCanSend(false);
                 }
-                
+
                 // Stop all tracks
                 if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop());
+                    streamRef.current.getTracks().forEach((track) => track.stop());
                 }
             };
 
@@ -102,11 +102,13 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             }, 1000);
         } catch (err) {
             console.error('Error starting recording:', err);
-            setError(err.name === 'NotAllowedError' 
-                ? 'Microphone permission denied' 
-                : err.name === 'NotFoundError'
-                ? 'No microphone found'
-                : 'Failed to start recording');
+            setError(
+                err.name === 'NotAllowedError'
+                    ? 'Microphone permission denied'
+                    : err.name === 'NotFoundError'
+                      ? 'No microphone found'
+                      : 'Failed to start recording',
+            );
         }
     };
 
@@ -117,7 +119,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             isRecording,
             canSend,
             recorderState: mediaRecorderRef.current?.state,
-            chunksCount: audioChunksRef.current.length
+            chunksCount: audioChunksRef.current.length,
         });
 
         if (!mediaRecorderRef.current) {
@@ -137,25 +139,25 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
 
         console.log('✅ Stopping recording - will auto-send immediately...', {
             currentChunks: audioChunksRef.current.length,
-            recorderState: mediaRecorderRef.current.state
+            recorderState: mediaRecorderRef.current.state,
         });
-        
+
         // Always auto-send when stopping (like text messages - no save step)
         shouldSendDirectlyRef.current = true;
-        
+
         // Stop timer first
         if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        
+
         // Request final data chunk and stop
         try {
             const recorder = mediaRecorderRef.current;
             if (recorder.state === 'recording') {
                 // Request any remaining data before stopping
                 recorder.requestData();
-                
+
                 // Stop the recorder - onstop will be called automatically
                 // and will trigger handleRecordingComplete which will auto-send
                 recorder.stop();
@@ -178,7 +180,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                 handleRecordingComplete();
             }
         }
-        
+
         setIsRecording(false);
         // Don't set canSend to false yet - let handleRecordingComplete process it
     }, [isRecording, canSend]);
@@ -210,39 +212,39 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
 
         console.log('Creating audio blob from', audioChunksRef.current.length, 'chunks');
         setIsUploading(true);
-        
+
         try {
             const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-            
+
             console.log('Audio blob created:', {
                 size: audioBlob.size,
-                type: audioBlob.type
+                type: audioBlob.type,
             });
 
             if (audioBlob.size === 0) {
                 throw new Error('Audio blob is empty');
             }
-            
+
             // Get audio duration
             let duration = recordingTime; // Default to recording time
-            
+
             try {
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
-                
+
                 duration = await new Promise((resolve) => {
                     const timeout = setTimeout(() => {
                         console.warn('Timeout waiting for audio metadata, using recording time');
                         URL.revokeObjectURL(audioUrl);
                         resolve(recordingTime);
                     }, 2000);
-                    
+
                     const handleLoadedMetadata = () => {
                         clearTimeout(timeout);
                         const dur = audio.duration;
                         console.log('Audio duration from metadata:', dur);
-                        
+
                         // Check if duration is valid
                         if (dur && isFinite(dur) && dur > 0 && dur < 3600) {
                             // Valid duration (less than 1 hour)
@@ -253,17 +255,17 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                         }
                         URL.revokeObjectURL(audioUrl);
                     };
-                    
+
                     const handleError = (e) => {
                         clearTimeout(timeout);
                         console.warn('Error loading audio metadata:', e);
                         URL.revokeObjectURL(audioUrl);
                         resolve(recordingTime);
                     };
-                    
+
                     audio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
                     audio.addEventListener('error', handleError, { once: true });
-                    
+
                     // Load the audio
                     audio.load();
                 });
@@ -271,7 +273,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                 console.warn('Error getting audio duration:', err);
                 duration = recordingTime;
             }
-            
+
             // Ensure duration is a valid integer
             duration = Math.max(1, Math.round(duration || recordingTime || 1));
             console.log('Final audio duration:', duration);
@@ -281,17 +283,17 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                 console.log('📤 Auto-sending audio directly via onSendAudioDirect...', {
                     blobSize: audioBlob.size,
                     duration: duration,
-                    mimeType: mimeType
+                    mimeType: mimeType,
                 });
                 shouldSendDirectlyRef.current = false;
-                
+
                 // Reset state immediately before sending (optimistic UI update)
                 setIsUploading(false);
                 setIsRecording(false);
                 audioChunksRef.current = [];
                 setCanSend(false);
                 setRecordingTime(0);
-                
+
                 // Send directly without storing
                 try {
                     await onSendAudioDirect(audioBlob, duration, mimeType);
@@ -302,7 +304,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                 }
                 return; // Don't call onRecordingComplete when sending directly
             }
-            
+
             // Otherwise, just store it via callback (for manual send later)
             console.log('Calling onRecordingComplete callback...');
             if (onRecordingComplete) {
@@ -326,7 +328,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
     const handleCancel = () => {
         stopRecording();
         if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current.getTracks().forEach((track) => track.stop());
         }
         setRecordingTime(0);
         setError(null);
@@ -347,20 +349,20 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
         if (!isRecording) return;
         e.preventDefault();
         const holdTime = Date.now() - touchStartTimeRef.current;
-        
+
         // Check if user is in cancel zone (for mobile swipe)
         const cancelZone = cancelZoneRef.current;
         if (cancelZone && e.type === 'touchend') {
             const touch = e.changedTouches[0];
             const rect = cancelZone.getBoundingClientRect();
             const isInCancelZone = touch.clientY < rect.top || touch.clientY > rect.bottom;
-            
+
             if (isInCancelZone || holdTime < 500) {
                 handleCancel();
                 return;
             }
         }
-        
+
         // On release: auto-send if canSend, otherwise cancel
         if (canSend) {
             // Set flag to auto-send when recording stops
@@ -387,7 +389,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                 clearInterval(timerRef.current);
             }
             if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current.getTracks().forEach((track) => track.stop());
             }
             if (mediaRecorderRef.current && isRecording) {
                 mediaRecorderRef.current.stop();
@@ -406,55 +408,56 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             console.log('Updated voiceRecorderRef:', {
                 isRecording,
                 canSend,
-                hasStopFunction: !!stopRecordingAndSend
+                hasStopFunction: !!stopRecordingAndSend,
             });
         }
     }, [isRecording, canSend, stopRecordingAndSend, onStopRecordingRef]);
 
     if (isRecording) {
         return (
-            <div className="flex items-center gap-3 w-full">
-                <div 
+            <div className="flex w-full items-center gap-3">
+                <div
                     ref={cancelZoneRef}
-                    className="flex-1 flex items-center gap-4 bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 border-2 border-destructive/30 rounded-xl px-5 py-3.5 shadow-lg backdrop-blur-sm"
+                    className="flex flex-1 items-center gap-4 rounded-xl border-2 border-destructive/30 bg-gradient-to-r from-destructive/15 via-destructive/10 to-destructive/5 px-5 py-3.5 shadow-lg backdrop-blur-sm"
                 >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                         {/* Animated recording indicator */}
                         <div className="relative flex-shrink-0">
-                            <div className="w-4 h-4 bg-destructive rounded-full animate-pulse shadow-lg shadow-destructive/50" />
-                            <div className="absolute inset-0 w-4 h-4 bg-destructive rounded-full animate-ping opacity-60" />
-                            <div className="absolute inset-0 w-4 h-4 bg-destructive/30 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+                            <div className="h-4 w-4 animate-pulse rounded-full bg-destructive shadow-lg shadow-destructive/50" />
+                            <div className="absolute inset-0 h-4 w-4 animate-ping rounded-full bg-destructive opacity-60" />
+                            <div
+                                className="absolute inset-0 h-4 w-4 animate-ping rounded-full bg-destructive/30"
+                                style={{ animationDelay: '0.5s' }}
+                            />
                         </div>
-                        
+
                         {/* Time display */}
-                        <div className="flex items-baseline gap-2 min-w-0">
-                            <span className="text-lg font-bold text-destructive tabular-nums tracking-tight">
-                                {formatTime(recordingTime)}
-                            </span>
-                            <span className="text-xs font-medium text-destructive/70 whitespace-nowrap">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                            <span className="text-lg font-bold tracking-tight text-destructive tabular-nums">{formatTime(recordingTime)}</span>
+                            <span className="text-xs font-medium whitespace-nowrap text-destructive/70">
                                 {canSend ? 'Ready to send' : 'Recording...'}
                             </span>
                         </div>
-                        
+
                         {/* Waveform visualization */}
-                        <div className="flex items-center gap-1 flex-1 justify-center">
+                        <div className="flex flex-1 items-center justify-center gap-1">
                             {[...Array(5)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className="w-1 bg-destructive/60 rounded-full animate-pulse"
+                                    className="w-1 animate-pulse rounded-full bg-destructive/60"
                                     style={{
                                         height: `${20 + Math.sin(i * 0.8) * 15}px`,
                                         animationDelay: `${i * 0.1}s`,
-                                        animationDuration: '0.6s'
+                                        animationDuration: '0.6s',
                                     }}
                                 />
                             ))}
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Action buttons */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-2">
                     {canSend && (
                         <Button
                             variant="default"
@@ -463,12 +466,12 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                                 console.log('🛑 Stop button clicked - stopping and auto-sending...');
                                 stopRecordingAndSend();
                             }}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 px-4"
+                            className="bg-primary px-4 text-primary-foreground shadow-md transition-all duration-200 hover:scale-105 hover:bg-primary/90 hover:shadow-lg active:scale-95"
                             disabled={isUploading}
                             title="Stop recording and send"
                         >
                             {isUploading ? (
-                                <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                             ) : (
                                 'Send'
                             )}
@@ -478,7 +481,7 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
                         variant="ghost"
                         size="icon"
                         onClick={handleCancel}
-                        className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10 border border-destructive/20 transition-all duration-200 hover:scale-110 active:scale-95"
+                        className="h-9 w-9 border border-destructive/20 text-destructive transition-all duration-200 hover:scale-110 hover:bg-destructive/10 hover:text-destructive active:scale-95"
                         disabled={isUploading}
                         title="Cancel recording"
                     >
@@ -495,10 +498,10 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             variant="ghost"
             size="icon"
             className={cn(
-                "h-9 w-9 relative rounded-full transition-all duration-200",
-                "hover:bg-primary/10 hover:scale-110 active:scale-95",
-                "border border-border/50 hover:border-primary/30",
-                disabled && "opacity-50 cursor-not-allowed hover:scale-100"
+                'relative h-9 w-9 rounded-full transition-all duration-200',
+                'hover:scale-110 hover:bg-primary/10 active:scale-95',
+                'border border-border/50 hover:border-primary/30',
+                disabled && 'cursor-not-allowed opacity-50 hover:scale-100',
             )}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
@@ -509,11 +512,10 @@ export default function VoiceRecorder({ onRecordingComplete, onCancel, disabled,
             title="Hold to record voice message"
         >
             {isUploading ? (
-                <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             ) : (
                 <Mic className="h-5 w-5 text-primary" />
             )}
         </Button>
     );
 }
-

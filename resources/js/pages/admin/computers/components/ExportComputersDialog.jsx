@@ -1,17 +1,8 @@
-import React, { useMemo, useState, useEffect } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function ExportComputersDialog({ open, setOpen, computers = [] }) {
     const [exportFields, setExportFields] = useState({
@@ -34,8 +25,8 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
     // Get unique CPU values from computers
     const uniqueCpus = useMemo(() => {
         const cpus = computers
-            .map(c => c.cpu)
-            .filter(cpu => cpu && typeof cpu === 'string' && cpu.trim() !== '')
+            .map((c) => c.cpu)
+            .filter((cpu) => cpu && typeof cpu === 'string' && cpu.trim() !== '')
             .filter((value, index, self) => self.indexOf(value) === index)
             .sort();
         return cpus;
@@ -45,9 +36,9 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
         const selected = Object.entries(exportFields)
             .filter(([, v]) => v)
             .map(([k]) => k)
-            .join(",");
+            .join(',');
 
-        return selected.length ? selected : "reference,mark,cpu,gpu,state,user_name";
+        return selected.length ? selected : 'reference,mark,cpu,gpu,state,user_name';
     }, [exportFields]);
 
     const buildExportUrl = (includeFilters = true) => {
@@ -66,10 +57,8 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
         return `/admin/computers/export?${params.toString()}`;
     };
 
-
-
     const triggerExport = () => {
-        window.open(buildExportUrl(true), "_blank");
+        window.open(buildExportUrl(true), '_blank');
     };
 
     useEffect(() => {
@@ -89,7 +78,7 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
 
                 <div className="space-y-6">
                     {/* Filters Section */}
-                    <div className="space-y-4  pb-4">
+                    <div className="space-y-4 pb-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="filter-state">State</Label>
@@ -119,9 +108,7 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
                                 </Select>
                             </div>
                         </div>
-
                     </div>
-
                 </div>
 
                 <DialogFooter>
@@ -131,7 +118,7 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
 
                     <Button
                         onClick={triggerExport}
-                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                        className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                     >
                         Export
                     </Button>
@@ -140,4 +127,3 @@ export default function ExportComputersDialog({ open, setOpen, computers = [] })
         </Dialog>
     );
 }
-

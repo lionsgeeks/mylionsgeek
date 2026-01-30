@@ -1,24 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { useForm } from '@inertiajs/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { helpers, MAX_POST_IMAGES } from '../utils/helpers';
-import PostModalShell from './composer/PostModalShell';
-import PostTextarea from './composer/PostTextarea';
 import PostMediaGrid from './composer/PostMediaGrid';
 import PostMediaPicker from './composer/PostMediaPicker';
+import PostModalShell from './composer/PostModalShell';
+import PostTextarea from './composer/PostTextarea';
 
 const EditPost = ({ user, onOpenChange, post }) => {
-    const {
-        stopScrolling,
-        buildImageEntries,
-        revokePreviewUrls,
-        mapExistingImages,
-        createImageRemovalHandler,
-    } = helpers();
+    const { stopScrolling, buildImageEntries, revokePreviewUrls, mapExistingImages, createImageRemovalHandler } = helpers();
 
-    const [existingImages, setExistingImages] = useState(() =>
-        mapExistingImages(post?.images)
-    );
+    const [existingImages, setExistingImages] = useState(() => mapExistingImages(post?.images));
     const [newImages, setNewImages] = useState([]);
     const [removedImages, setRemovedImages] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -32,10 +24,7 @@ const EditPost = ({ user, onOpenChange, post }) => {
         new_images: [],
     });
 
-    const displayedImages = useMemo(
-        () => [...existingImages, ...newImages],
-        [existingImages, newImages]
-    );
+    const displayedImages = useMemo(() => [...existingImages, ...newImages], [existingImages, newImages]);
 
     useEffect(() => {
         newImagesRef.current = newImages;
@@ -63,11 +52,17 @@ const EditPost = ({ user, onOpenChange, post }) => {
     }, [post?.id]);
 
     useEffect(() => {
-        form.setData('keep_images', existingImages.map((image) => image.id));
+        form.setData(
+            'keep_images',
+            existingImages.map((image) => image.id),
+        );
     }, [existingImages]);
 
     useEffect(() => {
-        form.setData('new_images', newImages.map(({ file }) => file));
+        form.setData(
+            'new_images',
+            newImages.map(({ file }) => file),
+        );
     }, [newImages]);
 
     useEffect(() => {
@@ -96,13 +91,14 @@ const EditPost = ({ user, onOpenChange, post }) => {
     };
 
     const removeImage = useMemo(
-        () => createImageRemovalHandler({
-            revokePreviewUrls,
-            updateExistingImages: setExistingImages,
-            updateNewImages: setNewImages,
-            trackRemovedImage: setRemovedImages,
-        }),
-        [createImageRemovalHandler, revokePreviewUrls]
+        () =>
+            createImageRemovalHandler({
+                revokePreviewUrls,
+                updateExistingImages: setExistingImages,
+                updateNewImages: setNewImages,
+                trackRemovedImage: setRemovedImages,
+            }),
+        [createImageRemovalHandler, revokePreviewUrls],
     );
 
     const handleRemoveImage = (image) => {
@@ -144,10 +140,7 @@ const EditPost = ({ user, onOpenChange, post }) => {
         });
     };
 
-    const canSubmit =
-        !!form.data.description.trim() ||
-        displayedImages.length > 0 ||
-        removedImages.length > 0;
+    const canSubmit = !!form.data.description.trim() || displayedImages.length > 0 || removedImages.length > 0;
 
     return (
         <PostModalShell
@@ -159,11 +152,7 @@ const EditPost = ({ user, onOpenChange, post }) => {
             footer={
                 <div className="flex w-full items-center justify-between gap-4">
                     <div className="flex flex-col gap-2">
-                        <PostMediaPicker
-                            id="edit-post-media"
-                            onChange={handleImageSelection}
-                            disabled={form.processing}
-                        />
+                        <PostMediaPicker id="edit-post-media" onChange={handleImageSelection} disabled={form.processing} />
                         <p className="text-xs text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/60">
                             {displayedImages.length}/{MAX_POST_IMAGES} images selected
                         </p>
@@ -171,10 +160,11 @@ const EditPost = ({ user, onOpenChange, post }) => {
                     <button
                         disabled={!canSubmit || form.processing || isUploading}
                         onClick={handleSubmit}
-                        className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 shadow-md ${canSubmit
-                            ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
-                            : 'bg-[var(--color-dark_gray)]/30 dark:bg-[var(--color-light)]/10 text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/40 cursor-not-allowed opacity-60'
-                            }`}
+                        className={`rounded-xl px-8 py-3 font-bold shadow-md transition-all duration-200 ${
+                            canSubmit
+                                ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
+                                : 'cursor-not-allowed bg-[var(--color-dark_gray)]/30 text-[var(--color-dark_gray)] opacity-60 dark:bg-[var(--color-light)]/10 dark:text-[var(--color-light)]/40'
+                        }`}
                     >
                         {form.processing ? 'Updating...' : 'Update'}
                     </button>
@@ -188,11 +178,7 @@ const EditPost = ({ user, onOpenChange, post }) => {
                 disabled={form.processing}
             />
             <InputError message={form.errors.description} />
-            <PostMediaGrid
-                images={displayedImages}
-                onRemove={handleRemoveImage}
-                isLoading={isUploading}
-            />
+            <PostMediaGrid images={displayedImages} onRemove={handleRemoveImage} isLoading={isUploading} />
             <InputError message={limitMessage || form.errors.new_images} />
         </PostModalShell>
     );

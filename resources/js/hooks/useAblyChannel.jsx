@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
 import * as Ably from 'ably';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Reusable hook for Ably channel subscriptions
 // Hook bach nst3mlo f ay component bach ntsma3o 3la Ably channels
@@ -21,7 +21,7 @@ export default function useAblyChannel(channelName, events = ['new-message'], op
             const response = await fetch('/chat/ably-token', {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -32,7 +32,7 @@ export default function useAblyChannel(channelName, events = ['new-message'], op
             }
 
             const data = await response.json();
-            
+
             // Initialize Ably with token
             const ably = new Ably.Realtime({
                 token: data.token,
@@ -136,7 +136,7 @@ export default function useAblyChannel(channelName, events = ['new-message'], op
     // Subscribe to a specific event
     const subscribe = useCallback((eventName, callback) => {
         callbacksRef.current.set(eventName, callback);
-        
+
         // If channel is already set up, subscribe immediately
         if (channelRef.current) {
             channelRef.current.subscribe(eventName, (message) => {
@@ -154,17 +154,20 @@ export default function useAblyChannel(channelName, events = ['new-message'], op
     }, []);
 
     // Publish a message to the channel
-    const publish = useCallback(async (eventName, data) => {
-        if (!channelRef.current) {
-            const ably = await initializeAbly();
-            if (!ably) {
-                throw new Error('Ably not initialized');
+    const publish = useCallback(
+        async (eventName, data) => {
+            if (!channelRef.current) {
+                const ably = await initializeAbly();
+                if (!ably) {
+                    throw new Error('Ably not initialized');
+                }
+                channelRef.current = ably.channels.get(channelName);
             }
-            channelRef.current = ably.channels.get(channelName);
-        }
 
-        return channelRef.current.publish(eventName, data);
-    }, [channelName, initializeAbly]);
+            return channelRef.current.publish(eventName, data);
+        },
+        [channelName, initializeAbly],
+    );
 
     return {
         isConnected,

@@ -1,4 +1,4 @@
-import { Avatar, } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 
 const normalizeRoles = (roleValue) => {
     if (!roleValue) return [];
@@ -17,7 +17,13 @@ export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
 
     if (avatarOnly) {
         return (
-            <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="hidden" />
+            <Avatar
+                className="h-8 w-8 overflow-hidden rounded-full"
+                image={user.image}
+                name={user.name}
+                lastActivity={user.last_activity || null}
+                onlineCircleClass="hidden"
+            />
         );
     }
 
@@ -25,14 +31,16 @@ export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
         <>
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                {displayRoles && (
-                    <span className="truncate font-extralight text-xs text-dark dark:text-white/80">
-                        {displayRoles}
-                    </span>
-                )}
+                {displayRoles && <span className="truncate text-xs font-extralight text-dark dark:text-white/80">{displayRoles}</span>}
                 {showEmail && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
             </div>
-            <Avatar className="h-8 w-8 overflow-hidden rounded-full" image={user.image} name={user.name} lastActivity={user.last_activity || null} onlineCircleClass="hidden" />
+            <Avatar
+                className="h-8 w-8 overflow-hidden rounded-full"
+                image={user.image}
+                name={user.name}
+                lastActivity={user.last_activity || null}
+                onlineCircleClass="hidden"
+            />
         </>
     );
 }

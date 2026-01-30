@@ -1,15 +1,15 @@
 import { NavMain } from '@/components/nav-main';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Users, Building2, Timer, CalendarDays, Monitor, Wrench, GraduationCap, ClipboardList, Settings, AwardIcon, FolderOpen, Gamepad2, User, Calendar } from 'lucide-react';
-import AppLogo from './app-logo';
+import { AwardIcon, Building2, Calendar, FolderOpen, GraduationCap, LayoutGrid, Monitor, Settings, Timer, Users, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
+import AppLogo from './app-logo';
 
 const getAllNavItems = () => [
     {
         id: 'dashboard',
         title: 'Dashboard',
-        href: "/admin/dashboard",
+        href: '/admin/dashboard',
         icon: LayoutGrid,
     },
 
@@ -43,7 +43,6 @@ const getAllNavItems = () => [
         href: '/admin/places',
         icon: Building2,
         excludedRoles: ['coach'],
-
     },
     { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
     { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
@@ -60,7 +59,7 @@ const getAllNavItems = () => [
 // Check if user is one of the appointment persons
 const isAppointmentPerson = (user) => {
     if (!user) return false;
-    
+
     const personNames = ['Mahdi Bouziane', 'Hamid Boumehraz', 'Amina Khabab', 'Ayman Boujjar'];
     const emailMapping = {
         'mahdi.bouziane@lionsgeek.com': true,
@@ -89,7 +88,7 @@ export function AppSidebar() {
     // Filter nav items based on user permissions
     const mainNavItems = useMemo(() => {
         const allItems = getAllNavItems();
-        
+
         return allItems.filter((item) => {
             // Filter out appointments if user is not an appointment person
             if (item.id === 'appointments') {
@@ -105,7 +104,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={"/admin/dashboard"} prefetch>
+                            <Link href={'/admin/dashboard'} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -117,9 +116,7 @@ export function AppSidebar() {
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
-            <SidebarFooter>
-                {/* <NavUser /> */}
-            </SidebarFooter>
+            <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>
         </Sidebar>
     );
 }

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
-import { helpers } from './utils/helpers';
-import { router, useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { router, useForm } from '@inertiajs/react';
+import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { helpers } from './utils/helpers';
 
 // Constants for form options
 const MONTHS = [
@@ -28,8 +28,8 @@ const generateYears = () => {
         { value: '', label: 'Year' },
         ...Array.from({ length: 50 }, (_, i) => ({
             value: String(currentYear - i),
-            label: String(currentYear - i)
-        }))
+            label: String(currentYear - i),
+        })),
     ];
 };
 
@@ -39,7 +39,7 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
     const [currentlyStudying, setCurrentlyStudying] = useState(false);
     const [dateError, setDateError] = useState('');
     const [error, setError] = useState(null);
-    const { stopScrolling } = helpers()
+    const { stopScrolling } = helpers();
     const { data, setData, processing, errors } = useForm({
         school: '',
         degree: '',
@@ -49,12 +49,12 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
         endMonth: '',
         endYear: '',
         description: '',
-    })
+    });
 
     useEffect(() => {
-        stopScrolling(onOpen)
+        stopScrolling(onOpen);
         return () => stopScrolling(false);
-    }, [onOpen])
+    }, [onOpen]);
 
     // Validate date range
     useEffect(() => {
@@ -81,56 +81,55 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
         try {
             router.post(`/students/education`, data, {
                 onSuccess: () => {
-                    onOpenChange(false)
+                    onOpenChange(false);
                 },
                 onError: (error) => {
-                    setError(error)
-                }
-            })
+                    setError(error);
+                },
+            });
         } catch (error) {
             //console.log(error);
         }
-    }
+    };
 
     const handleChange = (e) => {
         setData({
             ...data,
-            [e.target.name]: e.target.value
+            [e.target.name]: e.target.value,
         });
     };
-    
 
     return (
         <>
-            <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-all duration-300">
-            </div>
-            <div className="fixed inset-0 h-fit mx-auto w-[95%] sm:w-[90%] md:w-[70%] lg:w-[50%] xl:w-[45%] bg-light dark:bg-beta rounded-lg top-1/2 -translate-y-1/2 z-50 overflow-hidden flex flex-col">
-                <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div
+                onClick={() => onOpenChange(false)}
+                className="fixed inset-0 z-30 h-full bg-black/50 backdrop-blur-md transition-all duration-300 dark:bg-black/70"
+            ></div>
+            <div className="fixed inset-0 top-1/2 z-50 mx-auto flex h-fit w-[95%] -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-light sm:w-[90%] md:w-[70%] lg:w-[50%] xl:w-[45%] dark:bg-beta">
+                <div className="max-h-[90vh] w-full overflow-y-auto rounded-lg bg-light shadow-2xl dark:bg-dark">
                     {/* Header */}
-                    <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
+                    <div className="sticky top-0 flex items-center justify-between border-b border-beta/20 bg-light p-4 dark:border-light/10 dark:bg-dark">
                         <h2 className="text-xl font-semibold text-beta dark:text-light">Add education</h2>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors"
+                            className="text-beta/60 transition-colors hover:text-beta dark:text-light/60 dark:hover:text-light"
                         >
                             <X size={24} />
                         </button>
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 space-y-6">
+                    <div className="space-y-6 p-6">
                         {/* School */}
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                School*
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">School*</label>
                             <input
                                 type="text"
                                 name="school"
                                 value={data.school}
                                 onChange={handleChange}
                                 placeholder="Ex: Harvard University"
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             />
                             <InputError message={error?.school} className="mt-1" />
                             {/* {console.log(error.school)} */}
@@ -138,32 +137,28 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
 
                         {/* Degree */}
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Degree
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">Degree</label>
                             <input
                                 type="text"
                                 name="degree"
                                 value={data.degree}
                                 onChange={handleChange}
                                 placeholder="Ex: Bachelor's"
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             />
                             <InputError message={error?.degree} className="mt-1" />
                         </div>
 
                         {/* Field of Study */}
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Field of study
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">Field of study</label>
                             <input
                                 type="text"
                                 name="fieldOfStudy"
                                 value={data.fieldOfStudy}
                                 onChange={handleChange}
                                 placeholder="Ex: Computer Science"
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             />
                             <InputError message={error?.fieldOfStudy} className="mt-1" />
                         </div>
@@ -175,9 +170,9 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 id="currently-studying"
                                 checked={currentlyStudying}
                                 onChange={(e) => setCurrentlyStudying(e.target.checked)}
-                                className="w-4 h-4 text-alpha bg-light dark:bg-dark_gray border-beta/30 dark:border-light/20 rounded focus:ring-alpha focus:ring-2"
+                                className="h-4 w-4 rounded border-beta/30 bg-light text-alpha focus:ring-2 focus:ring-alpha dark:border-light/20 dark:bg-dark_gray"
                             />
-                            <label htmlFor="currently-studying" className="text-sm text-beta dark:text-light cursor-pointer">
+                            <label htmlFor="currently-studying" className="cursor-pointer text-sm text-beta dark:text-light">
                                 I am currently studying here
                             </label>
                         </div>
@@ -185,14 +180,12 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                         {/* Start Date */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                    Start date*
-                                </label>
+                                <label className="mb-2 block text-sm font-medium text-beta dark:text-light">Start date*</label>
                                 <select
                                     name="startMonth"
                                     value={data.startMonth}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                    className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light"
                                 >
                                     {MONTHS.map((month) => (
                                         <option key={month.value} value={month.value}>
@@ -203,14 +196,12 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                 <InputError message={error?.startMonth} className="mt-1" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
-                                    Year
-                                </label>
+                                <label className="mb-2 block text-sm font-medium text-beta opacity-0 dark:text-light">Year</label>
                                 <select
                                     name="startYear"
                                     value={data.startYear}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                    className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light"
                                 >
                                     {YEARS.map((year) => (
                                         <option key={year.value} value={year.value}>
@@ -226,14 +217,12 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                         {!currentlyStudying && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                        End date (or expected)*
-                                    </label>
+                                    <label className="mb-2 block text-sm font-medium text-beta dark:text-light">End date (or expected)*</label>
                                     <select
                                         name="endMonth"
                                         value={data.endMonth}
                                         onChange={handleChange}
-                                        className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                        className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light"
                                     >
                                         {MONTHS.map((month) => (
                                             <option key={month.value} value={month.value}>
@@ -244,14 +233,12 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
                                     <InputError message={error?.endMonth} className="mt-1" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-beta dark:text-light mb-2 opacity-0">
-                                        Year
-                                    </label>
+                                    <label className="mb-2 block text-sm font-medium text-beta opacity-0 dark:text-light">Year</label>
                                     <select
                                         name="endYear"
                                         value={data.endYear}
                                         onChange={handleChange}
-                                        className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                        className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light"
                                     >
                                         {YEARS.map((year) => (
                                             <option key={year.value} value={year.value}>
@@ -266,43 +253,45 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
 
                         {/* Date Validation Error */}
                         {dateError && (
-                            <div className="flex items-center gap-2 p-3 bg-error/10 border border-error/30 rounded">
-                                <svg className="w-5 h-5 text-error flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            <div className="flex items-center gap-2 rounded border border-error/30 bg-error/10 p-3">
+                                <svg className="h-5 w-5 flex-shrink-0 text-error" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        fillRule="evenodd"
+                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                                        clipRule="evenodd"
+                                    />
                                 </svg>
-                                <span className="text-sm text-error font-medium">{dateError}</span>
+                                <span className="text-sm font-medium text-error">{dateError}</span>
                             </div>
                         )}
 
                         {/* Description */}
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Description
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">Description</label>
                             <textarea
                                 name="description"
                                 value={data.description}
                                 onChange={handleChange}
                                 rows={4}
                                 placeholder="Describe your academic achievements, activities, honors, or relevant coursework."
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha resize-none"
+                                className="w-full resize-none rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             />
                             <InputError message={error?.description} className="mt-1" />
                         </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end gap-3">
+                    <div className="sticky bottom-0 flex justify-end gap-3 border-t border-beta/20 bg-light p-4 dark:border-light/10 dark:bg-dark">
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="px-6 py-2 border border-beta/30 dark:border-light/30 text-beta dark:text-light rounded-full font-medium hover:bg-beta/5 dark:hover:bg-light/5 transition-colors"
+                            className="rounded-full border border-beta/30 px-6 py-2 font-medium text-beta transition-colors hover:bg-beta/5 dark:border-light/30 dark:text-light dark:hover:bg-light/5"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={() => createEducation()}
                             disabled={processing || dateError}
-                            className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="rounded-full bg-alpha px-6 py-2 font-medium text-beta transition-colors hover:bg-alpha/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark"
                         >
                             {processing ? 'Saving...' : 'Save'}
                         </button>
@@ -311,5 +300,5 @@ const CreateEducationModal = ({ onOpen, onOpenChange }) => {
             </div>
         </>
     );
-}
+};
 export default CreateEducationModal;

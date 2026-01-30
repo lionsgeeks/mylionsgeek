@@ -17,7 +17,7 @@ export const initializeAbly = async () => {
         const response = await fetch('/chat/ably-token', {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
+                Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
             credentials: 'same-origin',
@@ -28,7 +28,7 @@ export const initializeAbly = async () => {
         }
 
         const data = await response.json();
-        
+
         ablyInstance = new Ably.Realtime({
             token: data.token,
             clientId: data.clientId,
@@ -60,7 +60,7 @@ export const subscribeToChannel = async (channelName, eventName, callback) => {
 
     try {
         const key = `${channelName}:${eventName}`;
-        
+
         // Store callback
         if (!channelCallbacks.has(key)) {
             channelCallbacks.set(key, new Set());
@@ -70,12 +70,12 @@ export const subscribeToChannel = async (channelName, eventName, callback) => {
         // Get or create channel
         if (!channelSubscriptions.has(channelName)) {
             const channel = ably.channels.get(channelName);
-            
+
             // Subscribe to event and forward to all callbacks
             channel.subscribe(eventName, (message) => {
                 const callbacks = channelCallbacks.get(key);
                 if (callbacks) {
-                    callbacks.forEach(cb => {
+                    callbacks.forEach((cb) => {
                         try {
                             cb(message.data);
                         } catch (error) {
@@ -99,20 +99,20 @@ export const subscribeToChannel = async (channelName, eventName, callback) => {
 export const unsubscribeFromChannel = (channelName, eventName, callback) => {
     const key = `${channelName}:${eventName}`;
     const callbacks = channelCallbacks.get(key);
-    
+
     if (callbacks) {
         callbacks.delete(callback);
-        
+
         // If no more callbacks, unsubscribe from event
         if (callbacks.size === 0) {
             channelCallbacks.delete(key);
             const channel = channelSubscriptions.get(channelName);
-            
+
             if (channel) {
                 channel.unsubscribe(eventName);
-                
+
                 // If channel has no subscriptions, remove it
-                const hasSubscriptions = Array.from(channelCallbacks.keys()).some(k => k.startsWith(`${channelName}:`));
+                const hasSubscriptions = Array.from(channelCallbacks.keys()).some((k) => k.startsWith(`${channelName}:`));
                 if (!hasSubscriptions) {
                     channelSubscriptions.delete(channelName);
                 }
@@ -128,7 +128,7 @@ export const publishToChannel = async (channelName, eventName, data) => {
 
     try {
         let channel = channelSubscriptions.get(channelName);
-        
+
         // If channel doesn't exist, create it
         if (!channel) {
             channel = ably.channels.get(channelName);
@@ -152,4 +152,3 @@ export const closeAbly = () => {
     channelSubscriptions.clear();
     channelCallbacks.clear();
 };
-

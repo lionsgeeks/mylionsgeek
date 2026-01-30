@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 
@@ -12,9 +11,7 @@ const TaskDetails = ({ task }) => {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">
-                    {task.description || 'No description provided'}
-                </p>
+                <p className="text-sm text-muted-foreground">{task.description || 'No description provided'}</p>
             </CardContent>
         </Card>
     );

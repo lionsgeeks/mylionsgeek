@@ -9,7 +9,11 @@ export function createRealtime(roomId, onMessage) {
     let connected = false;
 
     const safeParse = (data) => {
-        try { return JSON.parse(data); } catch { return null; }
+        try {
+            return JSON.parse(data);
+        } catch {
+            return null;
+        }
     };
 
     const notify = (msg) => {
@@ -40,12 +44,16 @@ export function createRealtime(roomId, onMessage) {
     if (typeof window !== 'undefined' && window.WS_URL) {
         try {
             ws = new WebSocket(`${window.WS_URL}?room=${encodeURIComponent(roomId)}`);
-            ws.onopen = () => { connected = true; };
+            ws.onopen = () => {
+                connected = true;
+            };
             ws.onmessage = (ev) => {
                 const parsed = safeParse(ev.data);
                 if (parsed) notify(parsed);
             };
-            ws.onerror = () => { /* noop */ };
+            ws.onerror = () => {
+                /* noop */
+            };
         } catch {
             // ignore ws errors; BroadcastChannel still works locally
         }
@@ -83,7 +91,11 @@ export function createRealtime(roomId, onMessage) {
             bc = null;
         }
         if (ws) {
-            try { ws.close(); } catch { /* ignore */ }
+            try {
+                ws.close();
+            } catch {
+                /* ignore */
+            }
             ws = null;
         }
         connected = false;

@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import axios from "axios";
-import { useInitials } from "@/hooks/use-initials";
-import { Avatar, } from "@/components/ui/avatar";
+import { Avatar } from '@/components/ui/avatar';
+import { useInitials } from '@/hooks/use-initials';
 import { Link } from '@inertiajs/react';
-import { timeAgo } from '../../lib/utils'
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { timeAgo } from '../../lib/utils';
 
 const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
     const [likes, setLikes] = useState([]);
@@ -18,7 +18,7 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
                 .then((res) => {
                     setLikes(res.data.likes || []);
                 })
-                .catch((err) => console.error("Error fetching likes:", err))
+                .catch((err) => console.error('Error fetching likes:', err))
                 .finally(() => setLoading(false));
         } else {
             setLikes([]);
@@ -47,55 +47,49 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
     if (!open) return null;
     //(likes);
 
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Overlay */}
-            <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300" onClick={onClose} />
 
             {/* Modal */}
-            <div className="relative w-full max-w-lg mx-auto rounded-3xl overflow-hidden shadow-2xl border border-alpha/30 bg-light dark:bg-dark_gray flex flex-col max-h-[90vh] transition-all duration-300">
+            <div className="relative mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-light shadow-2xl transition-all duration-300 dark:bg-dark_gray">
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4 border-b border-alpha/30">
+                <div className="relative border-b border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                         <h2 className="text-lg font-semibold text-beta dark:text-alpha">Liked by</h2>
                     </div>
-                    <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {loading ? "Loading..." : `${likes.length} people`}
-                    </p>
+                    <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">{loading ? 'Loading...' : `${likes.length} people`}</p>
                     <button
                         onClick={onClose}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-dark hover:bg-alpha/10 rounded-full transition"
+                        className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-alpha/10 hover:text-dark dark:text-gray-400"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
                 {/* Likes List */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
                     {loading ? (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-6">Loading likes...</p>
+                        <p className="py-6 text-center text-gray-500 dark:text-gray-400">Loading likes...</p>
                     ) : likes.length === 0 ? (
-                        <p className="text-center text-gray-500 dark:text-gray-400 py-6">No likes yet</p>
+                        <p className="py-6 text-center text-gray-500 dark:text-gray-400">No likes yet</p>
                     ) : (
                         likes.map((like, index) => (
                             <div
                                 key={like.id}
-                                className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-beta border border-alpha/10 hover:border-alpha/30 transition duration-200 hover:shadow-md"
+                                className="flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md dark:bg-beta"
                             >
                                 {/* Avatar */}
                                 <Link
                                     href={takeToUserProfile(like)}
-                                    className="flex items-center w-full gap-3 p-2 rounded-lg hover:bg-light_gray transition-colors"
+                                    className="hover:bg-light_gray flex w-full items-center gap-3 rounded-lg p-2 transition-colors"
                                 >
                                     {/* Avatar */}
                                     <Avatar
-                                        className="w-11 h-11 flex-shrink-0 ring-2 ring-alpha/30"
+                                        className="h-11 w-11 flex-shrink-0 ring-2 ring-alpha/30"
                                         image={like.user_image}
                                         name={like.user_name}
                                         width="w-11"
@@ -103,22 +97,15 @@ const LikesModal = ({ postId, open, onClose, takeToUserProfile }) => {
                                     />
 
                                     {/* User info */}
-                                    <div className="flex justify-between items-start flex-1">
+                                    <div className="flex flex-1 items-start justify-between">
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-dark dark:text-light truncate max-w-[150px]">
-                                                {like.user_name}
-                                            </span>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                {like.user_status}
-                                            </span>
+                                            <span className="max-w-[150px] truncate font-medium text-dark dark:text-light">{like.user_name}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{like.user_status}</span>
                                         </div>
 
-                                        <span className="text-xs text-gray-400 whitespace-nowrap">
-                                            {timeAgo(like.created_at)}
-                                        </span>
+                                        <span className="text-xs whitespace-nowrap text-gray-400">{timeAgo(like.created_at)}</span>
                                     </div>
                                 </Link>
-
                             </div>
                         ))
                     )}

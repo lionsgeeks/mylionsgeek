@@ -2,11 +2,9 @@
 
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import React from 'react';
-import Logo from '/public/assets/images/lionsgeek_logo_2.png'
 // import { input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Camera, Eye, EyeOff } from 'lucide-react';
 
 const CompleteProfile = ({ user }) => {
@@ -28,7 +26,7 @@ const CompleteProfile = ({ user }) => {
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setData("image", file);
+            setData('image', file);
             setValidationErrors({ ...validationErrors, image: '' });
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -78,8 +76,8 @@ const CompleteProfile = ({ user }) => {
 
     const handleSubmit = (userToken) => {
         // Clear previous manual errors
-        setError("password", null);
-        setError("password_confirmation", null);
+        setError('password', null);
+        setError('password_confirmation', null);
 
         // Validate form
         if (!validateForm()) {
@@ -96,45 +94,37 @@ const CompleteProfile = ({ user }) => {
             },
             onFinish: () => {
                 //('Request finished');
-            }
+            },
         });
     };
 
     return (
-        <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
+        <div className="flex min-h-screen w-full items-center justify-center bg-white p-4">
             <div className="w-full max-w-3xl">
                 {/* Main Card */}
-                <div className="bg-white rounded-3xl shadow-2xl p-8">
-                    <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-                        Complete Your Profile
-                    </h2>
+                <div className="rounded-3xl bg-white p-8 shadow-2xl">
+                    <h2 className="mb-6 text-center text-2xl font-bold text-gray-800">Complete Your Profile</h2>
 
                     <form onSubmit={(e) => e.preventDefault()}>
                         {/* Profile Image Upload */}
-                        <div className="flex flex-col items-center mb-6">
+                        <div className="mb-6 flex flex-col items-center">
                             <div className="relative">
-                                <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-lg overflow-hidden flex items-center justify-center">
+                                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg">
                                     {imagePreview ? (
-                                        <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
+                                        <img src={imagePreview} alt="Profile" className="h-full w-full object-cover" />
                                     ) : (
-                                        <Camera className="w-10 h-10 text-gray-400" />
+                                        <Camera className="h-10 w-10 text-gray-400" />
                                     )}
                                 </div>
                             </div>
                             <label htmlFor="image-upload" className="mt-3 cursor-pointer">
-                                <div className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2 px-5 rounded-lg transition-all duration-200 text-sm">
+                                <div className="rounded-lg bg-gray-800 px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-gray-700">
                                     Upload Image
                                 </div>
-                                <input
-                                    id="image-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                />
+                                <input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                             </label>
                             {(validationErrors.image || errors.image) && (
-                                <span className="text-red-500 text-sm mt-2">{validationErrors.image || errors.image}</span>
+                                <span className="mt-2 text-sm text-red-500">{validationErrors.image || errors.image}</span>
                             )}
                         </div>
 
@@ -143,109 +133,111 @@ const CompleteProfile = ({ user }) => {
                             {/* Row 1: Phone & CIN */}
                             <div className="flex gap-4">
                                 <div className="flex-1">
-                                    <Label htmlFor="phone" className="block text-gray-600 text-sm font-medium mb-2">
+                                    <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-gray-600">
                                         Phone Number
                                     </Label>
                                     <input
                                         id="phone"
                                         type="text"
                                         value={data.phone}
-                                        onChange={(e) => setData("phone", e.target.value)}
+                                        onChange={(e) => setData('phone', e.target.value)}
                                         placeholder="+212 600 000 000"
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-black focus:border-green-500 focus:outline-none"
+                                        className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                     />
                                     {(validationErrors.phone || errors.phone) && (
-                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.phone || errors.phone}</span>
+                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.phone || errors.phone}</span>
                                     )}
                                 </div>
 
                                 <div className="flex-1">
-                                    <Label htmlFor="cin" className="block text-gray-600 text-sm font-medium mb-2">
+                                    <Label htmlFor="cin" className="mb-2 block text-sm font-medium text-gray-600">
                                         CIN
                                     </Label>
                                     <input
                                         id="cin"
                                         type="text"
                                         value={data.cin}
-                                        onChange={(e) => setData("cin", e.target.value)}
+                                        onChange={(e) => setData('cin', e.target.value)}
                                         placeholder="Enter your CIN"
-                                        className="w-full px-4 text-black py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                        className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                     />
                                     {(validationErrors.cin || errors.cin) && (
-                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.cin || errors.cin}</span>
+                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.cin || errors.cin}</span>
                                     )}
                                 </div>
                             </div>
 
                             {/* Row 2: Entreprise */}
                             <div>
-                                <Label htmlFor="entreprise" className="block text-gray-600 text-sm font-medium mb-2">
+                                <Label htmlFor="entreprise" className="mb-2 block text-sm font-medium text-gray-600">
                                     Entreprise
                                 </Label>
                                 <input
                                     id="entreprise"
                                     type="text"
                                     value={data.entreprise}
-                                    onChange={(e) => setData("entreprise", e.target.value)}
+                                    onChange={(e) => setData('entreprise', e.target.value)}
                                     placeholder="Enter your company name"
-                                    className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                    className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                 />
                                 {(validationErrors.entreprise || errors.entreprise) && (
-                                    <span className="text-red-500 text-sm mt-1 block">{validationErrors.entreprise || errors.entreprise}</span>
+                                    <span className="mt-1 block text-sm text-red-500">{validationErrors.entreprise || errors.entreprise}</span>
                                 )}
                             </div>
 
                             {/* Row 3: Password & Confirm Password */}
                             <div className="flex gap-4">
                                 <div className="flex-1">
-                                    <Label htmlFor="password" className="block text-gray-600 text-sm font-medium mb-2">
+                                    <Label htmlFor="password" className="mb-2 block text-sm font-medium text-gray-600">
                                         Password
                                     </Label>
                                     <div className="relative">
                                         <input
                                             id="password"
-                                            type={showPassword ? "text" : "password"}
+                                            type={showPassword ? 'text' : 'password'}
                                             value={data.password}
-                                            onChange={(e) => setData("password", e.target.value)}
+                                            onChange={(e) => setData('password', e.target.value)}
                                             placeholder="Enter your password"
-                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                            className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-500 hover:text-gray-700"
                                         >
                                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                         </button>
                                     </div>
                                     {(validationErrors.password || errors.password) && (
-                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.password || errors.password}</span>
+                                        <span className="mt-1 block text-sm text-red-500">{validationErrors.password || errors.password}</span>
                                     )}
                                 </div>
 
                                 <div className="flex-1">
-                                    <Label htmlFor="password_confirmation" className="block text-gray-600 text-sm font-medium mb-2">
+                                    <Label htmlFor="password_confirmation" className="mb-2 block text-sm font-medium text-gray-600">
                                         Confirm Password
                                     </Label>
                                     <div className="relative">
                                         <input
                                             id="password_confirmation"
-                                            type={showConfirmPassword ? "text" : "password"}
+                                            type={showConfirmPassword ? 'text' : 'password'}
                                             value={data.password_confirmation}
-                                            onChange={(e) => setData("password_confirmation", e.target.value)}
+                                            onChange={(e) => setData('password_confirmation', e.target.value)}
                                             placeholder="Confirm your password"
-                                            className="w-full text-black px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                                            className="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-black focus:border-green-500 focus:outline-none"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                            className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-500 hover:text-gray-700"
                                         >
                                             {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                         </button>
                                     </div>
                                     {(validationErrors.password_confirmation || errors.password_confirmation) && (
-                                        <span className="text-red-500 text-sm mt-1 block">{validationErrors.password_confirmation || errors.password_confirmation}</span>
+                                        <span className="mt-1 block text-sm text-red-500">
+                                            {validationErrors.password_confirmation || errors.password_confirmation}
+                                        </span>
                                     )}
                                 </div>
                             </div>
@@ -257,17 +249,15 @@ const CompleteProfile = ({ user }) => {
                                 type="button"
                                 onClick={() => handleSubmit(user.activation_token)}
                                 disabled={processing}
-                                className="w-full bg-alpha text-beta font-semibold hover:bg-alpha hover:text-beta py-2.5 px-6 rounded-lg"
+                                className="w-full rounded-lg bg-alpha px-6 py-2.5 font-semibold text-beta hover:bg-alpha hover:text-beta"
                             >
                                 {processing ? 'Submitting...' : 'Next'}
                             </Button>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>
-
     );
-}
+};
 export default CompleteProfile;

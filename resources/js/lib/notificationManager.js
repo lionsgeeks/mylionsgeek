@@ -45,7 +45,7 @@ export const showDesktopNotification = (title, options = {}) => {
 
     try {
         const notification = new Notification(title, defaultOptions);
-        
+
         // Auto-close after 5 seconds
         setTimeout(() => {
             notification.close();
@@ -62,4 +62,3 @@ export const showDesktopNotification = (title, options = {}) => {
 export const hasNotificationPermission = () => {
     return 'Notification' in window && Notification.permission === 'granted';
 };
-

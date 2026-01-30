@@ -1,32 +1,36 @@
-import React from 'react';
-import { Trash2, Edit } from 'lucide-react'
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
-    DropdownMenuPortal,
-    DropdownMenuSeparator,
-    DropdownMenuShortcut,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
+import { Edit, Trash2 } from 'lucide-react';
 import DeleteModal from '../DeleteModal';
 import EditPost from './EditPost';
 
 import { MoreHorizontal } from 'lucide-react';
 
-const PostMenuDropDown = ({ user, onOpen, onOpenChange, openDelete, openChangeDelete, post, handleDelete, openEditPost, openChangeEdit, isDeleting }) => {
+const PostMenuDropDown = ({
+    user,
+    onOpen,
+    onOpenChange,
+    openDelete,
+    openChangeDelete,
+    post,
+    handleDelete,
+    openEditPost,
+    openChangeEdit,
+    isDeleting,
+}) => {
     return (
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button className='text-xl cursor-pointer' variant="primary">
-                        <MoreHorizontal className='text-3xl' />
+                    <Button className="cursor-pointer text-xl" variant="primary">
+                        <MoreHorizontal className="text-3xl" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
@@ -37,29 +41,24 @@ const PostMenuDropDown = ({ user, onOpen, onOpenChange, openDelete, openChangeDe
                             Update
                             {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                            if (!isDeleting) {
-                                openChangeDelete(true)
-                            }
-                        }}>
+                        <DropdownMenuItem
+                            onClick={() => {
+                                if (!isDeleting) {
+                                    openChangeDelete(true);
+                                }
+                            }}
+                        >
                             <Trash2 size={16} />
                             {isDeleting ? 'Deleting...' : 'Delete'}
                             {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
-            </DropdownMenu >
-            {openDelete && <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title='Delete Post' onConfirm={handleDelete} loading={isDeleting} />
-            }
-            {
-                openEditPost && (
-                    <EditPost
-                        user={user}
-                        onOpenChange={openChangeEdit}
-                        post={post}
-                    />
-                )
-            }
+            </DropdownMenu>
+            {openDelete && (
+                <DeleteModal open={openDelete} onOpenChange={openChangeDelete} title="Delete Post" onConfirm={handleDelete} loading={isDeleting} />
+            )}
+            {openEditPost && <EditPost user={user} onOpenChange={openChangeEdit} post={post} />}
         </>
         // <>
         //     {/* Dropdown */}
@@ -84,7 +83,7 @@ const PostMenuDropDown = ({ user, onOpen, onOpenChange, openDelete, openChangeDe
         //             </>
         //         </ul>
         //     </div>
-        //     
+        //
         // </>
     );
 };

@@ -1,14 +1,10 @@
-import React from 'react';
-
 const LoadingOverlay = ({ message = 'Loading...', fullscreen = false }) => {
-    const baseClasses = fullscreen
-        ? 'fixed inset-0 z-[60]'
-        : 'absolute inset-0 z-[60]';
+    const baseClasses = fullscreen ? 'fixed inset-0 z-[60]' : 'absolute inset-0 z-[60]';
 
     return (
         <div className={`${baseClasses} flex items-center justify-center bg-black/50 backdrop-blur-sm`}>
             <div className="flex flex-col items-center gap-3 text-white">
-                <span className="h-10 w-10 rounded-full border-4 border-white/50 border-t-white animate-spin" />
+                <span className="h-10 w-10 animate-spin rounded-full border-4 border-white/50 border-t-white" />
                 {message && <p className="text-sm font-medium">{message}</p>}
             </div>
         </div>
@@ -16,4 +12,3 @@ const LoadingOverlay = ({ message = 'Loading...', fullscreen = false }) => {
 };
 
 export default LoadingOverlay;
-

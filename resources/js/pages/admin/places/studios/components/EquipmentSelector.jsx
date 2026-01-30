@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useMemo, useState } from 'react';
 
 const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading = false }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,13 +19,13 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
 
     const equipmentList = useMemo(
         () =>
-            (Array.isArray(equipmentOptions)
+            Array.isArray(equipmentOptions)
                 ? equipmentOptions.map((item) => ({
                       ...item,
                       image: normalizeImage(item.image),
                   }))
-                : []),
-        [equipmentOptions]
+                : [],
+        [equipmentOptions],
     );
 
     const filteredEquipment = useMemo(() => {
@@ -34,9 +34,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
         }
         const query = searchQuery.toLowerCase();
         return equipmentList.filter(
-            (item) =>
-                (item.mark || '').toLowerCase().includes(query) ||
-                (item.reference || '').toLowerCase().includes(query)
+            (item) => (item.mark || '').toLowerCase().includes(query) || (item.reference || '').toLowerCase().includes(query),
         );
     }, [equipmentList, searchQuery]);
 
@@ -62,7 +60,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                     variant="outline"
                     size="sm"
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-[#FFC801] hover:bg-neutral-900 hover:text-white text-black dark:bg-[#FFC801] dark:hover:bg-gray-200 dark:text-black cursor-pointer"
+                    className="cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:bg-[#FFC801] dark:text-black dark:hover:bg-gray-200"
                 >
                     Add Equipment
                 </Button>
@@ -74,17 +72,14 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                     {selected.map((item) => {
                         const image = normalizeImage(item.image);
                         return (
-                            <div
-                                key={item.id}
-                                className="flex items-center gap-2 p-2 border border-border rounded-lg bg-white/80 dark:bg-[#111]"
-                            >
+                            <div key={item.id} className="flex items-center gap-2 rounded-lg border border-border bg-white/80 p-2 dark:bg-[#111]">
                                 {image && (
                                     <img
                                         src={image}
                                         alt={item.mark}
                                         loading="lazy"
                                         decoding="async"
-                                        className="h-10 w-10 object-cover rounded"
+                                        className="h-10 w-10 rounded object-cover"
                                         onError={(e) => e.currentTarget.remove()}
                                     />
                                 )}
@@ -97,7 +92,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRemove(item.id)}
-                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive cursor-pointer"
+                                    className="h-6 w-6 cursor-pointer p-0 text-destructive hover:text-destructive"
                                 >
                                     ×
                                 </Button>
@@ -106,20 +101,18 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                     })}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    No equipment selected
-                </p>
+                <p className="py-8 text-center text-sm text-muted-foreground">No equipment selected</p>
             )}
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-light dark:bg-dark text-foreground border border-border">
+                <DialogContent className="flex max-h-[80vh] max-w-md flex-col border border-border bg-light text-foreground dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Select Equipment</DialogTitle>
                     </DialogHeader>
 
                     {/* Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                         <Input
                             placeholder="Search equipment..."
                             value={searchQuery}
@@ -128,9 +121,9 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                         />
 
                         {loading ? (
-                            <p className="text-sm text-center py-4 text-muted-foreground">Checking availability…</p>
+                            <p className="py-4 text-center text-sm text-muted-foreground">Checking availability…</p>
                         ) : equipmentList.length === 0 ? (
-                            <p className="text-sm text-center py-4">No equipment available</p>
+                            <p className="py-4 text-center text-sm">No equipment available</p>
                         ) : filteredEquipment.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredEquipment.map((item) => {
@@ -138,7 +131,7 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                                     return (
                                         <div
                                             key={item.id}
-                                            className="flex items-center gap-3 p-3 border border-border rounded-lg bg-white/80 dark:bg-[#111] hover:bg-muted/60 cursor-pointer transition-colors"
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white/80 p-3 transition-colors hover:bg-muted/60 dark:bg-[#111]"
                                             onClick={() => handleToggle(item)}
                                         >
                                             <Checkbox checked={isSelected} />
@@ -148,38 +141,35 @@ const EquipmentSelector = ({ selected, onSelect, equipmentOptions = [], loading 
                                                     alt={item.mark}
                                                     loading="lazy"
                                                     decoding="async"
-                                                    className="h-12 w-12 object-cover rounded"
+                                                    className="h-12 w-12 rounded object-cover"
                                                     onError={(e) => e.currentTarget.remove()}
                                                 />
                                             )}
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium">{item.mark}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {item.reference}
-                                                </p>
+                                                <p className="text-xs text-muted-foreground">{item.reference}</p>
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-center py-4">No equipment matches your search</p>
+                            <p className="py-4 text-center text-sm">No equipment matches your search</p>
                         )}
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t border-border">
+                    <div className="border-t border-border pt-4">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="w-full bg-[#FFC801] hover:bg-neutral-900 text-black hover:text-white cursor-pointer dark:hover:bg-gray-200 dark:hover:text-black"
+                            className="w-full cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:hover:bg-gray-200 dark:hover:text-black"
                         >
                             Done
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };

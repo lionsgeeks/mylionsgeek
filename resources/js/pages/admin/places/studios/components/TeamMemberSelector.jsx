@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 const normalizeRoles = (rawRoles) => {
     if (!rawRoles) return [];
     const roles = [];
@@ -80,16 +80,14 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
         return teamMemberOptions
             .filter((user) => viewerIsAdmin || !hasAdminRole(user?.role ?? user?.roles))
             .map((user) => ({
-                      ...user,
-                      image: normalizeImage(user.image),
+                ...user,
+                image: normalizeImage(user.image),
             }));
     }, [teamMemberOptions, viewerIsAdmin]);
 
     useEffect(() => {
         if (viewerIsAdmin) return;
-        const sanitizedSelection = selected.filter(
-            (member) => !hasAdminRole(member?.role ?? member?.roles)
-        );
+        const sanitizedSelection = selected.filter((member) => !hasAdminRole(member?.role ?? member?.roles));
         if (sanitizedSelection.length !== selected.length) {
             onSelect(sanitizedSelection);
         }
@@ -115,7 +113,12 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
     };
     const getInitials = (name) => {
         if (!name) return 'U';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        return name
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
     };
     return (
         <div className="space-y-4">
@@ -126,7 +129,7 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-[#FFC801] hover:bg-neutral-900 hover:text-white text-black dark:bg-[#FFC801] dark:hover:bg-gray-200 dark:text-black cursor-pointer"
+                    className="cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:bg-[#FFC801] dark:text-black dark:hover:bg-gray-200"
                 >
                     Add Team Member
                 </Button>
@@ -138,18 +141,15 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                     {selected.map((member) => {
                         const image = normalizeImage(member?.image);
                         return (
-                            <div
-                                key={member.id}
-                                className="flex items-center gap-2 p-2 border border-border rounded-lg bg-white/80 dark:bg-[#111]"
-                            >
-                                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                            <div key={member.id} className="flex items-center gap-2 rounded-lg border border-border bg-white/80 p-2 dark:bg-[#111]">
+                                <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-[11px] font-semibold text-muted-foreground uppercase">
                                     {image ? (
                                         <img
                                             src={image}
                                             alt={member?.name || 'Member'}
                                             loading="lazy"
                                             decoding="async"
-                                            className="w-full h-full object-cover"
+                                            className="h-full w-full object-cover"
                                             onError={(e) => e.currentTarget.remove()}
                                         />
                                     ) : (
@@ -171,20 +171,18 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                     })}
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    No team members selected
-                </p>
+                <p className="py-8 text-center text-sm text-muted-foreground">No team members selected</p>
             )}
 
             {/* Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-md max-h-[80vh] flex flex-col bg-light dark:bg-dark text-foreground border border-border">
+                <DialogContent className="flex max-h-[80vh] max-w-md flex-col border border-border bg-light text-foreground dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Select Team Members</DialogTitle>
                     </DialogHeader>
 
                     {/* Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                         <Input
                             placeholder="Search members..."
                             value={searchQuery}
@@ -193,20 +191,20 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                         />
 
                         {users.length === 0 ? (
-                            <p className="text-sm text-center py-4">No team members available</p>
+                            <p className="py-4 text-center text-sm">No team members available</p>
                         ) : filteredUsers.length > 0 ? (
                             <div className="space-y-2">
                                 {filteredUsers.map((user) => {
                                     const isSelected = selected.some((m) => m.id === user.id);
                                     const avatar = (
-                                        <div className="team-avatar relative w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground uppercase">
+                                        <div className="team-avatar relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-muted text-[11px] font-semibold text-muted-foreground uppercase">
                                             {user?.image ? (
                                                 <img
                                                     src={user.image}
                                                     alt={user?.name || 'Team member'}
                                                     loading="lazy"
                                                     decoding="async"
-                                                    className="w-full h-full object-cover"
+                                                    className="h-full w-full object-cover"
                                                     onError={(e) => {
                                                         e.currentTarget.remove();
                                                     }}
@@ -219,7 +217,7 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                                     return (
                                         <div
                                             key={user.id}
-                                            className="flex items-center gap-3 p-3 border border-border rounded-lg bg-white/80 dark:bg-[#111] hover:bg-muted/60 cursor-pointer transition-colors"
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-white/80 p-3 transition-colors hover:bg-muted/60 dark:bg-[#111]"
                                             onClick={() => handleToggle(user)}
                                         >
                                             <Checkbox checked={isSelected} />
@@ -230,23 +228,22 @@ const TeamMemberSelector = ({ selected, onSelect, teamMemberOptions = [] }) => {
                                 })}
                             </div>
                         ) : (
-                            <p className="text-sm text-center py-4">No users found</p>
+                            <p className="py-4 text-center text-sm">No users found</p>
                         )}
                     </div>
 
                     {/* Fixed Button at Bottom */}
-                    <div className="pt-4 border-t border-border">
+                    <div className="border-t border-border pt-4">
                         <Button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="w-full bg-[#FFC801] hover:bg-neutral-900 text-black hover:text-white cursor-pointer dark:hover:bg-gray-200 dark:hover:text-black"
+                            className="w-full cursor-pointer bg-[#FFC801] text-black hover:bg-neutral-900 hover:text-white dark:hover:bg-gray-200 dark:hover:text-black"
                         >
                             Done
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };

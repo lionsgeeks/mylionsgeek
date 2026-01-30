@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const FlashMessage = ({ message, type = 'success', onClose }) => {
     const [isVisible, setIsVisible] = useState(true);
@@ -61,17 +61,15 @@ const FlashMessage = ({ message, type = 'success', onClose }) => {
     };
 
     return (
-        <div className={`fixed top-4 right-4 z-50 max-w-sm w-full ${getBgColor()} border rounded-lg shadow-lg transform transition-all duration-300 ease-in-out ${
-            isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-        }`}>
+        <div
+            className={`fixed top-4 right-4 z-50 w-full max-w-sm ${getBgColor()} transform rounded-lg border shadow-lg transition-all duration-300 ease-in-out ${
+                isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+            }`}
+        >
             <div className="flex items-start p-4">
-                <div className="flex-shrink-0">
-                    {getIcon()}
-                </div>
+                <div className="flex-shrink-0">{getIcon()}</div>
                 <div className="ml-3 flex-1">
-                    <p className={`text-sm font-medium ${getTextColor()}`}>
-                        {message}
-                    </p>
+                    <p className={`text-sm font-medium ${getTextColor()}`}>{message}</p>
                 </div>
                 <div className="ml-4 flex-shrink-0">
                     <button
@@ -79,7 +77,7 @@ const FlashMessage = ({ message, type = 'success', onClose }) => {
                             setIsVisible(false);
                             setTimeout(() => onClose?.(), 300);
                         }}
-                        className={`inline-flex ${getTextColor()} hover:opacity-75 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-800 rounded-md`}
+                        className={`inline-flex ${getTextColor()} rounded-md hover:opacity-75 focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:outline-none dark:focus:ring-offset-gray-800`}
                     >
                         <X className="h-4 w-4" />
                     </button>

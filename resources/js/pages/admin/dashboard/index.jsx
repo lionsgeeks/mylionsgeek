@@ -1,25 +1,7 @@
-import React from 'react';
-import { Link } from '@inertiajs/react';
-import {
-    Users,
-    Calendar,
-    Monitor,
-    Wrench,
-    FolderOpen,
-    GraduationCap,
-    Clock,
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
-    TrendingUp,
-    ArrowRight,
-    Building2,
-    Timer,
-    Camera
-} from 'lucide-react';
 import StatCard from '@/components/StatCard';
 import Rolegard from '@/components/rolegard';
-import { Avatar } from '@/components/ui/avatar';
+import { Link } from '@inertiajs/react';
+import { ArrowRight, Building2, Calendar, Camera, Clock, FolderOpen, GraduationCap, Monitor, Timer, TrendingUp, Users, Wrench } from 'lucide-react';
 
 const MainDashboard = ({
     stats = {},
@@ -113,22 +95,19 @@ const MainDashboard = ({
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold mb-4 text-foreground">Overview</h2>
+                <h2 className="mb-4 text-2xl font-bold text-foreground">Overview</h2>
                 <StatCard statsData={allOverviewStats} />
             </div>
 
             <Rolegard except={['coach']}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-6 lg:col-span-2">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="flex items-center gap-2 text-xl font-semibold text-foreground">
                                 <Calendar className="h-5 w-5" />
                                 Recent Reservations
                             </h3>
-                            <Link
-                                href="/admin/reservations"
-                                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            >
+                            <Link href="/admin/reservations" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
                                 View all <ArrowRight className="h-4 w-4" />
                             </Link>
                         </div>
@@ -138,15 +117,15 @@ const MainDashboard = ({
                                     <Link
                                         key={reservation.id}
                                         href={`/admin/reservations/${reservation.id}/details`}
-                                        className="block p-4 rounded-lg border border-sidebar-border/50 hover:bg-muted/50 transition-colors"
+                                        className="block rounded-lg border border-sidebar-border/50 p-4 transition-colors hover:bg-muted/50"
                                     >
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <p className="font-medium text-foreground">{reservation.title}</p>
-                                                <p className="text-sm text-muted-foreground mt-1">
+                                                <p className="mt-1 text-sm text-muted-foreground">
                                                     {reservation.user_name} • {reservation.type}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground mt-1">
+                                                <p className="mt-1 text-xs text-muted-foreground">
                                                     {reservation.date} • {reservation.time}
                                                 </p>
                                             </div>
@@ -155,13 +134,13 @@ const MainDashboard = ({
                                     </Link>
                                 ))
                             ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No recent reservations</p>
+                                <p className="py-4 text-center text-sm text-muted-foreground">No recent reservations</p>
                             )}
                         </div>
                     </div>
 
-                    <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <div className="rounded-xl border border-sidebar-border/70 bg-card p-6">
+                        <h3 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
                             <Timer className="h-5 w-5" />
                             Quick Links
                         </h3>
@@ -172,9 +151,9 @@ const MainDashboard = ({
                                     <Rolegard key={link.href} except={link.excludeRoles || []}>
                                         <Link
                                             href={link.href}
-                                            className="flex flex-col items-center justify-center p-4 rounded-lg border border-sidebar-border/50 hover:bg-muted/50 transition-colors group"
+                                            className="group flex flex-col items-center justify-center rounded-lg border border-sidebar-border/50 p-4 transition-colors hover:bg-muted/50"
                                         >
-                                            <Icon className={`h-6 w-6 mb-2 ${link.color} group-hover:scale-110 transition-transform`} />
+                                            <Icon className={`mb-2 h-6 w-6 ${link.color} transition-transform group-hover:scale-110`} />
                                             <span className="text-sm font-medium text-foreground">{link.title}</span>
                                         </Link>
                                     </Rolegard>
@@ -184,7 +163,6 @@ const MainDashboard = ({
                     </div>
                 </div>
             </Rolegard>
-
 
             {/* hadi ma3ajbatniche */}
             {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -286,22 +264,22 @@ const MainDashboard = ({
             </div> */}
 
             <Rolegard except={['coach']}>
-                <div className="bg-card rounded-xl border border-sidebar-border/70 p-6">
-                    <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                <div className="rounded-xl border border-sidebar-border/70 bg-card p-6">
+                    <h3 className="mb-4 flex items-center gap-2 text-xl font-semibold text-foreground">
                         <TrendingUp className="h-5 w-5" />
                         Reservation Trends
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 rounded-lg border border-sidebar-border/50 bg-muted/30">
-                            <p className="text-sm text-muted-foreground mb-1">Today</p>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
+                            <p className="mb-1 text-sm text-muted-foreground">Today</p>
                             <p className="text-2xl font-bold text-foreground">{todayReservations}</p>
                         </div>
-                        <div className="p-4 rounded-lg border border-sidebar-border/50 bg-muted/30">
-                            <p className="text-sm text-muted-foreground mb-1">This Week</p>
+                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
+                            <p className="mb-1 text-sm text-muted-foreground">This Week</p>
                             <p className="text-2xl font-bold text-foreground">{weekReservations}</p>
                         </div>
-                        <div className="p-4 rounded-lg border border-sidebar-border/50 bg-muted/30">
-                            <p className="text-sm text-muted-foreground mb-1">This Month</p>
+                        <div className="rounded-lg border border-sidebar-border/50 bg-muted/30 p-4">
+                            <p className="mb-1 text-sm text-muted-foreground">This Month</p>
                             <p className="text-2xl font-bold text-foreground">{monthReservations}</p>
                         </div>
                     </div>

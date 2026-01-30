@@ -1,8 +1,8 @@
 // Global chat message listener - listens to all conversations for toast notifications
 // Listener dial global bach ntsma3o 3la kol conversations w n3tiw toast notifications
 
-import { subscribeToChannel, unsubscribeFromChannel } from './ablyManager';
-import { showDesktopNotification, hasNotificationPermission, requestNotificationPermission } from './notificationManager';
+import { subscribeToChannel } from './ablyManager';
+import { hasNotificationPermission, requestNotificationPermission, showDesktopNotification } from './notificationManager';
 
 let globalSubscriptions = new Map();
 let currentUserId = null;
@@ -10,7 +10,7 @@ let currentUserId = null;
 // Initialize global listener with user ID
 export const initializeGlobalChatListener = (userId) => {
     currentUserId = userId;
-    
+
     // Request notification permission
     requestNotificationPermission();
 };
@@ -23,7 +23,7 @@ export const subscribeToConversationForNotifications = async (conversationId, co
     }
 
     const channelName = `chat:conversation:${conversationId}`;
-    
+
     const handleNewMessage = (messageData) => {
         // Only show notification for messages from other users
         if (!currentUserId || messageData.sender_id === currentUserId) {
@@ -33,11 +33,12 @@ export const subscribeToConversationForNotifications = async (conversationId, co
         // Show toast notification unconditionally
         if (window.showChatToast) {
             window.showChatToast({
-                sender: messageData.sender || conversationData?.other_user || {
-                    id: messageData.sender_id,
-                    name: '',
-                    image: '',
-                },
+                sender: messageData.sender ||
+                    conversationData?.other_user || {
+                        id: messageData.sender_id,
+                        name: '',
+                        image: '',
+                    },
                 body: messageData.body,
                 attachment_type: messageData.attachment_type,
                 conversationId: conversationId,
@@ -48,29 +49,27 @@ export const subscribeToConversationForNotifications = async (conversationId, co
 
         // Show desktop notification if permission granted
         if (hasNotificationPermission() && (document.hidden || !document.hasFocus())) {
-            const sender = messageData.sender || conversationData?.other_user || {
-                id: messageData.sender_id,
-                name: '',
-                image: '',
-            };
-            
-            showDesktopNotification(
-                sender.name || 'New message',
-                {
-                    body: messageData.body || '📎 Attachment',
-                    icon: sender.image ? `/storage/img/profile/${sender.image}` : '/favicon.ico',
-                    tag: `chat-${conversationId}`,
-                    data: {
-                        conversationId: conversationId,
-                        userId: messageData.sender_id,
-                    },
-                }
-            );
+            const sender = messageData.sender ||
+                conversationData?.other_user || {
+                    id: messageData.sender_id,
+                    name: '',
+                    image: '',
+                };
+
+            showDesktopNotification(sender.name || 'New message', {
+                body: messageData.body || '📎 Attachment',
+                icon: sender.image ? `/storage/img/profile/${sender.image}` : '/favicon.ico',
+                tag: `chat-${conversationId}`,
+                data: {
+                    conversationId: conversationId,
+                    userId: messageData.sender_id,
+                },
+            });
         }
     };
 
     // Subscribe to new messages
-    subscribeToChannel(channelName, 'new-message', handleNewMessage).then(unsub => {
+    subscribeToChannel(channelName, 'new-message', handleNewMessage).then((unsub) => {
         if (unsub) {
             globalSubscriptions.set(conversationId, { unsubscribe: unsub, handler: handleNewMessage });
         }
@@ -95,4 +94,3 @@ export const clearAllGlobalSubscriptions = () => {
     });
     globalSubscriptions.clear();
 };
-

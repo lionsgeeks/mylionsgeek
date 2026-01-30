@@ -1,15 +1,15 @@
 import { AppContent } from '@/components/app-content';
 import { AppHeader } from '@/components/app-header';
 import { AppShell } from '@/components/app-shell';
+import AttendanceWarning from '@/components/attendance-warning';
+import ProfilePictureWarning from '@/components/profile-picture-warning';
 import { type BreadcrumbItem } from '@/types';
 import type { PropsWithChildren } from 'react';
-import ProfilePictureWarning from '@/components/profile-picture-warning';
-import AttendanceWarning from '@/components/attendance-warning';
 
 export default function AppHeaderLayout({ children }: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
     return (
         <AppShell>
-            <AppHeader  />
+            <AppHeader />
             <ProfilePictureWarning />
             <AttendanceWarning />
             <AppContent>{children}</AppContent>
