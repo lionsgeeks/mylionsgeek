@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 
 const colorBg = {
@@ -10,7 +9,7 @@ const colorBg = {
 
 export default function Card({ card, playable, onClick }) {
     const isWild = card.type === 'wild';
-    const bg = isWild ? 'from-gray-800 to-slate-700' : (colorBg[card.color] || 'from-gray-400 to-gray-500');
+    const bg = isWild ? 'from-gray-800 to-slate-700' : colorBg[card.color] || 'from-gray-400 to-gray-500';
     const label = card.type === 'number' ? card.value : card.value.replace('Draw', '+');
 
     return (
@@ -19,11 +18,9 @@ export default function Card({ card, playable, onClick }) {
             whileTap={playable ? { scale: 0.98 } : {}}
             onClick={onClick}
             disabled={!playable}
-            className={`w-16 h-24 rounded-xl border-2 border-white/30 shadow-md bg-gradient-to-br ${bg} text-white font-extrabold flex items-center justify-center select-none ${playable ? '' : 'opacity-60 cursor-not-allowed'}`}
+            className={`h-24 w-16 rounded-xl border-2 border-white/30 bg-gradient-to-br shadow-md ${bg} flex items-center justify-center font-extrabold text-white select-none ${playable ? '' : 'cursor-not-allowed opacity-60'}`}
         >
-            <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] text-lg">{label}</span>
+            <span className="text-lg drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]">{label}</span>
         </motion.button>
     );
 }
-
-

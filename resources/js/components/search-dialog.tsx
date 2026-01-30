@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { router, usePage } from '@inertiajs/react';
-import { Search, Keyboard, ArrowRight, type LucideIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useSearchItems } from '@/hooks/use-search-items';
 import Rolegard from '@/components/rolegard';
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useSearchItems } from '@/hooks/use-search-items';
+import { cn } from '@/lib/utils';
+import { router, usePage } from '@inertiajs/react';
+import { ArrowRight, Keyboard, Search, type LucideIcon } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type RolegardProps = {
     children: React.ReactNode;
@@ -81,9 +81,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
 
     const { auth } = usePage<PageAuthProps>().props;
     const roleValue = auth?.user?.role;
-    const userRoles: string[] = Array.isArray(roleValue)
-        ? roleValue
-        : [roleValue].filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const userRoles: string[] = Array.isArray(roleValue) ? roleValue : [roleValue].filter((v): v is string => typeof v === 'string' && v.length > 0);
     const isStudent = userRoles.includes('student');
 
     const { search } = useSearchItems();
@@ -138,16 +136,19 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         }
     }, [open]);
 
-    const handleSelect = useCallback((item: SearchResultItem) => {
-        setOpen(false);
-        setQuery('');
-        setSelectedIndex(0);
-        if (item.href) {
-            router.visit(item.href);
-        } else if ('onSelect' in item && typeof item.onSelect === 'function') {
-            item.onSelect();
-        }
-    }, [setOpen]);
+    const handleSelect = useCallback(
+        (item: SearchResultItem) => {
+            setOpen(false);
+            setQuery('');
+            setSelectedIndex(0);
+            if (item.href) {
+                router.visit(item.href);
+            } else if ('onSelect' in item && typeof item.onSelect === 'function') {
+                item.onSelect();
+            }
+        },
+        [setOpen],
+    );
 
     useEffect(() => {
         let active = true;
@@ -166,7 +167,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                 const url = `/api/search?q=${encodeURIComponent(q)}&type=students`;
                 const res = await fetch(url, {
                     method: 'GET',
-                    headers: { 'Accept': 'application/json' },
+                    headers: { Accept: 'application/json' },
                     signal: controller.signal,
                 });
                 if (!res.ok) throw new Error('Failed to search');
@@ -230,18 +231,15 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
         <Button
             type="button"
             variant="outline"
-            className={cn(
-                'h-9 w-full sm:w-64 justify-start gap-2 text-sm text-muted-foreground hover:text-foreground',
-                className
-            )}
+            className={cn('h-9 w-full justify-start gap-2 text-sm text-muted-foreground hover:text-foreground sm:w-64', className)}
             onClick={() => setOpen(true)}
         >
             <Search className="size-4 shrink-0" />
-            <span className="hidden sm:inline truncate">Search anything...</span>
-            <span className="sm:ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="hidden truncate sm:inline">Search anything...</span>
+            <span className="inline-flex items-center gap-1 text-xs text-neutral-500 sm:ml-auto dark:text-neutral-400">
                 <Keyboard className="size-3" />
                 <span className="hidden sm:inline">Ctrl</span>
-                <kbd className="hidden dark:bg-dark_gray/80 bg-light sm:inline pointer-events-none h-5 select-none items-center gap-1 rounded pt-1 px-1.5 font-mono text-[10px] font-medium opacity-100">
+                <kbd className="pointer-events-none hidden h-5 items-center gap-1 rounded bg-light px-1.5 pt-1 font-mono text-[10px] font-medium opacity-100 select-none sm:inline dark:bg-dark_gray/80">
                     K
                 </kbd>
             </span>
@@ -253,16 +251,16 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
             {trigger || defaultTrigger}
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="p-0 gap-0 max-w-2xl overflow-hidden sm:rounded-lg" showCloseButton={false}>
+                <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0 sm:rounded-lg" showCloseButton={false}>
                     <div className="border-b p-3">
                         <div className="flex items-center gap-2 rounded-md border bg-background px-3">
-                            <Search className="size-4 text-neutral-500 shrink-0" />
+                            <Search className="size-4 shrink-0 text-neutral-500" />
                             <Input
                                 ref={inputRef}
                                 value={query}
                                 onChange={(e) => handleQueryChange(e.target.value)}
                                 placeholder="Search users, projects, tasks, equipment, reservations..."
-                                className="border-0 shadow-none focus-visible:ring-0 text-base"
+                                className="border-0 text-base shadow-none focus-visible:ring-0"
                                 onKeyDown={(e) => {
                                     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
                                         e.preventDefault();
@@ -270,7 +268,7 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                 }}
                             />
                             {query && (
-                                <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+                                <kbd className="pointer-events-none hidden h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 select-none sm:flex">
                                     Esc
                                 </kbd>
                             )}
@@ -280,26 +278,20 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                     <div className="max-h-[60vh] min-h-[200px] overflow-y-auto p-2" ref={resultsRef}>
                         {query.trim() === '' && (
                             <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <Search className="size-12 text-neutral-400 mb-4" />
+                                <Search className="mb-4 size-12 text-neutral-400" />
                                 <p className="text-sm text-muted-foreground">Start typing to search...</p>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    Search across users, projects, tasks, equipment, and more
-                                </p>
+                                <p className="mt-2 text-xs text-muted-foreground">Search across users, projects, tasks, equipment, and more</p>
                             </div>
                         )}
 
                         {query.trim() !== '' && combinedResults.length === 0 && !isLoadingUsers && (
                             <div className="px-3 py-12 text-center">
                                 <p className="text-sm text-muted-foreground">No results found for "{query}"</p>
-                                <p className="text-xs text-muted-foreground mt-2">Try a different search term</p>
+                                <p className="mt-2 text-xs text-muted-foreground">Try a different search term</p>
                             </div>
                         )}
 
-                        {isLoadingUsers && (
-                            <div className="px-3 py-6 text-sm text-muted-foreground">
-                                Searching...
-                            </div>
-                        )}
+                        {isLoadingUsers && <div className="px-3 py-6 text-sm text-muted-foreground">Searching...</div>}
 
                         {combinedResults.length > 0 && (
                             <div className="space-y-1">
@@ -309,16 +301,17 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                     const isUserItem = item.category === 'Users';
                                     const PageIcon = (!isUserItem ? (item as PageSearchItem).icon : undefined) as LucideIcon | undefined;
                                     return (
-                                        <RolegardTyped key={`${item.category}:${item.title}:${item.href || index}`} except={isPageItem ? ['student'] : []}>
+                                        <RolegardTyped
+                                            key={`${item.category}:${item.title}:${item.href || index}`}
+                                            except={isPageItem ? ['student'] : []}
+                                        >
                                             <button
                                                 onClick={() => handleSelect(item)}
                                                 onMouseEnter={() => setSelectedIndex(index)}
                                                 className={cn(
                                                     'w-full rounded-md px-3 py-2.5 text-left transition-colors',
-                                                    'flex items-center gap-3 group',
-                                                    isSelected
-                                                        ? 'bg-accent text-accent-foreground'
-                                                        : 'hover:bg-accent/50 text-foreground'
+                                                    'group flex items-center gap-3',
+                                                    isSelected ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent/50',
                                                 )}
                                                 type="button"
                                             >
@@ -332,38 +325,29 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                                                             lastActivity={null}
                                                         />
                                                     </div>
-                                                ) : (
-                                                    PageIcon ? (
-                                                        <div className="shrink-0">
-                                                            <PageIcon
-                                                                className={cn(
-                                                                    'size-5 transition-colors',
-                                                                    isSelected
-                                                                        ? 'text-accent-foreground'
-                                                                        : 'text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300'
-                                                                )}
-                                                            />
-                                                        </div>
-                                                    ) : null
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-sm font-medium truncate">{item.title}</div>
+                                                ) : PageIcon ? (
+                                                    <div className="shrink-0">
+                                                        <PageIcon
+                                                            className={cn(
+                                                                'size-5 transition-colors',
+                                                                isSelected
+                                                                    ? 'text-accent-foreground'
+                                                                    : 'text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300',
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ) : null}
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="truncate text-sm font-medium">{item.title}</div>
                                                     {item.description && (
-                                                        <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                                            {item.description}
-                                                        </div>
+                                                        <div className="mt-0.5 truncate text-xs text-muted-foreground">{item.description}</div>
                                                     )}
                                                 </div>
                                                 {item.category && (
-                                                    <div className="shrink-0 text-xs text-muted-foreground hidden sm:block">
-                                                        {item.category}
-                                                    </div>
+                                                    <div className="hidden shrink-0 text-xs text-muted-foreground sm:block">{item.category}</div>
                                                 )}
                                                 <ArrowRight
-                                                    className={cn(
-                                                        'size-4 shrink-0 transition-opacity',
-                                                        isSelected ? 'opacity-100' : 'opacity-0'
-                                                    )}
+                                                    className={cn('size-4 shrink-0 transition-opacity', isSelected ? 'opacity-100' : 'opacity-0')}
                                                 />
                                             </button>
                                         </RolegardTyped>
@@ -374,22 +358,22 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
                     </div>
 
                     {combinedResults.length > 0 && (
-                        <div className="border-t px-3 py-2 text-xs text-muted-foreground flex items-center justify-between">
+                        <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
                             <span>
                                 {combinedResults.length} result{combinedResults.length !== 1 ? 's' : ''}
                             </span>
                             <div className="flex items-center gap-4">
                                 <span className="flex items-center gap-1">
-                                    <kbd className="pointer-events-none h-4 select-none items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                                    <kbd className="pointer-events-none h-4 items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium select-none">
                                         ↑
                                     </kbd>
-                                    <kbd className="pointer-events-none h-4 select-none items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                                    <kbd className="pointer-events-none h-4 items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium select-none">
                                         ↓
                                     </kbd>
                                     <span>Navigate</span>
                                 </span>
                                 <span className="flex items-center gap-1">
-                                    <kbd className="pointer-events-none h-4 select-none items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium">
+                                    <kbd className="pointer-events-none h-4 items-center rounded border bg-muted px-1 font-mono text-[10px] font-medium select-none">
                                         ↵
                                     </kbd>
                                     <span>Select</span>
@@ -404,4 +388,3 @@ export function SearchDialog({ open: controlledOpen, onOpenChange, trigger, clas
 }
 
 export default SearchDialog;
-

@@ -7,7 +7,7 @@ import { edit } from '@/routes/profile';
 // import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
-import illustration from "../../../../public/assets/images/banner/Personal settings-cuate.png"
+import illustration from '../../../../public/assets/images/banner/Personal settings-cuate.png';
 
 const sidebarNavItems = [
     {
@@ -33,11 +33,9 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     return (
         <div className="px-4 py-6 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-10">
             <Heading title="Settings" description="Manage your profile and account settings" />
-            <Banner
-            illustration={illustration}
-            />
+            <Banner illustration={illustration} />
 
-            <div className=" flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
+            <div className="flex flex-col gap-8 pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-12 2xl:pl-30">
                 <aside className="w-full max-w-xl lg:w-48">
                     <nav className="flex gap-5">
                         {sidebarNavItems.map((item, index) => (
@@ -46,9 +44,13 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                 size="sm"
                                 variant="ghost"
                                 asChild
-                                className={cn('w-fit justify-center px-12 py-5 rounded-full dark:bg-[#FAFAFA] dark:text-[#171717] hover:text-[#FAFAFA] bg-[#171717] text-[#FAFAFA] hover:bg-[#FFC801] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA] transition-all', {
-                                    'dark:bg-[#FFC801] bg-[#FFC801] text-[#171717] dark:text-[#171717]': currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
-                                })}
+                                className={cn(
+                                    'w-fit justify-center rounded-full bg-[#171717] px-12 py-5 text-[#FAFAFA] transition-all hover:bg-[#FFC801] hover:text-[#FAFAFA] dark:bg-[#FAFAFA] dark:text-[#171717] dark:hover:bg-[#FFC801] dark:hover:text-[#FAFAFA]',
+                                    {
+                                        'bg-[#FFC801] text-[#171717] dark:bg-[#FFC801] dark:text-[#171717]':
+                                            currentPath === (typeof item.href === 'string' ? item.href : item.href.url),
+                                    },
+                                )}
                             >
                                 <Link href={item.href} prefetch>
                                     {item.title}

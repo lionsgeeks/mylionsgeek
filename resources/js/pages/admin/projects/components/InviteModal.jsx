@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from '@inertiajs/react';
-import { Mail, UserPlus, X } from 'lucide-react';
+import { Mail, UserPlus } from 'lucide-react';
+import { useState } from 'react';
 
 const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
     const [inviteType, setInviteType] = useState('email');
@@ -17,18 +17,21 @@ const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
         emails: [],
         role: 'member',
         message: '',
-        project_id: projectId
+        project_id: projectId,
     });
 
     const handleEmailChange = (value) => {
-        const emails = value.split(',').map(email => email.trim()).filter(email => email);
+        const emails = value
+            .split(',')
+            .map((email) => email.trim())
+            .filter((email) => email);
         setEmailList(value);
         setData('emails', emails);
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        
+
         if (inviteType === 'email') {
             post('/admin/projects/invite', {
                 onSuccess: () => {
@@ -36,7 +39,7 @@ const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
                     setEmailList('');
                     setMessage('');
                     onClose();
-                }
+                },
             });
         }
     };
@@ -84,9 +87,7 @@ const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
                                     className="min-h-[80px]"
                                     required
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Separate multiple emails with commas
-                                </p>
+                                <p className="text-xs text-muted-foreground">Separate multiple emails with commas</p>
                                 {errors.emails && <p className="text-sm text-red-600">{errors.emails}</p>}
                             </div>
 
@@ -118,20 +119,16 @@ const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
 
                     {inviteType === 'link' && (
                         <div className="space-y-4">
-                            <div className="p-4 bg-muted rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
+                            <div className="rounded-lg bg-muted p-4">
+                                <div className="mb-2 flex items-center gap-2">
                                     <Mail className="h-4 w-4 text-[var(--color-alpha)]" />
                                     <span className="font-medium">Share Link</span>
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-3">
+                                <p className="mb-3 text-sm text-muted-foreground">
                                     Copy this link and share it with people you want to invite to the project.
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <Input
-                                        value={`${window.location.origin}/projects/${projectId}/join`}
-                                        readOnly
-                                        className="flex-1"
-                                    />
+                                    <Input value={`${window.location.origin}/projects/${projectId}/join`} readOnly className="flex-1" />
                                     <Button
                                         type="button"
                                         variant="outline"

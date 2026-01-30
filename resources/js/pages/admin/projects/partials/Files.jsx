@@ -1,37 +1,32 @@
-import React, { useState } from 'react';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useForm, router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import {
-    FileText,
-    ImageIcon,
-    MoreHorizontal,
-    ExternalLink,
-    ArrowRight,
-    Trash,
     Download,
-    Upload,
-    Plus,
-    Search,
+    ExternalLink,
     File,
+    FileArchive,
+    FileAudio,
     FileCode,
     FileSpreadsheet,
-    FileAudio,
+    FileText,
     FileVideo,
-    FileArchive,
-    FileQuestion,
     Image,
+    MoreHorizontal,
     Paperclip,
-    X
+    Search,
+    Trash,
+    Upload,
 } from 'lucide-react';
+import { useState } from 'react';
 const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -41,13 +36,13 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
 
     // Combine all attachments (project + task attachments)
     const allAttachments = [
-        ...projectAttachments.map(att => ({ ...att, source: 'project' })),
-        ...taskAttachments.map(att => ({ ...att, source: 'task' }))
+        ...projectAttachments.map((att) => ({ ...att, source: 'project' })),
+        ...taskAttachments.map((att) => ({ ...att, source: 'task' })),
     ];
 
-    const filteredFiles = allAttachments.filter(file => {
-        const matchesSearch = file.original_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-            file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
+    const filteredFiles = allAttachments.filter((file) => {
+        const matchesSearch =
+            file.original_name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) || file.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
 
         if (!matchesSearch) return false;
 
@@ -81,14 +76,40 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
 
         const extension = fileName.split('.').pop()?.toLowerCase();
         switch (extension) {
-            case 'jpg': case 'jpeg': case 'png': case 'gif': case 'bmp': return <Image className="h-12 w-12 text-pink-500" />;
-            case 'mp4': case 'avi': case 'mov': return <FileVideo className="h-12 w-12 text-purple-500" />;
-            case 'mp3': case 'wav': return <FileAudio className="h-12 w-12 text-blue-500" />;
-            case 'pdf': return <FileText className="h-12 w-12 text-rose-500" />;
-            case 'xls': case 'xlsx': case 'csv': return <FileSpreadsheet className="h-12 w-12 text-green-500" />;
-            case 'js': case 'ts': case 'jsx': case 'tsx': case 'html': case 'css': case 'json': case 'php': return <FileCode className="h-12 w-12 text-amber-500" />;
-            case 'zip': case 'rar': case '7z': return <FileArchive className="h-12 w-12 text-gray-500" />;
-            default: return <File className="h-12 w-12 text-gray-500" />;
+            case 'jpg':
+            case 'jpeg':
+            case 'png':
+            case 'gif':
+            case 'bmp':
+                return <Image className="h-12 w-12 text-pink-500" />;
+            case 'mp4':
+            case 'avi':
+            case 'mov':
+                return <FileVideo className="h-12 w-12 text-purple-500" />;
+            case 'mp3':
+            case 'wav':
+                return <FileAudio className="h-12 w-12 text-blue-500" />;
+            case 'pdf':
+                return <FileText className="h-12 w-12 text-rose-500" />;
+            case 'xls':
+            case 'xlsx':
+            case 'csv':
+                return <FileSpreadsheet className="h-12 w-12 text-green-500" />;
+            case 'js':
+            case 'ts':
+            case 'jsx':
+            case 'tsx':
+            case 'html':
+            case 'css':
+            case 'json':
+            case 'php':
+                return <FileCode className="h-12 w-12 text-amber-500" />;
+            case 'zip':
+            case 'rar':
+            case '7z':
+                return <FileArchive className="h-12 w-12 text-gray-500" />;
+            default:
+                return <File className="h-12 w-12 text-gray-500" />;
         }
     };
 
@@ -96,7 +117,6 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         file: null,
         project_id: '',
     });
-
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -126,7 +146,6 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
         });
     };
 
-
     const handleDelete = (attachmentId, source) => {
         if (source === 'project') {
             router.delete(`/admin/projects/attachments/${attachmentId}`, {
@@ -135,7 +154,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                 },
                 onError: (errors) => {
                     console.error('Delete failed:', errors);
-                }
+                },
             });
         } else {
             // For task attachments, we need to find the task and remove the attachment
@@ -147,14 +166,14 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
     return (
         <div className="space-y-6">
             {/* Header and Search */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                <div className="flex flex-wrap items-center gap-2">
                     <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
                             placeholder="Search files..."
-                            className="pl-8 w-[200px] md:w-[300px]"
+                            className="w-[200px] pl-8 md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -177,7 +196,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                 </div>
 
                 <Button onClick={() => setIsUploadModalOpen(true)}>
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Upload className="mr-2 h-4 w-4" />
                     Upload File
                 </Button>
             </div>
@@ -185,12 +204,12 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
             {/* Files Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredFiles.length === 0 ? (
-                    <div className="col-span-full text-center py-16 border-2 border-dashed border-alpha/30 rounded-xl bg-gradient-to-br from-light/40 to-light/20 dark:from-dark/40 dark:to-dark/20 hover:from-alpha/10 hover:to-alpha/5 transition-all duration-300 group">
-                        <Paperclip className="h-20 w-20 text-alpha/60 mx-auto mb-6 group-hover:text-alpha transition-colors" />
-                        <p className="text-lg font-semibold text-dark/80 mb-2 group-hover:text-dark dark:text-light/80 dark:group-hover:text-light transition-colors">
+                    <div className="group col-span-full rounded-xl border-2 border-dashed border-alpha/30 bg-gradient-to-br from-light/40 to-light/20 py-16 text-center transition-all duration-300 hover:from-alpha/10 hover:to-alpha/5 dark:from-dark/40 dark:to-dark/20">
+                        <Paperclip className="mx-auto mb-6 h-20 w-20 text-alpha/60 transition-colors group-hover:text-alpha" />
+                        <p className="mb-2 text-lg font-semibold text-dark/80 transition-colors group-hover:text-dark dark:text-light/80 dark:group-hover:text-light">
                             {searchTerm ? 'No files match your search' : 'No files uploaded yet'}
                         </p>
-                        <p className="text-sm text-dark/50 mb-8 group-hover:text-dark/70 dark:text-light/50 dark:group-hover:text-light/70 transition-colors">
+                        <p className="mb-8 text-sm text-dark/50 transition-colors group-hover:text-dark/70 dark:text-light/50 dark:group-hover:text-light/70">
                             Upload files to get started
                         </p>
                     </div>
@@ -198,40 +217,35 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                     filteredFiles.map((file) => (
                         <Card
                             key={`${file.source}-${file.id}`}
-                            className="overflow-hidden border shadow-sm hover:shadow-md transition-shadow duration-200"
+                            className="overflow-hidden border shadow-sm transition-shadow duration-200 hover:shadow-md"
                         >
                             <CardContent className="p-0">
-                                <div className="bg-muted/30 p-6 flex items-center justify-center relative">
+                                <div className="relative flex items-center justify-center bg-muted/30 p-6">
                                     {getFileIcon(file.mime_type, file.original_name || file.name)}
-                                    <Badge
-                                        variant="outline"
-                                        className="absolute top-2 right-2 text-xs"
-                                    >
+                                    <Badge variant="outline" className="absolute top-2 right-2 text-xs">
                                         {file.source}
                                     </Badge>
                                 </div>
                                 <div className="p-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex-1 min-w-0">
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <div className="min-w-0 flex-1">
                                             {file.type && file.type?.startsWith('image/') ? (
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <h3 className="font-medium truncate cursor-pointer hover:text-alpha transition-colors">
+                                                        <h3 className="cursor-pointer truncate font-medium transition-colors hover:text-alpha">
                                                             {file.original_name || file.name}
                                                         </h3>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-4 bg-white border border-gray-200 shadow-xl rounded-lg">
+                                                    <PopoverContent className="w-auto rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
                                                         <img
                                                             src={`/storage/${file.path}`}
                                                             alt={file.original_name || file.name}
-                                                            className="max-w-sm max-h-sm rounded-lg shadow-sm"
+                                                            className="max-h-sm max-w-sm rounded-lg shadow-sm"
                                                         />
                                                     </PopoverContent>
                                                 </Popover>
                                             ) : (
-                                                <h3 className="font-medium truncate">
-                                                    {file.original_name || file.name}
-                                                </h3>
+                                                <h3 className="truncate font-medium">{file.original_name || file.name}</h3>
                                             )}
                                         </div>
                                         <DropdownMenu>
@@ -246,7 +260,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                         href={`/storage/${file.path}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center w-full"
+                                                        className="flex w-full items-center"
                                                     >
                                                         <ExternalLink className="mr-2 h-4 w-4" />
                                                         <span>Open</span>
@@ -256,7 +270,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                     <a
                                                         href={`/storage/${file.path}`}
                                                         download={file.original_name || file.name}
-                                                        className="flex items-center w-full"
+                                                        className="flex w-full items-center"
                                                     >
                                                         <Download className="mr-2 h-4 w-4" />
                                                         <span>Download</span>
@@ -264,10 +278,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 {file.source === 'project' && (
-                                                    <DropdownMenuItem
-                                                        className="text-destructive"
-                                                        onClick={() => handleDelete(file.id, file.source)}
-                                                    >
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(file.id, file.source)}>
                                                         <Trash className="mr-2 h-4 w-4" />
                                                         <span>Delete</span>
                                                     </DropdownMenuItem>
@@ -277,9 +288,8 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-
                                             <Avatar
-                                                className="w-16 h-16"
+                                                className="h-16 w-16"
                                                 image={file.uploader?.image}
                                                 name={file.uploader?.name}
                                                 lastActivity={file.uploader?.last_online || null}
@@ -287,16 +297,14 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                 edit={false}
                                             />
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-medium text-foreground">
-                                                    {file.uploader?.name || 'Unknown User'}
-                                                </span>
+                                                <span className="text-xs font-medium text-foreground">{file.uploader?.name || 'Unknown User'}</span>
                                                 <span className="text-xs text-muted-foreground">
                                                     {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Unknown size'}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xs text-muted-foreground block">
+                                            <span className="block text-xs text-muted-foreground">
                                                 {new Date(file.uploaded_at).toLocaleDateString()}
                                             </span>
                                             <span className="text-xs text-muted-foreground">
@@ -316,27 +324,19 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Upload File</DialogTitle>
-                        <DialogDescription>
-                            Choose a file to upload to this project
-                        </DialogDescription>
+                        <DialogDescription>Choose a file to upload to this project</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="file">Select File</Label>
-                            <Input
-                                id="file"
-                                type="file"
-                                onChange={handleFileChange}
-                            />
+                            <Input id="file" type="file" onChange={handleFileChange} />
                         </div>
                         {uploadFile && (
-                            <div className="p-3 bg-muted rounded-lg">
+                            <div className="rounded-lg bg-muted p-3">
                                 <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4" />
                                     <span className="text-sm font-medium">{uploadFile.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                        ({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)
-                                    </span>
+                                    <span className="text-xs text-muted-foreground">({(uploadFile.size / 1024 / 1024).toFixed(2)} MB)</span>
                                 </div>
                             </div>
                         )}

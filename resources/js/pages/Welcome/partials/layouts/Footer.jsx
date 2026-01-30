@@ -1,29 +1,19 @@
-import React from 'react';
-import logo from '../../../../../../public/assets/images/logolionsgeek.png'
-import { Link } from '@inertiajs/react';
+import logo from '../../../../../../public/assets/images/logolionsgeek.png';
 
 const Footer = () => {
     return (
         <>
-            <div className="border-t border-neutral-200 dark:border-neutral-800 py-12 bg-white dark:bg-neutral-900 transition-colors duration-300">
+            <div className="border-t border-neutral-200 bg-white py-12 transition-colors duration-300 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="mx-auto w-full px-4 md:max-w-7xl">
-
                     {/* Footer Content */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-
+                    <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
                         {/* Left Section */}
-                        <div className="flex lg:flex-row flex-col items-center gap-3">
-                            <div className="flex lg:flex-row flex-col items-center gap-2">
-                                <img
-                                    src={logo}
-                                    alt="LionsGeek Logo"
-                                    className="w-8 h-8 object-contain rounded-md p-1 dark:invert"
-                                />
-                                <span className="font-semibold text-lg text-neutral-900 dark:text-white tracking-tight">
-                                    LionsGeek
-                                </span>
+                        <div className="flex flex-col items-center gap-3 lg:flex-row">
+                            <div className="flex flex-col items-center gap-2 lg:flex-row">
+                                <img src={logo} alt="LionsGeek Logo" className="h-8 w-8 rounded-md object-contain p-1 dark:invert" />
+                                <span className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">LionsGeek</span>
                             </div>
-                            <span className="text-sm text-neutral-600 dark:text-neutral-400 ml-3">
+                            <span className="ml-3 text-sm text-neutral-600 dark:text-neutral-400">
                                 © {new Date().getFullYear()} LionsGeek. All rights reserved.
                             </span>
                         </div>
@@ -31,15 +21,15 @@ const Footer = () => {
                         {/* Social Links */}
                         <div className="flex gap-6">
                             {[
-                                { name: "Instagram", href: "https://www.instagram.com/lions_geek/" },
-                                { name: "LinkedIn", href: "https://www.linkedin.com/company/lionsgeek/posts/?feedView=all" },
-                                { name: "YouTube", href: "https://www.youtube.com/@lionsgeek_MA" },
+                                { name: 'Instagram', href: 'https://www.instagram.com/lions_geek/' },
+                                { name: 'LinkedIn', href: 'https://www.linkedin.com/company/lionsgeek/posts/?feedView=all' },
+                                { name: 'YouTube', href: 'https://www.youtube.com/@lionsgeek_MA' },
                             ].map((link) => (
                                 <a
                                     key={link.name}
                                     href={link.href}
-                                    target='_blank'
-                                    className="text-neutral-600 dark:text-neutral-400 hover:text-alpha dark:hover:text-amber-300 transition-colors duration-300 text-sm font-medium"
+                                    target="_blank"
+                                    className="text-sm font-medium text-neutral-600 transition-colors duration-300 hover:text-alpha dark:text-neutral-400 dark:hover:text-amber-300"
                                 >
                                     {link.name}
                                 </a>
@@ -48,8 +38,6 @@ const Footer = () => {
                     </div>
                 </div>
             </div>
-
-
         </>
     );
 };

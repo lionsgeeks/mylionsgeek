@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import axios from 'axios';
 import useAblyChannelGames from '@/hooks/useAblyChannelGames';
+import AppLayout from '@/layouts/app-layout';
+import { Link } from '@inertiajs/react';
+import axios from 'axios';
+import React, { useEffect, useRef, useState } from 'react';
 
 function randomRoomId(prefix = 'rps') {
     const rnd = Math.random().toString(36).slice(2, 8);
@@ -37,25 +37,21 @@ export default function RockPaperScissors() {
 
     // Ably channel for real-time game updates
     const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
-    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(
-        gameChannelName,
-        ['game-state-updated', 'game-reset'],
-        {
-            onConnected: () => {
-                //console.log('✅ Ably connected for game room:', roomId);
-            },
-            onError: (error) => {
-                console.error('❌ Ably connection error:', error);
-            },
-        }
-    );
+    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(gameChannelName, ['game-state-updated', 'game-reset'], {
+        onConnected: () => {
+            //console.log('✅ Ably connected for game room:', roomId);
+        },
+        onError: (error) => {
+            console.error('❌ Ably connection error:', error);
+        },
+    });
 
     // Reset match - Database + Ably flow
     const resetMatch = () => {
         setRoundDefaults();
         setScores({ p1: 0, p2: 0 });
         setCurrentRound(1);
-        
+
         // POST reset to server - server saves to database and broadcasts via Ably
         if (isConnected && roomId) {
             const newState = {
@@ -67,13 +63,15 @@ export default function RockPaperScissors() {
                 step: 'p1',
                 // Note: players array is preserved by server's updateState merge
             };
-            
-            axios.post(`/api/games/reset/${roomId}`, {
-                game_type: 'rockpaperscissors',
-                initial_state: newState,
-            }).catch(err => {
-                console.error('Failed to reset game:', err);
-            });
+
+            axios
+                .post(`/api/games/reset/${roomId}`, {
+                    game_type: 'rockpaperscissors',
+                    initial_state: newState,
+                })
+                .catch((err) => {
+                    console.error('Failed to reset game:', err);
+                });
         }
     };
 
@@ -88,7 +86,7 @@ export default function RockPaperScissors() {
             const newRound = currentRound + 1;
             setCurrentRound(newRound);
             setRoundDefaults();
-            
+
             // POST to server - server saves to database and broadcasts via Ably
             if (isConnected && roomId) {
                 const gameState = {
@@ -100,7 +98,7 @@ export default function RockPaperScissors() {
                     step: 'p1',
                     // Note: players array is preserved by server's updateState method
                 };
-                
+
                 try {
                     await axios.post(`/api/games/state/${roomId}`, {
                         game_type: 'rockpaperscissors',
@@ -139,9 +137,9 @@ export default function RockPaperScissors() {
         } else if (player === 'p2') {
             newP2Choice = choice;
             newStep = 'reveal';
-            
+
             if (p1Choice) {
-                const winner = beats[choice] === p1Choice ? 'p1' : (beats[p1Choice] === choice ? 'p2' : 'tie');
+                const winner = beats[choice] === p1Choice ? 'p1' : beats[p1Choice] === choice ? 'p2' : 'tie';
                 if (winner === 'p1') newScores.p1 = scores.p1 + 1;
                 if (winner === 'p2') newScores.p2 = scores.p2 + 1;
             }
@@ -165,7 +163,7 @@ export default function RockPaperScissors() {
                 step: newStep,
                 // Note: players array is preserved by server's updateState method
             };
-            
+
             try {
                 //console.log('📤 Sending pick to server - Room:', roomId, 'Player:', playerName, 'Player:', player);
                 // Save to database and broadcast via Ably
@@ -176,7 +174,7 @@ export default function RockPaperScissors() {
                     game_type: 'rockpaperscissors',
                     game_state: currentState,
                 });
-                
+
                 //console.log('✅ Pick saved! Server broadcasted to all players via Ably');
                 //console.log('📡 Other player should receive update NOW via Ably subscription');
             } catch (error) {
@@ -191,51 +189,54 @@ export default function RockPaperScissors() {
     };
 
     // Update game state from received data
-    const updateGameStateFromData = React.useCallback((state) => {
-        if (!state) return;
-        
-        const stateHash = JSON.stringify(state);
-        
-        // Only update if state changed
-        if (stateHash !== lastStateHashRef.current) {
-            lastStateHashRef.current = stateHash;
-            
-            // Update all state from server
-            if (state.rounds !== undefined) setRounds(state.rounds);
-            if (state.currentRound !== undefined) setCurrentRound(state.currentRound);
-            if (state.p1Choice !== undefined) setP1Choice(state.p1Choice);
-            if (state.p2Choice !== undefined) setP2Choice(state.p2Choice);
-            if (state.scores) setScores(state.scores);
-            if (state.step) setStep(state.step);
-            
-            // Assign player based on stored player for this player name
-            if (state.players && state.players.length > 0) {
-                const playerIndex = state.players.findIndex(p => p.name === playerName);
-                if (playerIndex >= 0) {
-                    const player = state.players[playerIndex]?.player;
-                    if (player === 'p1' || player === 'p2') {
-                        setAssignedPlayer(player);
-                    }
-                } else {
-                    // If name not found:
-                    // - Keep current role if already assigned (never flip)
-                    // - If no role yet and there is exactly 1 player, infer the opposite
-                    // - If 0 or 2+ players, do not guess; wait for explicit assignment
-                    if (!assignedPlayer && state.players.length === 1) {
-                        const onlyPlayer = state.players[0]?.player;
-                        if (onlyPlayer === 'p1' || onlyPlayer === 'p2') {
-                            setAssignedPlayer(onlyPlayer === 'p1' ? 'p2' : 'p1');
+    const updateGameStateFromData = React.useCallback(
+        (state) => {
+            if (!state) return;
+
+            const stateHash = JSON.stringify(state);
+
+            // Only update if state changed
+            if (stateHash !== lastStateHashRef.current) {
+                lastStateHashRef.current = stateHash;
+
+                // Update all state from server
+                if (state.rounds !== undefined) setRounds(state.rounds);
+                if (state.currentRound !== undefined) setCurrentRound(state.currentRound);
+                if (state.p1Choice !== undefined) setP1Choice(state.p1Choice);
+                if (state.p2Choice !== undefined) setP2Choice(state.p2Choice);
+                if (state.scores) setScores(state.scores);
+                if (state.step) setStep(state.step);
+
+                // Assign player based on stored player for this player name
+                if (state.players && state.players.length > 0) {
+                    const playerIndex = state.players.findIndex((p) => p.name === playerName);
+                    if (playerIndex >= 0) {
+                        const player = state.players[playerIndex]?.player;
+                        if (player === 'p1' || player === 'p2') {
+                            setAssignedPlayer(player);
+                        }
+                    } else {
+                        // If name not found:
+                        // - Keep current role if already assigned (never flip)
+                        // - If no role yet and there is exactly 1 player, infer the opposite
+                        // - If 0 or 2+ players, do not guess; wait for explicit assignment
+                        if (!assignedPlayer && state.players.length === 1) {
+                            const onlyPlayer = state.players[0]?.player;
+                            if (onlyPlayer === 'p1' || onlyPlayer === 'p2') {
+                                setAssignedPlayer(onlyPlayer === 'p1' ? 'p2' : 'p1');
+                            }
                         }
                     }
                 }
             }
-        }
-    }, [playerName, assignedPlayer]);
+        },
+        [playerName, assignedPlayer],
+    );
 
     // Fetch initial game state
     const fetchInitialGameState = React.useCallback(async () => {
         if (!isConnected || !roomId) return;
-        
+
         try {
             const response = await axios.get(`/api/games/state/${roomId}`);
             if (response.data.exists && response.data.game_state) {
@@ -249,32 +250,32 @@ export default function RockPaperScissors() {
     // Online multiplayer handlers
     const connectRoom = async () => {
         if (!roomId || !playerName.trim()) return;
-        
+
         setIsConnected(true);
-        
+
         try {
             // Try to get existing state first
             const existingState = await axios.get(`/api/games/state/${roomId}`);
-            
+
             if (existingState.data.exists) {
                 // Game already exists, sync with it
                 const state = existingState.data.game_state;
-                
+
                 // Ensure a unique join name if needed
                 let joinName = playerName;
                 if (state.players && Array.isArray(state.players)) {
-                    if (state.players.some(p => p?.name === joinName)) {
+                    if (state.players.some((p) => p?.name === joinName)) {
                         // Create a unique variant of the name
                         let suffix = 2;
                         let candidate = `${joinName} (${suffix})`;
-                        while (state.players.some(p => p?.name === candidate)) {
+                        while (state.players.some((p) => p?.name === candidate)) {
                             candidate = `${joinName} (${suffix++})`;
                         }
                         joinName = candidate;
                         setPlayerName(joinName);
                     }
                 }
-                
+
                 // Sync state
                 if (state.rounds !== undefined) setRounds(state.rounds);
                 if (state.currentRound !== undefined) setCurrentRound(state.currentRound);
@@ -282,7 +283,7 @@ export default function RockPaperScissors() {
                 if (state.p2Choice !== undefined) setP2Choice(state.p2Choice);
                 if (state.scores) setScores(state.scores);
                 if (state.step) setStep(state.step);
-                
+
                 // Assign player
                 let playerRole = null;
                 if (state.players && state.players.length === 1) {
@@ -290,7 +291,7 @@ export default function RockPaperScissors() {
                     setAssignedPlayer(playerRole);
                     state.players.push({ name: joinName, player: playerRole });
                 } else if (state.players && state.players.length > 0) {
-                    const playerIndex = state.players.findIndex(p => p.name === joinName);
+                    const playerIndex = state.players.findIndex((p) => p.name === joinName);
                     if (playerIndex >= 0) {
                         // Player with same (possibly adjusted) name exists in state
                         playerRole = state.players[playerIndex].player;
@@ -301,7 +302,7 @@ export default function RockPaperScissors() {
                         state.players.push({ name: joinName, player: playerRole });
                     }
                 }
-                
+
                 // Update server with new player
                 await axios.post(`/api/games/state/${roomId}`, {
                     game_type: 'rockpaperscissors',
@@ -318,18 +319,17 @@ export default function RockPaperScissors() {
                     step: 'p1',
                     players: [{ name: playerName, player: 'p1' }],
                 };
-                
+
                 await axios.post(`/api/games/state/${roomId}`, {
                     game_type: 'rockpaperscissors',
                     game_state: initialState,
                 });
-                
+
                 setAssignedPlayer('p1');
             }
-            
+
             // Fetch initial state after connecting
             await fetchInitialGameState();
-            
         } catch (error) {
             console.error('Failed to connect to room:', error);
             setIsConnected(false);
@@ -414,71 +414,78 @@ export default function RockPaperScissors() {
     }, []);
 
     const matchOver = currentRound === rounds && step === 'reveal';
-    const overallWinner = scores.p1 === scores.p2 ? 'tie' : (scores.p1 > scores.p2 ? 'p1' : 'p2');
+    const overallWinner = scores.p1 === scores.p2 ? 'tie' : scores.p1 > scores.p2 ? 'p1' : 'p2';
 
     return (
         <AppLayout>
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 py-8">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-8">
-                        <Link href="/games" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4">← Back to Games</Link>
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">✊✋✌️ Rock Paper Scissors</h1>
+                <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+                    <div className="mb-8 text-center">
+                        <Link href="/games" className="mb-4 inline-flex items-center text-blue-600 hover:text-blue-800">
+                            ← Back to Games
+                        </Link>
+                        <h1 className="mb-2 text-4xl font-bold text-gray-900">✊✋✌️ Rock Paper Scissors</h1>
                         <p className="text-gray-600">Two players. Best of rounds with pass-and-play or online multiplayer.</p>
                     </div>
 
                     {/* Realtime room controls */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
+                    <div className="mb-6 flex justify-center">
+                        <div className="flex w-full max-w-xl flex-col gap-2 rounded-lg bg-white p-3 shadow-md">
                             <div className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    placeholder="Your name" 
-                                    value={playerName} 
-                                    onChange={(e) => setPlayerName(e.target.value)} 
-                                    className="flex-1 border rounded px-3 py-2"
+                                <input
+                                    type="text"
+                                    placeholder="Your name"
+                                    value={playerName}
+                                    onChange={(e) => setPlayerName(e.target.value)}
+                                    className="flex-1 rounded border px-3 py-2"
                                     disabled={isConnected}
                                 />
-                                <input 
-                                    type="text" 
-                                    placeholder="Room ID (e.g. rps-abc123)" 
-                                    value={roomId} 
-                                    onChange={(e) => setRoomId(e.target.value)} 
-                                    className="flex-1 border rounded px-3 py-2"
+                                <input
+                                    type="text"
+                                    placeholder="Room ID (e.g. rps-abc123)"
+                                    value={roomId}
+                                    onChange={(e) => setRoomId(e.target.value)}
+                                    className="flex-1 rounded border px-3 py-2"
                                     disabled={isConnected}
                                 />
-                                <button 
-                                    onClick={() => setRoomId(prev => prev || randomRoomId('rps'))} 
-                                    className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200"
+                                <button
+                                    onClick={() => setRoomId((prev) => prev || randomRoomId('rps'))}
+                                    className="rounded border bg-gray-100 px-3 py-2 hover:bg-gray-200"
                                     disabled={isConnected}
-                                >Generate</button>
+                                >
+                                    Generate
+                                </button>
                             </div>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex items-center gap-2">
                                 {!isConnected ? (
-                                    <button 
+                                    <button
                                         data-auto-join
-                                        onClick={connectRoom} 
-                                        className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-900 disabled:bg-gray-400"
+                                        onClick={connectRoom}
+                                        className="rounded bg-gray-800 px-4 py-2 text-white hover:bg-gray-900 disabled:bg-gray-400"
                                         disabled={!roomId || !playerName.trim()}
-                                    >Join Room</button>
+                                    >
+                                        Join Room
+                                    </button>
                                 ) : (
-                                    <button 
-                                        onClick={disconnectRoom} 
-                                        className="px-4 py-2 rounded bg-gray-600 text-white hover:bg-gray-700"
-                                    >Leave Room</button>
+                                    <button onClick={disconnectRoom} className="rounded bg-gray-600 px-4 py-2 text-white hover:bg-gray-700">
+                                        Leave Room
+                                    </button>
                                 )}
-                                <button 
-                                    onClick={async () => { 
+                                <button
+                                    onClick={async () => {
                                         const link = buildInviteUrl();
-                                        try { 
-                                            await navigator.clipboard.writeText(link); 
-                                        } catch {} 
-                                        //alert('Invite link copied.'); 
-                                    }} 
-                                    className="px-4 py-2 rounded bg-gray-100 border hover:bg-gray-200"
+                                        try {
+                                            await navigator.clipboard.writeText(link);
+                                        } catch {}
+                                        //alert('Invite link copied.');
+                                    }}
+                                    className="rounded border bg-gray-100 px-4 py-2 hover:bg-gray-200"
                                     disabled={!roomId || !playerName.trim()}
-                                >Copy Link</button>
+                                >
+                                    Copy Link
+                                </button>
                                 {isConnected && (
-                                    <div className="text-sm text-gray-600 self-center">
+                                    <div className="self-center text-sm text-gray-600">
                                         Connected as <strong>{assignedPlayer ?? '?'}</strong> — Share Room ID with a friend
                                     </div>
                                 )}
@@ -487,57 +494,69 @@ export default function RockPaperScissors() {
                     </div>
 
                     {/* Rounds selector */}
-                    <div className="flex justify-center mb-6 gap-3">
-                        {[3, 5, 7].map(n => (
-                            <button key={n} onClick={() => { setRounds(n); resetMatch(); }}
-                                className={`px-4 py-2 rounded-md ${rounds === n ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border'}`}>Best of {n}</button>
+                    <div className="mb-6 flex justify-center gap-3">
+                        {[3, 5, 7].map((n) => (
+                            <button
+                                key={n}
+                                onClick={() => {
+                                    setRounds(n);
+                                    resetMatch();
+                                }}
+                                className={`rounded-md px-4 py-2 ${rounds === n ? 'bg-gray-800 text-white' : 'border bg-white text-gray-700'}`}
+                            >
+                                Best of {n}
+                            </button>
                         ))}
                     </div>
 
                     {/* Scoreboard */}
-                    <div className="flex justify-center gap-8 mb-6">
-                        <div className={`bg-white rounded-lg shadow-md p-4 text-center ${isConnected && assignedPlayer === 'p1' ? 'ring-2 ring-blue-500' : ''}`}>
+                    <div className="mb-6 flex justify-center gap-8">
+                        <div
+                            className={`rounded-lg bg-white p-4 text-center shadow-md ${isConnected && assignedPlayer === 'p1' ? 'ring-2 ring-blue-500' : ''}`}
+                        >
                             <div className="text-xl font-bold">
-                                Player 1
-                                {isConnected && assignedPlayer === 'p1' && <span className="text-xs text-blue-600 ml-1">(You)</span>}
+                                Player 1{isConnected && assignedPlayer === 'p1' && <span className="ml-1 text-xs text-blue-600">(You)</span>}
                             </div>
                             <div className="text-3xl font-extrabold text-blue-600">{scores.p1}</div>
                         </div>
-                        <div className={`bg-white rounded-lg shadow-md p-4 text-center ${isConnected && assignedPlayer === 'p2' ? 'ring-2 ring-rose-500' : ''}`}>
+                        <div
+                            className={`rounded-lg bg-white p-4 text-center shadow-md ${isConnected && assignedPlayer === 'p2' ? 'ring-2 ring-rose-500' : ''}`}
+                        >
                             <div className="text-xl font-bold">
-                                Player 2
-                                {isConnected && assignedPlayer === 'p2' && <span className="text-xs text-rose-600 ml-1">(You)</span>}
+                                Player 2{isConnected && assignedPlayer === 'p2' && <span className="ml-1 text-xs text-rose-600">(You)</span>}
                             </div>
                             <div className="text-3xl font-extrabold text-rose-600">{scores.p2}</div>
                         </div>
                     </div>
 
-                    <div className="text-center mb-2 text-sm text-gray-600">Round {currentRound} of {rounds}</div>
+                    <div className="mb-2 text-center text-sm text-gray-600">
+                        Round {currentRound} of {rounds}
+                    </div>
 
                     {/* Step panels */}
                     {step === 'p1' && (
-                        <div className="bg-white rounded-2xl shadow-lg p-6 border text-center">
-                            <div className="font-semibold mb-3 flex items-center justify-center gap-2">
+                        <div className="rounded-2xl border bg-white p-6 text-center shadow-lg">
+                            <div className="mb-3 flex items-center justify-center gap-2 font-semibold">
                                 Player 1: Choose
                                 {isConnected && assignedPlayer !== 'p1' ? (
-                                    <span className="text-sm text-blue-600 ml-2 flex items-center gap-1">
+                                    <span className="ml-2 flex items-center gap-1 text-sm text-blue-600">
                                         <span className="animate-bounce">⏳</span>
                                         Waiting for Player 1...
                                     </span>
                                 ) : isConnected && assignedPlayer === 'p1' ? (
-                                    <span className="text-sm text-green-600 ml-2 flex items-center gap-1">
+                                    <span className="ml-2 flex items-center gap-1 text-sm text-green-600">
                                         <span className="animate-pulse">●</span>
                                         Your turn
                                     </span>
                                 ) : null}
                             </div>
                             <div className="flex justify-center gap-4">
-                                {CHOICES.map(ch => (
-                                    <button 
-                                        key={ch.id} 
-                                        onClick={() => onPick('p1', ch.id)} 
+                                {CHOICES.map((ch) => (
+                                    <button
+                                        key={ch.id}
+                                        onClick={() => onPick('p1', ch.id)}
                                         disabled={isConnected && assignedPlayer !== 'p1'}
-                                        className={`px-4 py-3 rounded-lg border transition-all duration-200 hover:bg-gray-50 hover:scale-105 active:scale-95 ${isConnected && assignedPlayer !== 'p1' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        className={`rounded-lg border px-4 py-3 transition-all duration-200 hover:scale-105 hover:bg-gray-50 active:scale-95 ${isConnected && assignedPlayer !== 'p1' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                     >
                                         {ch.label}
                                     </button>
@@ -547,28 +566,28 @@ export default function RockPaperScissors() {
                     )}
 
                     {step === 'p2' && (
-                        <div className="bg-white rounded-2xl shadow-lg p-6 border text-center">
-                            <div className="font-semibold mb-3 flex items-center justify-center gap-2">
+                        <div className="rounded-2xl border bg-white p-6 text-center shadow-lg">
+                            <div className="mb-3 flex items-center justify-center gap-2 font-semibold">
                                 Player 2: Choose
                                 {isConnected && assignedPlayer !== 'p2' ? (
-                                    <span className="text-sm text-blue-600 ml-2 flex items-center gap-1">
+                                    <span className="ml-2 flex items-center gap-1 text-sm text-blue-600">
                                         <span className="animate-bounce">⏳</span>
                                         Waiting for Player 2...
                                     </span>
                                 ) : isConnected && assignedPlayer === 'p2' ? (
-                                    <span className="text-sm text-green-600 ml-2 flex items-center gap-1">
+                                    <span className="ml-2 flex items-center gap-1 text-sm text-green-600">
                                         <span className="animate-pulse">●</span>
                                         Your turn
                                     </span>
                                 ) : null}
                             </div>
                             <div className="flex justify-center gap-4">
-                                {CHOICES.map(ch => (
-                                    <button 
-                                        key={ch.id} 
-                                        onClick={() => onPick('p2', ch.id)} 
+                                {CHOICES.map((ch) => (
+                                    <button
+                                        key={ch.id}
+                                        onClick={() => onPick('p2', ch.id)}
                                         disabled={isConnected && assignedPlayer !== 'p2'}
-                                        className={`px-4 py-3 rounded-lg border transition-all duration-200 hover:bg-gray-50 hover:scale-105 active:scale-95 ${isConnected && assignedPlayer !== 'p2' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        className={`rounded-lg border px-4 py-3 transition-all duration-200 hover:scale-105 hover:bg-gray-50 active:scale-95 ${isConnected && assignedPlayer !== 'p2' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                     >
                                         {ch.label}
                                     </button>
@@ -578,10 +597,14 @@ export default function RockPaperScissors() {
                     )}
 
                     {step === 'reveal' && (
-                        <div className="bg-white rounded-2xl shadow-lg p-6 border text-center animate-in fade-in zoom-in duration-300">
+                        <div className="rounded-2xl border bg-white p-6 text-center shadow-lg duration-300 animate-in fade-in zoom-in">
                             <div className="mb-4">
-                                <div className="text-lg animate-in slide-in-from-left duration-300">Player 1 picked: <strong className="text-blue-600">{p1Choice}</strong></div>
-                                <div className="text-lg animate-in slide-in-from-right duration-300 delay-150">Player 2 picked: <strong className="text-rose-600">{p2Choice}</strong></div>
+                                <div className="text-lg duration-300 animate-in slide-in-from-left">
+                                    Player 1 picked: <strong className="text-blue-600">{p1Choice}</strong>
+                                </div>
+                                <div className="text-lg delay-150 duration-300 animate-in slide-in-from-right">
+                                    Player 2 picked: <strong className="text-rose-600">{p2Choice}</strong>
+                                </div>
                             </div>
                             {(() => {
                                 const w = decideWinner();
@@ -593,16 +616,24 @@ export default function RockPaperScissors() {
 
                             <div className="mt-6 flex justify-center gap-3">
                                 {!matchOver && (
-                                    <button onClick={nextRound} className="bg-gray-800 hover:bg-black text-white font-semibold px-5 py-2 rounded-lg">Next Round</button>
+                                    <button onClick={nextRound} className="rounded-lg bg-gray-800 px-5 py-2 font-semibold text-white hover:bg-black">
+                                        Next Round
+                                    </button>
                                 )}
                                 {matchOver && (
-                                    <button onClick={resetMatch} className="bg-gray-800 hover:bg-black text-white font-semibold px-5 py-2 rounded-lg">New Match</button>
+                                    <button onClick={resetMatch} className="rounded-lg bg-gray-800 px-5 py-2 font-semibold text-white hover:bg-black">
+                                        New Match
+                                    </button>
                                 )}
                             </div>
 
                             {matchOver && (
                                 <div className="mt-4 text-lg">
-                                    {overallWinner === 'tie' ? 'Match tied.' : (overallWinner === 'p1' ? 'Player 1 wins the match!' : 'Player 2 wins the match!')}
+                                    {overallWinner === 'tie'
+                                        ? 'Match tied.'
+                                        : overallWinner === 'p1'
+                                          ? 'Player 1 wins the match!'
+                                          : 'Player 2 wins the match!'}
                                 </div>
                             )}
                         </div>
@@ -612,5 +643,3 @@ export default function RockPaperScissors() {
         </AppLayout>
     );
 }
-
-

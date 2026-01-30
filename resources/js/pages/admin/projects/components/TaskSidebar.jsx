@@ -1,15 +1,14 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Calendar, Paperclip, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Calendar, CheckCircle, Clock, Paperclip, User } from 'lucide-react';
 
 const TaskSidebar = ({ task, teamMembers = [] }) => {
     const getStatusBadge = (status) => {
         const statusConfig = {
-            completed: { color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300", icon: CheckCircle },
-            "in-progress": { color: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300", icon: Clock },
-            todo: { color: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300", icon: AlertCircle }
+            completed: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', icon: CheckCircle },
+            'in-progress': { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            todo: { color: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: AlertCircle },
         };
 
         const safeStatus = status || 'todo';
@@ -17,18 +16,18 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
         const Icon = config.icon;
 
         return (
-            <Badge variant="outline" className={`${config.color} border-none flex items-center gap-1`}>
+            <Badge variant="outline" className={`${config.color} flex items-center gap-1 border-none`}>
                 <Icon className="h-3 w-3" />
-                {safeStatus === "in-progress" ? "In Progress" : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
+                {safeStatus === 'in-progress' ? 'In Progress' : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
             </Badge>
         );
     };
 
     const getPriorityBadge = (priority) => {
         const priorityConfig = {
-            high: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-            medium: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-            low: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
+            high: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+            medium: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+            low: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300',
         };
 
         const safePriority = priority || 'medium';
@@ -69,14 +68,14 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
                             <AvatarFallback>{(task.assignee?.name || 'U').substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar> */}
                         <Avatar
-                            className="h-8 w-8 overflow-hidden relative z-50"
+                            className="relative z-50 h-8 w-8 overflow-hidden"
                             image={task.assignee?.image}
                             name={task.assignee?.name}
                             lastActivity={task.assignee?.last_online || null}
                             onlineCircleClass="hidden"
                         />
                         <div>
-                            <div className="font-medium text-sm">{task.assignee?.name || 'Unassigned'}</div>
+                            <div className="text-sm font-medium">{task.assignee?.name || 'Unassigned'}</div>
                             <div className="text-xs text-muted-foreground">{task.assignee?.email || 'No email'}</div>
                         </div>
                     </div>
@@ -92,9 +91,7 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-sm">
-                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date set'}
-                    </div>
+                    <div className="text-sm">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date set'}</div>
                 </CardContent>
             </Card>
 
@@ -107,9 +104,7 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-sm text-muted-foreground">
-                        {task.attachments?.length || 0} files
-                    </div>
+                    <div className="text-sm text-muted-foreground">{task.attachments?.length || 0} files</div>
                 </CardContent>
             </Card>
 
@@ -127,12 +122,10 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
                         <div>Last updated 1 hour ago</div>
                         <div>{task.comments?.length || 0} comments</div>
                         <div>{task.attachments?.length || 0} attachments</div>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="mt-2 flex items-center gap-2">
                             <span>Subtasks:</span>
                             <div className="flex items-center gap-1">
-                                <span className="text-green-500">
-                                    {task.subtasks?.filter(s => s.completed).length || 0}
-                                </span>
+                                <span className="text-green-500">{task.subtasks?.filter((s) => s.completed).length || 0}</span>
                                 <span>/</span>
                                 <span>{task.subtasks?.length || 0}</span>
                             </div>

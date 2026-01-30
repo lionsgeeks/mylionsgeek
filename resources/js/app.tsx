@@ -1,11 +1,11 @@
 import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
+import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
-import { initializeTheme } from './hooks/use-appearance';
 import ToastNotificationManager from './components/chat/ToastNotificationManager';
-import axios from 'axios';
+import { initializeTheme } from './hooks/use-appearance';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -28,19 +28,21 @@ axios.interceptors.response.use(
             return Promise.reject(error);
         }
         return Promise.reject(error);
-    }
+    },
 );
 
 // Provide a safe global queryParams helper for places that expect it
 declare global {
-    interface Window { queryParams?: () => URLSearchParams }
+    interface Window {
+        queryParams?: () => URLSearchParams;
+    }
 }
 if (typeof window !== 'undefined' && !window.queryParams) {
     window.queryParams = () => new URLSearchParams(window.location.search);
 }
 
 createInertiaApp({
-    title: (title) => title ? `${title} - ${appName}` : appName,
+    title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) => resolvePageComponent(`./pages/${name}.jsx`, import.meta.glob('./pages/**/*.jsx')),
     setup({ el, App, props }) {
         const root = createRoot(el);
@@ -49,7 +51,7 @@ createInertiaApp({
             <>
                 <App {...props} />
                 <ToastNotificationManager />
-            </>
+            </>,
         );
     },
     progress: {

@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Users, Clock, Play, LogOut, QrCode, Copy, Check } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import { LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function GeekoLobby({ session, participant, participantsCount }) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [liveData, setLiveData] = useState({
         participants_count: participantsCount,
-        session_status: session.status
+        session_status: session.status,
     });
     const [showQR, setShowQR] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -38,7 +37,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                 const response = await fetch(`/geeko/play/${session.id}/live-data`);
                 const data = await response.json();
                 setLiveData(data);
-                
+
                 // Redirect if game started
                 if (data.session_status === 'in_progress') {
                     router.visit(`/geeko/play/${session.id}/question`);
@@ -60,7 +59,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
             hour12: false,
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit'
+            second: '2-digit',
         });
     };
 
@@ -78,32 +77,28 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
         <AppLayout>
             <Head title={`Lobby - ${session.geeko.title}`} />
 
-            <div className="min-h-screen bg-gradient-to-br from-alpha/5 to-transparent dark:from-alpha/10 dark:to-transparent flex items-center justify-center p-6">
+            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-alpha/5 to-transparent p-6 dark:from-alpha/10 dark:to-transparent">
                 <div className="w-full max-w-2xl">
                     {/* Header */}
-                    <div className="text-center mb-12">
+                    <div className="mb-12 text-center">
                         {/* <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha shadow">
                             QUIZ
                         </div> */}
                         {/* <h1 className="text-4xl font-extrabold text-dark dark:text-light mb-2">
                             {session.geeko.title}
                         </h1> */}
-                      {/* Waiting Animation */}
-                      <div className="text-center mb-8">
-                        <div className="flex items-center justify-center space-x-2 mb-4">
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce"></div>
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-3 h-3 bg-alpha rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
-                        <p className="text-lg text-dark/70 dark:text-light/70">
-                            Waiting for instructor to start the game...
-                        </p>
-                        {/* <p className="text-sm text-dark/50 dark:text-light/50 mt-2">
+                        {/* Waiting Animation */}
+                        <div className="mb-8 text-center">
+                            <div className="mb-4 flex items-center justify-center space-x-2">
+                                <div className="h-3 w-3 animate-bounce rounded-full bg-alpha"></div>
+                                <div className="h-3 w-3 animate-bounce rounded-full bg-alpha" style={{ animationDelay: '0.1s' }}></div>
+                                <div className="h-3 w-3 animate-bounce rounded-full bg-alpha" style={{ animationDelay: '0.2s' }}></div>
+                            </div>
+                            <p className="text-lg text-dark/70 dark:text-light/70">Waiting for instructor to start the game...</p>
+                            {/* <p className="text-sm text-dark/50 dark:text-light/50 mt-2">
                             Current time: {formatTime(currentTime)}
                         </p> */}
-                    </div>
-                        
-                       
+                        </div>
                     </div>
 
                     {/* Status Cards */}
@@ -134,28 +129,20 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                     </div> */}
 
                     {/* Player Info */}
-                    <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-8 mb-8 text-center shadow-xl">
-                        <h2 className="text-2xl font-bold text-dark dark:text-light mb-4">
-                            You're In!
-                        </h2>
-                        <div className="flex items-center justify-center space-x-4 mb-6">
-                            <div className="w-16 h-16 rounded-full bg-alpha text-dark flex items-center justify-center font-bold text-2xl">
+                    <div className="mb-8 rounded-2xl border border-white/20 bg-white/60 p-8 text-center shadow-xl backdrop-blur-xl dark:bg-dark/50">
+                        <h2 className="mb-4 text-2xl font-bold text-dark dark:text-light">You're In!</h2>
+                        <div className="mb-6 flex items-center justify-center space-x-4">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-alpha text-2xl font-bold text-dark">
                                 {participant.nickname.charAt(0).toUpperCase()}
                             </div>
                             <div className="text-left">
-                                <p className="text-xl font-bold text-dark dark:text-light">
-                                    {participant.nickname}
-                                </p>
-                                <p className="text-dark/70 dark:text-light/70">
-                                    Ready to play!
-                                </p>
+                                <p className="text-xl font-bold text-dark dark:text-light">{participant.nickname}</p>
+                                <p className="text-dark/70 dark:text-light/70">Ready to play!</p>
                             </div>
                         </div>
-                        
-                        <div className="backdrop-blur bg-good/10 border border-good/20 rounded-xl p-4">
-                            <p className="text-good font-semibold">
-                                Connected and waiting for instructor to start the game
-                            </p>
+
+                        <div className="rounded-xl border border-good/20 bg-good/10 p-4 backdrop-blur">
+                            <p className="font-semibold text-good">Connected and waiting for instructor to start the game</p>
                         </div>
                     </div>
 
@@ -183,10 +170,6 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                         </div>
                     )} */}
 
-                  
-
-                 
-
                     {/* Instructions */}
                     {/* <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 mb-8 shadow">
                         <h3 className="text-lg font-bold text-dark dark:text-light mb-4 text-center">
@@ -212,7 +195,7 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
                     <div className="text-center">
                         <button
                             onClick={handleLeave}
-                            className="inline-flex items-center space-x-2 border border-error/30 text-error px-6 py-3 rounded-xl hover:bg-error/10 transition-colors font-semibold"
+                            className="inline-flex items-center space-x-2 rounded-xl border border-error/30 px-6 py-3 font-semibold text-error transition-colors hover:bg-error/10"
                         >
                             <LogOut size={16} />
                             <span>Leave Game</span>
@@ -223,4 +206,3 @@ export default function GeekoLobby({ session, participant, participantsCount }) 
         </AppLayout>
     );
 }
-

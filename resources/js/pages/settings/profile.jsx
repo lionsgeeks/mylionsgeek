@@ -3,20 +3,34 @@ import { send } from '@/routes/verification';
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 
+import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
 import DeleteUser from '@/components/delete-user';
+import DeleteModal from '@/components/DeleteModal';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useInitials } from '@/hooks/use-initials';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
-import { useInitials } from '@/hooks/use-initials';
-import { Avatar, } from '@/components/ui/avatar';
-import CreateSocialLinkModal from '@/components/CreateSocialLinkModal';
-import DeleteModal from '@/components/DeleteModal';
-import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
+import {
+    Briefcase,
+    ExternalLink,
+    Facebook,
+    Github,
+    Instagram,
+    Linkedin,
+    MessageCircle,
+    Pencil,
+    Plus,
+    Send,
+    Trash,
+    Twitter,
+    Users,
+} from 'lucide-react';
 import { useState } from 'react';
 
 const platformIcons = {
@@ -51,17 +65,15 @@ const breadcrumbs = [
 export default function Profile({ mustVerifyEmail, status }) {
     const { auth } = usePage().props;
     const getInitials = useInitials();
-    const [openSocialModal, setOpenSocialModal] = useState(false)
-    const [editingSocial, setEditingSocial] = useState(null)
-    const [openDeleteSocial, setOpenDeleteSocial] = useState(false)
-    const [deletingSocial, setDeletingSocial] = useState(null)
+    const [openSocialModal, setOpenSocialModal] = useState(false);
+    const [editingSocial, setEditingSocial] = useState(null);
+    const [openDeleteSocial, setOpenDeleteSocial] = useState(false);
+    const [deletingSocial, setDeletingSocial] = useState(null);
     const links = auth?.user?.social_links || [];
     const visibleLinks = links.slice(0, 2);
 
     // Filter out platforms that are already added
-    const availablePlatforms = platforms.filter(platform =>
-        !links.some(link => link.title === platform.value)
-    );
+    const availablePlatforms = platforms.filter((platform) => !links.some((link) => link.title === platform.value));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -81,10 +93,16 @@ export default function Profile({ mustVerifyEmail, status }) {
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 {/* Avatar + Basic info */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                                     <div className="md:col-span-1">
-                                        <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-                                            <Avatar className="h-24 w-24 overflow-hidden rounded-full" image={auth.user.image} name={auth.user.name} lastActivity={auth.user.last_activity || null} onlineCircleClass="w-6 h-6" />
+                                        <div className="flex flex-col items-center gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+                                            <Avatar
+                                                className="h-24 w-24 overflow-hidden rounded-full"
+                                                image={auth.user.image}
+                                                name={auth.user.name}
+                                                lastActivity={auth.user.last_activity || null}
+                                                onlineCircleClass="w-6 h-6"
+                                            />
 
                                             <div className="w-full">
                                                 <Label htmlFor="image">Avatar</Label>
@@ -94,12 +112,12 @@ export default function Profile({ mustVerifyEmail, status }) {
                                         </div>
                                     </div>
 
-                                    <div className="md:col-span-2 grid gap-4">
+                                    <div className="grid gap-4 md:col-span-2">
                                         <div className="grid gap-2">
                                             <Label htmlFor="name">Name</Label>
                                             <Input
                                                 id="name"
-                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                                 defaultValue={auth.user.name}
                                                 name="name"
                                                 required
@@ -114,7 +132,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             <Input
                                                 id="email"
                                                 type="email"
-                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                                 defaultValue={auth.user.email}
                                                 name="email"
                                                 required
@@ -124,10 +142,15 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             <InputError className="mt-2" message={errors.email} />
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                             <div className="grid gap-2">
                                                 <Label htmlFor="phone">Phone</Label>
-                                                <Input id="phone" name="phone" defaultValue={auth.user.phone || ''} placeholder="e.g. +212 600 000 000" />
+                                                <Input
+                                                    id="phone"
+                                                    name="phone"
+                                                    defaultValue={auth.user.phone || ''}
+                                                    placeholder="e.g. +212 600 000 000"
+                                                />
                                                 <InputError className="mt-2" message={errors.phone} />
                                             </div>
                                             <div className="grid gap-2">
@@ -161,28 +184,33 @@ export default function Profile({ mustVerifyEmail, status }) {
                                 )}
 
                                 {/* Integrations / WakaTime */}
-                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                <div className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
                                     <div className="grid gap-2">
                                         <Label htmlFor="wakatime_api_key">WakaTime API Key</Label>
-                                        <Input id="wakatime_api_key" name="wakatime_api_key" defaultValue={auth.user.wakatime_api_key || ''} placeholder="Enter your WakaTime API key" />
+                                        <Input
+                                            id="wakatime_api_key"
+                                            name="wakatime_api_key"
+                                            defaultValue={auth.user.wakatime_api_key || ''}
+                                            placeholder="Enter your WakaTime API key"
+                                        />
                                         <InputError className="mt-2" message={errors.wakatime_api_key} />
                                         <p className="text-xs text-neutral-500">Used to compute your coding leaderboard stats.</p>
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                                <div className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
                                     <div className="flex items-center justify-between">
                                         <HeadingSmall title="Socials" description="Manage your public links" />
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                setEditingSocial(null)
-                                                setOpenSocialModal(true)
+                                                setEditingSocial(null);
+                                                setOpenSocialModal(true);
                                             }}
-                                            className="p-2 rounded-lg hover:bg-beta/5 dark:hover:bg-light/5"
+                                            className="rounded-lg p-2 hover:bg-beta/5 dark:hover:bg-light/5"
                                             aria-label="Add link"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="h-4 w-4" />
                                         </button>
                                     </div>
 
@@ -193,17 +221,20 @@ export default function Profile({ mustVerifyEmail, status }) {
                                             links.map((link) => {
                                                 const IconComponent = platformIcons[link.title] || ExternalLink;
                                                 return (
-                                                    <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                                <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                                    <div
+                                                        key={link.id}
+                                                        className="group flex items-center justify-between gap-3 rounded-lg border border-beta/10 p-3 transition hover:bg-beta/5 dark:border-light/10 dark:hover:bg-light/5"
+                                                    >
+                                                        <div className="flex min-w-0 items-center gap-3">
+                                                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-beta/5 dark:bg-light/5">
+                                                                <IconComponent className="h-4 w-4 text-beta/70 dark:text-light/70" />
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <a
                                                                     href={link.url}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
+                                                                    className="block truncate text-sm font-semibold text-beta hover:underline dark:text-light"
                                                                 >
                                                                     {link.title}
                                                                 </a>
@@ -211,19 +242,19 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                                     href={link.url}
                                                                     target="_blank"
                                                                     rel="noreferrer"
-                                                                    className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                                    className="block truncate text-xs text-beta/60 hover:underline dark:text-light/60"
                                                                 >
                                                                     {link.url}
                                                                 </a>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                                        <div className="flex flex-shrink-0 items-center gap-2 opacity-0 transition group-hover:opacity-100">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    setEditingSocial(link)
-                                                                    setOpenSocialModal(true)
+                                                                    setEditingSocial(link);
+                                                                    setOpenSocialModal(true);
                                                                 }}
                                                                 className="text-alpha"
                                                                 aria-label="Edit link"
@@ -233,8 +264,8 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    setDeletingSocial(link)
-                                                                    setOpenDeleteSocial(true)
+                                                                    setDeletingSocial(link);
+                                                                    setOpenDeleteSocial(true);
                                                                 }}
                                                                 className="text-error"
                                                                 aria-label="Delete link"
@@ -243,14 +274,20 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                             </button>
                                                         </div>
                                                     </div>
-                                                )
+                                                );
                                             })
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                    <Button disabled={processing} data-test="update-profile-button" className='px-12 py-5 rounded-full hover:bg-[#FFC801] transition-all cursor-pointer dark:hover:text-[#FAFAFA]'>Save</Button>
+                                    <Button
+                                        disabled={processing}
+                                        data-test="update-profile-button"
+                                        className="cursor-pointer rounded-full px-12 py-5 transition-all hover:bg-[#FFC801] dark:hover:text-[#FAFAFA]"
+                                    >
+                                        Save
+                                    </Button>
 
                                     <Transition
                                         show={recentlySuccessful}
@@ -293,4 +330,3 @@ export default function Profile({ mustVerifyEmail, status }) {
         </AppLayout>
     );
 }
-

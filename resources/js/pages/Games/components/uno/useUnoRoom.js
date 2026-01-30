@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Custom hook for Uno room management (connect, disconnect, start game)
@@ -32,22 +32,25 @@ export function useUnoRoom(auth, updateGameStateFromData) {
     }, []); // Only run once on mount
 
     // Fetch initial game state
-    const fetchInitialGameState = useCallback(async (roomId) => {
-        if (!isConnected || !roomId) return;
+    const fetchInitialGameState = useCallback(
+        async (roomId) => {
+            if (!isConnected || !roomId) return;
 
-        try {
-            //console.log('🔄 Fetching game state from server...');
-            const response = await axios.get(`/api/games/state/${roomId}`);
-            if (response.data.exists && response.data.game_state) {
-                //console.log('✅ Game state fetched, updating...');
-                updateGameStateFromData(response.data.game_state);
-            } else {
-                //console.log('ℹ️ No existing game state found');
+            try {
+                //console.log('🔄 Fetching game state from server...');
+                const response = await axios.get(`/api/games/state/${roomId}`);
+                if (response.data.exists && response.data.game_state) {
+                    //console.log('✅ Game state fetched, updating...');
+                    updateGameStateFromData(response.data.game_state);
+                } else {
+                    //console.log('ℹ️ No existing game state found');
+                }
+            } catch (error) {
+                console.error('❌ Failed to fetch game state:', error);
             }
-        } catch (error) {
-            console.error('❌ Failed to fetch game state:', error);
-        }
-    }, [isConnected, updateGameStateFromData]);
+        },
+        [isConnected, updateGameStateFromData],
+    );
 
     // Connect to room
     const connectRoom = useCallback(async () => {
@@ -64,10 +67,10 @@ export function useUnoRoom(auth, updateGameStateFromData) {
                 // Ensure unique player name
                 let joinName = playerName;
                 if (state.players && Array.isArray(state.players)) {
-                    if (state.players.some(p => p?.name === joinName)) {
+                    if (state.players.some((p) => p?.name === joinName)) {
                         let suffix = 2;
                         let candidate = `${joinName} (${suffix})`;
-                        while (state.players.some(p => p?.name === candidate)) {
+                        while (state.players.some((p) => p?.name === candidate)) {
                             candidate = `${joinName} (${suffix++})`;
                         }
                         joinName = candidate;
@@ -76,7 +79,7 @@ export function useUnoRoom(auth, updateGameStateFromData) {
                 }
 
                 // Check if player already exists
-                const existingPlayerIndex = state.players?.findIndex(p => p.name === joinName);
+                const existingPlayerIndex = state.players?.findIndex((p) => p.name === joinName);
 
                 if (existingPlayerIndex >= 0) {
                     setAssignedPlayerIndex(existingPlayerIndex);
@@ -87,7 +90,7 @@ export function useUnoRoom(auth, updateGameStateFromData) {
                         setIsConnected(false);
                         return;
                     }
-                    
+
                     // New player joining
                     const newPlayerId = state.players?.length || 0;
                     const newPlayer = {
@@ -157,6 +160,3 @@ export function useUnoRoom(auth, updateGameStateFromData) {
         disconnectRoom,
     };
 }
-
-
-

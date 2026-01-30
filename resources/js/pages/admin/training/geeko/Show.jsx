@@ -1,13 +1,8 @@
-import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-    Plus, Play, Settings, Trash2, Edit3, ArrowLeft,
-    Clock, Users, Trophy, CheckCircle, XCircle,
-    Eye, ChevronUp, ChevronDown, Save, X, Upload,
-    Copy, ExternalLink, GripVertical
-} from 'lucide-react';
+import { CheckCircle, Edit3, GripVertical, Play, Plus, Save, Settings, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function ShowGeeko({ formation, geeko }) {
     const [showAddQuestion, setShowAddQuestion] = useState(false);
@@ -22,33 +17,34 @@ export default function ShowGeeko({ formation, geeko }) {
 
     const normalizeQuestions = (qs) => {
         if (!Array.isArray(qs)) return [];
-        const normalizeText = (val) => String(val ?? '')
-            .toLowerCase()
-            .normalize('NFKD')
-            .replace(/\p{Diacritic}/gu, '')
-            .replace(/[\s\t\n\r]+/g, ' ')
-            .replace(/[""]/g, '"')
-            .replace(/['']/g, "'")
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
-            .replace(/[\s]*([,.;:!?])([\s]*)/g, '$1 ')
-            .trim();
+        const normalizeText = (val) =>
+            String(val ?? '')
+                .toLowerCase()
+                .normalize('NFKD')
+                .replace(/\p{Diacritic}/gu, '')
+                .replace(/[\s\t\n\r]+/g, ' ')
+                .replace(/[""]/g, '"')
+                .replace(/['']/g, "'")
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/[\s]*([,.;:!?])([\s]*)/g, '$1 ')
+                .trim();
         const truthySet = new Set(['true', 't', '1', 'yes', 'y']);
         const falsySet = new Set(['false', 'f', '0', 'no', 'n']);
 
-        return qs.map(q => {
+        return qs.map((q) => {
             //('Processing question:', q.id, 'Raw options:', q.options, 'Raw correct_answers:', q.correct_answers);
 
             // Handle options - could be array or JSON string
             let optionsArray = [];
             if (Array.isArray(q.options)) {
                 // Already an array
-                optionsArray = q.options.map(o => (typeof o === 'string' ? o : (o?.text ?? '')));
+                optionsArray = q.options.map((o) => (typeof o === 'string' ? o : (o?.text ?? '')));
             } else if (typeof q.options === 'string') {
                 // JSON string, try to parse
                 try {
                     const parsed = JSON.parse(q.options);
                     if (Array.isArray(parsed)) {
-                        optionsArray = parsed.map(o => (typeof o === 'string' ? o : (o?.text ?? '')));
+                        optionsArray = parsed.map((o) => (typeof o === 'string' ? o : (o?.text ?? '')));
                     }
                 } catch (e) {
                     console.warn('Failed to parse options JSON:', q.options);
@@ -204,7 +200,7 @@ export default function ShowGeeko({ formation, geeko }) {
                 } else {
                     router.visit(`/training/${formation.id}/geeko/${geeko.id}`);
                 }
-            }
+            },
         });
     };
 
@@ -212,8 +208,8 @@ export default function ShowGeeko({ formation, geeko }) {
         router.delete(`/training/${formation.id}/geeko/${geeko.id}/questions/${questionId}`, {
             onSuccess: () => {
                 setConfirmDelete(null);
-                setQuestions(prev => prev.filter(q => q.id !== questionId));
-            }
+                setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+            },
         });
     };
 
@@ -230,27 +226,32 @@ export default function ShowGeeko({ formation, geeko }) {
         setShowDetailsModal(false);
 
         // Create session directly - skip the quiz update for now
-        ('Creating session with params:', {
-            formationId: formation.id,
-            geekoId: geeko.id,
-            title: meta.title,
-            description: meta.description
-        });
+        ('Creating session with params:',
+            {
+                formationId: formation.id,
+                geekoId: geeko.id,
+                title: meta.title,
+                description: meta.description,
+            });
 
-        router.post(`/training/${formation.id}/geeko/${geeko.id}/session/create`, {
-            title: meta.title,
-            description: meta.description
-        }, {
-            onSuccess: (page) => {
-                //('Session created successfully:', page);
-                // The backend should redirect automatically to control page
+        router.post(
+            `/training/${formation.id}/geeko/${geeko.id}/session/create`,
+            {
+                title: meta.title,
+                description: meta.description,
             },
-            onError: (errors) => {
-                console.error('Failed to create session:', errors);
-                console.error('Error details:', JSON.stringify(errors, null, 2));
-                //alert('Failed to create session. Please check the console for details.');
-            }
-        });
+            {
+                onSuccess: (page) => {
+                    //('Session created successfully:', page);
+                    // The backend should redirect automatically to control page
+                },
+                onError: (errors) => {
+                    console.error('Failed to create session:', errors);
+                    console.error('Error details:', JSON.stringify(errors, null, 2));
+                    //alert('Failed to create session. Please check the console for details.');
+                },
+            },
+        );
     };
 
     const handleTypeChange = (type) => {
@@ -286,7 +287,10 @@ export default function ShowGeeko({ formation, geeko }) {
         if (data.type === 'multiple_choice') {
             // Multiple selections allowed
             if (currentCorrect.includes(index)) {
-                setData('correct_answers', currentCorrect.filter(i => i !== index));
+                setData(
+                    'correct_answers',
+                    currentCorrect.filter((i) => i !== index),
+                );
             } else {
                 setData('correct_answers', [...currentCorrect, index]);
             }
@@ -297,64 +301,74 @@ export default function ShowGeeko({ formation, geeko }) {
     };
 
     const getQuestionIcon = (type) => {
-        return questionTypes.find(t => t.value === type)?.icon || 'Q';
+        return questionTypes.find((t) => t.value === type)?.icon || 'Q';
     };
 
     // Inline edit helpers
     const updateLocalQuestionField = (questionId, field, value) => {
-        setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, [field]: value } : q));
+        setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, [field]: value } : q)));
     };
 
     const updateLocalOption = (questionId, optionIndex, value) => {
-        setQuestions(prev => prev.map(q => {
-            if (q.id !== questionId) return q;
-            const opts = Array.isArray(q.options) ? [...q.options] : [];
-            opts[optionIndex] = value;
-            return { ...q, options: opts };
-        }));
+        setQuestions((prev) =>
+            prev.map((q) => {
+                if (q.id !== questionId) return q;
+                const opts = Array.isArray(q.options) ? [...q.options] : [];
+                opts[optionIndex] = value;
+                return { ...q, options: opts };
+            }),
+        );
     };
 
     const addLocalOption = (questionId) => {
-        setQuestions(prev => prev.map(q => {
-            if (q.id !== questionId) return q;
-            const opts = Array.isArray(q.options) ? [...q.options] : [];
-            return { ...q, options: [...opts, ''] };
-        }));
+        setQuestions((prev) =>
+            prev.map((q) => {
+                if (q.id !== questionId) return q;
+                const opts = Array.isArray(q.options) ? [...q.options] : [];
+                return { ...q, options: [...opts, ''] };
+            }),
+        );
     };
 
     const removeLocalOption = (questionId, optionIndex) => {
-        setQuestions(prev => prev.map(q => {
-            if (q.id !== questionId) return q;
-            const opts = Array.isArray(q.options) ? q.options.filter((_, i) => i !== optionIndex) : [];
-            const corrected = Array.isArray(q.correct_answers) ? q.correct_answers.filter(i => i !== optionIndex).map(i => i > optionIndex ? i - 1 : i) : [];
-            return { ...q, options: opts, correct_answers: corrected };
-        }));
+        setQuestions((prev) =>
+            prev.map((q) => {
+                if (q.id !== questionId) return q;
+                const opts = Array.isArray(q.options) ? q.options.filter((_, i) => i !== optionIndex) : [];
+                const corrected = Array.isArray(q.correct_answers)
+                    ? q.correct_answers.filter((i) => i !== optionIndex).map((i) => (i > optionIndex ? i - 1 : i))
+                    : [];
+                return { ...q, options: opts, correct_answers: corrected };
+            }),
+        );
     };
 
     const toggleLocalCorrect = (questionId, optionIndex, type) => {
         //('Toggling correct answer:', { questionId, optionIndex, type });
-        setQuestions(prev => prev.map(q => {
-            if (q.id !== questionId) return q;
-            const current = Array.isArray(q.correct_answers) ? [...q.correct_answers] : [];
-            let newCorrectAnswers;
+        setQuestions((prev) =>
+            prev.map((q) => {
+                if (q.id !== questionId) return q;
+                const current = Array.isArray(q.correct_answers) ? [...q.correct_answers] : [];
+                let newCorrectAnswers;
 
-            //('Current correct answers:', current);
+                //('Current correct answers:', current);
 
-            if (type === 'multiple_choice') {
-                // Multiple selections allowed
-                if (current.includes(optionIndex)) {
-                    newCorrectAnswers = current.filter(i => i !== optionIndex);
+                if (type === 'multiple_choice') {
+                    // Multiple selections allowed
+                    if (current.includes(optionIndex)) {
+                        newCorrectAnswers = current.filter((i) => i !== optionIndex);
+                    } else {
+                        newCorrectAnswers = [...current, optionIndex];
+                    }
                 } else {
-                    newCorrectAnswers = [...current, optionIndex];
+                    // Single selection (true_false, type_answer)
+                    newCorrectAnswers = [optionIndex];
                 }
-            } else {
-                // Single selection (true_false, type_answer)
-                newCorrectAnswers = [optionIndex];
-            }
 
-            //('New correct answers:', newCorrectAnswers);
-            return { ...q, correct_answers: newCorrectAnswers };
-        }));
+                //('New correct answers:', newCorrectAnswers);
+                return { ...q, correct_answers: newCorrectAnswers };
+            }),
+        );
     };
 
     const saveQuestion = (q) => {
@@ -372,25 +386,27 @@ export default function ShowGeeko({ formation, geeko }) {
                 // Collapse editor
                 setExpandedQuestion(null);
                 router.visit(`/training/${formation.id}/geeko/${geeko.id}`);
-            }
+            },
         });
     };
 
     const changeTypeAdjustOptions = (qId, newType) => {
-        setQuestions(prev => prev.map(q => {
-            if (q.id !== qId) return q;
-            if (newType === 'true_false') {
-                return { ...q, type: newType, options: ['True', 'False'], correct_answers: [] };
-            }
-            if (newType === 'multiple_choice') {
-                const opts = Array.isArray(q.options) && q.options.length >= 4 ? q.options.slice(0, 4) : ['', '', '', ''];
-                return { ...q, type: newType, options: opts, correct_answers: [] };
-            }
-            if (newType === 'type_answer') {
-                return { ...q, type: newType, options: [Array.isArray(q.options) && q.options[0] ? q.options[0] : ''], correct_answers: [0] };
-            }
-            return { ...q, type: newType };
-        }));
+        setQuestions((prev) =>
+            prev.map((q) => {
+                if (q.id !== qId) return q;
+                if (newType === 'true_false') {
+                    return { ...q, type: newType, options: ['True', 'False'], correct_answers: [] };
+                }
+                if (newType === 'multiple_choice') {
+                    const opts = Array.isArray(q.options) && q.options.length >= 4 ? q.options.slice(0, 4) : ['', '', '', ''];
+                    return { ...q, type: newType, options: opts, correct_answers: [] };
+                }
+                if (newType === 'type_answer') {
+                    return { ...q, type: newType, options: [Array.isArray(q.options) && q.options[0] ? q.options[0] : ''], correct_answers: [0] };
+                }
+                return { ...q, type: newType };
+            }),
+        );
     };
 
     // Native drag and drop handlers
@@ -425,9 +441,13 @@ export default function ShowGeeko({ formation, geeko }) {
         setQuestions(newQuestions);
 
         // Persist order
-        router.post(`/training/${formation.id}/geeko/${geeko.id}/questions/reorder`, {
-            questions: newQuestions.map((qq, i) => ({ id: qq.id, order_index: i }))
-        }, { preserveScroll: true });
+        router.post(
+            `/training/${formation.id}/geeko/${geeko.id}/questions/reorder`,
+            {
+                questions: newQuestions.map((qq, i) => ({ id: qq.id, order_index: i })),
+            },
+            { preserveScroll: true },
+        );
     };
 
     return (
@@ -436,14 +456,14 @@ export default function ShowGeeko({ formation, geeko }) {
 
             <div className="min-h-screen bg-light dark:bg-dark">
                 {/* Clean Header */}
-                <div className="bg-white dark:bg-dark border-b border-alpha/10">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16">
+                <div className="border-b border-alpha/10 bg-white dark:bg-dark">
+                    <div className="mx-auto max-w-7xl px-6 lg:px-8">
+                        <div className="flex h-16 items-center justify-between">
                             <button
                                 onClick={() => router.visit(`/training/${formation.id}/geeko`)}
-                                className="flex items-center text-dark/60 dark:text-light/60 hover:text-alpha transition-colors"
+                                className="flex items-center text-dark/60 transition-colors hover:text-alpha dark:text-light/60"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                 </svg>
                                 Back to Geeko
@@ -452,23 +472,24 @@ export default function ShowGeeko({ formation, geeko }) {
                             <div className="flex items-center space-x-4">
                                 <button
                                     onClick={() => router.visit(`/training/${formation.id}/geeko/${geeko.id}/edit`)}
-                                    className="p-2 rounded-lg hover:bg-alpha/10 transition-colors"
+                                    className="rounded-lg p-2 transition-colors hover:bg-alpha/10"
                                 >
                                     <Settings size={18} />
                                 </button>
                                 <button
                                     onClick={handleToggleStatus}
-                                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${geeko.status === 'ready'
-                                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        : 'bg-alpha/20 text-alpha hover:bg-alpha/30'
-                                        }`}
+                                    className={`rounded-lg px-3 py-1 text-sm font-medium transition-colors ${
+                                        geeko.status === 'ready'
+                                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            : 'bg-alpha/20 text-alpha hover:bg-alpha/30'
+                                    }`}
                                 >
                                     {geeko.status === 'ready' ? 'Draft' : 'Ready'}
                                 </button>
                                 {geeko.status === 'ready' && (geeko.questions?.length || 0) > 0 && (
                                     <button
                                         onClick={handleStartSession}
-                                        className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-lg hover:bg-alpha/90 transition-colors font-medium"
+                                        className="flex items-center space-x-2 rounded-lg bg-alpha px-4 py-2 font-medium text-dark transition-colors hover:bg-alpha/90"
                                     >
                                         <Play size={16} />
                                         <span>Start Game</span>
@@ -480,18 +501,16 @@ export default function ShowGeeko({ formation, geeko }) {
                 </div>
 
                 {/* Minimalist Lobby */}
-                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6">
-
-
+                <div className="mx-auto max-w-7xl px-6 py-6 lg:px-8">
                     {/* Questions Section */}
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="mb-6 flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-dark dark:text-light">Questions</h3>
                             <p className="text-sm text-dark/60 dark:text-light/60">{questions?.length || 0} questions</p>
                         </div>
                         <button
                             onClick={handleAddQuestion}
-                            className="flex items-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-lg hover:bg-alpha/90 transition-colors font-medium"
+                            className="flex items-center space-x-2 rounded-lg bg-alpha px-4 py-2 font-medium text-dark transition-colors hover:bg-alpha/90"
                         >
                             <Plus size={16} />
                             <span>Add Question</span>
@@ -499,41 +518,34 @@ export default function ShowGeeko({ formation, geeko }) {
                     </div>
 
                     {/* Questions Grid */}
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 pb-12 space-y-6">
-
+                    <div className="mx-auto max-w-7xl space-y-6 px-6 pb-12 lg:px-8">
                         {/* Add/Edit Question Form */}
                         {showAddQuestion && (
-                            <div className="backdrop-blur-xl bg-white/60 dark:bg-dark/50 border border-white/20 rounded-2xl p-6 shadow-xl">
-                                <h3 className="text-xl font-bold text-dark dark:text-light mb-6">
+                            <div className="rounded-2xl border border-white/20 bg-white/60 p-6 shadow-xl backdrop-blur-xl dark:bg-dark/50">
+                                <h3 className="mb-6 text-xl font-bold text-dark dark:text-light">
                                     {editingQuestion ? 'Edit Question' : 'Add New Question'}
                                 </h3>
 
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     {/* Question Text */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Question *
-                                        </label>
+                                        <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Question *</label>
                                         <input
                                             type="text"
                                             value={data.question}
                                             onChange={(e) => setData('question', e.target.value)}
-                                            className="w-full text-lg border border-white/20 rounded-xl px-5 py-4 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20 placeholder:text-dark/50 dark:placeholder:text-light/50"
+                                            className="w-full rounded-xl border border-white/20 bg-white/60 px-5 py-4 text-lg text-dark backdrop-blur placeholder:text-dark/50 focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark/50 dark:text-light dark:placeholder:text-light/50"
                                             placeholder="Start typing your question"
                                             required
                                         />
-                                        {errors.question && (
-                                            <p className="text-error text-sm mt-1">{errors.question}</p>
-                                        )}
+                                        {errors.question && <p className="mt-1 text-sm text-error">{errors.question}</p>}
                                     </div>
 
                                     {/* Media Upload */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Media (optional)
-                                        </label>
-                                        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-white/30 bg-white/40 dark:bg-dark/40 backdrop-blur p-6">
-                                            <label className="cursor-pointer inline-flex items-center gap-3 px-4 py-2 rounded-lg border border-alpha/30 hover:bg-alpha/10 text-dark dark:text-light">
+                                        <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Media (optional)</label>
+                                        <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-white/30 bg-white/40 p-6 backdrop-blur dark:bg-dark/40">
+                                            <label className="inline-flex cursor-pointer items-center gap-3 rounded-lg border border-alpha/30 px-4 py-2 text-dark hover:bg-alpha/10 dark:text-light">
                                                 <Upload size={16} />
                                                 <span>Upload file</span>
                                                 <input
@@ -548,19 +560,18 @@ export default function ShowGeeko({ formation, geeko }) {
 
                                     {/* Question Type */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Question Type
-                                        </label>
+                                        <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Question Type</label>
                                         <div className="grid grid-cols-3 gap-3">
                                             {questionTypes.map((type) => (
                                                 <button
                                                     key={type.value}
                                                     type="button"
                                                     onClick={() => handleTypeChange(type.value)}
-                                                    className={`p-3 rounded-full border transition-all ${data.type === type.value
-                                                        ? 'border-alpha bg-alpha/10'
-                                                        : 'border-white/20 hover:border-alpha/40'
-                                                        }`}
+                                                    className={`rounded-full border p-3 transition-all ${
+                                                        data.type === type.value
+                                                            ? 'border-alpha bg-alpha/10'
+                                                            : 'border-white/20 hover:border-alpha/40'
+                                                    }`}
                                                 >
                                                     <div className="text-xs font-semibold">{type.label}</div>
                                                 </button>
@@ -570,28 +581,29 @@ export default function ShowGeeko({ formation, geeko }) {
 
                                     {/* Answer Options */}
                                     <div>
-                                        <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                            Answer Options
-                                        </label>
+                                        <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Answer Options</label>
                                         <div className="space-y-3">
                                             {data.options.map((option, index) => (
                                                 <div key={index} className="flex items-center gap-3">
-                                                    <div className={`w-4 h-10 rounded-l-md ${index === 0 ? 'bg-red-500' : index === 1 ? 'bg-blue-500' : index === 2 ? 'bg-yellow-500' : 'bg-green-600'}`}></div>
+                                                    <div
+                                                        className={`h-10 w-4 rounded-l-md ${index === 0 ? 'bg-red-500' : index === 1 ? 'bg-blue-500' : index === 2 ? 'bg-yellow-500' : 'bg-green-600'}`}
+                                                    ></div>
                                                     <input
                                                         type="text"
                                                         value={option}
                                                         onChange={(e) => updateOption(index, e.target.value)}
-                                                        className="flex-1 border border-white/20 rounded-r-md px-4 py-2 bg-white/60 dark:bg-dark/50 backdrop-blur text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                                        className="flex-1 rounded-r-md border border-white/20 bg-white/60 px-4 py-2 text-dark backdrop-blur focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark/50 dark:text-light"
                                                         placeholder={`Add answer ${index + 1}${index > 1 ? ' (optional)' : ''}`}
                                                         disabled={data.type === 'true_false'}
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => toggleCorrectAnswer(index)}
-                                                        className={`px-3 py-2 rounded-lg border text-sm font-semibold ${data.correct_answers.includes(index)
-                                                            ? 'bg-good/20 border-good text-good'
-                                                            : 'border-white/20 hover:border-alpha/40'
-                                                            }`}
+                                                        className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                                            data.correct_answers.includes(index)
+                                                                ? 'border-good bg-good/20 text-good'
+                                                                : 'border-white/20 hover:border-alpha/40'
+                                                        }`}
                                                     >
                                                         Correct
                                                     </button>
@@ -599,7 +611,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                                         <button
                                                             type="button"
                                                             onClick={() => removeOption(index)}
-                                                            className="p-2 text-error hover:bg-error/10 rounded-lg"
+                                                            className="rounded-lg p-2 text-error hover:bg-error/10"
                                                         >
                                                             <X size={16} />
                                                         </button>
@@ -611,24 +623,20 @@ export default function ShowGeeko({ formation, geeko }) {
                                                 <button
                                                     type="button"
                                                     onClick={addOption}
-                                                    className="flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold"
+                                                    className="flex items-center space-x-2 font-semibold text-alpha hover:text-alpha/80"
                                                 >
                                                     <Plus size={16} />
                                                     <span>Add Option</span>
                                                 </button>
                                             )}
                                         </div>
-                                        <p className="text-xs text-dark/60 dark:text-light/60 mt-2">
-                                            Click the circle to mark correct answers
-                                        </p>
+                                        <p className="mt-2 text-xs text-dark/60 dark:text-light/60">Click the circle to mark correct answers</p>
                                     </div>
 
                                     {/* Points and Time */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                                Points
-                                            </label>
+                                            <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Points</label>
                                             <input
                                                 type="number"
                                                 min="100"
@@ -636,21 +644,19 @@ export default function ShowGeeko({ formation, geeko }) {
                                                 step="100"
                                                 value={data.points}
                                                 onChange={(e) => setData('points', parseInt(e.target.value))}
-                                                className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                                className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-2 text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                                Time Limit (seconds)
-                                            </label>
+                                            <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Time Limit (seconds)</label>
                                             <input
                                                 type="number"
                                                 min="5"
                                                 max="300"
                                                 value={data.time_limit || ''}
                                                 onChange={(e) => setData('time_limit', e.target.value ? parseInt(e.target.value) : null)}
-                                                className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                                className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-2 text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                                 placeholder={`Default: ${geeko.time_limit}s`}
                                             />
                                         </div>
@@ -661,7 +667,7 @@ export default function ShowGeeko({ formation, geeko }) {
                                         <button
                                             type="button"
                                             onClick={resetForm}
-                                            className="flex items-center space-x-2 px-4 py-2 border border-white/20 rounded-lg hover:bg-white/40 transition-colors backdrop-blur"
+                                            className="flex items-center space-x-2 rounded-lg border border-white/20 px-4 py-2 backdrop-blur transition-colors hover:bg-white/40"
                                         >
                                             <X size={16} />
                                             <span>Cancel</span>
@@ -670,10 +676,10 @@ export default function ShowGeeko({ formation, geeko }) {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="flex items-center space-x-2 bg-gradient-to-r from-alpha to-yellow-400 text-dark px-6 py-3 rounded-xl hover:from-alpha/90 hover:to-yellow-400/90 transition-all disabled:opacity-50 font-bold shadow"
+                                            className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-alpha to-yellow-400 px-6 py-3 font-bold text-dark shadow transition-all hover:from-alpha/90 hover:to-yellow-400/90 disabled:opacity-50"
                                         >
                                             <Save size={16} />
-                                            <span>{processing ? 'Saving...' : (editingQuestion ? 'Update' : 'Add Question')}</span>
+                                            <span>{processing ? 'Saving...' : editingQuestion ? 'Update' : 'Add Question'}</span>
                                         </button>
                                     </div>
                                 </form>
@@ -682,7 +688,7 @@ export default function ShowGeeko({ formation, geeko }) {
 
                         {/* Questions Grid */}
                         {questions && questions.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                                 {questions.map((question, index) => (
                                     <QuestionCard
                                         key={question.id}
@@ -710,17 +716,17 @@ export default function ShowGeeko({ formation, geeko }) {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-20">
-                                <div className="w-24 h-24 mx-auto mb-6 rounded-2xl backdrop-blur bg-white/50 dark:bg-dark/40 border border-white/20 flex items-center justify-center text-2xl font-bold text-alpha">QUIZ</div>
-                                <h3 className="text-2xl font-bold text-dark dark:text-light mb-4">
-                                    No Questions Yet
-                                </h3>
-                                <p className="text-dark/70 dark:text-light/70 mb-8 max-w-md mx-auto">
+                            <div className="py-20 text-center">
+                                <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-2xl border border-white/20 bg-white/50 text-2xl font-bold text-alpha backdrop-blur dark:bg-dark/40">
+                                    QUIZ
+                                </div>
+                                <h3 className="mb-4 text-2xl font-bold text-dark dark:text-light">No Questions Yet</h3>
+                                <p className="mx-auto mb-8 max-w-md text-dark/70 dark:text-light/70">
                                     Add your first question to get started. You can create multiple choice, true/false, or open-ended questions.
                                 </p>
                                 <button
                                     onClick={handleAddQuestion}
-                                    className="inline-flex items-center space-x-2 bg-alpha text-dark px-6 py-3 rounded-lg hover:bg-alpha/90 transition-colors font-semibold"
+                                    className="inline-flex items-center space-x-2 rounded-lg bg-alpha px-6 py-3 font-semibold text-dark transition-colors hover:bg-alpha/90"
                                 >
                                     <Plus size={20} />
                                     <span>Add Your First Question</span>
@@ -732,24 +738,22 @@ export default function ShowGeeko({ formation, geeko }) {
 
                 {/* Delete Confirmation Modal */}
                 {confirmDelete && (
-                    <div className="fixed inset-0 bg-dark/50 backdrop-blur-sm flex items-center justify-center z-50">
-                        <div className="bg-light dark:bg-dark border border-alpha/20 rounded-2xl p-6 max-w-md w-full mx-4">
-                            <h3 className="text-xl font-bold text-dark dark:text-light mb-4">
-                                Delete Question
-                            </h3>
-                            <p className="text-dark/70 dark:text-light/70 mb-6">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark/50 backdrop-blur-sm">
+                        <div className="mx-4 w-full max-w-md rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
+                            <h3 className="mb-4 text-xl font-bold text-dark dark:text-light">Delete Question</h3>
+                            <p className="mb-6 text-dark/70 dark:text-light/70">
                                 Are you sure you want to delete this question? This action cannot be undone.
                             </p>
                             <div className="flex space-x-3">
                                 <button
                                     onClick={() => setConfirmDelete(null)}
-                                    className="flex-1 px-4 py-2 border border-alpha/30 rounded-lg hover:bg-alpha/10 transition-colors"
+                                    className="flex-1 rounded-lg border border-alpha/30 px-4 py-2 transition-colors hover:bg-alpha/10"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => handleDeleteQuestion(confirmDelete)}
-                                    className="flex-1 px-4 py-2 bg-error text-light rounded-lg hover:bg-error/90 transition-colors"
+                                    className="flex-1 rounded-lg bg-error px-4 py-2 text-light transition-colors hover:bg-error/90"
                                 >
                                     Delete
                                 </button>
@@ -760,32 +764,30 @@ export default function ShowGeeko({ formation, geeko }) {
 
                 {/* Minimalist Game Info Modal */}
                 <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-                    <DialogContent className="sm:max-w-lg bg-white dark:bg-dark border border-alpha/20">
+                    <DialogContent className="border border-alpha/20 bg-white sm:max-w-lg dark:bg-dark">
                         <DialogHeader>
                             <DialogTitle className="text-xl font-semibold text-dark dark:text-light">Start Game Session</DialogTitle>
-                            <p className="text-dark/60 dark:text-light/60 text-sm">
-                                Update quiz details before starting the game.
-                            </p>
+                            <p className="text-sm text-dark/60 dark:text-light/60">Update quiz details before starting the game.</p>
                         </DialogHeader>
-                        <div className="space-y-4 mt-4">
+                        <div className="mt-4 space-y-4">
                             <div>
-                                <label className="text-sm font-medium text-dark dark:text-light mb-2 block">Quiz Title</label>
+                                <label className="mb-2 block text-sm font-medium text-dark dark:text-light">Quiz Title</label>
                                 <input
                                     type="text"
                                     placeholder="Enter quiz title..."
                                     value={meta.title}
-                                    onChange={(e) => setMeta(prev => ({ ...prev, title: e.target.value }))}
-                                    className="w-full p-3 border border-alpha/20 rounded-lg bg-white dark:bg-dark/80 text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-colors"
+                                    onChange={(e) => setMeta((prev) => ({ ...prev, title: e.target.value }))}
+                                    className="w-full rounded-lg border border-alpha/20 bg-white p-3 text-dark transition-colors focus:border-alpha focus:ring-2 focus:ring-alpha dark:bg-dark/80 dark:text-light"
                                     maxLength={95}
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-dark dark:text-light mb-2 block">Description (Optional)</label>
+                                <label className="mb-2 block text-sm font-medium text-dark dark:text-light">Description (Optional)</label>
                                 <textarea
                                     placeholder="Brief description of the quiz..."
                                     value={meta.description}
-                                    onChange={(e) => setMeta(prev => ({ ...prev, description: e.target.value }))}
-                                    className="w-full p-3 border border-alpha/20 rounded-lg bg-white dark:bg-dark/80 text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-alpha transition-colors resize-none"
+                                    onChange={(e) => setMeta((prev) => ({ ...prev, description: e.target.value }))}
+                                    className="w-full resize-none rounded-lg border border-alpha/20 bg-white p-3 text-dark transition-colors focus:border-alpha focus:ring-2 focus:ring-alpha dark:bg-dark/80 dark:text-light"
                                     rows={3}
                                     maxLength={200}
                                 />
@@ -793,14 +795,14 @@ export default function ShowGeeko({ formation, geeko }) {
                             <div className="flex justify-end space-x-3 pt-4">
                                 <button
                                     onClick={() => setShowDetailsModal(false)}
-                                    className="px-4 py-2 text-dark/60 dark:text-light/60 hover:text-dark dark:hover:text-light transition-colors"
+                                    className="px-4 py-2 text-dark/60 transition-colors hover:text-dark dark:text-light/60 dark:hover:text-light"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirmAndCreateSession}
                                     disabled={!meta.title?.trim()}
-                                    className="px-6 py-2 bg-alpha text-dark rounded-lg font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="rounded-lg bg-alpha px-6 py-2 font-medium text-dark transition-colors hover:bg-alpha/90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     Start Game
                                 </button>
@@ -833,7 +835,7 @@ function QuestionCard({
     toggleLocalCorrect,
     changeTypeAdjustOptions,
     saveQuestion,
-    geeko
+    geeko,
 }) {
     const getQuestionIcon = (type) => {
         const questionTypes = [
@@ -841,7 +843,7 @@ function QuestionCard({
             { value: 'true_false', label: 'True/False', icon: 'TF' },
             { value: 'type_answer', label: 'Type Answer', icon: 'TA' },
         ];
-        return questionTypes.find(t => t.value === type)?.icon || 'Q';
+        return questionTypes.find((t) => t.value === type)?.icon || 'Q';
     };
 
     const getQuestionTypeLabel = (type) => {
@@ -850,7 +852,7 @@ function QuestionCard({
             { value: 'true_false', label: 'True/False' },
             { value: 'type_answer', label: 'Type Answer' },
         ];
-        return questionTypes.find(t => t.value === type)?.label || 'Question';
+        return questionTypes.find((t) => t.value === type)?.label || 'Question';
     };
 
     return (
@@ -860,39 +862,30 @@ function QuestionCard({
             onDragOver={onDragOver}
             onDragEnd={onDragEnd}
             onDrop={onDrop}
-            className={`bg-white dark:bg-dark/80 border border-alpha/20 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-move ${isDragging ? 'opacity-50 scale-95' : ''
-                } ${isExpanded ? 'ring-1 ring-alpha/40' : ''}`}
+            className={`cursor-move rounded-xl border border-alpha/20 bg-white shadow-sm transition-all duration-200 hover:shadow-md dark:bg-dark/80 ${
+                isDragging ? 'scale-95 opacity-50' : ''
+            } ${isExpanded ? 'ring-1 ring-alpha/40' : ''}`}
         >
             {/* Minimalist Card Header */}
             <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <GripVertical size={16} className="text-dark/40 dark:text-light/40" />
-                        <div className="w-8 h-8 rounded-lg bg-alpha/10 flex items-center justify-center text-sm font-semibold text-alpha">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-alpha/10 text-sm font-semibold text-alpha">
                             {getQuestionIcon(question.type)}
                         </div>
                         <div>
-                            <div className="text-sm font-medium text-dark dark:text-light">
-                                Question {index + 1}
-                            </div>
-                            <div className="text-xs text-dark/50 dark:text-light/50">
-                                {getQuestionTypeLabel(question.type)}
-                            </div>
+                            <div className="text-sm font-medium text-dark dark:text-light">Question {index + 1}</div>
+                            <div className="text-xs text-dark/50 dark:text-light/50">{getQuestionTypeLabel(question.type)}</div>
                         </div>
                     </div>
                     <div className="flex items-center space-x-1">
-                        <button
-                            onClick={onExpand}
-                            className="p-1.5 rounded-md hover:bg-alpha/10 transition-colors"
-                        >
+                        <button onClick={onExpand} className="rounded-md p-1.5 transition-colors hover:bg-alpha/10">
                             {/* {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} */}
                             <Edit3 size={14} />
                         </button>
 
-                        <button
-                            onClick={onDelete}
-                            className="p-1.5 rounded-md hover:bg-error/10 text-error transition-colors"
-                        >
+                        <button onClick={onDelete} className="rounded-md p-1.5 text-error transition-colors hover:bg-error/10">
                             <Trash2 size={14} />
                         </button>
                     </div>
@@ -900,9 +893,7 @@ function QuestionCard({
 
                 {/* Minimalist Question Preview */}
                 <div className="mb-3">
-                    <h3 className="font-medium text-dark dark:text-light line-clamp-2 mb-2">
-                        {question.question || 'Untitled question'}
-                    </h3>
+                    <h3 className="mb-2 line-clamp-2 font-medium text-dark dark:text-light">{question.question || 'Untitled question'}</h3>
 
                     {/* Options Preview */}
                     <div className="space-y-1">
@@ -910,16 +901,17 @@ function QuestionCard({
                             const correctArray = Array.isArray(question.correct_answers) ? question.correct_answers : [];
                             const isCorrect = correctArray.includes(optionIndex);
                             return (
-                                <div key={optionIndex} className={`flex items-center space-x-2 text-sm ${isCorrect ? 'text-good font-medium' : 'text-dark/60 dark:text-light/60'}`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full ${isCorrect ? 'bg-good' : 'bg-dark/30 dark:bg-light/30'}`} />
+                                <div
+                                    key={optionIndex}
+                                    className={`flex items-center space-x-2 text-sm ${isCorrect ? 'font-medium text-good' : 'text-dark/60 dark:text-light/60'}`}
+                                >
+                                    <div className={`h-1.5 w-1.5 rounded-full ${isCorrect ? 'bg-good' : 'bg-dark/30 dark:bg-light/30'}`} />
                                     <span className="line-clamp-1">{typeof option === 'string' ? option : (option?.text ?? '')}</span>
                                 </div>
                             );
                         })}
                         {Array.isArray(question.options) && question.options.length > 2 && (
-                            <div className="text-xs text-dark/40 dark:text-light/40">
-                                +{question.options.length - 2} more
-                            </div>
+                            <div className="text-xs text-dark/40 dark:text-light/40">+{question.options.length - 2} more</div>
                         )}
                     </div>
                 </div>
@@ -927,15 +919,13 @@ function QuestionCard({
                 {/* Minimalist Stats */}
                 <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
-                        <span className="px-2 py-1 rounded-md bg-dark/5 dark:bg-light/5 text-dark/60 dark:text-light/60">
-                            {question.points} pts
-                        </span>
-                        <span className="px-2 py-1 rounded-md bg-dark/5 dark:bg-light/5 text-dark/60 dark:text-light/60">
+                        <span className="rounded-md bg-dark/5 px-2 py-1 text-dark/60 dark:bg-light/5 dark:text-light/60">{question.points} pts</span>
+                        <span className="rounded-md bg-dark/5 px-2 py-1 text-dark/60 dark:bg-light/5 dark:text-light/60">
                             {question.time_limit || geeko.time_limit}s
                         </span>
                     </div>
                     {Array.isArray(question.correct_answers) && question.correct_answers.length > 0 && (
-                        <span className="px-2 py-1 rounded-md bg-good/10 text-good text-xs font-medium">
+                        <span className="rounded-md bg-good/10 px-2 py-1 text-xs font-medium text-good">
                             {question.correct_answers.length} correct
                         </span>
                     )}
@@ -944,14 +934,14 @@ function QuestionCard({
 
             {/* Minimalist Expanded Edit Mode */}
             {isExpanded && (
-                <div className="border-t border-alpha/10 p-4 bg-gray-50 dark:bg-dark/60">
+                <div className="border-t border-alpha/10 bg-gray-50 p-4 dark:bg-dark/60">
                     <div className="space-y-6">
                         {/* Question Text */}
                         <div>
-                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">Question</label>
+                            <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Question</label>
                             <input
                                 type="text"
-                                className="w-full border border-alpha/30 rounded-lg px-4 py-2 bg-light dark:bg-dark text-dark dark:text-light"
+                                className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-2 text-dark dark:bg-dark dark:text-light"
                                 value={question.question || ''}
                                 onChange={(e) => updateLocalQuestionField(question.id, 'question', e.target.value)}
                             />
@@ -959,36 +949,40 @@ function QuestionCard({
 
                         {/* Answer Options */}
                         <div>
-                            <label className="block text-sm font-semibold text-dark dark:text-light mb-2">Answer Options</label>
+                            <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Answer Options</label>
                             <div className="space-y-2">
                                 {(Array.isArray(question.options) ? question.options : []).map((option, optionIndex) => {
                                     const correctArray = Array.isArray(question.correct_answers) ? question.correct_answers : [];
                                     const isCorrect = correctArray.includes(optionIndex);
                                     return (
-                                        <div key={optionIndex} className={`flex items-center gap-3 rounded-lg px-2 py-2 ${isCorrect ? 'bg-alpha/10' : ''}`}>
+                                        <div
+                                            key={optionIndex}
+                                            className={`flex items-center gap-3 rounded-lg px-2 py-2 ${isCorrect ? 'bg-alpha/10' : ''}`}
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => toggleLocalCorrect(question.id, optionIndex, question.type)}
-                                                className={`w-8 h-8 rounded-full border-2 ${isCorrect ? 'border-alpha bg-alpha text-dark' : 'border-dark/30 dark:border-light/30 bg-transparent'} hover:bg-alpha/10 transition-colors flex items-center justify-center`}
+                                                className={`h-8 w-8 rounded-full border-2 ${isCorrect ? 'border-alpha bg-alpha text-dark' : 'border-dark/30 bg-transparent dark:border-light/30'} flex items-center justify-center transition-colors hover:bg-alpha/10`}
                                             >
                                                 {isCorrect ? <CheckCircle size={14} /> : ''}
                                             </button>
                                             <input
                                                 type="text"
-                                                className="flex-1 border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark text-dark dark:text-light"
+                                                className="flex-1 rounded-lg border border-alpha/30 bg-light px-3 py-2 text-dark dark:bg-dark dark:text-light"
                                                 value={typeof option === 'string' ? option : (option?.text ?? '')}
                                                 onChange={(e) => updateLocalOption(question.id, optionIndex, e.target.value)}
                                                 readOnly={question.type === 'true_false'}
                                             />
-                                            {question.type === 'multiple_choice' && (Array.isArray(question.options) ? question.options.length : 0) > 2 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeLocalOption(question.id, optionIndex)}
-                                                    className="p-2 text-error hover:bg-error/10 rounded-lg"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
+                                            {question.type === 'multiple_choice' &&
+                                                (Array.isArray(question.options) ? question.options.length : 0) > 2 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeLocalOption(question.id, optionIndex)}
+                                                        className="rounded-lg p-2 text-error hover:bg-error/10"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                )}
                                         </div>
                                     );
                                 })}
@@ -997,7 +991,7 @@ function QuestionCard({
                                 <button
                                     type="button"
                                     onClick={() => addLocalOption(question.id)}
-                                    className="mt-2 inline-flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold"
+                                    className="mt-2 inline-flex items-center space-x-2 font-semibold text-alpha hover:text-alpha/80"
                                 >
                                     <Plus size={16} />
                                     <span>Add Option</span>
@@ -1008,11 +1002,11 @@ function QuestionCard({
                         {/* Settings Row */}
                         <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">Type</label>
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Type</label>
                                 <select
                                     value={question.type || 'multiple_choice'}
                                     onChange={(e) => changeTypeAdjustOptions(question.id, e.target.value)}
-                                    className="w-full p-2 border border-alpha/30 rounded-lg bg-light dark:bg-dark text-dark dark:text-light"
+                                    className="w-full rounded-lg border border-alpha/30 bg-light p-2 text-dark dark:bg-dark dark:text-light"
                                 >
                                     <option value="multiple_choice">Multiple Choice</option>
                                     <option value="true_false">True/False</option>
@@ -1020,19 +1014,21 @@ function QuestionCard({
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">Time (s)</label>
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Time (s)</label>
                                 <input
                                     type="number"
                                     min="5"
                                     max="300"
                                     value={question.time_limit || ''}
-                                    onChange={(e) => updateLocalQuestionField(question.id, 'time_limit', e.target.value ? parseInt(e.target.value) : null)}
-                                    className="w-full border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark text-dark dark:text-light"
+                                    onChange={(e) =>
+                                        updateLocalQuestionField(question.id, 'time_limit', e.target.value ? parseInt(e.target.value) : null)
+                                    }
+                                    className="w-full rounded-lg border border-alpha/30 bg-light px-3 py-2 text-dark dark:bg-dark dark:text-light"
                                     placeholder={`${geeko.time_limit}s`}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">Points</label>
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Points</label>
                                 <input
                                     type="number"
                                     min="100"
@@ -1040,7 +1036,7 @@ function QuestionCard({
                                     step="100"
                                     value={question.points}
                                     onChange={(e) => updateLocalQuestionField(question.id, 'points', parseInt(e.target.value))}
-                                    className="w-full border border-alpha/30 rounded-lg px-3 py-2 bg-light dark:bg-dark text-dark dark:text-light"
+                                    className="w-full rounded-lg border border-alpha/30 bg-light px-3 py-2 text-dark dark:bg-dark dark:text-light"
                                 />
                             </div>
                         </div>
@@ -1049,14 +1045,14 @@ function QuestionCard({
                         <div className="flex gap-2 pt-4">
                             <button
                                 onClick={() => saveQuestion(question)}
-                                className="flex-1 inline-flex items-center justify-center space-x-2 bg-alpha text-dark px-4 py-2 rounded-lg hover:bg-alpha/90 font-semibold"
+                                className="inline-flex flex-1 items-center justify-center space-x-2 rounded-lg bg-alpha px-4 py-2 font-semibold text-dark hover:bg-alpha/90"
                             >
                                 <Save size={16} />
                                 <span>Save</span>
                             </button>
                             <button
                                 onClick={onExpand}
-                                className="flex-1 inline-flex items-center justify-center space-x-2 border border-alpha/30 px-4 py-2 rounded-lg hover:bg-alpha/10 font-semibold"
+                                className="inline-flex flex-1 items-center justify-center space-x-2 rounded-lg border border-alpha/30 px-4 py-2 font-semibold hover:bg-alpha/10"
                             >
                                 <X size={16} />
                                 <span>Close</span>

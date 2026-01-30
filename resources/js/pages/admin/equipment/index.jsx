@@ -1,25 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router } from '@inertiajs/react';
+import Banner from '@/components/banner';
+import StatCard from '@/components/StatCard';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Pencil, Trash, Settings, History, Plus, MessageSquare, Activity, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    BarChart, Bar, PieChart, Pie, LineChart, Line, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
-import { TrendingUp, Package, AlertCircle } from 'lucide-react';
-import Banner from "@/components/banner"
-import illustration from "../../../../../public/assets/images/banner/Camera-amico.png"
-import StatCard from '@/components/StatCard';
-import ExportEquipmentDialog from './components/ExportEquipmentDialog';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm } from '@inertiajs/react';
+import { Activity, AlertCircle, Download, MessageSquare, Package, Pencil, Trash, TrendingUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import illustration from '../../../../../public/assets/images/banner/Camera-amico.png';
 import Rolegard from '../../../components/rolegard';
-
+import ExportEquipmentDialog from './components/ExportEquipmentDialog';
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [previewSrc, setPreviewSrc] = useState(null);
@@ -44,7 +37,6 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
     const [isExportOpen, setIsExportOpen] = useState(false);
 
-
     // Type management state
     const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false);
     const [equipmentTypes, setEquipmentTypes] = useState([]);
@@ -60,7 +52,14 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         state: 1,
         image: null,
     });
-    const { data: editData, setData: setEditData, put, processing: editProcessing, reset: resetEdit, errors: editErrors } = useForm({
+    const {
+        data: editData,
+        setData: setEditData,
+        put,
+        processing: editProcessing,
+        reset: resetEdit,
+        errors: editErrors,
+    } = useForm({
         mark: '',
         reference: '',
         equipment_type: '',
@@ -70,17 +69,30 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     });
 
     // Type management form
-    const { data: typeData, setData: setTypeData, post: postType, put: putType, processing: typeProcessing, reset: resetType, errors: typeErrors } = useForm({
+    const {
+        data: typeData,
+        setData: setTypeData,
+        post: postType,
+        put: putType,
+        processing: typeProcessing,
+        reset: resetType,
+        errors: typeErrors,
+    } = useForm({
         name: '',
     });
 
     // Note form
-    const { data: noteData, setData: setNoteData, post: postNote, processing: noteProcessing, reset: resetNote, errors: noteErrors } = useForm({
+    const {
+        data: noteData,
+        setData: setNoteData,
+        post: postNote,
+        processing: noteProcessing,
+        reset: resetNote,
+        errors: noteErrors,
+    } = useForm({
         note: '',
         type: 'general',
     });
-
-
 
     const handleEdit = (equipment) => {
         // Set the equipment being edited
@@ -110,19 +122,17 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
         setIsHistoryOpen(true);
         setIsLoadingHistory(true);
         try {
-
             const [usageRes, notesRes] = await Promise.all([
                 fetch(`/admin/equipements/${equipment.id}/usage-activities`),
-                fetch(`/admin/equipements/${equipment.id}/notes`)
+                fetch(`/admin/equipements/${equipment.id}/notes`),
             ]);
 
             const usageData = usageRes.ok ? await usageRes.json() : { usage_activities: [] };
             const notesData = notesRes.ok ? await notesRes.json() : { notes: [] };
 
-
             const combinedHistory = [
-                ...usageData.usage_activities.map(item => ({ ...item, type: 'usage' })),
-                ...notesData.notes.map(item => ({ ...item, type: 'note' }))
+                ...usageData.usage_activities.map((item) => ({ ...item, type: 'usage' })),
+                ...notesData.notes.map((item) => ({ ...item, type: 'note' })),
             ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             setHistoryItems(combinedHistory);
@@ -145,11 +155,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 //('Note validation errors:', errors);
-            }
+            },
         });
     };
-
-
 
     const handleUpdateEquipment = () => {
         put(`/admin/equipements/${editingEquipment.id}`, {
@@ -160,7 +168,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 //('Validation errors:', errors);
-            }
+            },
         });
     };
 
@@ -178,7 +186,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 //('Validation errors:', errors);
-            }
+            },
         });
     };
 
@@ -211,7 +219,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 //('Type validation errors:', errors);
-            }
+            },
         });
     };
 
@@ -231,7 +239,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 //('Type validation errors:', errors);
-            }
+            },
         });
     };
 
@@ -251,7 +259,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             },
             onError: (errors) => {
                 console.error('Failed to delete type:', errors);
-            }
+            },
         });
     };
 
@@ -261,7 +269,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 onSuccess: () => {
                     setIsDeleteOpen(false);
                     setDeletingEquipment(null);
-                }
+                },
             });
         }
     };
@@ -289,21 +297,17 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             if (!searchTerm) return true;
             const term = searchTerm.toLowerCase();
             return (
-                e.reference?.toLowerCase().includes(term) ||
-                e.mark?.toLowerCase().includes(term) ||
-                e.equipment_type?.toLowerCase().includes(term)
+                e.reference?.toLowerCase().includes(term) || e.mark?.toLowerCase().includes(term) || e.equipment_type?.toLowerCase().includes(term)
             );
         };
 
-        return equipment.filter(e => typeMatch(e) && stateMatch(e) && searchMatch(e));
+        return equipment.filter((e) => typeMatch(e) && stateMatch(e) && searchMatch(e));
     }, [equipment, searchTerm, filterType, filterState]);
 
     // Pagination
-    const pagedEquipment = showAll
-        ? filteredEquipment
-        : filteredEquipment.slice((page - 1) * perPage, page * perPage);
+    const pagedEquipment = showAll ? filteredEquipment : filteredEquipment.slice((page - 1) * perPage, page * perPage);
 
-    const totalPages = showAll ? 1 : (Math.ceil(filteredEquipment.length / perPage) || 1);
+    const totalPages = showAll ? 1 : Math.ceil(filteredEquipment.length / perPage) || 1;
 
     useEffect(() => {
         setPage(1);
@@ -312,8 +316,8 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
     // Statistics
     const stats = useMemo(() => {
         const totalAll = equipment.length;
-        const totalWorking = equipment.filter(e => e.state).length;
-        const totalNotWorking = equipment.filter(e => !e.state).length;
+        const totalWorking = equipment.filter((e) => e.state).length;
+        const totalNotWorking = equipment.filter((e) => !e.state).length;
 
         // By type
         const byType = equipment.reduce((acc, e) => {
@@ -336,66 +340,64 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
             { title: 'Total Equipment', value: stats.totalAll, icon: Package },
             { title: 'Working Equipment', value: stats.totalWorking, icon: TrendingUp },
             { title: 'Not Working', value: stats.totalNotWorking, icon: AlertCircle },
-
         ];
     }, [stats]);
 
     // Chart data
-    const statusData = Object.keys(stats.byType).map(type => ({
+    const statusData = Object.keys(stats.byType).map((type) => ({
         name: type,
         Working: stats.byType[type].working,
         'Not Working': stats.byType[type].notWorking,
-        All: stats.byType[type].total
+        All: stats.byType[type].total,
     }));
 
     const distributionData = Object.keys(stats.byType)
-        .filter(type => stats.byType[type].total > 0)
-        .map(type => ({
+        .filter((type) => stats.byType[type].total > 0)
+        .map((type) => ({
             name: type,
             value: stats.byType[type].total,
-            percentage: ((stats.byType[type].total / equipment.length) * 100).toFixed(0)
+            percentage: ((stats.byType[type].total / equipment.length) * 100).toFixed(0),
         }));
 
     const timelineData = [
         { period: 'Today', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
         { period: 'This Week', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
-        { period: 'This Month', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking }
+        { period: 'This Month', All: equipment.length, Working: stats.totalWorking, 'Not Working': stats.totalNotWorking },
     ];
 
     const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
 
-
     return (
         <AppLayout>
             <Head title="Equipment" />
-            <div className="p-4 md:p-6 flex flex-col gap-6 lg:gap-10">
-                <Banner
-                    illustration={illustration}
-                />
+            <div className="flex flex-col gap-6 p-4 md:p-6 lg:gap-10">
+                <Banner illustration={illustration} />
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-medium">Equipment</h1>
                         <p className="text-sm text-muted-foreground">{filteredEquipment.length} items</p>
                     </div>
                     <div className="flex items-center gap-2">
-                    <Rolegard authorized={["admin","moderateur"]}>
-                        <Button
-                            variant="outline"
-                            className=" bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
-                            onClick={() => setIsExportOpen(true)}
-                        >
-                            <Download className="mr-2 h-4 w-4" />
-                            Export
-                        </Button>
-                        <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 rounded-md bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black border border-[var(--color-alpha)] transition-colors hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
-                            Add equipment
-                        </button>
-                    </Rolegard>
+                        <Rolegard authorized={['admin', 'moderateur']}>
+                            <Button
+                                variant="outline"
+                                className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                onClick={() => setIsExportOpen(true)}
+                            >
+                                <Download className="mr-2 h-4 w-4" />
+                                Export
+                            </Button>
+                            <button
+                                onClick={() => setIsAddOpen(true)}
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            >
+                                Add equipment
+                            </button>
+                        </Rolegard>
                     </div>
                 </div>
 
                 <StatCard statsData={equipmentHighlights} />
-
 
                 <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
                     <table className="min-w-full divide-y divide-sidebar-border/70">
@@ -413,8 +415,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 <tr key={e.id} className="hover:bg-accent/30">
                                     <td className="px-4 py-3">
                                         {e.image ? (
-                                            <button onClick={() => setPreviewSrc(e.image)} className="group rounded outline-hidden cursor-pointer">
-                                                <img src={e.image} alt={e.reference} className="h-10 w-10 rounded object-cover transition group-hover:opacity-90" />
+                                            <button onClick={() => setPreviewSrc(e.image)} className="group cursor-pointer rounded outline-hidden">
+                                                <img
+                                                    src={e.image}
+                                                    alt={e.reference}
+                                                    className="h-10 w-10 rounded object-cover transition group-hover:opacity-90"
+                                                />
                                             </button>
                                         ) : (
                                             <div className="h-10 w-10 rounded bg-muted" />
@@ -423,7 +429,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     <td className="px-4 py-3 text-sm">
                                         <button
                                             onClick={() => openHistory(e)}
-                                            className="text-left hover:text-[var(--color-alpha)] hover:underline cursor-pointer transition-colors"
+                                            className="cursor-pointer text-left transition-colors hover:text-[var(--color-alpha)] hover:underline"
                                             title="Click to view history"
                                         >
                                             {e.reference}
@@ -431,21 +437,23 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     </td>
                                     <td className="px-4 py-3 text-sm">{e.mark}</td>
                                     <td className="px-4 py-3 text-sm">
-                                        <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                                        <span
+                                            className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${e.state ? 'bg-green-500/15 text-green-700 dark:text-green-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}
+                                        >
                                             {e.state ? 'Working' : 'Not working'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-right text-sm">
                                         <div className="inline-flex items-center gap-1.5">
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                                className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)]"
                                                 title="Edit"
                                                 onClick={() => handleEdit(e)}
                                             >
                                                 <Pencil size={18} className="text-alpha" />
                                             </button>
                                             <button
-                                                className="p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600 cursor-pointer"
+                                                className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600"
                                                 title="Delete"
                                                 onClick={() => handleDelete(e)}
                                             >
@@ -468,12 +476,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Pagination Controls */}
                 {!showAll && totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="mt-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
                                 disabled={page === 1}
                                 className="cursor-pointer"
                             >
@@ -485,7 +493,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
                                 className="cursor-pointer"
                             >
@@ -493,23 +501,15 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             </Button>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowAll(!showAll)}
-                            className="cursor-pointer"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setShowAll(!showAll)} className="cursor-pointer">
                             {showAll ? 'Show Paginated' : 'Show All'}
                         </Button>
                     </div>
                 )}
 
-
                 <Dialog open={!!previewSrc} onOpenChange={() => setPreviewSrc(null)}>
-                    <DialogContent className="max-w-3xl p-0 bg-light text-dark dark:bg-dark dark:text-light">
-                        {previewSrc && (
-                            <img src={previewSrc} alt="Equipment" className="max-h-[80vh] w-full object-contain" />
-                        )}
+                    <DialogContent className="max-w-3xl bg-light p-0 text-dark dark:bg-dark dark:text-light">
+                        {previewSrc && <img src={previewSrc} alt="Equipment" className="max-h-[80vh] w-full object-contain" />}
                     </DialogContent>
                 </Dialog>
 
@@ -526,7 +526,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="reference">Equipment Reference</Label>
-                                    <Input id="reference" placeholder="reference" value={data.reference} onChange={(e) => setData('reference', e.target.value)} />
+                                    <Input
+                                        id="reference"
+                                        placeholder="reference"
+                                        value={data.reference}
+                                        onChange={(e) => setData('reference', e.target.value)}
+                                    />
                                     {errors.reference && <p className="text-xs text-destructive">{errors.reference}</p>}
                                 </div>
                                 <div className="grid gap-2">
@@ -537,7 +542,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {addModalTypes.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                                <SelectItem key={t} value={t}>
+                                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -545,7 +552,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 {data.equipment_type === 'other' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="other-type">Specify Equipment Type</Label>
-                                        <Input id="other-type" placeholder="e.g. tripod" value={data.other_type} onChange={(e) => setData('other_type', e.target.value)} />
+                                        <Input
+                                            id="other-type"
+                                            placeholder="e.g. tripod"
+                                            value={data.other_type}
+                                            onChange={(e) => setData('other_type', e.target.value)}
+                                        />
                                         {errors.other_type && <p className="text-xs text-destructive">{errors.other_type}</p>}
                                     </div>
                                 )}
@@ -569,9 +581,11 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                                <Button variant="outline" className="cursor-pointer" onClick={() => setIsAddOpen(false)}>
+                                    Cancel
+                                </Button>
                                 <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                    className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     disabled={processing}
                                     onClick={handleAddEquipment}
                                 >
@@ -583,13 +597,16 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </Dialog>
 
                 {/* Edit equipment modal */}
-                <Dialog open={isEditOpen} onOpenChange={(open) => {
-                    setIsEditOpen(open);
-                    if (!open) {
-                        resetEdit(); // Clear errors when closing modal
-                        setEditingEquipment(null);
-                    }
-                }}>
+                <Dialog
+                    open={isEditOpen}
+                    onOpenChange={(open) => {
+                        setIsEditOpen(open);
+                        if (!open) {
+                            resetEdit(); // Clear errors when closing modal
+                            setEditingEquipment(null);
+                        }
+                    }}
+                >
                     <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <h2 className="text-xl font-medium">Edit Equipment</h2>
@@ -622,7 +639,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {baseTypes.map((t) => (
-                                                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+                                                <SelectItem key={t} value={t}>
+                                                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -664,13 +683,19 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" className="cursor-pointer" onClick={() => {
-                                    resetEdit();
-                                    setIsEditOpen(false);
-                                    setEditingEquipment(null);
-                                }}>Cancel</Button>
                                 <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                                    variant="outline"
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                        resetEdit();
+                                        setIsEditOpen(false);
+                                        setEditingEquipment(null);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     disabled={editProcessing}
                                     onClick={handleUpdateEquipment}
                                 >
@@ -691,9 +716,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-semibold">Delete Equipment</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        This action cannot be undone.
-                                    </p>
+                                    <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
                                 </div>
                             </div>
 
@@ -725,10 +748,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 >
                                     Cancel
                                 </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDelete}
-                                >
+                                <Button variant="destructive" onClick={confirmDelete}>
                                     Delete Equipment
                                 </Button>
                             </div>
@@ -746,7 +766,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                             {/* Add new type section */}
                             <div className="rounded-lg border bg-muted/50 p-4">
-                                <h3 className="text-sm font-medium mb-3">Add New Type</h3>
+                                <h3 className="mb-3 text-sm font-medium">Add New Type</h3>
                                 <div className="flex gap-3">
                                     <div className="flex-1">
                                         <Input
@@ -763,12 +783,12 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                 }
                                             }}
                                         />
-                                        {typeErrors.name && <p className="text-xs text-destructive mt-1">{typeErrors.name}</p>}
+                                        {typeErrors.name && <p className="mt-1 text-xs text-destructive">{typeErrors.name}</p>}
                                     </div>
                                     <Button
                                         onClick={editingType ? handleUpdateType : handleAddType}
                                         disabled={typeProcessing || !typeData.name.trim()}
-                                        className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                        className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     >
                                         {editingType ? 'Update' : 'Add'} Type
                                     </Button>
@@ -790,19 +810,17 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             <div className="space-y-3">
                                 <h3 className="text-sm font-medium">Existing Types</h3>
                                 {isLoadingTypes ? (
-                                    <div className="text-center py-4 text-muted-foreground">Loading types...</div>
+                                    <div className="py-4 text-center text-muted-foreground">Loading types...</div>
                                 ) : equipmentTypes.length === 0 ? (
-                                    <div className="text-center py-4 text-muted-foreground">No types found.</div>
+                                    <div className="py-4 text-center text-muted-foreground">No types found.</div>
                                 ) : (
-                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    <div className="max-h-60 space-y-2 overflow-y-auto">
                                         {equipmentTypes.map((type) => (
-                                            <div key={type.id} className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                                            <div key={type.id} className="flex items-center justify-between rounded-lg border bg-background p-3">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3">
                                                         <span className="font-medium">{type.name.charAt(0).toUpperCase() + type.name.slice(1)}</span>
-                                                        <span className="text-xs bg-muted px-2 py-1 rounded">
-                                                            {type.equipment_count} equipment
-                                                        </span>
+                                                        <span className="rounded bg-muted px-2 py-1 text-xs">{type.equipment_count} equipment</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -819,7 +837,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleDeleteType(type)}
-                                                        className="p-2 hover:text-red-600 hover:border-red-600"
+                                                        className="p-2 hover:border-red-600 hover:text-red-600"
                                                         title="Delete type"
                                                     >
                                                         <Trash className="h-3 w-3" />
@@ -831,8 +849,11 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 )}
                             </div>
 
-                            <div className="text-xs text-muted-foreground border-t pt-3">
-                                <p><strong>Note:</strong> When you delete a type that's being used by equipment, those equipment items will be automatically reassigned to the "other" type.</p>
+                            <div className="border-t pt-3 text-xs text-muted-foreground">
+                                <p>
+                                    <strong>Note:</strong> When you delete a type that's being used by equipment, those equipment items will be
+                                    automatically reassigned to the "other" type.
+                                </p>
                             </div>
                         </div>
                     </DialogContent>
@@ -848,9 +869,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-semibold">Delete Equipment Type</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        This action cannot be undone.
-                                    </p>
+                                    <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
                                 </div>
                             </div>
 
@@ -877,10 +896,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 >
                                     Cancel
                                 </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={confirmDeleteType}
-                                >
+                                <Button variant="destructive" onClick={confirmDeleteType}>
                                     Delete Type
                                 </Button>
                             </div>
@@ -889,14 +905,17 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                 </Dialog>
 
                 {/* Enhanced History Modal */}
-                <Dialog open={isHistoryOpen} onOpenChange={(open) => {
-                    setIsHistoryOpen(open);
-                    if (!open) {
-                        setHistoryItems([]);
-                        setHistoryEquipment(null);
-                        setHistoryTab('usage');
-                    }
-                }}>
+                <Dialog
+                    open={isHistoryOpen}
+                    onOpenChange={(open) => {
+                        setIsHistoryOpen(open);
+                        if (!open) {
+                            setHistoryItems([]);
+                            setHistoryEquipment(null);
+                            setHistoryTab('usage');
+                        }
+                    }}
+                >
                     <DialogContent className="max-w-4xl bg-light text-dark dark:bg-dark dark:text-light">
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
@@ -909,12 +928,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     )}
                                 </div>
                                 <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setIsAddNoteOpen(true)}
-                                        className="flex items-center gap-2"
-                                    >
+                                    <Button variant="outline" size="sm" onClick={() => setIsAddNoteOpen(true)} className="flex items-center gap-2">
                                         <MessageSquare className="h-4 w-4" />
                                         Add Note
                                     </Button>
@@ -924,7 +938,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             {/* History Tabs */}
                             <div className="flex border-b border-sidebar-border/70">
                                 <button
-                                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                    className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                                         historyTab === 'usage'
                                             ? 'border-[var(--color-alpha)] text-[var(--color-alpha)]'
                                             : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -934,7 +948,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                     Usage History
                                 </button>
                                 <button
-                                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                                    className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                                         historyTab === 'notes'
                                             ? 'border-[var(--color-alpha)] text-[var(--color-alpha)]'
                                             : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -946,23 +960,23 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                             </div>
 
                             {/* History Content */}
-                            <div className="rounded-xl border border-sidebar-border/70 overflow-hidden">
-                                <div className="bg-secondary/50 px-4 py-3 text-sm font-medium flex items-center justify-between">
+                            <div className="overflow-hidden rounded-xl border border-sidebar-border/70">
+                                <div className="flex items-center justify-between bg-secondary/50 px-4 py-3 text-sm font-medium">
                                     <span>
                                         {historyTab === 'usage' && 'Usage History'}
                                         {historyTab === 'notes' && 'Notes'}
                                     </span>
-                                    {isLoadingHistory && <span className="text-muted-foreground text-xs">Loading…</span>}
+                                    {isLoadingHistory && <span className="text-xs text-muted-foreground">Loading…</span>}
                                 </div>
 
                                 {historyItems.length === 0 ? (
-                                    <div className="p-6 text-sm text-muted-foreground text-center">
+                                    <div className="p-6 text-center text-sm text-muted-foreground">
                                         {isLoadingHistory ? 'Fetching history…' : 'No history found.'}
                                     </div>
                                 ) : (
-                                    <div className="divide-y divide-sidebar-border/70 max-h-96 overflow-y-auto">
+                                    <div className="max-h-96 divide-y divide-sidebar-border/70 overflow-y-auto">
                                         {historyItems
-                                            .filter(item => {
+                                            .filter((item) => {
                                                 if (historyTab === 'usage') return item.type === 'usage';
                                                 if (historyTab === 'notes') return item.type === 'note';
                                                 return true;
@@ -970,22 +984,20 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                             .map((item, index) => {
                                                 if (item.type === 'usage') {
                                                     return (
-                                                        <div key={`usage-${item.id}-${index}`} className="px-4 py-3 flex items-start gap-4">
-                                                            <div className="flex-shrink-0 mt-1">
+                                                        <div key={`usage-${item.id}-${index}`} className="flex items-start gap-4 px-4 py-3">
+                                                            <div className="mt-1 flex-shrink-0">
                                                                 <Activity className="h-4 w-4 text-green-500" />
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-green-500/15 text-green-700 dark:text-green-300">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                                                    <span className="inline-flex items-center rounded bg-green-500/15 px-2 py-0.5 text-xs text-green-700 dark:text-green-300">
                                                                         {item.action?.replace('_', ' ').toUpperCase()}
                                                                     </span>
                                                                 </div>
-                                                                <div className="text-sm font-medium mb-1">
+                                                                <div className="mb-1 text-sm font-medium">
                                                                     {item.description || `${item.action?.replace('_', ' ')} activity`}
                                                                 </div>
-                                                                <div className="text-xs text-muted-foreground mb-1">
-                                                                    Used by: {item.user_name}
-                                                                </div>
+                                                                <div className="mb-1 text-xs text-muted-foreground">Used by: {item.user_name}</div>
                                                                 {(item.started_at || item.ended_at) && (
                                                                     <div className="text-xs text-muted-foreground">
                                                                         {item.started_at && (
@@ -994,9 +1006,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                                                             </span>
                                                                         )}
                                                                         {item.ended_at && (
-                                                                            <span>
-                                                                                Ended: {new Date(item.ended_at).toLocaleString()}
-                                                                            </span>
+                                                                            <span>Ended: {new Date(item.ended_at).toLocaleString()}</span>
                                                                         )}
                                                                     </div>
                                                                 )}
@@ -1007,25 +1017,21 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                                                 if (item.type === 'note') {
                                                     return (
-                                                        <div key={`note-${item.id}-${index}`} className="px-4 py-3 flex items-start gap-4">
-                                                            <div className="flex-shrink-0 mt-1">
+                                                        <div key={`note-${item.id}-${index}`} className="flex items-start gap-4 px-4 py-3">
+                                                            <div className="mt-1 flex-shrink-0">
                                                                 <MessageSquare className="h-4 w-4 text-blue-500" />
                                                             </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                                                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs bg-blue-500/15 text-blue-700 dark:text-blue-300">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                                                    <span className="inline-flex items-center rounded bg-blue-500/15 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">
                                                                         {item.type?.toUpperCase()}
                                                                     </span>
                                                                     <span className="text-sm text-muted-foreground">
                                                                         {new Date(item.created_at).toLocaleString()}
                                                                     </span>
                                                                 </div>
-                                                                <div className="text-sm font-medium mb-1">
-                                                                    {item.note}
-                                                                </div>
-                                                                <div className="text-xs text-muted-foreground">
-                                                                    Added by: {item.user_name}
-                                                                </div>
+                                                                <div className="mb-1 text-sm font-medium">{item.note}</div>
+                                                                <div className="text-xs text-muted-foreground">Added by: {item.user_name}</div>
                                                             </div>
                                                         </div>
                                                     );
@@ -1064,14 +1070,17 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => {
-                                    resetNote();
-                                    setIsAddNoteOpen(false);
-                                }}>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        resetNote();
+                                        setIsAddNoteOpen(false);
+                                    }}
+                                >
                                     Cancel
                                 </Button>
                                 <Button
-                                    className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                    className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                                     disabled={noteProcessing || !noteData.note.trim()}
                                     onClick={handleAddNote}
                                 >
@@ -1084,12 +1093,9 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
 
                 {/* Export Dialog */}
                 <ExportEquipmentDialog open={isExportOpen} setOpen={setIsExportOpen} types={types} />
-
             </div>
         </AppLayout>
     );
 };
 
 export default EquipmentIndex;
-
-

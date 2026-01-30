@@ -1,12 +1,10 @@
-import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Save, X, Upload, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Save, Upload, X } from 'lucide-react';
+import { useState } from 'react';
 
 export default function EditGeeko({ formation, geeko }) {
-    const [previewImage, setPreviewImage] = useState(
-        geeko.cover_image ? `/storage/${geeko.cover_image}` : null
-    );
+    const [previewImage, setPreviewImage] = useState(geeko.cover_image ? `/storage/${geeko.cover_image}` : null);
 
     const { data, setData, put, processing, errors } = useForm({
         title: geeko.title || '',
@@ -39,134 +37,99 @@ export default function EditGeeko({ formation, geeko }) {
         <AppLayout>
             <Head title={`Edit ${geeko.title} - ${formation.name}`} />
 
-            <div className="min-h-screen p-6 bg-light dark:bg-dark">
+            <div className="min-h-screen bg-light p-6 dark:bg-dark">
                 {/* Header */}
                 <div className="mb-8">
-                    <button 
-                        onClick={goBack}
-                        className="flex items-center space-x-2 text-alpha hover:text-alpha/80 font-semibold mb-4"
-                    >
+                    <button onClick={goBack} className="mb-4 flex items-center space-x-2 font-semibold text-alpha hover:text-alpha/80">
                         <ArrowLeft size={20} />
                         <span>Back to {geeko.title}</span>
                     </button>
-                    
-                    <h1 className="text-4xl font-extrabold text-dark dark:text-light">
-                        Edit Geeko
-                    </h1>
-                    <p className="mt-2 text-dark/70 dark:text-light/70">
-                        Update your Geeko game settings
-                    </p>
+
+                    <h1 className="text-4xl font-extrabold text-dark dark:text-light">Edit Geeko</h1>
+                    <p className="mt-2 text-dark/70 dark:text-light/70">Update your Geeko game settings</p>
                 </div>
 
                 {/* Form */}
                 <div className="max-w-2xl">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Basic Information */}
-                        <div className="bg-light dark:bg-dark border border-alpha/20 rounded-2xl p-6">
-                            <h2 className="text-xl font-bold text-dark dark:text-light mb-6">Basic Information</h2>
-                            
+                        <div className="rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
+                            <h2 className="mb-6 text-xl font-bold text-dark dark:text-light">Basic Information</h2>
+
                             {/* Title */}
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                    Title *
-                                </label>
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Title *</label>
                                 <input
                                     type="text"
                                     value={data.title}
                                     onChange={(e) => setData('title', e.target.value)}
-                                    className="w-full border border-alpha/30 rounded-lg px-4 py-3 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                    className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-3 text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                     placeholder="Enter a catchy title for your Geeko game"
                                     required
                                 />
-                                {errors.title && (
-                                    <p className="text-error text-sm mt-1">{errors.title}</p>
-                                )}
+                                {errors.title && <p className="mt-1 text-sm text-error">{errors.title}</p>}
                             </div>
 
                             {/* Description */}
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                    Description
-                                </label>
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Description</label>
                                 <textarea
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}
                                     rows={3}
-                                    className="w-full border border-alpha/30 rounded-lg px-4 py-3 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                    className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-3 text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                     placeholder="Describe what this game is about (optional)"
                                 />
-                                {errors.description && (
-                                    <p className="text-error text-sm mt-1">{errors.description}</p>
-                                )}
+                                {errors.description && <p className="mt-1 text-sm text-error">{errors.description}</p>}
                             </div>
 
                             {/* Cover Image */}
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
-                                    Cover Image
-                                </label>
-                                <div className="border-2 border-dashed border-alpha/30 rounded-lg p-6 text-center hover:border-alpha/50 transition-colors">
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">Cover Image</label>
+                                <div className="rounded-lg border-2 border-dashed border-alpha/30 p-6 text-center transition-colors hover:border-alpha/50">
                                     {previewImage ? (
                                         <div className="relative">
-                                            <img 
-                                                src={previewImage} 
-                                                alt="Preview" 
-                                                className="w-full h-48 object-cover rounded-lg"
-                                            />
+                                            <img src={previewImage} alt="Preview" className="h-48 w-full rounded-lg object-cover" />
                                             <button
                                                 type="button"
                                                 onClick={() => {
                                                     setPreviewImage(null);
                                                     setData('cover_image', null);
                                                 }}
-                                                className="absolute top-2 right-2 bg-error text-light p-1 rounded-full hover:bg-error/80"
+                                                className="absolute top-2 right-2 rounded-full bg-error p-1 text-light hover:bg-error/80"
                                             >
                                                 <X size={16} />
                                             </button>
-                                            <div className="absolute bottom-2 left-2 right-2">
-                                                <label className="cursor-pointer bg-dark/70 text-light px-3 py-1 rounded-lg text-sm hover:bg-dark/80 transition-colors">
+                                            <div className="absolute right-2 bottom-2 left-2">
+                                                <label className="cursor-pointer rounded-lg bg-dark/70 px-3 py-1 text-sm text-light transition-colors hover:bg-dark/80">
                                                     Change Image
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={handleImageChange}
-                                                        className="hidden"
-                                                    />
+                                                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                                                 </label>
                                             </div>
                                         </div>
                                     ) : (
                                         <div>
-                                            <Upload className="mx-auto h-12 w-12 text-alpha/60 mb-4" />
+                                            <Upload className="mx-auto mb-4 h-12 w-12 text-alpha/60" />
                                             <label className="cursor-pointer">
-                                                <span className="text-alpha font-semibold">Click to upload</span>
+                                                <span className="font-semibold text-alpha">Click to upload</span>
                                                 <span className="text-dark/70 dark:text-light/70"> or drag and drop</span>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={handleImageChange}
-                                                    className="hidden"
-                                                />
+                                                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                                             </label>
-                                            <p className="text-xs text-dark/60 dark:text-light/60 mt-2">
-                                                PNG, JPG, GIF up to 2MB
-                                            </p>
+                                            <p className="mt-2 text-xs text-dark/60 dark:text-light/60">PNG, JPG, GIF up to 2MB</p>
                                         </div>
                                     )}
                                 </div>
-                                {errors.cover_image && (
-                                    <p className="text-error text-sm mt-1">{errors.cover_image}</p>
-                                )}
+                                {errors.cover_image && <p className="mt-1 text-sm text-error">{errors.cover_image}</p>}
                             </div>
                         </div>
 
                         {/* Game Settings */}
-                        <div className="bg-light dark:bg-dark border border-alpha/20 rounded-2xl p-6">
-                            <h2 className="text-xl font-bold text-dark dark:text-light mb-6">Game Settings</h2>
-                            
+                        <div className="rounded-2xl border border-alpha/20 bg-light p-6 dark:bg-dark">
+                            <h2 className="mb-6 text-xl font-bold text-dark dark:text-light">Game Settings</h2>
+
                             {/* Time Limit */}
                             <div className="mb-4">
-                                <label className="block text-sm font-semibold text-dark dark:text-light mb-2">
+                                <label className="mb-2 block text-sm font-semibold text-dark dark:text-light">
                                     Time Limit per Question (seconds) *
                                 </label>
                                 <input
@@ -175,15 +138,13 @@ export default function EditGeeko({ formation, geeko }) {
                                     max="300"
                                     value={data.time_limit}
                                     onChange={(e) => setData('time_limit', parseInt(e.target.value))}
-                                    className="w-full border border-alpha/30 rounded-lg px-4 py-3 bg-light dark:bg-dark text-dark dark:text-light focus:border-alpha focus:ring-2 focus:ring-alpha/20"
+                                    className="w-full rounded-lg border border-alpha/30 bg-light px-4 py-3 text-dark focus:border-alpha focus:ring-2 focus:ring-alpha/20 dark:bg-dark dark:text-light"
                                     required
                                 />
-                                <p className="text-xs text-dark/60 dark:text-light/60 mt-1">
+                                <p className="mt-1 text-xs text-dark/60 dark:text-light/60">
                                     Students will have this many seconds to answer each question
                                 </p>
-                                {errors.time_limit && (
-                                    <p className="text-error text-sm mt-1">{errors.time_limit}</p>
-                                )}
+                                {errors.time_limit && <p className="mt-1 text-sm text-error">{errors.time_limit}</p>}
                             </div>
 
                             {/* Show Correct Answers */}
@@ -193,7 +154,7 @@ export default function EditGeeko({ formation, geeko }) {
                                         type="checkbox"
                                         checked={data.show_correct_answers}
                                         onChange={(e) => setData('show_correct_answers', e.target.checked)}
-                                        className="w-5 h-5 text-alpha border-alpha/30 rounded focus:ring-alpha/20"
+                                        className="h-5 w-5 rounded border-alpha/30 text-alpha focus:ring-alpha/20"
                                     />
                                     <div>
                                         <span className="text-sm font-semibold text-dark dark:text-light">
@@ -212,16 +173,16 @@ export default function EditGeeko({ formation, geeko }) {
                             <button
                                 type="button"
                                 onClick={goBack}
-                                className="flex items-center space-x-2 px-6 py-3 border border-alpha/30 rounded-lg hover:bg-alpha/10 transition-colors"
+                                className="flex items-center space-x-2 rounded-lg border border-alpha/30 px-6 py-3 transition-colors hover:bg-alpha/10"
                             >
                                 <X size={16} />
                                 <span>Cancel</span>
                             </button>
-                            
+
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="flex items-center space-x-2 bg-alpha text-dark px-6 py-3 rounded-lg hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                className="flex items-center space-x-2 rounded-lg bg-alpha px-6 py-3 font-semibold text-dark transition-colors hover:bg-alpha/90 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 <Save size={16} />
                                 <span>{processing ? 'Saving...' : 'Save Changes'}</span>
@@ -232,30 +193,22 @@ export default function EditGeeko({ formation, geeko }) {
 
                 {/* Current Status */}
                 <div className="mt-8 max-w-2xl">
-                    <div className="bg-alpha/10 border border-alpha/20 rounded-2xl p-6">
-                        <h3 className="text-lg font-bold text-dark dark:text-light mb-4">
-                            Current Status
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-alpha/20 bg-alpha/10 p-6">
+                        <h3 className="mb-4 text-lg font-bold text-dark dark:text-light">Current Status</h3>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div className="text-center">
-                                <div className="text-2xl mb-2">
-                                    {geeko.status === 'ready' ? '✅' : '📝'}
-                                </div>
+                                <div className="mb-2 text-2xl">{geeko.status === 'ready' ? '✅' : '📝'}</div>
                                 <div className="text-sm font-semibold text-dark dark:text-light">
                                     {geeko.status === 'ready' ? 'Ready to Play' : 'Draft Mode'}
                                 </div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl mb-2">📝</div>
-                                <div className="text-sm font-semibold text-dark dark:text-light">
-                                    {geeko.questions?.length || 0} Questions
-                                </div>
+                                <div className="mb-2 text-2xl">📝</div>
+                                <div className="text-sm font-semibold text-dark dark:text-light">{geeko.questions?.length || 0} Questions</div>
                             </div>
                             <div className="text-center">
-                                <div className="text-2xl mb-2">🎮</div>
-                                <div className="text-sm font-semibold text-dark dark:text-light">
-                                    {geeko.sessions?.length || 0} Sessions Played
-                                </div>
+                                <div className="mb-2 text-2xl">🎮</div>
+                                <div className="text-sm font-semibold text-dark dark:text-light">{geeko.sessions?.length || 0} Sessions Played</div>
                             </div>
                         </div>
                     </div>
@@ -264,16 +217,14 @@ export default function EditGeeko({ formation, geeko }) {
                 {/* Warning */}
                 {geeko.status === 'ready' && (
                     <div className="mt-6 max-w-2xl">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
+                        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
                             <div className="flex items-start space-x-3">
-                                <div className="text-yellow-500 text-lg">⚠️</div>
+                                <div className="text-lg text-yellow-500">⚠️</div>
                                 <div>
-                                    <h4 className="text-yellow-800 font-semibold mb-1">
-                                        Note about editing ready games
-                                    </h4>
-                                    <p className="text-yellow-700 text-sm">
-                                        This Geeko is currently marked as "Ready" and can be played by students. 
-                                        Changes you make here will apply to future game sessions.
+                                    <h4 className="mb-1 font-semibold text-yellow-800">Note about editing ready games</h4>
+                                    <p className="text-sm text-yellow-700">
+                                        This Geeko is currently marked as "Ready" and can be played by students. Changes you make here will apply to
+                                        future game sessions.
                                     </p>
                                 </div>
                             </div>

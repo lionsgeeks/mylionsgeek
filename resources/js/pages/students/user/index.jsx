@@ -1,22 +1,20 @@
-import React, { useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import LeftSideBar from './partials/feed/LeftSideBar';
 import CenterFeed from './partials/feed/CenterFeed';
+import LeftSideBar from './partials/feed/LeftSideBar';
 // import RightSideBar from './partials/RightSideBar';
 
-
 export default function StudentFeed({ user, posts }) {
-    const currentUser = user.user
-    const currentPosts = posts.posts
+    const currentUser = user.user;
+    const currentPosts = posts.posts;
 
     return (
         <>
             <AppLayout>
-                <div className='z-30 dark:bg-dark'>
-                    <div className="min-h-screen  bg-transparent ">
+                <div className="z-30 dark:bg-dark">
+                    <div className="min-h-screen bg-transparent">
                         {/* Main Container */}
-                        <div className="max-w-7xl  mx-auto px-4 bg-blend-darken">
-                            <div className="grid relative grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div className="mx-auto max-w-7xl px-4 bg-blend-darken">
+                            <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-12">
                                 <LeftSideBar user={currentUser} />
                                 <CenterFeed user={currentUser} posts={currentPosts} />
                                 {/* <RightSideBar /> */}
@@ -28,6 +26,3 @@ export default function StudentFeed({ user, posts }) {
         </>
     );
 }
-
-
-

@@ -1,8 +1,8 @@
-import { X, InstagramIcon, GithubIcon, LinkedinIcon, ExternalLink, Briefcase } from 'lucide-react';
+import InputError from '@/components/input-error';
+import { useForm } from '@inertiajs/react';
+import { Briefcase, ExternalLink, GithubIcon, InstagramIcon, LinkedinIcon, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { helpers } from './utils/helpers';
-import { useForm, usePage } from '@inertiajs/react';
-import InputError from '@/components/input-error';
 
 const platformIcons = {
     instagram: InstagramIcon,
@@ -25,14 +25,12 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
 
     const isEdit = Boolean(initialLink?.id);
 
-
     const [validationError, setValidationError] = useState('');
 
     const { data, setData, processing, errors, reset, clearErrors, post, put } = useForm({
         title: initialLink?.title || '',
         url: initialLink?.url || '',
     });
-
 
     useEffect(() => {
         stopScrolling(onOpen);
@@ -59,7 +57,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
     const validateUrl = () => {
         if (!data.title || !data.url) return false;
 
-        const platform = platforms.find(p => p.value === data.title);
+        const platform = platforms.find((p) => p.value === data.title);
         if (!platform) return false;
 
         // Portfolio doesn't require domain validation
@@ -76,7 +74,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
         }
 
         const urlLower = data.url.toLowerCase();
-        const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
+        const isValidDomain = platform.domains.some((domain) => urlLower.includes(domain));
 
         if (!isValidDomain) {
             setValidationError(`URL must contain ${platform.domains.join(' or ')}`);
@@ -114,26 +112,25 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
 
     return (
         <>
-            <div onClick={() => onOpenChange(false)} className="fixed inset-0 h-full z-30 bg-black/50 dark:bg-black/70 backdrop-blur-md transition-all duration-300" />
-            <div className="fixed inset-0 h-fit mx-auto w-[70%] sm:w-[520px] bg-light dark:bg-beta rounded-lg top-1/2 -translate-y-1/2 z-50 overflow-hidden flex flex-col">
-                <div className="bg-light dark:bg-dark w-full rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-                    <div className="sticky top-0 bg-light dark:bg-dark border-b border-beta/20 dark:border-light/10 p-4 flex items-center justify-between">
-                        <h2 className="text-xl font-semibold text-beta dark:text-light">
-                            {isEdit ? 'Edit link' : 'Add link'}
-                        </h2>
+            <div
+                onClick={() => onOpenChange(false)}
+                className="fixed inset-0 z-30 h-full bg-black/50 backdrop-blur-md transition-all duration-300 dark:bg-black/70"
+            />
+            <div className="fixed inset-0 top-1/2 z-50 mx-auto flex h-fit w-[70%] -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-light sm:w-[520px] dark:bg-beta">
+                <div className="max-h-[90vh] w-full overflow-y-auto rounded-lg bg-light shadow-2xl dark:bg-dark">
+                    <div className="sticky top-0 flex items-center justify-between border-b border-beta/20 bg-light p-4 dark:border-light/10 dark:bg-dark">
+                        <h2 className="text-xl font-semibold text-beta dark:text-light">{isEdit ? 'Edit link' : 'Add link'}</h2>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="text-beta/60 dark:text-light/60 hover:text-beta dark:hover:text-light transition-colors cursor-pointer"
+                            className="cursor-pointer text-beta/60 transition-colors hover:text-beta dark:text-light/60 dark:hover:text-light"
                         >
                             <X size={24} />
                         </button>
                     </div>
 
-                    <div className="p-6 space-y-4">
+                    <div className="space-y-4 p-6">
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                Platform*
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">Platform*</label>
                             <select
                                 name="title"
                                 value={data.title}
@@ -141,10 +138,10 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
                                     setData('title', e.target.value);
                                     setValidationError('');
                                 }}
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             >
                                 <option value="">Select a platform</option>
-                                {availiblePlatfroms.map(platform => (
+                                {availiblePlatfroms.map((platform) => (
                                     <option key={platform.value} value={platform.value}>
                                         {platform.label}
                                     </option>
@@ -154,9 +151,7 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-beta dark:text-light mb-2">
-                                URL*
-                            </label>
+                            <label className="mb-2 block text-sm font-medium text-beta dark:text-light">URL*</label>
                             <input
                                 type="url"
                                 name="url"
@@ -166,26 +161,24 @@ const CreateSocialLinkModal = ({ onOpen, onOpenChange, initialLink = null, avail
                                     setValidationError('');
                                 }}
                                 placeholder={`https://example.com/username`}
-                                className="w-full px-3 py-2 bg-light dark:bg-dark_gray border border-beta/30 dark:border-light/20 rounded text-beta dark:text-light placeholder:text-beta/50 dark:placeholder:text-light/50 focus:outline-none focus:border-alpha focus:ring-1 focus:ring-alpha"
+                                className="w-full rounded border border-beta/30 bg-light px-3 py-2 text-beta placeholder:text-beta/50 focus:border-alpha focus:ring-1 focus:ring-alpha focus:outline-none dark:border-light/20 dark:bg-dark_gray dark:text-light dark:placeholder:text-light/50"
                             />
                             <InputError message={errors.url} className="mt-1" />
-                            {validationError && (
-                                <p className="text-error text-xs mt-1">{validationError}</p>
-                            )}
+                            {validationError && <p className="mt-1 text-xs text-error">{validationError}</p>}
                         </div>
                     </div>
 
-                    <div className="sticky bottom-0 bg-light dark:bg-dark border-t border-beta/20 dark:border-light/10 p-4 flex justify-end gap-3">
+                    <div className="sticky bottom-0 flex justify-end gap-3 border-t border-beta/20 bg-light p-4 dark:border-light/10 dark:bg-dark">
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="px-6 py-2 border border-beta/30 dark:border-light/30 text-beta dark:text-light rounded-full font-medium hover:bg-beta/5 dark:hover:bg-light/5 transition-colors cursor-pointer"
+                            className="cursor-pointer rounded-full border border-beta/30 px-6 py-2 font-medium text-beta transition-colors hover:bg-beta/5 dark:border-light/30 dark:text-light dark:hover:bg-light/5"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={submit}
                             disabled={processing}
-                            className="px-6 py-2 bg-alpha text-beta dark:text-dark rounded-full font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            className="cursor-pointer rounded-full bg-alpha px-6 py-2 font-medium text-beta transition-colors hover:bg-alpha/90 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark"
                         >
                             {processing ? 'Saving...' : 'Save'}
                         </button>

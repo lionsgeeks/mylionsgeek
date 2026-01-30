@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import StatCard from '@/components/StatCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, TrendingUp, Calendar, Users, Package, Building2, Clock, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import StatCard from '@/components/StatCard';
+import { ArrowLeft, BarChart3, Building2, Calendar, ChevronLeft, ChevronRight, Clock, Package, TrendingUp, Users } from 'lucide-react';
+import { useState } from 'react';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
@@ -18,7 +18,7 @@ export default function Analytics({
     topEquipment = [],
     damagedEquipment = [],
     activeEquipment = [],
-    monthlyTrend = []
+    monthlyTrend = [],
 }) {
     const [userPage, setUserPage] = useState(1);
     const [equipmentPage, setEquipmentPage] = useState(1);
@@ -58,38 +58,36 @@ export default function Analytics({
             value: totalStats.total_equipment || 0,
             icon: Package,
         },
-
     ];
 
     return (
         <AppLayout>
             <Head title="Reservation Analytics" />
 
-            <div className="px-4 py-6 sm:p-8 lg:p-10 max-w-7xl mx-auto">
+            <div className="mx-auto max-w-7xl px-4 py-6 sm:p-8 lg:p-10">
                 {/* Header */}
                 <div className="mb-6">
-                    <Link
-                        href="/admin/reservations"
-                        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
+                    <Link href="/admin/reservations" className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Reservations
                     </Link>
 
-                    <h1 className="text-3xl font-bold text-foreground mb-2">Reservation Analytics & Reporting</h1>
+                    <h1 className="mb-2 text-3xl font-bold text-foreground">Reservation Analytics & Reporting</h1>
                     <p className="text-muted-foreground">Comprehensive statistics and insights about reservations, studios, equipment, and users</p>
                 </div>
 
                 <StatCard statsData={overviewStats} />
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 my-8">
+                <div className="my-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
                     {/* Studio Reservations Chart */}
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Building2 className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                                <Building2 className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 Studio Reservations
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">{studioTotal}</span>
+                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                                    {studioTotal}
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -109,7 +107,7 @@ export default function Analytics({
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <TrendingUp className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
+                                <TrendingUp className="mr-2 h-5 w-5 text-green-600 dark:text-green-400" />
                                 Monthly Reservation Trend
                             </CardTitle>
                         </CardHeader>
@@ -127,14 +125,16 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
                     {/* Top Equipment */}
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
+                                <Package className="mr-2 h-5 w-5 text-purple-600 dark:text-purple-400" />
                                 Most Reserved Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">{topEquipmentTotal}</span>
+                                <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-500/20 dark:text-purple-300">
+                                    {topEquipmentTotal}
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -142,19 +142,22 @@ export default function Analytics({
                                 {(topEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topEquipment, equipmentPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 border rounded-xl hover:shadow-md transition-shadow">
+                                            <div
+                                                key={index}
+                                                className="flex items-center space-x-3 rounded-xl border p-4 transition-shadow hover:shadow-md"
+                                            >
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-purple-200 dark:border-purple-800/60 shadow-sm"
+                                                        className="h-16 w-16 rounded-lg border-2 border-purple-200 object-cover shadow-sm dark:border-purple-800/60"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-purple-200 dark:bg-purple-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-purple-200 shadow-sm dark:bg-purple-900/40">
                                                         <Package className="h-8 w-8 text-purple-600 dark:text-purple-300" />
                                                     </div>
                                                 )}
-                                                <div className="flex-1 min-w-0">
+                                                <div className="min-w-0 flex-1">
                                                     <p className="font-bold text-foreground">{eq.mark}</p>
                                                     <p className="text-sm text-muted-foreground">{eq.reference}</p>
                                                     <p className="text-xs text-muted-foreground">{eq.type_name}</p>
@@ -166,29 +169,29 @@ export default function Analytics({
                                             </div>
                                         ))}
                                         {totalEquipmentPages > 1 && (
-                                            <div className="flex items-center justify-center gap-2 pt-3 border-t">
+                                            <div className="flex items-center justify-center gap-2 border-t pt-3">
                                                 <button
-                                                    onClick={() => setEquipmentPage(p => Math.max(1, p - 1))}
+                                                    onClick={() => setEquipmentPage((p) => Math.max(1, p - 1))}
                                                     disabled={equipmentPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-purple-900/30"
                                                 >
-                                                    <ChevronLeft className="w-5 h-5" />
+                                                    <ChevronLeft className="h-5 w-5" />
                                                 </button>
                                                 <span className="text-sm text-muted-foreground">
                                                     Page {equipmentPage} of {totalEquipmentPages}
                                                 </span>
                                                 <button
-                                                    onClick={() => setEquipmentPage(p => Math.min(totalEquipmentPages, p + 1))}
+                                                    onClick={() => setEquipmentPage((p) => Math.min(totalEquipmentPages, p + 1))}
                                                     disabled={equipmentPage === totalEquipmentPages}
-                                                    className="p-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-purple-900/30"
                                                 >
-                                                    <ChevronRight className="w-5 h-5" />
+                                                    <ChevronRight className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-muted-foreground text-center py-8">No equipment data available</p>
+                                    <p className="py-8 text-center text-muted-foreground">No equipment data available</p>
                                 )}
                             </div>
                         </CardContent>
@@ -198,9 +201,11 @@ export default function Analytics({
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-red-600 dark:text-red-400" />
+                                <Package className="mr-2 h-5 w-5 text-red-600 dark:text-red-400" />
                                 Damaged Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300">{damagedTotal}</span>
+                                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-500/20 dark:text-red-300">
+                                    {damagedTotal}
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -208,19 +213,22 @@ export default function Analytics({
                                 {(damagedEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(damagedEquipment, damagedPage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 border rounded-xl hover:shadow-md transition-shadow">
+                                            <div
+                                                key={index}
+                                                className="flex items-center space-x-3 rounded-xl border p-4 transition-shadow hover:shadow-md"
+                                            >
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-red-200 dark:border-red-800/60 flex-shrink-0"
+                                                        className="h-16 w-16 flex-shrink-0 rounded-lg border-2 border-red-200 object-cover dark:border-red-800/60"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-red-200 dark:bg-red-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-red-200 shadow-sm dark:bg-red-900/40">
                                                         <Package className="h-8 w-8 text-red-600 dark:text-red-300" />
                                                     </div>
                                                 )}
-                                                <div className="flex-1 min-w-0">
+                                                <div className="min-w-0 flex-1">
                                                     <p className="font-bold text-foreground">{eq.mark}</p>
                                                     <p className="text-sm text-muted-foreground">{eq.reference}</p>
                                                     <p className="text-xs text-muted-foreground">{eq.type_name}</p>
@@ -228,43 +236,45 @@ export default function Analytics({
                                             </div>
                                         ))}
                                         {totalDamagedPages > 1 && (
-                                            <div className="flex items-center justify-center gap-2 pt-3 border-t">
+                                            <div className="flex items-center justify-center gap-2 border-t pt-3">
                                                 <button
-                                                    onClick={() => setDamagedPage(p => Math.max(1, p - 1))}
+                                                    onClick={() => setDamagedPage((p) => Math.max(1, p - 1))}
                                                     disabled={damagedPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-900/30"
                                                 >
-                                                    <ChevronLeft className="w-5 h-5" />
+                                                    <ChevronLeft className="h-5 w-5" />
                                                 </button>
                                                 <span className="text-sm text-muted-foreground">
                                                     Page {damagedPage} of {totalDamagedPages}
                                                 </span>
                                                 <button
-                                                    onClick={() => setDamagedPage(p => Math.min(totalDamagedPages, p + 1))}
+                                                    onClick={() => setDamagedPage((p) => Math.min(totalDamagedPages, p + 1))}
                                                     disabled={damagedPage === totalDamagedPages}
-                                                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-900/30"
                                                 >
-                                                    <ChevronRight className="w-5 h-5" />
+                                                    <ChevronRight className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-muted-foreground text-center py-8">No damaged equipment</p>
+                                    <p className="py-8 text-center text-muted-foreground">No damaged equipment</p>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="mb-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
                     {/* Active Equipment */}
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Package className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
-                                    Active Equipment
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">{activeTotal}</span>
+                                <Package className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                Active Equipment
+                                <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/20 dark:text-blue-300">
+                                    {activeTotal}
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -272,19 +282,22 @@ export default function Analytics({
                                 {(activeEquipment?.length || 0) > 0 ? (
                                     <>
                                         {paginate(activeEquipment, activePage).map((eq, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 rounded-xl hover:shadow-md transition-shadow">
+                                            <div
+                                                key={index}
+                                                className="flex items-center space-x-3 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100 p-4 transition-shadow hover:shadow-md dark:from-blue-900/20 dark:to-blue-900/10"
+                                            >
                                                 {eq.image ? (
                                                     <img
                                                         src={eq.image}
                                                         alt={eq.mark}
-                                                        className="h-16 w-16 object-cover rounded-lg border-2 border-blue-200 dark:border-blue-800/60 flex-shrink-0 shadow-sm"
+                                                        className="h-16 w-16 flex-shrink-0 rounded-lg border-2 border-blue-200 object-cover shadow-sm dark:border-blue-800/60"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16 bg-blue-200 dark:bg-blue-900/40 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-blue-200 shadow-sm dark:bg-blue-900/40">
                                                         <Package className="h-8 w-8 text-blue-600 dark:text-blue-300" />
                                                     </div>
                                                 )}
-                                                <div className="flex-1 min-w-0">
+                                                <div className="min-w-0 flex-1">
                                                     <p className="font-bold text-foreground">{eq.mark}</p>
                                                     <p className="text-sm text-muted-foreground">{eq.reference}</p>
                                                     <p className="text-xs text-muted-foreground">{eq.type_name}</p>
@@ -292,29 +305,29 @@ export default function Analytics({
                                             </div>
                                         ))}
                                         {totalActivePages > 1 && (
-                                            <div className="flex items-center justify-center gap-2 pt-3 border-t">
+                                            <div className="flex items-center justify-center gap-2 border-t pt-3">
                                                 <button
-                                                    onClick={() => setActivePage(p => Math.max(1, p - 1))}
+                                                    onClick={() => setActivePage((p) => Math.max(1, p - 1))}
                                                     disabled={activePage === 1}
-                                                    className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-blue-900/30"
                                                 >
-                                                    <ChevronLeft className="w-5 h-5" />
+                                                    <ChevronLeft className="h-5 w-5" />
                                                 </button>
                                                 <span className="text-sm text-muted-foreground">
                                                     Page {activePage} of {totalActivePages}
                                                 </span>
                                                 <button
-                                                    onClick={() => setActivePage(p => Math.min(totalActivePages, p + 1))}
+                                                    onClick={() => setActivePage((p) => Math.min(totalActivePages, p + 1))}
                                                     disabled={activePage === totalActivePages}
-                                                    className="p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-blue-900/30"
                                                 >
-                                                    <ChevronRight className="w-5 h-5" />
+                                                    <ChevronRight className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-muted-foreground text-center py-8">No active equipment right now</p>
+                                    <p className="py-8 text-center text-muted-foreground">No active equipment right now</p>
                                 )}
                             </div>
                         </CardContent>
@@ -324,7 +337,7 @@ export default function Analytics({
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <BarChart3 className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+                                <BarChart3 className="mr-2 h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                 Active Equipment by Type
                             </CardTitle>
                         </CardHeader>
@@ -337,7 +350,7 @@ export default function Analytics({
                                 }, {});
                                 const data = Object.entries(counts).map(([name, value]) => ({ name, value }));
                                 if (data.length === 0) {
-                                    return <p className="text-muted-foreground text-center py-8">No active equipment data</p>;
+                                    return <p className="py-8 text-center text-muted-foreground">No active equipment data</p>;
                                 }
                                 return (
                                     <div className="h-72">
@@ -359,14 +372,16 @@ export default function Analytics({
                     </Card>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
                     {/* Top Users */}
                     <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Users className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" />
+                                <Users className="mr-2 h-5 w-5 text-green-600 dark:text-green-400" />
                                 Most Active Users
-                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300">{usersTotal}</span>
+                                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-500/20 dark:text-green-300">
+                                    {usersTotal}
+                                </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -374,84 +389,93 @@ export default function Analytics({
                                 {(topUsers?.length || 0) > 0 ? (
                                     <>
                                         {paginate(topUsers, userPage).map((user, index) => (
-                                            <div key={index} className="flex items-center space-x-3 p-4 border  rounded-xl hover:shadow-md transition-shadow">
+                                            <div
+                                                key={index}
+                                                className="flex items-center space-x-3 rounded-xl border p-4 transition-shadow hover:shadow-md"
+                                            >
                                                 {user.image ? (
                                                     <img
                                                         src={user.image}
                                                         alt={user.name}
-                                                        className="h-16 w-16 object-cover rounded-full border-2 border-green-200 flex-shrink-0"
+                                                        className="h-16 w-16 flex-shrink-0 rounded-full border-2 border-green-200 object-cover"
                                                     />
                                                 ) : (
-                                                    <div className="h-16 w-16  rounded-full flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-white font-bold text-lg">
+                                                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full">
+                                                        <span className="text-lg font-bold text-white">
                                                             {user.name?.charAt(0).toUpperCase() || '?'}
                                                         </span>
                                                     </div>
                                                 )}
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-foreground"># {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}</p>
-                                                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-bold text-foreground">
+                                                        # {(userPage - 1) * ITEMS_PER_PAGE + index + 1} {user.name}
+                                                    </p>
+                                                    <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                                                 </div>
-                                                <div className="text-right flex-shrink-0">
+                                                <div className="flex-shrink-0 text-right">
                                                     <div className="text-2xl font-bold text-green-600 dark:text-green-300">{user.count}</div>
                                                     <p className="text-xs text-muted-foreground">reservations</p>
                                                 </div>
                                             </div>
                                         ))}
                                         {totalUserPages > 1 && (
-                                            <div className="flex items-center justify-center gap-2 pt-3 border-t">
+                                            <div className="flex items-center justify-center gap-2 border-t pt-3">
                                                 <button
-                                                    onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                                    onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                                                     disabled={userPage === 1}
-                                                    className="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-green-900/30"
                                                 >
-                                                    <ChevronLeft className="w-5 h-5" />
+                                                    <ChevronLeft className="h-5 w-5" />
                                                 </button>
                                                 <span className="text-sm text-muted-foreground">
                                                     Page {userPage} of {totalUserPages}
                                                 </span>
                                                 <button
-                                                    onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                                                    onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
                                                     disabled={userPage === totalUserPages}
-                                                    className="p-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="rounded-lg p-2 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-green-900/30"
                                                 >
-                                                    <ChevronRight className="w-5 h-5" />
+                                                    <ChevronRight className="h-5 w-5" />
                                                 </button>
                                             </div>
                                         )}
                                     </>
                                 ) : (
-                                    <p className="text-muted-foreground text-center py-8">No user data available</p>
+                                    <p className="py-8 text-center text-muted-foreground">No user data available</p>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Time Slot Statistics */}
-                    <Card className="bg-light dark:bg-dark ">
+                    <Card className="bg-light dark:bg-dark">
                         <CardHeader>
                             <CardTitle className="flex items-center">
-                                <Clock className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
+                                <Clock className="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 Time Slot Statistics
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
                                 {timeSlotStats.most_reserved && (
-                                    <div className="p-4  rounded-lg border border-green-200 dark:border-green-800/50">
-                                        <div className="flex items-center justify-between mb-2">
+                                    <div className="rounded-lg border border-green-200 p-4 dark:border-green-800/50">
+                                        <div className="mb-2 flex items-center justify-between">
                                             <span className="font-semibold text-dark dark:text-light">Most Reserved Time:</span>
-                                            <span className="text-2xl font-bold text-green-700 dark:text-green-300">{timeSlotStats.most_reserved.time}</span>
+                                            <span className="text-2xl font-bold text-green-700 dark:text-green-300">
+                                                {timeSlotStats.most_reserved.time}
+                                            </span>
                                         </div>
                                         <p className="text-sm text-dark dark:text-light">{timeSlotStats.most_reserved.count} reservations</p>
                                     </div>
                                 )}
 
                                 {timeSlotStats.least_reserved && (
-                                    <div className="p-4  rounded-lg border border-orange-200 dark:border-orange-800/50">
-                                        <div className="flex items-center justify-between mb-2">
+                                    <div className="rounded-lg border border-orange-200 p-4 dark:border-orange-800/50">
+                                        <div className="mb-2 flex items-center justify-between">
                                             <span className="font-semibold text-dark dark:text-light">Least Reserved Time:</span>
-                                            <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">{timeSlotStats.least_reserved.time}</span>
+                                            <span className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                                                {timeSlotStats.least_reserved.time}
+                                            </span>
                                         </div>
                                         <p className="text-sm text-dark dark:text-light">{timeSlotStats.least_reserved.count} reservations</p>
                                     </div>
@@ -464,4 +488,3 @@ export default function Analytics({
         </AppLayout>
     );
 }
-

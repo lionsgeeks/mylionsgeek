@@ -1,25 +1,42 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router, usePage } from '@inertiajs/react';
+import Banner from '@/components/banner';
+import FlashMessage from '@/components/FlashMessage';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Pencil, Trash, MoreVertical, Plus, Search, Filter, SortAsc, SortDesc, Bell, X, Users, Calendar, FileText, Star, UserPlus, Eye, CheckSquare } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Clock, AlertCircle, FolderOpen, Share2 } from 'lucide-react';
-import Banner from "@/components/banner"
-import illustration from "../../../../../public/assets/images/banner/Organizing projects-pana.png"
-import AdvancedInviteModal from './components/AdvancedInviteModal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
-import { Avatar, } from '@/components/ui/avatar';
-import FlashMessage from '@/components/FlashMessage';
-
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import {
+    AlertCircle,
+    Bell,
+    Calendar,
+    CheckCircle,
+    CheckSquare,
+    Clock,
+    Eye,
+    Filter,
+    FolderOpen,
+    MoreVertical,
+    Pencil,
+    Plus,
+    Search,
+    Share2,
+    Star,
+    Trash,
+    UserPlus,
+    Users,
+    X,
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import illustration from '../../../../../public/assets/images/banner/Organizing projects-pana.png';
+import AdvancedInviteModal from './components/AdvancedInviteModal';
 
 const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -51,106 +68,123 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     const [sortOrder, setSortOrder] = useState(filters?.sort_order || 'desc');
     const getInitials = useInitials();
 
-    const { data, setData, post, put, delete: destroy, processing, errors } = useForm({
+    const {
+        data,
+        setData,
+        post,
+        put,
+        delete: destroy,
+        processing,
+        errors,
+    } = useForm({
         name: '',
         description: '',
         photo: null,
         start_date: '',
         end_date: '',
         status: 'active',
-        predefined_tasks: []
+        predefined_tasks: [],
     });
 
     // Predefined tasks options
     const predefinedTasksOptions = [
         { value: 'creation_du_site_web', label: 'Creation du site web' },
         { value: 'creation_de_contenue_reseaux_sociaux', label: 'Creation de contenue sur les reseau sociaux' },
-        { value: 'shooting_images_videos', label: 'Shooting and images and videos' }
+        { value: 'shooting_images_videos', label: 'Shooting and images and videos' },
     ];
 
-    const handleCreate = useCallback((e) => {
-        e.preventDefault();
+    const handleCreate = useCallback(
+        (e) => {
+            e.preventDefault();
 
-        // Transform data to FormData if photo is present
-        const formData = new FormData();
-        formData.append('name', data.name);
-        formData.append('description', data.description || '');
-        formData.append('status', data.status);
-        formData.append('start_date', data.start_date || '');
-        formData.append('end_date', data.end_date || '');
+            // Transform data to FormData if photo is present
+            const formData = new FormData();
+            formData.append('name', data.name);
+            formData.append('description', data.description || '');
+            formData.append('status', data.status);
+            formData.append('start_date', data.start_date || '');
+            formData.append('end_date', data.end_date || '');
 
-        // Append predefined tasks as array (Laravel handles arrays in FormData natively)
-        if (data.predefined_tasks && data.predefined_tasks.length > 0) {
-            data.predefined_tasks.forEach((task, index) => {
-                formData.append(`predefined_tasks[${index}]`, task);
+            // Append predefined tasks as array (Laravel handles arrays in FormData natively)
+            if (data.predefined_tasks && data.predefined_tasks.length > 0) {
+                data.predefined_tasks.forEach((task, index) => {
+                    formData.append(`predefined_tasks[${index}]`, task);
+                });
+            }
+
+            if (data.photo) {
+                formData.append('photo', data.photo);
+            }
+
+            post('/admin/projects', formData, {
+                onSuccess: () => {
+                    setIsCreateModalOpen(false);
+                    setData({
+                        name: '',
+                        description: '',
+                        photo: null,
+                        start_date: '',
+                        end_date: '',
+                        status: 'active',
+                        predefined_tasks: [],
+                    });
+                },
             });
-        }
+        },
+        [post, setData, data],
+    );
 
-        if (data.photo) {
-            formData.append('photo', data.photo);
-        }
+    const handleEdit = useCallback(
+        (project) => {
+            setEditingProject(project);
+            setData({
+                name: project.name,
+                description: project.description || '',
+                photo: project.photo || null, // Keep existing photo
+                start_date: project.start_date ? project.start_date.split('T')[0] : '', // Format for date input
+                end_date: project.end_date ? project.end_date.split('T')[0] : '', // Format for date input
+                status: project.status,
+            });
+            setIsEditModalOpen(true);
+        },
+        [setData],
+    );
 
-        post('/admin/projects', formData, {
-            onSuccess: () => {
-                setIsCreateModalOpen(false);
-                setData({
-                    name: '',
-                    description: '',
-                    photo: null,
-                    start_date: '',
-                    end_date: '',
-                    status: 'active',
-                    predefined_tasks: []
-                });
+    const handleUpdate = useCallback(
+        (e) => {
+            e.preventDefault();
+            //(data.photo);
+
+            // Transform data to FormData if photo is present
+            const formData = new FormData();
+            formData.append('_method', 'PUT');
+            formData.append('name', data.name);
+            formData.append('description', data.description || '');
+            formData.append('status', data.status);
+            formData.append('start_date', data.start_date || '');
+            formData.append('end_date', data.end_date || '');
+
+            if (data.photo) {
+                formData.append('photo', data.photo);
             }
-        });
-    }, [post, setData, data]);
 
-    const handleEdit = useCallback((project) => {
-        setEditingProject(project);
-        setData({
-            name: project.name,
-            description: project.description || '',
-            photo: project.photo || null, // Keep existing photo
-            start_date: project.start_date ? project.start_date.split('T')[0] : '', // Format for date input
-            end_date: project.end_date ? project.end_date.split('T')[0] : '', // Format for date input
-            status: project.status
-        });
-        setIsEditModalOpen(true);
-    }, [setData]);
-
-    const handleUpdate = useCallback((e) => {
-        e.preventDefault();
-        //(data.photo);
-
-        // Transform data to FormData if photo is present
-        const formData = new FormData();
-        formData.append('_method', 'PUT');
-        formData.append('name', data.name);
-        formData.append('description', data.description || '');
-        formData.append('status', data.status);
-        formData.append('start_date', data.start_date || '');
-        formData.append('end_date', data.end_date || '');
-
-        if (data.photo) {
-            formData.append('photo', data.photo);
-        }
-
-        post(`/admin/projects/${editingProject.id}`, formData, {
-            onSuccess: () => {
-                setIsEditModalOpen(false);
-                setEditingProject(null);
-                setData({
-                    name: '',
-                    description: '',
-                    photo: null,
-                    start_date: '',
-                    end_date: '',
-                    status: 'active'
-                });
-            }
-        });
-    }, [post, editingProject, setData, data]);
+            post(`/admin/projects/${editingProject.id}`, formData, {
+                onSuccess: () => {
+                    setIsEditModalOpen(false);
+                    setEditingProject(null);
+                    setData({
+                        name: '',
+                        description: '',
+                        photo: null,
+                        start_date: '',
+                        end_date: '',
+                        status: 'active',
+                    });
+                },
+            });
+        },
+        [post, editingProject, setData, data],
+    );
 
     const handleDelete = useCallback((project) => {
         setDeletingProject(project);
@@ -163,7 +197,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                 onSuccess: () => {
                     setIsDeleteModalOpen(false);
                     setDeletingProject(null);
-                }
+                },
             });
         }
     }, [destroy, deletingProject]);
@@ -174,95 +208,116 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     }, []);
 
     const handleSearch = useCallback(() => {
-        router.get('/admin/projects', {
-            search: searchTerm,
-            status: statusFilter === 'all' ? '' : statusFilter,
-            sort_by: sortBy,
-            sort_order: sortOrder
-        }, {
-            preserveState: true,
-            replace: true
-        });
+        router.get(
+            '/admin/projects',
+            {
+                search: searchTerm,
+                status: statusFilter === 'all' ? '' : statusFilter,
+                sort_by: sortBy,
+                sort_order: sortOrder,
+            },
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
     }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
-    const handleSort = useCallback((field) => {
-        const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
-        setSortBy(field);
-        setSortOrder(newOrder);
-        router.get('/admin/projects', {
-            search: searchTerm,
-            status: statusFilter === 'all' ? '' : statusFilter,
-            sort_by: field,
-            sort_order: newOrder
-        }, {
-            preserveState: true,
-            replace: true
-        });
-    }, [searchTerm, statusFilter, sortBy, sortOrder]);
+    const handleSort = useCallback(
+        (field) => {
+            const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
+            setSortBy(field);
+            setSortOrder(newOrder);
+            router.get(
+                '/admin/projects',
+                {
+                    search: searchTerm,
+                    status: statusFilter === 'all' ? '' : statusFilter,
+                    sort_by: field,
+                    sort_order: newOrder,
+                },
+                {
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        },
+        [searchTerm, statusFilter, sortBy, sortOrder],
+    );
 
     const handleFilter = useCallback(() => {
-        router.get('/admin/projects', {
-            search: searchTerm,
-            status: statusFilter === 'all' ? '' : statusFilter,
-            sort_by: sortBy,
-            sort_order: sortOrder
-        }, {
-            preserveState: true,
-            replace: true
-        });
+        router.get(
+            '/admin/projects',
+            {
+                search: searchTerm,
+                status: statusFilter === 'all' ? '' : statusFilter,
+                sort_by: sortBy,
+                sort_order: sortOrder,
+            },
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
     }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
     const getStatusColor = useCallback((status) => {
         switch (status) {
-            case 'active': return 'bg-green-100 text-green-800';
-            case 'completed': return 'bg-blue-100 text-blue-800';
-            case 'on_hold': return 'bg-yellow-100 text-yellow-800';
-            case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'active':
+                return 'bg-green-100 text-green-800';
+            case 'completed':
+                return 'bg-blue-100 text-blue-800';
+            case 'on_hold':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'cancelled':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     }, []);
 
     const getStatusIcon = useCallback((status) => {
         switch (status) {
-            case 'active': return <CheckCircle className="h-4 w-4" />;
-            case 'completed': return <CheckCircle className="h-4 w-4" />;
-            case 'on_hold': return <Clock className="h-4 w-4" />;
-            case 'cancelled': return <AlertCircle className="h-4 w-4" />;
-            default: return <FolderOpen className="h-4 w-4" />;
+            case 'active':
+                return <CheckCircle className="h-4 w-4" />;
+            case 'completed':
+                return <CheckCircle className="h-4 w-4" />;
+            case 'on_hold':
+                return <Clock className="h-4 w-4" />;
+            case 'cancelled':
+                return <AlertCircle className="h-4 w-4" />;
+            default:
+                return <FolderOpen className="h-4 w-4" />;
         }
     }, []);
 
-    const chartData = useMemo(() => [
-        { name: 'Active', value: stats.active, color: '#10b981' },
-        { name: 'Completed', value: stats.completed, color: '#3b82f6' },
-        { name: 'On Hold', value: stats.on_hold, color: '#f59e0b' },
-        { name: 'Cancelled', value: stats.cancelled, color: '#ef4444' }
-    ], [stats]);
+    const chartData = useMemo(
+        () => [
+            { name: 'Active', value: stats.active, color: '#10b981' },
+            { name: 'Completed', value: stats.completed, color: '#3b82f6' },
+            { name: 'On Hold', value: stats.on_hold, color: '#f59e0b' },
+            { name: 'Cancelled', value: stats.cancelled, color: '#ef4444' },
+        ],
+        [stats],
+    );
 
     return (
         <AppLayout>
             <Head title="Projects Management" />
-            
 
-            <div className="p-4 md:p-6 space-y-6">
-            <Banner
-                illustration={illustration}
-                greeting="Welcome"
-                userName="Admin"
-                title="Project Management System"
-                description="Manage your projects, track progress, and collaborate with your team efficiently."
-            />
+            <div className="space-y-6 p-4 md:p-6">
+                <Banner
+                    illustration={illustration}
+                    greeting="Welcome"
+                    userName="Admin"
+                    title="Project Management System"
+                    description="Manage your projects, track progress, and collaborate with your team efficiently."
+                />
                 {/* Flash Messages */}
-                {flashMessage && (
-                    <FlashMessage
-                        message={flashMessage.message}
-                        type={flashMessage.type}
-                        onClose={() => setFlashMessage(null)}
-                    />
-                )}
+                {flashMessage && <FlashMessage message={flashMessage.message} type={flashMessage.type} onClose={() => setFlashMessage(null)} />}
 
                 {/* Header with Search and Actions */}
-                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
                     <div className="flex items-center gap-4">
                         <h1 className="text-2xl font-bold">Projects</h1>
                         <Badge variant="secondary" className="text-sm">
@@ -272,83 +327,91 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
                     <div className="flex items-center gap-2">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
                             <Input
                                 placeholder="Search projects..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 w-64"
+                                className="w-64 pl-10"
                             />
                         </div>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsFiltersOpen(true)}
-                            className="flex items-center gap-2"
-                        >
+                        <Button variant="outline" onClick={() => setIsFiltersOpen(true)} className="flex items-center gap-2">
                             <Filter className="h-4 w-4" />
                             Filters
                         </Button>
-                        <Button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <Plus className="mr-2 h-4 w-4" />
                             New Project
                         </Button>
                     </div>
                 </div>
 
                 {/* Projects Grid - Compact Style */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {projects.data.map((project) => (
                         <div
                             key={project.id}
-                            className="group relative bg-white dark:bg-transparent rounded-lg border border-dark/10 dark:border-light/30 hover:border-[var(--color-alpha)] dark:hover:border-[var(--color-alpha)] transition-all duration-200 hover:shadow-lg dark:hover:shadow-xl cursor-pointer flex flex-col h-80"
+                            className="group relative flex h-80 cursor-pointer flex-col rounded-lg border border-dark/10 bg-white transition-all duration-200 hover:border-[var(--color-alpha)] hover:shadow-lg dark:border-light/30 dark:bg-transparent dark:hover:border-[var(--color-alpha)] dark:hover:shadow-xl"
                             onClick={() => router.get(`/admin/projects/${project.id}`)}
                         >
                             {/* Project Header - Compact */}
-                            <div className="p-3 border-b border-gray-100 dark:border-gray-700">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="border-b border-gray-100 p-3 dark:border-gray-700">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <div className="flex min-w-0 flex-1 items-center gap-2">
                                         {project.photo ? (
                                             <img
                                                 src={`/storage/${project.photo}`}
                                                 alt={project.name}
-                                                className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+                                                className="h-8 w-8 flex-shrink-0 rounded-lg object-cover"
                                             />
                                         ) : (
-                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80 flex items-center justify-center flex-shrink-0">
+                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80">
                                                 <FolderOpen className="h-4 w-4 text-white" />
                                             </div>
                                         )}
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold text-gray-900 dark:text-white truncate text-sm">{project.name}</h3>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                by {project.creator?.name}
-                                            </p>
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-white">{project.name}</h3>
+                                            <p className="truncate text-xs text-gray-500 dark:text-gray-400">by {project.creator?.name}</p>
                                         </div>
                                     </div>
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                            <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                                            >
                                                 <MoreVertical className="h-3 w-3" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.get(`/admin/projects/${project.id}`); }}>
-                                                <Eye className="h-4 w-4 mr-2" />
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.get(`/admin/projects/${project.id}`);
+                                                }}
+                                            >
+                                                <Eye className="mr-2 h-4 w-4" />
                                                 View Details
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEdit(project); }}>
-                                                <Pencil className="h-4 w-4 mr-2" />
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit(project);
+                                                }}
+                                            >
+                                                <Pencil className="mr-2 h-4 w-4" />
                                                 Edit
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
-                                                onClick={(e) => { e.stopPropagation(); handleDelete(project); }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(project);
+                                                }}
                                                 className="text-red-600"
                                             >
-                                                <Trash className="h-4 w-4 mr-2" />
+                                                <Trash className="mr-2 h-4 w-4" />
                                                 Delete
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -356,9 +419,9 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 text-xs px-2 py-1`}>
+                                    <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 px-2 py-1 text-xs`}>
                                         {getStatusIcon(project.status)}
-                                        <span className="capitalize text-xs">{project.status.replace('_', ' ')}</span>
+                                        <span className="text-xs capitalize">{project.status.replace('_', ' ')}</span>
                                     </Badge>
                                     <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                         <div className="flex items-center gap-1">
@@ -374,8 +437,8 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             </div>
 
                             {/* Description - Fixed Height */}
-                            <div className="p-3 flex-1">
-                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-5  overflow-hidden">
+                            <div className="flex-1 p-3">
+                                <p className="line-clamp-5 overflow-hidden text-sm text-gray-600 dark:text-gray-300">
                                     {project.description || 'No description provided'}
                                 </p>
                             </div>
@@ -383,7 +446,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             {/* Progress Section - Compact */}
                             {project.tasks_count > 0 && (
                                 <div className="px-3 pb-2">
-                                    <div className="flex items-center justify-between mb-1">
+                                    <div className="mb-1 flex items-center justify-between">
                                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Progress</span>
                                         <span className="text-xs font-semibold text-[var(--color-alpha)]">{project.progress_percentage || 0}%</span>
                                     </div>
@@ -392,8 +455,8 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             )}
 
                             {/* Footer - Fixed Height */}
-                            <div className="p-3 border-t border-gray-100 dark:border-gray-700 mt-auto">
-                                <div className="flex items-center justify-between mb-2">
+                            <div className="mt-auto border-t border-gray-100 p-3 dark:border-gray-700">
+                                <div className="mb-2 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="flex -space-x-1">
                                             {project.users?.slice(0, 3).map((user, index) => (
@@ -406,15 +469,10 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                                 //         {getInitials(user.name)}
                                                 //     </AvatarFallback>
                                                 // </Avatar>
-                                                <Avatar
-                                                    className="w-6 h-6"
-                                                    image={user.image}
-                                                    name={user.name}
-                                                    onlineCircleClass="hidden"
-                                                />
+                                                <Avatar className="h-6 w-6" image={user.image} name={user.name} onlineCircleClass="hidden" />
                                             ))}
                                             {project.users_count > 3 && (
-                                                <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-xs font-medium border border-white dark:border-gray-800">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white bg-gray-100 text-xs font-medium dark:border-gray-800 dark:bg-gray-600">
                                                     +{project.users_count - 3}
                                                 </div>
                                             )}
@@ -432,8 +490,11 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="flex items-center gap-1 text-xs h-6 px-2"
-                                            onClick={(e) => { e.stopPropagation(); handleInvite(project); }}
+                                            className="flex h-6 items-center gap-1 px-2 text-xs"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleInvite(project);
+                                            }}
                                         >
                                             <UserPlus className="h-3 w-3" />
                                             Invite
@@ -441,7 +502,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="flex items-center gap-1 text-xs h-6 px-2"
+                                            className="flex h-6 items-center gap-1 px-2 text-xs"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 // Open invite modal to create invitation link
@@ -470,17 +531,14 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                 </div>
 
                 {projects.data.length === 0 && (
-                    <div className="text-center py-16">
-                        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[var(--color-alpha)]/10 to-[var(--color-alpha)]/5 flex items-center justify-center">
+                    <div className="py-16 text-center">
+                        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[var(--color-alpha)]/10 to-[var(--color-alpha)]/5">
                             <FolderOpen className="h-12 w-12 text-[var(--color-alpha)]" />
                         </div>
-                        <h3 className="text-xl font-semibold mb-2">No projects found</h3>
-                        <p className="text-muted-foreground mb-6">Get started by creating your first project.</p>
-                        <Button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
+                        <h3 className="mb-2 text-xl font-semibold">No projects found</h3>
+                        <p className="mb-6 text-muted-foreground">Get started by creating your first project.</p>
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <Plus className="mr-2 h-4 w-4" />
                             Create Project
                         </Button>
                     </div>
@@ -518,7 +576,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                     onClick={() => setStatusFilter(statusFilter === 'active' ? '' : 'active')}
                                     className="justify-start"
                                 >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    <CheckCircle className="mr-2 h-4 w-4" />
                                     Active
                                 </Button>
                                 <Button
@@ -527,7 +585,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                     onClick={() => setStatusFilter(statusFilter === 'on_hold' ? '' : 'on_hold')}
                                     className="justify-start"
                                 >
-                                    <Clock className="h-4 w-4 mr-2" />
+                                    <Clock className="mr-2 h-4 w-4" />
                                     On-going
                                 </Button>
                                 <Button
@@ -536,7 +594,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                     onClick={() => setStatusFilter(statusFilter === 'completed' ? '' : 'completed')}
                                     className="justify-start"
                                 >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    <CheckCircle className="mr-2 h-4 w-4" />
                                     Paused
                                 </Button>
                                 <Button
@@ -545,7 +603,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                     onClick={() => setStatusFilter(statusFilter === 'cancelled' ? '' : 'cancelled')}
                                     className="justify-start"
                                 >
-                                    <AlertCircle className="h-4 w-4 mr-2" />
+                                    <AlertCircle className="mr-2 h-4 w-4" />
                                     Canceled
                                 </Button>
                             </div>
@@ -590,11 +648,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             >
                                 Done
                             </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsFiltersOpen(false)}
-                                className="flex-1"
-                            >
+                            <Button variant="outline" onClick={() => setIsFiltersOpen(false)} className="flex-1">
                                 Cancel
                             </Button>
                         </div>
@@ -613,19 +667,10 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             Are you sure you want to delete <strong>{deletingProject?.name}</strong>? This action cannot be undone.
                         </p>
                         <div className="flex gap-2">
-                            <Button
-                                variant="destructive"
-                                onClick={confirmDelete}
-                                disabled={processing}
-                                className="flex-1"
-                            >
+                            <Button variant="destructive" onClick={confirmDelete} disabled={processing} className="flex-1">
                                 {processing ? 'Deleting...' : 'Delete'}
                             </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsDeleteModalOpen(false)}
-                                className="flex-1"
-                            >
+                            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} className="flex-1">
                                 Cancel
                             </Button>
                         </div>
@@ -640,7 +685,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                         <DialogTitle>Create New Project</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Project Name *</Label>
                                 <Input
@@ -676,13 +721,13 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
                                 placeholder="Enter project description"
-                                className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md"
+                                className="min-h-[100px] w-full rounded-md border border-input px-3 py-2"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Predefined Tasks</Label>
-                            <div className="space-y-3 border border-input rounded-md p-4">
+                            <div className="space-y-3 rounded-md border border-input p-4">
                                 {predefinedTasksOptions.map((task) => (
                                     <div key={task.value} className="flex items-center space-x-2">
                                         <Checkbox
@@ -693,13 +738,16 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                                 if (checked) {
                                                     setData('predefined_tasks', [...currentTasks, task.value]);
                                                 } else {
-                                                    setData('predefined_tasks', currentTasks.filter(t => t !== task.value));
+                                                    setData(
+                                                        'predefined_tasks',
+                                                        currentTasks.filter((t) => t !== task.value),
+                                                    );
                                                 }
                                             }}
                                         />
                                         <label
                                             htmlFor={task.value}
-                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                            className="cursor-pointer text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                         >
                                             {task.label}
                                         </label>
@@ -709,36 +757,21 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             <p className="text-xs text-muted-foreground">Select tasks to automatically add to this project</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="start_date">Start Date</Label>
-                                <Input
-                                    id="start_date"
-                                    type="date"
-                                    value={data.start_date}
-                                    onChange={(e) => setData('start_date', e.target.value)}
-                                />
+                                <Input id="start_date" type="date" value={data.start_date} onChange={(e) => setData('start_date', e.target.value)} />
                             </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="end_date">End Date</Label>
-                                <Input
-                                    id="end_date"
-                                    type="date"
-                                    value={data.end_date}
-                                    onChange={(e) => setData('end_date', e.target.value)}
-                                />
+                                <Input id="end_date" type="date" value={data.end_date} onChange={(e) => setData('end_date', e.target.value)} />
                             </div>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="photo">Project Photo</Label>
-                            <Input
-                                id="photo"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setData('photo', e.target.files[0])}
-                            />
+                            <Input id="photo" type="file" accept="image/*" onChange={(e) => setData('photo', e.target.files[0])} />
                         </div>
 
                         <div className="flex justify-end space-x-2">
@@ -760,7 +793,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                         <DialogTitle>Edit Project</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleUpdate} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="edit_name">Project Name *</Label>
                                 <Input
@@ -796,11 +829,11 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
                                 placeholder="Enter project description"
-                                className="w-full min-h-[100px] px-3 py-2 border border-input rounded-md"
+                                className="min-h-[100px] w-full rounded-md border border-input px-3 py-2"
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="edit_start_date">Start Date</Label>
                                 <Input
@@ -813,12 +846,7 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
                             <div className="space-y-2">
                                 <Label htmlFor="edit_end_date">End Date</Label>
-                                <Input
-                                    id="edit_end_date"
-                                    type="date"
-                                    value={data.end_date}
-                                    onChange={(e) => setData('end_date', e.target.value)}
-                                />
+                                <Input id="edit_end_date" type="date" value={data.end_date} onChange={(e) => setData('end_date', e.target.value)} />
                             </div>
                         </div>
 
@@ -826,20 +854,15 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             <Label htmlFor="edit_photo">Project Photo</Label>
                             {editingProject?.photo && (
                                 <div className="mb-2">
-                                    <p className="text-sm text-muted-foreground mb-2">Current photo:</p>
+                                    <p className="mb-2 text-sm text-muted-foreground">Current photo:</p>
                                     <img
                                         src={`/storage/${editingProject.photo}`}
                                         alt="Current project photo"
-                                        className="w-20 h-20 object-cover rounded-md border"
+                                        className="h-20 w-20 rounded-md border object-cover"
                                     />
                                 </div>
                             )}
-                            <Input
-                                id="edit_photo"
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setData('photo', e.target.files[0])}
-                            />
+                            <Input id="edit_photo" type="file" accept="image/*" onChange={(e) => setData('photo', e.target.files[0])} />
                             <p className="text-xs text-muted-foreground">Leave empty to keep current photo</p>
                         </div>
 

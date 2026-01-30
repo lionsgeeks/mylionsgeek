@@ -1,6 +1,5 @@
-import React from 'react';
-import { Trash2 } from 'lucide-react';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import { Trash2 } from 'lucide-react';
 
 const PostMediaGrid = ({ images = [], onRemove, isLoading = false }) => {
     if (!images.length && !isLoading) {
@@ -13,22 +12,18 @@ const PostMediaGrid = ({ images = [], onRemove, isLoading = false }) => {
         <div className={wrapperClasses}>
             {isLoading && <LoadingOverlay message="Processing media..." />}
             {images.length > 0 && (
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
                     {images.map((image) => (
-                        <div key={image.id} className="relative group rounded-2xl overflow-hidden shadow">
+                        <div key={image.id} className="group relative overflow-hidden rounded-2xl shadow">
                             <button
                                 type="button"
                                 onClick={() => onRemove?.(image)}
-                                className="absolute top-3 right-3 z-10 p-2 rounded-full bg-error/90 hover:bg-error text-light shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                                className="absolute top-3 right-3 z-10 rounded-full bg-error/90 p-2 text-light opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 hover:scale-110 hover:bg-error active:scale-95"
                                 aria-label="Remove image"
                             >
                                 <Trash2 size={16} />
                             </button>
-                            <img
-                                src={image.preview}
-                                alt="Selected media"
-                                className="w-full h-[45vh] object-cover"
-                            />
+                            <img src={image.preview} alt="Selected media" className="h-[45vh] w-full object-cover" />
                         </div>
                     ))}
                 </div>
@@ -38,4 +33,3 @@ const PostMediaGrid = ({ images = [], onRemove, isLoading = false }) => {
 };
 
 export default PostMediaGrid;
-

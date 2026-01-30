@@ -1,11 +1,10 @@
-import React from 'react';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import TeamMemberSelector from '../../places/studios/components/TeamMemberSelector';
+import { Textarea } from '@/components/ui/textarea';
 import EquipmentSelector from '../../places/studios/components/EquipmentSelector';
+import TeamMemberSelector from '../../places/studios/components/TeamMemberSelector';
 
 const EditReservationModal = ({
     isOpen,
@@ -22,36 +21,40 @@ const EditReservationModal = ({
     setSelectedEquipment,
     onSubmit,
     equipmentOptions = [],
-    teamMemberOptions = []
+    teamMemberOptions = [],
 }) => {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto max-md:w-[95vw] bg-light dark:bg-dark">
+            <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto bg-light max-md:w-[95vw] dark:bg-dark">
                 <DialogHeader>
                     <DialogTitle>Edit Reservation</DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={(e) => { e.preventDefault(); onSubmit(e); }} className="space-y-6">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        onSubmit(e);
+                    }}
+                    className="space-y-6"
+                >
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="edit-title">Reservation Name</Label>
                             <Input
-                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                 id="edit-title"
                                 value={data.title}
                                 onChange={(e) => setData('title', e.target.value)}
                                 placeholder="Enter reservation name"
                                 required
                             />
-                            {errors.title && (
-                                <p className="text-sm text-destructive mt-1">{errors.title}</p>
-                            )}
+                            {errors.title && <p className="mt-1 text-sm text-destructive">{errors.title}</p>}
                         </div>
 
                         <div>
                             <Label htmlFor="edit-description">Description</Label>
                             <Textarea
-                                className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] bg-light dark:bg-dark"
+                                className="mt-1 block w-full border-[#FFC801] bg-light focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:bg-dark"
                                 id="edit-description"
                                 value={data.description}
                                 onChange={(e) => setData('description', e.target.value)}
@@ -64,7 +67,7 @@ const EditReservationModal = ({
                             <Label htmlFor="edit-studio">Studio</Label>
                             <select
                                 id="edit-studio"
-                                className="mt-1 block w-full rounded-md border border-[#FFC801] bg-light dark:bg-dark px-3 py-2 focus:border-[#FFC801] focus:ring-[#FFC801] focus:ring-[1.5px]"
+                                className="mt-1 block w-full rounded-md border border-[#FFC801] bg-light px-3 py-2 focus:border-[#FFC801] focus:ring-[1.5px] focus:ring-[#FFC801] dark:bg-dark"
                                 value={data.studio_id}
                                 onChange={(e) => setData('studio_id', parseInt(e.target.value))}
                                 required
@@ -76,16 +79,14 @@ const EditReservationModal = ({
                                     </option>
                                 ))}
                             </select>
-                            {errors.studio_id && (
-                                <p className="text-sm text-destructive mt-1">{errors.studio_id}</p>
-                            )}
+                            {errors.studio_id && <p className="mt-1 text-sm text-destructive">{errors.studio_id}</p>}
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
                             <div>
                                 <Label htmlFor="edit-day">Date</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                     id="edit-day"
                                     type="date"
                                     value={data.day}
@@ -96,7 +97,7 @@ const EditReservationModal = ({
                             <div>
                                 <Label htmlFor="edit-start">Start Time</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                     id="edit-start"
                                     type="time"
                                     value={data.start}
@@ -109,7 +110,7 @@ const EditReservationModal = ({
                             <div>
                                 <Label htmlFor="edit-end">End Time</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                     id="edit-end"
                                     type="time"
                                     value={data.end}
@@ -121,40 +122,24 @@ const EditReservationModal = ({
                             </div>
                         </div>
 
-                        {timeError && (
-                            <p className="text-sm text-red-500 font-medium">{timeError}</p>
-                        )}
+                        {timeError && <p className="text-sm font-medium text-red-500">{timeError}</p>}
 
                         <div>
-                            <TeamMemberSelector
-                                selected={selectedMembers}
-                                onSelect={setSelectedMembers}
-                                teamMemberOptions={teamMemberOptions}
-                            />
+                            <TeamMemberSelector selected={selectedMembers} onSelect={setSelectedMembers} teamMemberOptions={teamMemberOptions} />
                         </div>
 
                         <div>
-                           
-                            <EquipmentSelector
-                                selected={selectedEquipment}
-                                onSelect={setSelectedEquipment}
-                                equipmentOptions={equipmentOptions}
-                            />
+                            <EquipmentSelector selected={selectedEquipment} onSelect={setSelectedEquipment} equipmentOptions={equipmentOptions} />
                         </div>
 
                         <div className="flex justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={onClose}
-                                className="cursor-pointer dark:hover:bg-accent"
-                            >
+                            <Button type="button" variant="outline" onClick={onClose} className="cursor-pointer dark:hover:bg-accent">
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
                                 disabled={processing}
-                                className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
+                                className="cursor-pointer bg-[#FFC801] text-black hover:bg-[#E5B700] hover:text-white dark:hover:text-black"
                             >
                                 {processing ? 'Updating...' : 'Update Reservation'}
                             </Button>
@@ -167,4 +152,3 @@ const EditReservationModal = ({
 };
 
 export default EditReservationModal;
-

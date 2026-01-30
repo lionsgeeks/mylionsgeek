@@ -1,7 +1,7 @@
 // Toast notification manager - manages multiple toast notifications
 // Manager dial toast notifications bach n3mlo queue dial notifications
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import ToastNotification from './ToastNotification';
 
 const MAX_TOASTS = 3;
@@ -13,9 +13,8 @@ export default function ToastNotificationManager() {
     // Add notification with deduplication
     const addNotification = useCallback((notification) => {
         // Create unique key for deduplication (message ID or conversation + timestamp)
-        const messageId = notification.messageId || 
-            `${notification.conversationId}-${notification.userId}-${Date.now()}`;
-        
+        const messageId = notification.messageId || `${notification.conversationId}-${notification.userId}-${Date.now()}`;
+
         // Skip if already shown
         if (shownMessageIdsRef.current.has(messageId)) {
             return null;
@@ -25,7 +24,7 @@ export default function ToastNotificationManager() {
         const id = Date.now() + Math.random();
         const newNotification = { ...notification, id, messageId };
 
-        setNotifications(prev => {
+        setNotifications((prev) => {
             const updated = [...prev, newNotification];
             // Keep only last MAX_TOASTS notifications
             return updated.slice(-MAX_TOASTS);
@@ -41,19 +40,24 @@ export default function ToastNotificationManager() {
 
     // Remove notification
     const removeNotification = useCallback((id) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
     }, []);
 
     // Handle notification click
-    const handleNotificationClick = useCallback((notification) => {
-        // Dispatch event to open chat
-        if (notification.conversationId) {
-            window.dispatchEvent(new CustomEvent('open-chat', {
-                detail: { userId: notification.userId || notification.sender?.id }
-            }));
-        }
-        removeNotification(notification.id);
-    }, [removeNotification]);
+    const handleNotificationClick = useCallback(
+        (notification) => {
+            // Dispatch event to open chat
+            if (notification.conversationId) {
+                window.dispatchEvent(
+                    new CustomEvent('open-chat', {
+                        detail: { userId: notification.userId || notification.sender?.id },
+                    }),
+                );
+            }
+            removeNotification(notification.id);
+        },
+        [removeNotification],
+    );
 
     // Expose addNotification globally
     React.useEffect(() => {
@@ -64,13 +68,10 @@ export default function ToastNotificationManager() {
     }, [addNotification]);
 
     return (
-        <div className="fixed top-4 right-4 z-[9998] pointer-events-none" style={{ maxWidth: '400px' }}>
+        <div className="pointer-events-none fixed top-4 right-4 z-[9998]" style={{ maxWidth: '400px' }}>
             <div className="flex flex-col gap-2">
                 {notifications.map((notification) => (
-                    <div
-                        key={notification.id}
-                        className="pointer-events-auto"
-                    >
+                    <div key={notification.id} className="pointer-events-auto">
                         <ToastNotification
                             notification={notification}
                             onClose={() => removeNotification(notification.id)}
@@ -82,4 +83,3 @@ export default function ToastNotificationManager() {
         </div>
     );
 }
-

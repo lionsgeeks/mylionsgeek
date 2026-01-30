@@ -1,4 +1,3 @@
-import React from 'react';
 import Deck from './Deck';
 import DiscardPile from './DiscardPile';
 
@@ -11,13 +10,13 @@ export default function CenterArea({
     assignedPlayerIndex,
     pendingDraw,
     winner,
-    onDraw
+    onDraw,
 }) {
     const topCard = discardPile[discardPile.length - 1];
 
     return (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full px-3">
-            <div className="flex justify-center items-center gap-4 sm:gap-6 md:gap-8">
+        <div className="absolute top-1/2 left-1/2 w-full -translate-x-1/2 -translate-y-1/2 transform px-3">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 md:gap-8">
                 <Deck
                     deckLength={deck.length}
                     pendingDraw={pendingDraw}
@@ -37,9 +36,3 @@ export default function CenterArea({
         </div>
     );
 }
-
-
-
-
-
-

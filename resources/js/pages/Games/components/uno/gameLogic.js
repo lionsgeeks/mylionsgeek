@@ -1,11 +1,11 @@
 /**
  * UNO GAME LOGIC - Clean Game State Management
- * 
+ *
  * This file contains all game logic functions in a clean, organized way
  */
 
-import { initializeDeck, shuffleDeck, dealCards, drawCards as drawCardsUtil, getNextPlayerIndex, isPlayable } from './utils';
 import { applyCardEffect, validateMove } from './rules';
+import { dealCards, drawCards as drawCardsUtil, getNextPlayerIndex, initializeDeck, isPlayable, shuffleDeck } from './utils';
 
 /**
  * Initialize a new game
@@ -61,15 +61,7 @@ export function initializeGame(playerNames) {
  * @returns {Object} Updated game state and result
  */
 export function playCard({ cardIndex, chosenColor, gameState }) {
-    const {
-        players,
-        currentPlayerIndex,
-        discardPile,
-        currentColor,
-        deck,
-        unoCalled,
-        needsUnoCall,
-    } = gameState;
+    const { players, currentPlayerIndex, discardPile, currentColor, deck, unoCalled, needsUnoCall } = gameState;
 
     const currentPlayer = players[currentPlayerIndex];
     const card = currentPlayer.hand[cardIndex];
@@ -101,7 +93,7 @@ export function playCard({ cardIndex, chosenColor, gameState }) {
         ...gameState,
         deck: [...deck],
         discardPile: [...discardPile],
-        players: players.map(p => ({ ...p, hand: [...p.hand] })),
+        players: players.map((p) => ({ ...p, hand: [...p.hand] })),
         currentColor: chosenColor || card.color || currentColor,
     };
 
@@ -112,7 +104,7 @@ export function playCard({ cardIndex, chosenColor, gameState }) {
     newState.discardPile.push(card);
 
     // Check for win
-    const handSizeAfter = newState.players[currentPlayerIndex].hand.filter(c => c !== null).length;
+    const handSizeAfter = newState.players[currentPlayerIndex].hand.filter((c) => c !== null).length;
     if (handSizeAfter === 0) {
         // Check if player called UNO
         if (unoCalled[currentPlayerIndex]) {
@@ -148,20 +140,12 @@ export function playCard({ cardIndex, chosenColor, gameState }) {
     // Handle pending draws
     if (stateAfterEffect.pendingDraw > 0) {
         // Draw cards for the player who has to draw
-        const drawnState = drawCardsUtil(
-            stateAfterEffect.pendingDraw,
-            stateAfterEffect.currentPlayerIndex,
-            stateAfterEffect
-        );
-        
+        const drawnState = drawCardsUtil(stateAfterEffect.pendingDraw, stateAfterEffect.currentPlayerIndex, stateAfterEffect);
+
         // Skip the player who just drew (official rule: cannot play after drawing Draw 2/4)
-        drawnState.currentPlayerIndex = getNextPlayerIndex(
-            drawnState.currentPlayerIndex,
-            drawnState.playDirection,
-            drawnState.players.length
-        );
+        drawnState.currentPlayerIndex = getNextPlayerIndex(drawnState.currentPlayerIndex, drawnState.playDirection, drawnState.players.length);
         drawnState.pendingDraw = 0;
-        
+
         return {
             success: true,
             gameState: drawnState,
@@ -203,15 +187,7 @@ export function playCard({ cardIndex, chosenColor, gameState }) {
  * @returns {Object} Updated game state and result
  */
 export function drawCard({ gameState }) {
-    const {
-        players,
-        currentPlayerIndex,
-        deck,
-        discardPile,
-        currentColor,
-        playDirection,
-        pendingDraw,
-    } = gameState;
+    const { players, currentPlayerIndex, deck, discardPile, currentColor, playDirection, pendingDraw } = gameState;
 
     // If there's a pending draw, must draw those cards first
     if (pendingDraw > 0) {
@@ -219,18 +195,14 @@ export function drawCard({ gameState }) {
             ...gameState,
             deck: [...deck],
             discardPile: [...discardPile],
-            players: players.map(p => ({ ...p, hand: [...p.hand] })),
+            players: players.map((p) => ({ ...p, hand: [...p.hand] })),
         };
 
         // Draw pending cards
         const drawnState = drawCardsUtil(pendingDraw, currentPlayerIndex, newState);
 
         // Skip turn after drawing
-        drawnState.currentPlayerIndex = getNextPlayerIndex(
-            currentPlayerIndex,
-            playDirection,
-            players.length
-        );
+        drawnState.currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, playDirection, players.length);
         drawnState.pendingDraw = 0;
         drawnState.unoCalled = {};
         drawnState.needsUnoCall = {};
@@ -246,16 +218,14 @@ export function drawCard({ gameState }) {
         ...gameState,
         deck: [...deck],
         discardPile: [...discardPile],
-        players: players.map(p => ({ ...p, hand: [...p.hand] })),
+        players: players.map((p) => ({ ...p, hand: [...p.hand] })),
     };
 
     // Draw 1 card
     const drawnState = drawCardsUtil(1, currentPlayerIndex, newState);
 
     // Get the drawn card
-    const drawnCard = drawnState.players[currentPlayerIndex].hand[
-        drawnState.players[currentPlayerIndex].hand.length - 1
-    ];
+    const drawnCard = drawnState.players[currentPlayerIndex].hand[drawnState.players[currentPlayerIndex].hand.length - 1];
     const topCard = drawnState.discardPile[drawnState.discardPile.length - 1];
 
     // Check if drawn card is playable
@@ -273,11 +243,7 @@ export function drawCard({ gameState }) {
         };
     } else {
         // Card is not playable - move to next player
-        drawnState.currentPlayerIndex = getNextPlayerIndex(
-            currentPlayerIndex,
-            playDirection,
-            players.length
-        );
+        drawnState.currentPlayerIndex = getNextPlayerIndex(currentPlayerIndex, playDirection, players.length);
         drawnState.drawnCardIndex = null;
         drawnState.unoCalled = {};
         drawnState.needsUnoCall = {};
@@ -308,7 +274,7 @@ export function callUno({ playerIndex, gameState }) {
         };
     }
 
-    const handSize = player.hand.filter(c => c !== null).length;
+    const handSize = player.hand.filter((c) => c !== null).length;
 
     // Player can only call UNO when they have 1 card
     if (handSize === 1) {
@@ -336,4 +302,3 @@ export function callUno({ playerIndex, gameState }) {
         gameState,
     };
 }
-

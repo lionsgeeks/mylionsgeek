@@ -1,40 +1,29 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useForm, router } from '@inertiajs/react';
+import { Textarea } from '@/components/ui/textarea';
+import { router, useForm } from '@inertiajs/react';
 import {
-    Settings,
-    Share2,
-    Bookmark,
-    MoreHorizontal,
-    Edit,
-    Trash,
-    Users,
-    Calendar,
-    FileText,
-    BarChart3,
-    Target,
-    TrendingUp,
-    Clock,
-    CheckCircle,
     AlertCircle,
-    FolderOpen,
-    Plus,
     ArrowLeft,
-    Download,
-    Upload,
-    Archive,
-    Star,
-    Route
+    Calendar,
+    CheckCircle,
+    Clock,
+    Edit,
+    FolderOpen,
+    MoreHorizontal,
+    Share2,
+    Target,
+    Trash,
+    TrendingUp,
+    Users,
 } from 'lucide-react';
+import { useState } from 'react';
 
 const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -42,42 +31,62 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-    const { data: editData, setData: setEditData, put: updateProject } = useForm({
+    const {
+        data: editData,
+        setData: setEditData,
+        put: updateProject,
+    } = useForm({
         name: project.name || '',
         description: project.description || '',
         status: project.status || 'active',
         start_date: project.start_date || '',
-        end_date: project.end_date || ''
+        end_date: project.end_date || '',
     });
 
-    const { data: shareData, setData: setShareData, post: shareProject, processing: isSharing, reset: resetShare } = useForm({
+    const {
+        data: shareData,
+        setData: setShareData,
+        post: shareProject,
+        processing: isSharing,
+        reset: resetShare,
+    } = useForm({
         email: '',
         role: 'member',
-        message: ''
+        message: '',
     });
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'active': return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300';
-            case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
-            case 'on_hold': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300';
-            case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
-            default: return 'bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300';
+            case 'active':
+                return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300';
+            case 'completed':
+                return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+            case 'on_hold':
+                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300';
+            case 'cancelled':
+                return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
+            default:
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300';
         }
     };
 
     const getStatusIcon = (status) => {
         switch (status) {
-            case 'active': return <CheckCircle className="h-4 w-4" />;
-            case 'completed': return <CheckCircle className="h-4 w-4" />;
-            case 'on_hold': return <Clock className="h-4 w-4" />;
-            case 'cancelled': return <AlertCircle className="h-4 w-4" />;
-            default: return <FolderOpen className="h-4 w-4" />;
+            case 'active':
+                return <CheckCircle className="h-4 w-4" />;
+            case 'completed':
+                return <CheckCircle className="h-4 w-4" />;
+            case 'on_hold':
+                return <Clock className="h-4 w-4" />;
+            case 'cancelled':
+                return <AlertCircle className="h-4 w-4" />;
+            default:
+                return <FolderOpen className="h-4 w-4" />;
         }
     };
 
     // Calculate dynamic project stats
-    const completedTasks = tasks.filter(task => task.status === 'completed').length;
+    const completedTasks = tasks.filter((task) => task.status === 'completed').length;
     const totalTasks = tasks.length;
     const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -101,7 +110,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             onError: (errors) => {
                 console.error('Failed to update project:', errors);
                 //alert('Failed to update project: ' + (errors.message || 'Unknown error'));
-            }
+            },
         });
     };
 
@@ -113,7 +122,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             onError: (errors) => {
                 console.error('Failed to delete project:', errors);
                 //alert('Failed to delete project: ' + (errors.message || 'Unknown error'));
-            }
+            },
         });
     };
 
@@ -126,27 +135,32 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
     return (
         <>
             {/* Project Banner */}
-            <div className="relative h-48 bg-gradient-to-r from-[var(--color-alpha)]/70 via-[var(--color-alpha)]/50 to-[var(--color-alpha)]/30 overflow-hidden">
+            <div className="relative h-48 overflow-hidden bg-gradient-to-r from-[var(--color-alpha)]/70 via-[var(--color-alpha)]/50 to-[var(--color-alpha)]/30">
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
 
                 {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-4 left-4 w-32 h-32 bg-white/20 rounded-full blur-xl"></div>
-                    <div className="absolute bottom-4 right-4 w-24 h-24 bg-white/20 rounded-full blur-lg"></div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                    <div className="absolute top-4 left-4 h-32 w-32 rounded-full bg-white/20 blur-xl"></div>
+                    <div className="absolute right-4 bottom-4 h-24 w-24 rounded-full bg-white/20 blur-lg"></div>
+                    <div className="absolute top-1/2 left-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 transform rounded-full bg-white/10 blur-2xl"></div>
                 </div>
 
                 {/* Project Info Overlay */}
-                <div className="relative z-10 p-6 h-full flex flex-col justify-between">
+                <div className="relative z-10 flex h-full flex-col justify-between p-6">
                     <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
-                            <Button onClick={() => router.visit("/admin/projects")} variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                                <ArrowLeft className="h-4 w-4 mr-2" />
+                            <Button
+                                onClick={() => router.visit('/admin/projects')}
+                                variant="ghost"
+                                size="sm"
+                                className="text-white hover:bg-white/20"
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to Projects
                             </Button>
                             <div className="flex items-center gap-3">
-                                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <div className="rounded-lg bg-white/20 p-3 backdrop-blur-sm">
                                     <FolderOpen className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
@@ -158,13 +172,8 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-white hover:bg-white/20"
-                                onClick={() => setIsShareModalOpen(true)}
-                            >
-                                <Share2 className="h-4 w-4 mr-2" />
+                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={() => setIsShareModalOpen(true)}>
+                                <Share2 className="mr-2 h-4 w-4" />
                                 Share
                             </Button>
                             <DropdownMenu>
@@ -183,10 +192,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                                         Invite Members
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onClick={() => setIsDeleteModalOpen(true)}
-                                        className="text-destructive"
-                                    >
+                                    <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-destructive">
                                         <Trash className="mr-2 h-4 w-4" />
                                         Delete Project
                                     </DropdownMenuItem>
@@ -218,63 +224,61 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             </div>
 
             {/* Project Management Cards */}
-            <div className="p-6 -mt-8 relative z-20">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="relative z-20 -mt-8 p-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {/* Quick Stats */}
-                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="border-border bg-background/80 shadow-lg backdrop-blur-sm">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Progress</p>
                                     <p className="text-2xl font-bold text-foreground">{progressPercentage}%</p>
                                 </div>
-                                <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
+                                <div className="rounded-lg bg-[var(--color-alpha)]/10 p-2">
                                     <TrendingUp className="h-5 w-5 text-[var(--color-alpha)]" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="border-border bg-background/80 shadow-lg backdrop-blur-sm">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Tasks</p>
                                     <p className="text-2xl font-bold text-foreground">{totalTasks}</p>
                                 </div>
-                                <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
+                                <div className="rounded-lg bg-[var(--color-alpha)]/10 p-2">
                                     <CheckCircle className="h-5 w-5 text-[var(--color-alpha)]" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="border-border bg-background/80 shadow-lg backdrop-blur-sm">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Team</p>
                                     <p className="text-2xl font-bold text-foreground">{teamMembers?.length || 0}</p>
                                 </div>
-                                <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
+                                <div className="rounded-lg bg-[var(--color-alpha)]/10 p-2">
                                     <Users className="h-5 w-5 text-[var(--color-alpha)]" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-background/80 backdrop-blur-sm shadow-lg border-border">
+                    <Card className="border-border bg-background/80 shadow-lg backdrop-blur-sm">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-muted-foreground">Deadline</p>
                                     <p className="text-2xl font-bold text-foreground">
-                                        {daysUntilDeadline !== null ? (
-                                            daysUntilDeadline > 0 ? `${daysUntilDeadline}` : 'Overdue'
-                                        ) : 'No deadline'}
+                                        {daysUntilDeadline !== null ? (daysUntilDeadline > 0 ? `${daysUntilDeadline}` : 'Overdue') : 'No deadline'}
                                     </p>
                                 </div>
-                                <div className="p-2 bg-[var(--color-alpha)]/10 rounded-lg">
+                                <div className="rounded-lg bg-[var(--color-alpha)]/10 p-2">
                                     <Target className="h-5 w-5 text-[var(--color-alpha)]" />
                                 </div>
                             </div>
@@ -288,34 +292,21 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit Project</DialogTitle>
-                        <DialogDescription>
-                            Update project details and settings
-                        </DialogDescription>
+                        <DialogDescription>Update project details and settings</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
                             <Label htmlFor="name">Project Name</Label>
-                            <Input
-                                id="name"
-                                value={editData.name}
-                                onChange={(e) => setEditData('name', e.target.value)}
-                            />
+                            <Input id="name" value={editData.name} onChange={(e) => setEditData('name', e.target.value)} />
                         </div>
                         <div>
                             <Label htmlFor="description">Description</Label>
-                            <Textarea
-                                id="description"
-                                value={editData.description}
-                                onChange={(e) => setEditData('description', e.target.value)}
-                            />
+                            <Textarea id="description" value={editData.description} onChange={(e) => setEditData('description', e.target.value)} />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select
-                                    value={editData.status}
-                                    onValueChange={(value) => setEditData('status', value)}
-                                >
+                                <Select value={editData.status} onValueChange={(value) => setEditData('status', value)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -339,12 +330,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                         </div>
                         <div>
                             <Label htmlFor="end_date">End Date</Label>
-                            <Input
-                                id="end_date"
-                                type="date"
-                                value={editData.end_date}
-                                onChange={(e) => setEditData('end_date', e.target.value)}
-                            />
+                            <Input id="end_date" type="date" value={editData.end_date} onChange={(e) => setEditData('end_date', e.target.value)} />
                         </div>
                     </div>
                     <DialogFooter>
@@ -357,34 +343,38 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
             </Dialog>
 
             {/* Share Project Modal */}
-            <Dialog open={isShareModalOpen} onOpenChange={(open) => {
-                setIsShareModalOpen(open);
-                if (!open) {
-                    resetShare();
-                }
-            }}>
+            <Dialog
+                open={isShareModalOpen}
+                onOpenChange={(open) => {
+                    setIsShareModalOpen(open);
+                    if (!open) {
+                        resetShare();
+                    }
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Share Project</DialogTitle>
-                        <DialogDescription>
-                            Invite team members to collaborate on this project. An invitation email will be sent.
-                        </DialogDescription>
+                        <DialogDescription>Invite team members to collaborate on this project. An invitation email will be sent.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={(e) => {
-                        e.preventDefault();
-                        shareProject(`/admin/projects/share/${project.id}`, {
-                            onSuccess: () => {
-                                setIsShareModalOpen(false);
-                                resetShare();
-                            }
-                        });
-                    }} className="space-y-4">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            shareProject(`/admin/projects/share/${project.id}`, {
+                                onSuccess: () => {
+                                    setIsShareModalOpen(false);
+                                    resetShare();
+                                },
+                            });
+                        }}
+                        className="space-y-4"
+                    >
                         <div>
                             <Label htmlFor="share-email">Email Address</Label>
-                            <Input 
-                                id="share-email" 
+                            <Input
+                                id="share-email"
                                 type="email"
-                                placeholder="Enter email address" 
+                                placeholder="Enter email address"
                                 value={shareData.email}
                                 onChange={(e) => setShareData('email', e.target.value)}
                                 required
@@ -413,9 +403,9 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                             />
                         </div>
                         <DialogFooter>
-                            <Button 
+                            <Button
                                 type="button"
-                                variant="outline" 
+                                variant="outline"
                                 onClick={() => {
                                     setIsShareModalOpen(false);
                                     resetShare();
@@ -437,9 +427,7 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Archive Project</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to archive this project? It will be moved to archived projects.
-                        </DialogDescription>
+                        <DialogDescription>Are you sure you want to archive this project? It will be moved to archived projects.</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsArchiveModalOpen(false)}>
@@ -455,15 +443,15 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Delete Project</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete this project? This action cannot be undone.
-                        </DialogDescription>
+                        <DialogDescription>Are you sure you want to delete this project? This action cannot be undone.</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDeleteProject}>Delete Project</Button>
+                        <Button variant="destructive" onClick={handleDeleteProject}>
+                            Delete Project
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

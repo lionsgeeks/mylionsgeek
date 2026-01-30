@@ -1,4 +1,4 @@
-import { router } from "@inertiajs/react";
+import { router } from '@inertiajs/react';
 import imageCompression from 'browser-image-compression';
 
 export const MAX_POST_IMAGES = 16;
@@ -9,8 +9,7 @@ const compressionOptions = {
     useWebWorker: true,
 };
 
-const generateLocalId = () =>
-    `${Date.now().toString(36)}-${Math.random().toString(16).slice(2)}`;
+const generateLocalId = () => `${Date.now().toString(36)}-${Math.random().toString(16).slice(2)}`;
 
 const normalizePostImagePath = (rawPath = '') => {
     if (!rawPath) {
@@ -46,26 +45,34 @@ const normalizePostImagePath = (rawPath = '') => {
 const addOrRemoveFollow = (userId, isFollowing) => {
     if (isFollowing) {
         try {
-            router.delete(`/students/unfollow/${userId}`, {}, {
-                onSuccess: () => {
-                    //console.log('you are now unfollow');
-                }
-            })
+            router.delete(
+                `/students/unfollow/${userId}`,
+                {},
+                {
+                    onSuccess: () => {
+                        //console.log('you are now unfollow');
+                    },
+                },
+            );
         } catch (error) {
             //console.log('unfollow error : ' + error);
         }
     } else {
         try {
-            router.post(`/students/follow/${userId}`, {}, {
-                onSuccess: () => {
-                    // //console.log('you are now follow');
-                }
-            })
+            router.post(
+                `/students/follow/${userId}`,
+                {},
+                {
+                    onSuccess: () => {
+                        // //console.log('you are now follow');
+                    },
+                },
+            );
         } catch (error) {
             // //console.log('Follow error : ' + error);
         }
     }
-}
+};
 
 let scrollY = 0;
 
@@ -110,9 +117,7 @@ const resolvePostImageUrl = (image) => {
 
 const mapExistingImages = (images = []) =>
     (images || []).map((image) => {
-        const normalizedId = typeof image === 'string'
-            ? image
-            : image?.id || image?.path || image?.name || generateLocalId();
+        const normalizedId = typeof image === 'string' ? image : image?.id || image?.path || image?.name || generateLocalId();
 
         return {
             id: normalizedId,
@@ -144,9 +149,7 @@ const buildImageEntries = async (fileList, currentCount = 0) => {
     const allowedFiles = files.slice(0, availableSlots);
     const rejected = files.length - allowedFiles.length;
 
-    const compressedFiles = await Promise.all(
-        allowedFiles.map((file) => imageCompression(file, compressionOptions))
-    );
+    const compressedFiles = await Promise.all(allowedFiles.map((file) => imageCompression(file, compressionOptions)));
 
     const entries = compressedFiles.map((file) => ({
         id: generateLocalId(),
@@ -158,12 +161,7 @@ const buildImageEntries = async (fileList, currentCount = 0) => {
     return { entries, rejected };
 };
 
-const removeImageEntry = (image, {
-    revokePreviewUrls: revoke,
-    updateExistingImages,
-    updateNewImages,
-    trackRemovedImage,
-} = {}) => {
+const removeImageEntry = (image, { revokePreviewUrls: revoke, updateExistingImages, updateNewImages, trackRemovedImage } = {}) => {
     if (!image) {
         return;
     }
@@ -178,9 +176,7 @@ const removeImageEntry = (image, {
 
     if (kind === 'existing') {
         updateExistingImages?.((prev) => prev.filter((img) => img.id !== image.id));
-        trackRemovedImage?.((prev) =>
-            prev.includes(image.id) ? prev : [...prev, image.id]
-        );
+        trackRemovedImage?.((prev) => (prev.includes(image.id) ? prev : [...prev, image.id]));
         return;
     }
 
@@ -194,18 +190,16 @@ const removeImageEntry = (image, {
     updateNewImages?.((prev) => prev.filter((img) => img.id !== image.id));
 };
 
-const createImageRemovalHandler = (options = {}) => (image) => {
-    removeImageEntry(image, options);
-};
+const createImageRemovalHandler =
+    (options = {}) =>
+    (image) => {
+        removeImageEntry(image, options);
+    };
 const calculateDuration = (parent) => {
     const startDate = new Date(parent?.start_year, parent?.start_month - 1);
-    const endDate = parent?.end_year
-        ? new Date(parent?.end_year, parent?.end_month - 1)
-        : new Date(); // Present
+    const endDate = parent?.end_year ? new Date(parent?.end_year, parent?.end_month - 1) : new Date(); // Present
 
-    let months =
-        (endDate.getFullYear() - startDate.getFullYear()) * 12 +
-        (endDate.getMonth() - startDate.getMonth());
+    let months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
 
     if (months < 0) return '0 mos';
 
@@ -214,12 +208,10 @@ const calculateDuration = (parent) => {
 
     let result = [];
     if (years) result.push(`${years} yr${years > 1 ? 's' : ''}`);
-    if (remainingMonths)
-        result.push(`${remainingMonths} mo${remainingMonths > 1 ? 's' : ''}`);
+    if (remainingMonths) result.push(`${remainingMonths} mo${remainingMonths > 1 ? 's' : ''}`);
 
     return result.join(' ');
 };
-
 
 const helperApi = Object.freeze({
     addOrRemoveFollow,

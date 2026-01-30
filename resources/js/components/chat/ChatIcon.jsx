@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { subscribeToChannel } from '@/lib/ablyManager';
+import {
+    initializeGlobalChatListener,
+    subscribeToConversationForNotifications,
+    unsubscribeFromConversationNotifications,
+} from '@/lib/globalChatListener';
 import { usePage } from '@inertiajs/react';
 import { MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
-import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/ablyManager';
-import { initializeGlobalChatListener, subscribeToConversationForNotifications, unsubscribeFromConversationNotifications } from '@/lib/globalChatListener';
+import { useEffect, useRef, useState } from 'react';
 import ConversationsList from './ConversationsList';
 
 // Component dial chat icon - y7al chat w ybdl conversations
@@ -18,10 +22,10 @@ export default function ChatIcon() {
 
     useEffect(() => {
         fetchUnreadCount();
-        
+
         // Initialize global chat listener for toast notifications
         initializeGlobalChatListener(currentUser.id);
-        
+
         // Listen to open-chat event for specific user
         const handleOpenChat = (event) => {
             const { userId } = event.detail;
@@ -45,7 +49,7 @@ export default function ChatIcon() {
                 const response = await fetch('/chat', {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
@@ -58,20 +62,20 @@ export default function ChatIcon() {
 
                 const data = await response.json();
                 const conversations = data.conversations || [];
-                conversationIdsRef.current = conversations.map(c => c.id);
+                conversationIdsRef.current = conversations.map((c) => c.id);
 
                 // Subscribe to all conversations for global notifications
                 conversations.forEach((conversation) => {
                     subscribeToConversationForNotifications(conversation.id, conversation);
-                    
+
                     // Also subscribe for unread count updates
                     const channelName = `chat:conversation:${conversation.id}`;
                     const handleNewMessage = (messageData) => {
                         if (messageData.sender_id !== currentUser.id) {
-                            setUnreadCount(prev => prev + 1);
+                            setUnreadCount((prev) => prev + 1);
                         }
                     };
-                    
+
                     subscribeToChannel(channelName, 'new-message', handleNewMessage);
                 });
 
@@ -95,7 +99,7 @@ export default function ChatIcon() {
             const response = await fetch('/chat/unread-count', {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
@@ -119,30 +123,21 @@ export default function ChatIcon() {
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="relative h-9 w-9 rounded-md"
-                    aria-label="Chat"
-                >
+                <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-md" aria-label="Chat">
                     <MessageCircle className="h-5 w-5" />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border border-white dark:border-dark">
+                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-red-500 text-[10px] font-bold text-white dark:border-dark">
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
                 </Button>
             </DialogTrigger>
-            <DialogContent 
-                className="!w-[95vw] !h-[95vh] !max-w-none !max-h-none p-0 gap-0 rounded-xl overflow-hidden shadow-2xl border-2 md:!w-[70vw] md:!h-[90vh] md:!max-w-[70vw] md:!max-h-[90vh] !grid !grid-rows-1"
+            <DialogContent
+                className="!grid !h-[95vh] !max-h-none !w-[95vw] !max-w-none !grid-rows-1 gap-0 overflow-hidden rounded-xl border-2 p-0 shadow-2xl md:!h-[90vh] md:!max-h-[90vh] md:!w-[70vw] md:!max-w-[70vw]"
                 showCloseButton={false}
             >
                 <DialogTitle className="sr-only">Messages</DialogTitle>
-                <ConversationsList 
-                    ref={conversationsListRef}
-                    onCloseChat={() => setIsOpen(false)}
-                    onUnreadCountChange={setUnreadCount}
-                />
+                <ConversationsList ref={conversationsListRef} onCloseChat={() => setIsOpen(false)} onUnreadCountChange={setUnreadCount} />
             </DialogContent>
         </Dialog>
     );

@@ -1,27 +1,15 @@
-import React, { useState, useMemo } from 'react';
-import { useForm } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { 
-    Plus, 
-    MoreVertical, 
-    Edit, 
-    Trash, 
-    CheckCircle, 
-    Clock, 
-    AlertCircle,
-    Calendar,
-    User,
-    MessageSquare,
-    Send
-} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from '@inertiajs/react';
+import { AlertCircle, Calendar, CheckCircle, Clock, Edit, MessageSquare, MoreVertical, Plus, Send, Trash, User } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
 interface Task {
     id: number;
@@ -45,19 +33,15 @@ interface TaskManagerProps {
     tasks: Task[];
     teamMembers: Array<{ id: number; name: string }>;
     onTaskCreate: (data: { title: string; description?: string; priority: string; assigned_to?: number; due_date?: string }) => void;
-    onTaskUpdate: (id: number, data: { title?: string; description?: string; priority?: string; status?: string; assigned_to?: number; due_date?: string }) => void;
+    onTaskUpdate: (
+        id: number,
+        data: { title?: string; description?: string; priority?: string; status?: string; assigned_to?: number; due_date?: string },
+    ) => void;
     onTaskDelete: (id: number) => void;
     onCommentAdd: (taskId: number, content: string) => void;
 }
 
-const TaskManager: React.FC<TaskManagerProps> = ({
-    tasks,
-    teamMembers,
-    onTaskCreate,
-    onTaskUpdate,
-    onTaskDelete,
-    onCommentAdd
-}) => {
+const TaskManager: React.FC<TaskManagerProps> = ({ tasks, teamMembers, onTaskCreate, onTaskUpdate, onTaskDelete, onCommentAdd }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -66,53 +50,72 @@ const TaskManager: React.FC<TaskManagerProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [newComment, setNewComment] = useState<{ [taskId: number]: string }>({});
 
-    const { data: taskData, setData: setTaskData, processing } = useForm({
+    const {
+        data: taskData,
+        setData: setTaskData,
+        processing,
+    } = useForm({
         title: '',
         description: '',
         priority: 'medium',
         status: 'todo',
         assigned_to: '',
-        due_date: ''
+        due_date: '',
     });
 
     const filteredTasks = useMemo(() => {
-        return tasks.filter(task => {
-            const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                 task.description?.toLowerCase().includes(searchTerm.toLowerCase());
+        return tasks.filter((task) => {
+            const matchesSearch =
+                task.title.toLowerCase().includes(searchTerm.toLowerCase()) || task.description?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
             const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
-            
+
             return matchesSearch && matchesStatus && matchesPriority;
         });
     }, [tasks, searchTerm, filterStatus, filterPriority]);
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case 'low': return 'bg-green-100 text-green-800';
-            case 'medium': return 'bg-yellow-100 text-yellow-800';
-            case 'high': return 'bg-orange-100 text-orange-800';
-            case 'urgent': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'low':
+                return 'bg-green-100 text-green-800';
+            case 'medium':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'high':
+                return 'bg-orange-100 text-orange-800';
+            case 'urgent':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'todo': return 'bg-gray-100 text-gray-800';
-            case 'in_progress': return 'bg-blue-100 text-blue-800';
-            case 'review': return 'bg-purple-100 text-purple-800';
-            case 'completed': return 'bg-green-100 text-green-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'todo':
+                return 'bg-gray-100 text-gray-800';
+            case 'in_progress':
+                return 'bg-blue-100 text-blue-800';
+            case 'review':
+                return 'bg-purple-100 text-purple-800';
+            case 'completed':
+                return 'bg-green-100 text-green-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'todo': return <Clock className="h-4 w-4" />;
-            case 'in_progress': return <AlertCircle className="h-4 w-4" />;
-            case 'review': return <Clock className="h-4 w-4" />;
-            case 'completed': return <CheckCircle className="h-4 w-4" />;
-            default: return <Clock className="h-4 w-4" />;
+            case 'todo':
+                return <Clock className="h-4 w-4" />;
+            case 'in_progress':
+                return <AlertCircle className="h-4 w-4" />;
+            case 'review':
+                return <Clock className="h-4 w-4" />;
+            case 'completed':
+                return <CheckCircle className="h-4 w-4" />;
+            default:
+                return <Clock className="h-4 w-4" />;
         }
     };
 
@@ -126,7 +129,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
             priority: 'medium',
             status: 'todo',
             assigned_to: '',
-            due_date: ''
+            due_date: '',
         });
     };
 
@@ -138,7 +141,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
             priority: task.priority,
             status: task.status,
             assigned_to: task.assigned_to?.toString() || '',
-            due_date: task.due_date || ''
+            due_date: task.due_date || '',
         });
         setIsEditModalOpen(true);
     };
@@ -156,23 +159,23 @@ const TaskManager: React.FC<TaskManagerProps> = ({
         const content = newComment[taskId];
         if (content?.trim()) {
             onCommentAdd(taskId, content);
-            setNewComment(prev => ({ ...prev, [taskId]: '' }));
+            setNewComment((prev) => ({ ...prev, [taskId]: '' }));
         }
     };
 
     const taskStats = useMemo(() => {
         const total = tasks.length;
-        const completed = tasks.filter(t => t.status === 'completed').length;
-        const inProgress = tasks.filter(t => t.status === 'in_progress').length;
-        const todo = tasks.filter(t => t.status === 'todo').length;
-        
+        const completed = tasks.filter((t) => t.status === 'completed').length;
+        const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
+        const todo = tasks.filter((t) => t.status === 'todo').length;
+
         return { total, completed, inProgress, todo };
     }, [tasks]);
 
     return (
         <div className="space-y-6">
             {/* Task Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -184,7 +187,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -196,7 +199,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -208,7 +211,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -227,24 +230,17 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Tasks</CardTitle>
-                        <Button 
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
+                        <Button onClick={() => setIsCreateModalOpen(true)} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <Plus className="mr-2 h-4 w-4" />
                             Add Task
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row">
                         <div className="flex-1">
-                            <Input
-                                placeholder="Search tasks..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                            <Input placeholder="Search tasks..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
                             <SelectTrigger className="w-full sm:w-40">
@@ -275,28 +271,22 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                     {/* Tasks List */}
                     <div className="space-y-4">
                         {filteredTasks.map((task) => (
-                            <Card key={task.id} className="hover:shadow-md transition-shadow">
+                            <Card key={task.id} className="transition-shadow hover:shadow-md">
                                 <CardContent className="p-4">
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
-                                            <div className="flex items-center space-x-2 mb-2">
+                                            <div className="mb-2 flex items-center space-x-2">
                                                 <h3 className="font-medium">{task.title}</h3>
-                                                <Badge className={getPriorityColor(task.priority)}>
-                                                    {task.priority}
-                                                </Badge>
+                                                <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
                                                 <Badge className={getStatusColor(task.status)}>
                                                     {getStatusIcon(task.status)}
                                                     <span className="ml-1">{task.status.replace('_', ' ')}</span>
                                                 </Badge>
                                             </div>
-                                            
-                                            {task.description && (
-                                                <p className="text-sm text-muted-foreground mb-3">
-                                                    {task.description}
-                                                </p>
-                                            )}
 
-                                            <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
+                                            {task.description && <p className="mb-3 text-sm text-muted-foreground">{task.description}</p>}
+
+                                            <div className="mb-3 flex items-center space-x-4 text-sm text-muted-foreground">
                                                 {task.assignee && (
                                                     <div className="flex items-center space-x-1">
                                                         <User className="h-4 w-4" />
@@ -320,7 +310,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                                                     </div>
                                                     <div className="space-y-1">
                                                         {task.comments.slice(0, 2).map((comment) => (
-                                                            <div key={comment.id} className="text-sm bg-gray-50 p-2 rounded">
+                                                            <div key={comment.id} className="rounded bg-gray-50 p-2 text-sm">
                                                                 <div className="flex items-center space-x-2">
                                                                     <span className="font-medium">{comment.user.name}</span>
                                                                     <span className="text-xs text-muted-foreground">
@@ -333,16 +323,16 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                                                     </div>
                                                 </div>
                                             )}
-                                            
+
                                             {/* Add Comment */}
-                                            <div className="flex space-x-2 mt-3">
+                                            <div className="mt-3 flex space-x-2">
                                                 <Input
                                                     placeholder="Add a comment..."
                                                     value={newComment[task.id] || ''}
-                                                    onChange={(e) => setNewComment(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                                    onChange={(e) => setNewComment((prev) => ({ ...prev, [task.id]: e.target.value }))}
                                                     className="flex-1"
                                                 />
-                                                <Button 
+                                                <Button
                                                     size="sm"
                                                     onClick={() => handleAddComment(task.id)}
                                                     className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
@@ -360,14 +350,11 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleEditTask(task)}>
-                                                    <Edit className="h-4 w-4 mr-2" />
+                                                    <Edit className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={() => onTaskDelete(task.id)}
-                                                    className="text-red-600"
-                                                >
-                                                    <Trash className="h-4 w-4 mr-2" />
+                                                <DropdownMenuItem onClick={() => onTaskDelete(task.id)} className="text-red-600">
+                                                    <Trash className="mr-2 h-4 w-4" />
                                                     Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -379,8 +366,8 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                     </div>
 
                     {filteredTasks.length === 0 && (
-                        <div className="text-center py-8">
-                            <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <div className="py-8 text-center">
+                            <Clock className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                             <h3 className="text-lg font-medium">No tasks found</h3>
                             <p className="text-muted-foreground">Create your first task to get started.</p>
                         </div>
@@ -417,7 +404,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="priority">Priority</Label>
                                 <Select value={taskData.priority} onValueChange={(value) => setTaskData('priority', value)}>
@@ -452,12 +439,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
 
                         <div className="space-y-2">
                             <Label htmlFor="due_date">Due Date</Label>
-                            <Input
-                                id="due_date"
-                                type="date"
-                                value={taskData.due_date}
-                                onChange={(e) => setTaskData('due_date', e.target.value)}
-                            />
+                            <Input id="due_date" type="date" value={taskData.due_date} onChange={(e) => setTaskData('due_date', e.target.value)} />
                         </div>
 
                         <div className="flex justify-end space-x-2">
@@ -501,7 +483,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="edit_priority">Priority</Label>
                                 <Select value={taskData.priority} onValueChange={(value) => setTaskData('priority', value)}>
@@ -533,7 +515,7 @@ const TaskManager: React.FC<TaskManagerProps> = ({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="edit_assigned_to">Assign To</Label>
                                 <Select value={taskData.assigned_to} onValueChange={(value) => setTaskData('assigned_to', value)}>

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Link, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 
 // Same logic as index.jsx - training is active if started and within 6 months
 const getTrainingStatus = (training) => {
@@ -92,19 +92,20 @@ export default function AttendanceWarning() {
     const otherTrainings = trainings.slice(1);
 
     return (
-        <Dialog open={open} onOpenChange={(nextOpen) => {
-            if (open && !nextOpen) {
-                handleDismiss(1);
-            }
-            setOpen(nextOpen);
-        }} >
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (open && !nextOpen) {
+                    handleDismiss(1);
+                }
+                setOpen(nextOpen);
+            }}
+        >
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Attendance needed</DialogTitle>
                     <DialogDescription>
-                        {todayLabel
-                            ? `You have not submitted today's attendance (${todayLabel}).`
-                            : 'You have not submitted attendance for today.'}
+                        {todayLabel ? `You have not submitted today's attendance (${todayLabel}).` : 'You have not submitted attendance for today.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-1 text-sm text-muted-foreground">
@@ -131,10 +132,3 @@ export default function AttendanceWarning() {
         </Dialog>
     );
 }
-
-
-
-
-
-
-

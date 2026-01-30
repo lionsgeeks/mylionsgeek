@@ -1,25 +1,25 @@
-import { Fragment, useState, useEffect } from 'react';
-import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import { Fragment, useEffect, useState } from 'react';
 
 export function AddDocumentModal({ user, isOpen, onClose }) {
     const [docs, setDocs] = useState({ contracts: [], medicals: [] });
-    const [uploadKind, setUploadKind] = useState("contract");
-    const [uploadError, setUploadError] = useState("");
-    const [selectedFileName, setSelectedFileName] = useState("");
+    const [uploadKind, setUploadKind] = useState('contract');
+    const [uploadError, setUploadError] = useState('');
+    const [selectedFileName, setSelectedFileName] = useState('');
 
     const loadDocs = async () => {
         try {
             const r = await fetch(`/admin/users/${user.id}/documents`, {
-                credentials: "same-origin",
-                headers: { "Accept": "application/json" }
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
             });
             if (r.ok) {
                 const d = await r.json();
                 setDocs({
                     contracts: Array.isArray(d?.contracts) ? d.contracts : [],
-                    medicals: Array.isArray(d?.medicals) ? d.medicals : []
+                    medicals: Array.isArray(d?.medicals) ? d.medicals : [],
                 });
             }
         } catch (error) {
@@ -51,54 +51,53 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setUploadError("");
+        setUploadError('');
 
         const form = e.currentTarget;
         const kind = form.docKind.value;
         const name = form.docName.value.trim();
-        const type = form.docType?.value?.trim() || "";
+        const type = form.docType?.value?.trim() || '';
         const file = form.docFile.files?.[0];
 
         if (!file) return;
 
         const body = new FormData();
-        body.append("kind", kind);
-        body.append("file", file);
-        if (name) body.append("name", name);
-        if (kind === "contract" && type) body.append("type", type);
+        body.append('kind', kind);
+        body.append('file', file);
+        if (name) body.append('name', name);
+        if (kind === 'contract' && type) body.append('type', type);
 
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         body.append('_token', csrf);
 
         const res = await fetch(`/admin/users/${user.id}/documents`, {
-            method: "POST",
+            method: 'POST',
             headers: {
-                "X-CSRF-TOKEN": csrf,
-                "X-Requested-With": "XMLHttpRequest",
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
             },
-            credentials: "same-origin",
+            credentials: 'same-origin',
             body,
         });
 
         if (!res.ok) {
             try {
                 const data = await res.json();
-                setUploadError(data?.message || "Upload failed");
+                setUploadError(data?.message || 'Upload failed');
             } catch {
-                setUploadError("Upload failed");
+                setUploadError('Upload failed');
             }
             return;
         }
 
         await loadDocs();
         form.reset();
-        setSelectedFileName("");
-        setUploadKind("contract");
-        setUploadError("");
+        setSelectedFileName('');
+        setUploadKind('contract');
+        setUploadError('');
         // Close modal on successful submission
         onClose();
     };
-
 
     if (!isOpen) return null;
 
@@ -125,7 +124,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                 </Transition.Child>
 
                 {/* Modal Panel */}
-                <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-4">
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -136,11 +135,11 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                         leaveTo="opacity-0 scale-95"
                     >
                         <DialogPanel
-                            className="w-full max-w-4xl rounded-xl bg-white dark:bg-neutral-900 p-6 shadow-xl max-h-[90vh] overflow-y-auto pointer-events-auto"
+                            className="pointer-events-auto max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="mb-4 flex items-center justify-between">
                                 <Dialog.Title className="text-xl font-bold">Add Document</Dialog.Title>
                                 <button
                                     type="button"
@@ -149,23 +148,18 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                         e.preventDefault();
                                         onClose();
                                     }}
-                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                    className="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
                                     aria-label="Close"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
 
                             {/* Upload Form */}
-                            <form
-                                className="space-y-4"
-                                onSubmit={handleSubmit}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-
+                            <form className="space-y-4" onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
+                                <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-5">
                                     {/* Kind */}
                                     <div>
                                         <Label>Document Type</Label>
@@ -173,7 +167,7 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                             name="docKind"
                                             value={uploadKind}
                                             onChange={(e) => setUploadKind(e.target.value)}
-                                            className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800"
+                                            className="w-full rounded-lg border bg-white px-3 py-2.5 dark:bg-neutral-800"
                                         >
                                             <option value="contract">Contract</option>
                                             <option value="medical">Medical</option>
@@ -186,21 +180,21 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                         <input
                                             name="docName"
                                             type="text"
-                                            className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800"
+                                            className="w-full rounded-lg border bg-white px-3 py-2.5 dark:bg-neutral-800"
                                             placeholder="Enter name"
                                             autoComplete="off"
                                         />
                                     </div>
 
                                     {/* Contract type */}
-                                    {uploadKind === "contract" && (
+                                    {uploadKind === 'contract' && (
                                         <div>
                                             <Label>Contract Type</Label>
                                             <input
                                                 name="docType"
                                                 type="text"
                                                 placeholder="e.g., Full-time"
-                                                className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800"
+                                                className="w-full rounded-lg border bg-white px-3 py-2.5 dark:bg-neutral-800"
                                                 autoComplete="off"
                                             />
                                         </div>
@@ -211,9 +205,9 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                         <Label>Select File</Label>
                                         <label
                                             htmlFor="docFile"
-                                            className="border-2 border-dashed rounded-lg px-3 py-2.5 flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors"
+                                            className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed px-3 py-2.5 transition-colors hover:bg-gray-50 dark:hover:bg-neutral-700"
                                         >
-                                            {selectedFileName || "Choose file"}
+                                            {selectedFileName || 'Choose file'}
                                         </label>
                                         <input
                                             id="docFile"
@@ -222,36 +216,27 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                             className="hidden"
                                             accept="application/pdf,image/*"
                                             required
-                                            onChange={(e) => setSelectedFileName(e.target.files[0]?.name || "")}
+                                            onChange={(e) => setSelectedFileName(e.target.files[0]?.name || '')}
                                         />
                                     </div>
 
                                     {/* Submit */}
                                     <div>
-                                        <Button type="submit" className="w-full  bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
+                                        <Button
+                                            type="submit"
+                                            className="w-full cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                        >
                                             Upload
                                         </Button>
                                     </div>
                                 </div>
 
-                                {uploadError && (
-                                    <div className="text-red-600 text-sm">{uploadError}</div>
-                                )}
+                                {uploadError && <div className="text-sm text-red-600">{uploadError}</div>}
                             </form>
 
                             {/* Documents list */}
-                            <div
-                                className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-
-                                <DocumentList
-                                    title="Contracts"
-                                    count={docs.contracts.length}
-                                    items={docs.contracts}
-                                    user={user}
-                                    type="contract"
-                                />
+                            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
+                                <DocumentList title="Contracts" count={docs.contracts.length} items={docs.contracts} user={user} type="contract" />
 
                                 <DocumentList
                                     title="Medical Certificates"
@@ -260,34 +245,32 @@ export function AddDocumentModal({ user, isOpen, onClose }) {
                                     user={user}
                                     type="medical"
                                 />
-
                             </div>
                         </DialogPanel>
                     </Transition.Child>
                 </div>
             </Dialog>
         </Transition>
-
     );
 }
 
 /* -------------------------- DOCUMENT LIST COMPONENT ------------------------- */
 function DocumentList({ title, count, items, user, type }) {
     return (
-        <div className="rounded-xl border p-4 bg-gradient-to-br from-alpha/5 to-alpha/10">
-            <div className="flex items-center justify-between mb-4">
+        <div className="rounded-xl border bg-gradient-to-br from-alpha/5 to-alpha/10 p-4">
+            <div className="mb-4 flex items-center justify-between">
                 <div className="font-bold">{title}</div>
-                <div className="text-xs px-2 py-1 bg-alpha text-white rounded-full">{count}</div>
+                <div className="rounded-full bg-alpha px-2 py-1 text-xs text-white">{count}</div>
             </div>
 
             {items.length > 0 ? (
                 <ul className="space-y-2">
                     {items.map((d, i) => (
-                        <li key={i} className="flex justify-between items-center bg-white dark:bg-neutral-800 px-3 py-2 rounded-lg border">
+                        <li key={i} className="flex items-center justify-between rounded-lg border bg-white px-3 py-2 dark:bg-neutral-800">
                             <span className="truncate">{d.name}</span>
                             <a
                                 href={`/admin/users/${user.id}/documents/${type}/${d.id}`}
-                                className="text-alpha text-xs font-semibold"
+                                className="text-xs font-semibold text-alpha"
                                 target="_blank"
                             >
                                 View
@@ -296,7 +279,7 @@ function DocumentList({ title, count, items, user, type }) {
                     ))}
                 </ul>
             ) : (
-                <p className="text-center text-sm text-neutral-500 py-4">No {title.toLowerCase()}</p>
+                <p className="py-4 text-center text-sm text-neutral-500">No {title.toLowerCase()}</p>
             )}
         </div>
     );

@@ -1,21 +1,29 @@
 import { Award, Calendar, RefreshCw, Search } from 'lucide-react';
-import React from 'react';
 
-const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos, searchText, setSearchText, leaderboardData, isRefreshing , setFilter }) => {
+const BoardFilter = ({
+    filter,
+    selectedPromo,
+    setSelectedPromo,
+    availablePromos,
+    searchText,
+    setSearchText,
+    leaderboardData,
+    isRefreshing,
+    setFilter,
+}) => {
     return (
         <>
-
             {/* Enhanced Filters Section */}
-            <div className="bg-white/80 dark:bg-dark/80 backdrop-blur-sm rounded-2xl shadow-xl border border-alpha/20 dark:border-alpha/30 p-6 mb-8">
-                <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="mb-8 rounded-2xl border border-alpha/20 bg-white/80 p-6 shadow-xl backdrop-blur-sm dark:border-alpha/30 dark:bg-dark/80">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap gap-4">
                         {/* Time Range Filter */}
                         <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-4 h-4" />
+                            <Calendar className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-500 dark:text-gray-400" />
                             <select
                                 value={filter}
                                 onChange={(e) => setFilter(e.target.value)}
-                                className="pl-10 pr-8 py-3 rounded-xl border border-alpha/20 dark:border-alpha/30 bg-white dark:bg-dark_gray text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-transparent transition-all duration-200 shadow-sm"
+                                className="rounded-xl border border-alpha/20 bg-white py-3 pr-8 pl-10 text-dark shadow-sm transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-alpha dark:border-alpha/30 dark:bg-dark_gray dark:text-light"
                             >
                                 <option value="alltime">All Time</option>
                                 <option value="this_week">This week</option>
@@ -27,50 +35,44 @@ const BoardFilter = ({ filter, selectedPromo, setSelectedPromo, availablePromos,
 
                         {/* Promo Filter */}
                         <div className="relative">
-                            <Award className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-4 h-4" />
+                            <Award className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-500 dark:text-gray-400" />
                             <select
                                 value={selectedPromo}
                                 onChange={(e) => setSelectedPromo(e.target.value)}
-                                className="pl-10 pr-8 py-3 rounded-xl border border-alpha/20 dark:border-alpha/30 bg-white dark:bg-dark_gray text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-transparent transition-all duration-200 shadow-sm"
+                                className="rounded-xl border border-alpha/20 bg-white py-3 pr-8 pl-10 text-dark shadow-sm transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-alpha dark:border-alpha/30 dark:bg-dark_gray dark:text-light"
                             >
                                 <option value="all">All Promotions</option>
-                                {availablePromos.map(promo => (
-                                    <option key={promo} value={promo}>Promo {promo}</option>
+                                {availablePromos.map((promo) => (
+                                    <option key={promo} value={promo}>
+                                        Promo {promo}
+                                    </option>
                                 ))}
                             </select>
                         </div>
 
                         {/* Search */}
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 w-4 h-4" />
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-500 dark:text-gray-400" />
                             <input
                                 type="text"
                                 placeholder="Search by name..."
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
-                                className="pl-10 pr-4 py-3 rounded-xl border border-alpha/20 dark:border-alpha/30 bg-white dark:bg-dark_gray text-dark dark:text-light focus:ring-2 focus:ring-alpha focus:border-transparent transition-all duration-200 w-64 shadow-sm"
+                                className="w-64 rounded-xl border border-alpha/20 bg-white py-3 pr-4 pl-10 text-dark shadow-sm transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-alpha dark:border-alpha/30 dark:bg-dark_gray dark:text-light"
                             />
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {
-                            !isRefreshing &&
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                                {leaderboardData.length} coders
-                            </div>
-
-                        }
+                        {!isRefreshing && <div className="text-sm text-gray-600 dark:text-gray-400">{leaderboardData.length} coders</div>}
                         <div className="flex items-center gap-2 text-sm text-dark/70 dark:text-light/70">
-                            {
-                                isRefreshing ?
-                                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                                    :
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            }
+                            {isRefreshing ? (
+                                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            ) : (
+                                <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
+                            )}
                             <span>{isRefreshing ? 'Updating...' : 'Live'}</span>
                         </div>
-
                     </div>
                 </div>
             </div>

@@ -1,18 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { useCallback, useEffect, useState } from 'react';
 
 // Import Uno game components
-import {
-    LobbyScreen,
-    GameScreen,
-    ColorPicker,
-} from './components/uno';
+import { ColorPicker, GameScreen, LobbyScreen } from './components/uno';
 
 // Import custom hooks
-import { useUnoGame } from './components/uno/useUnoGame';
 import { useUnoActions } from './components/uno/useUnoActions';
+import { useUnoGame } from './components/uno/useUnoGame';
 import { useUnoRoom } from './components/uno/useUnoRoom';
 
 export default function Uno() {
@@ -22,7 +18,7 @@ export default function Uno() {
     // Initialize room state from URL/auth
     const [roomId, setRoomId] = useState('');
     const [playerName, setPlayerName] = useState('');
-    
+
     useEffect(() => {
         const sp = new URLSearchParams(window.location.search);
         const r = sp.get('room');
@@ -83,7 +79,7 @@ export default function Uno() {
     const startGame = useCallback(() => {
         if (gameState.players.length < 2) return;
 
-        const playerNames = gameState.players.map(p => p.name);
+        const playerNames = gameState.players.map((p) => p.name);
         const newState = gameState.initializeGame(playerNames);
 
         // Save to database
@@ -92,7 +88,7 @@ export default function Uno() {
             const gameStateData = {
                 deck: newState.deck,
                 discardPile: newState.discardPile,
-                players: newState.players.map(p => ({
+                players: newState.players.map((p) => ({
                     id: p.id,
                     name: p.name,
                     hand: p.hand,
@@ -107,16 +103,17 @@ export default function Uno() {
                 unoCalled: {},
             };
 
-            axios.post(`/api/games/state/${finalRoomId}`, {
-                game_type: 'uno',
-                game_state: gameStateData,
-            })
-            .then(() => {
-                //console.log('✅ Game started and broadcasted to all players');
-            })
-            .catch((error) => {
-                console.error('❌ Failed to start game:', error);
-            });
+            axios
+                .post(`/api/games/state/${finalRoomId}`, {
+                    game_type: 'uno',
+                    game_state: gameStateData,
+                })
+                .then(() => {
+                    //console.log('✅ Game started and broadcasted to all players');
+                })
+                .catch((error) => {
+                    console.error('❌ Failed to start game:', error);
+                });
         }
     }, [gameState.players, gameState.initializeGame, roomState.isConnected, roomState.roomId, roomId]);
 
@@ -126,7 +123,7 @@ export default function Uno() {
         gameState.setGameStarted(false);
         gameState.setDeck([]);
         gameState.setDiscardPile([]);
-        gameState.setPlayers(gameState.players.map(p => ({ ...p, hand: [] })));
+        gameState.setPlayers(gameState.players.map((p) => ({ ...p, hand: [] })));
         gameState.setCurrentPlayerIndex(0);
         gameState.setPlayDirection(1);
         gameState.setCurrentColor(null);
@@ -135,7 +132,7 @@ export default function Uno() {
         gameState.setShowColorPicker(false);
         gameState.setUnoCalled({});
         gameState.setNeedsUnoCall({});
-        
+
         // Clear server state if connected
         const finalRoomId = roomState.roomId || roomId;
         if (roomState.isConnected && finalRoomId) {
@@ -149,7 +146,7 @@ export default function Uno() {
 
     // Game styles
     const gameStyles = (
-            <style>{`
+        <style>{`
                 .scrollbar-hide::-webkit-scrollbar {
                     display: none;
                 }
@@ -202,7 +199,7 @@ export default function Uno() {
     const gameContent = (
         <>
             {gameStyles}
-            
+
             {!gameState.gameStarted ? (
                 <LobbyScreen
                     roomId={roomState.roomId}
@@ -238,9 +235,9 @@ export default function Uno() {
                     onCallUno={actions.callUno}
                     onNewGame={handleNewGame}
                 />
-                )}
+            )}
 
-                {/* Color Picker Modal */}
+            {/* Color Picker Modal */}
             <ColorPicker
                 show={gameState.showColorPicker}
                 selectedCard={gameState.selectedCard}

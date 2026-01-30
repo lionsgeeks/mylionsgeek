@@ -1,14 +1,10 @@
-import React from 'react';
-import { Plus } from 'lucide-react';
-import Experience from './components/Experience';
 import Education from './components/Education';
+import Experience from './components/Experience';
 
 const RightColumn = ({ user }) => {
     return (
         <>
-            <div className="lg:col-span-2 space-y-4">
-
-
+            <div className="space-y-4 lg:col-span-2">
                 {/* Education Card */}
                 <Education user={user} />
                 <Experience user={user} />

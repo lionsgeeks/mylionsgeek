@@ -1,13 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
 import useAblyChannelGames from '@/hooks/useAblyChannelGames';
+import axios from 'axios';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { COLORS } from './constants';
-import {
-    initializeDeck,
-    shuffleDeck,
-    dealCards,
-    getNextPlayerIndex,
-} from './utils';
+import { dealCards, getNextPlayerIndex, initializeDeck, shuffleDeck } from './utils';
 
 /**
  * Custom hook for Uno game state management
@@ -33,25 +28,21 @@ export function useUnoGame(auth, roomId, playerName) {
     const [unoAnimation, setUnoAnimation] = useState(null);
     const [laughAnimation, setLaughAnimation] = useState(null);
 
-        // Note: Connection state is managed externally
+    // Note: Connection state is managed externally
     const [assignedPlayerIndex, setAssignedPlayerIndex] = useState(null);
     const fullGameStateRef = useRef(null);
     const gameStateRef = useRef({ deck: [], discardPile: [], players: [], currentPlayerIndex: 0, playDirection: 1, currentColor: null });
 
     // Ably channel for real-time game updates
     const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
-    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(
-        gameChannelName,
-        ['game-state-updated', 'game-reset'],
-        {
-            onConnected: () => {
-                //console.log('✅ Ably connected for game room:', roomId);
-            },
-            onError: (error) => {
-                console.error('❌ Ably connection error:', error);
-            },
-        }
-    );
+    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(gameChannelName, ['game-state-updated', 'game-reset'], {
+        onConnected: () => {
+            //console.log('✅ Ably connected for game room:', roomId);
+        },
+        onError: (error) => {
+            console.error('❌ Ably connection error:', error);
+        },
+    });
 
     // Initialize game
     const initializeGame = useCallback((playerNames) => {
@@ -104,54 +95,30 @@ export function useUnoGame(auth, roomId, playerName) {
 
         if (card.type === 'action') {
             if (card.value === 'skip') {
-                newState.currentPlayerIndex = getNextPlayerIndex(
-                    newState.currentPlayerIndex,
-                    newState.playDirection,
-                    newState.players.length
-                );
-                newState.currentPlayerIndex = getNextPlayerIndex(
-                    newState.currentPlayerIndex,
-                    newState.playDirection,
-                    newState.players.length
-                );
+                newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
+                newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
                 shouldMoveToNext = false;
             } else if (card.value === 'reverse') {
                 newState.playDirection *= -1;
                 if (newState.players.length === 2) {
-                    newState.currentPlayerIndex = getNextPlayerIndex(
-                        newState.currentPlayerIndex,
-                        newState.playDirection,
-                        newState.players.length
-                    );
+                    newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
                     shouldMoveToNext = false;
                 }
             } else if (card.value === 'draw2') {
                 newState.pendingDraw = (newState.pendingDraw || 0) + 2;
-                newState.currentPlayerIndex = getNextPlayerIndex(
-                    newState.currentPlayerIndex,
-                    newState.playDirection,
-                    newState.players.length
-                );
+                newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
                 shouldMoveToNext = false;
             }
         } else if (card.type === 'wild') {
             if (card.value === 'wild_draw4') {
                 newState.pendingDraw = (newState.pendingDraw || 0) + 4;
-                newState.currentPlayerIndex = getNextPlayerIndex(
-                    newState.currentPlayerIndex,
-                    newState.playDirection,
-                    newState.players.length
-                );
+                newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
                 shouldMoveToNext = false;
             }
         }
 
         if (shouldMoveToNext) {
-            newState.currentPlayerIndex = getNextPlayerIndex(
-                newState.currentPlayerIndex,
-                newState.playDirection,
-                newState.players.length
-            );
+            newState.currentPlayerIndex = getNextPlayerIndex(newState.currentPlayerIndex, newState.playDirection, newState.players.length);
         }
 
         return newState;
@@ -180,108 +147,117 @@ export function useUnoGame(auth, roomId, playerName) {
     }, []);
 
     // Update game state from server
-    const updateGameStateFromData = useCallback((state) => {
-        if (!state) {
-            console.warn('⚠️ updateGameStateFromData called with null/undefined state');
-            return;
-        }
-
-        console.log('🔄 Updating game state from server/Ably:', {
-            currentPlayerIndex: state.currentPlayerIndex,
-            gameStarted: state.gameStarted,
-            playersCount: state.players?.length,
-        });
-
-        fullGameStateRef.current = JSON.parse(JSON.stringify(state));
-
-        let myPlayerIndex = assignedPlayerIndex;
-        if (state.players && state.players.length > 0) {
-            const playerIndex = state.players.findIndex(p => p.name === playerName);
-            if (playerIndex >= 0) {
-                myPlayerIndex = playerIndex;
-                if (assignedPlayerIndex !== playerIndex) {
-                    setAssignedPlayerIndex(playerIndex);
-                }
+    const updateGameStateFromData = useCallback(
+        (state) => {
+            if (!state) {
+                console.warn('⚠️ updateGameStateFromData called with null/undefined state');
+                return;
             }
-        }
 
-        let filteredPlayers = state.players;
-        if (state.players && myPlayerIndex !== null && myPlayerIndex >= 0) {
-            filteredPlayers = state.players.map((player, index) => {
-                if (index === myPlayerIndex || player.name === playerName) {
-                    return player;
-                } else {
-                    return {
-                        id: player.id,
-                        name: player.name,
-                        score: player.score,
-                        hand: Array(player.hand?.length || 0).fill(null),
-                    };
-                }
+            console.log('🔄 Updating game state from server/Ably:', {
+                currentPlayerIndex: state.currentPlayerIndex,
+                gameStarted: state.gameStarted,
+                playersCount: state.players?.length,
             });
-        }
 
-        if (state.deck !== undefined) setDeck(state.deck);
-        if (state.discardPile !== undefined) setDiscardPile(state.discardPile);
-        if (filteredPlayers) setPlayers(filteredPlayers);
-        if (state.currentPlayerIndex !== undefined) {
-            if (state.currentPlayerIndex !== currentPlayerIndex) {
-                setDrawnCardIndex(null);
-            }
-            setCurrentPlayerIndex(state.currentPlayerIndex);
-        }
-        if (state.playDirection !== undefined) setPlayDirection(state.playDirection);
-        if (state.currentColor !== undefined) setCurrentColor(state.currentColor);
-        if (state.gameStarted !== undefined) {
-            const wasGameStarted = gameStarted;
-            setGameStarted(state.gameStarted);
-            if (state.gameStarted && !wasGameStarted && !isFullscreen && !document.fullscreenElement) {
-                setTimeout(() => {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().then(() => {
-                            setIsFullscreen(true);
-                        }).catch(err => {
-                            console.error('Error attempting to enable fullscreen:', err);
-                        });
+            fullGameStateRef.current = JSON.parse(JSON.stringify(state));
+
+            let myPlayerIndex = assignedPlayerIndex;
+            if (state.players && state.players.length > 0) {
+                const playerIndex = state.players.findIndex((p) => p.name === playerName);
+                if (playerIndex >= 0) {
+                    myPlayerIndex = playerIndex;
+                    if (assignedPlayerIndex !== playerIndex) {
+                        setAssignedPlayerIndex(playerIndex);
                     }
-                }, 200);
+                }
             }
-        }
-        if (state.winner !== undefined) setWinner(state.winner);
-        if (state.pendingDraw !== undefined) setPendingDraw(state.pendingDraw);
-        if (state.unoCalled !== undefined) setUnoCalled(state.unoCalled);
-        if (state.needsUnoCall !== undefined) setNeedsUnoCall(state.needsUnoCall);
-        if (state.drawnCardIndex !== undefined) setDrawnCardIndex(state.drawnCardIndex);
-        
-        gameStateRef.current = {
-            deck: state.deck || deck,
-            discardPile: state.discardPile || discardPile,
-            players: filteredPlayers || players,
-            currentPlayerIndex: state.currentPlayerIndex !== undefined ? state.currentPlayerIndex : currentPlayerIndex,
-            playDirection: state.playDirection !== undefined ? state.playDirection : playDirection,
-            currentColor: state.currentColor !== undefined ? state.currentColor : currentColor,
-        };
 
-        //console.log('✅ Game state updated from server');
-    }, [playerName, assignedPlayerIndex, gameStarted, isFullscreen, currentPlayerIndex, deck, discardPile, players, playDirection, currentColor]);
+            let filteredPlayers = state.players;
+            if (state.players && myPlayerIndex !== null && myPlayerIndex >= 0) {
+                filteredPlayers = state.players.map((player, index) => {
+                    if (index === myPlayerIndex || player.name === playerName) {
+                        return player;
+                    } else {
+                        return {
+                            id: player.id,
+                            name: player.name,
+                            score: player.score,
+                            hand: Array(player.hand?.length || 0).fill(null),
+                        };
+                    }
+                });
+            }
+
+            if (state.deck !== undefined) setDeck(state.deck);
+            if (state.discardPile !== undefined) setDiscardPile(state.discardPile);
+            if (filteredPlayers) setPlayers(filteredPlayers);
+            if (state.currentPlayerIndex !== undefined) {
+                if (state.currentPlayerIndex !== currentPlayerIndex) {
+                    setDrawnCardIndex(null);
+                }
+                setCurrentPlayerIndex(state.currentPlayerIndex);
+            }
+            if (state.playDirection !== undefined) setPlayDirection(state.playDirection);
+            if (state.currentColor !== undefined) setCurrentColor(state.currentColor);
+            if (state.gameStarted !== undefined) {
+                const wasGameStarted = gameStarted;
+                setGameStarted(state.gameStarted);
+                if (state.gameStarted && !wasGameStarted && !isFullscreen && !document.fullscreenElement) {
+                    setTimeout(() => {
+                        if (!document.fullscreenElement) {
+                            document.documentElement
+                                .requestFullscreen()
+                                .then(() => {
+                                    setIsFullscreen(true);
+                                })
+                                .catch((err) => {
+                                    console.error('Error attempting to enable fullscreen:', err);
+                                });
+                        }
+                    }, 200);
+                }
+            }
+            if (state.winner !== undefined) setWinner(state.winner);
+            if (state.pendingDraw !== undefined) setPendingDraw(state.pendingDraw);
+            if (state.unoCalled !== undefined) setUnoCalled(state.unoCalled);
+            if (state.needsUnoCall !== undefined) setNeedsUnoCall(state.needsUnoCall);
+            if (state.drawnCardIndex !== undefined) setDrawnCardIndex(state.drawnCardIndex);
+
+            gameStateRef.current = {
+                deck: state.deck || deck,
+                discardPile: state.discardPile || discardPile,
+                players: filteredPlayers || players,
+                currentPlayerIndex: state.currentPlayerIndex !== undefined ? state.currentPlayerIndex : currentPlayerIndex,
+                playDirection: state.playDirection !== undefined ? state.playDirection : playDirection,
+                currentColor: state.currentColor !== undefined ? state.currentColor : currentColor,
+            };
+
+            //console.log('✅ Game state updated from server');
+        },
+        [playerName, assignedPlayerIndex, gameStarted, isFullscreen, currentPlayerIndex, deck, discardPile, players, playDirection, currentColor],
+    );
 
     // Fetch initial game state
-    const fetchInitialGameState = useCallback(async (roomId) => {
-        if (!ablyConnected || !roomId) return;
+    const fetchInitialGameState = useCallback(
+        async (roomId) => {
+            if (!ablyConnected || !roomId) return;
 
-        try {
-            //console.log('🔄 Fetching game state from server...');
-            const response = await axios.get(`/api/games/state/${roomId}`);
-            if (response.data.exists && response.data.game_state) {
-                //console.log('✅ Game state fetched, updating...');
-                updateGameStateFromData(response.data.game_state);
-            } else {
-                //console.log('ℹ️ No existing game state found');
+            try {
+                //console.log('🔄 Fetching game state from server...');
+                const response = await axios.get(`/api/games/state/${roomId}`);
+                if (response.data.exists && response.data.game_state) {
+                    //console.log('✅ Game state fetched, updating...');
+                    updateGameStateFromData(response.data.game_state);
+                } else {
+                    //console.log('ℹ️ No existing game state found');
+                }
+            } catch (error) {
+                console.error('❌ Failed to fetch game state:', error);
             }
-        } catch (error) {
-            console.error('❌ Failed to fetch game state:', error);
-        }
-    }, [ablyConnected, updateGameStateFromData]);
+        },
+        [ablyConnected, updateGameStateFromData],
+    );
 
     // Periodic sync will be handled by parent component
     // This hook doesn't manage connection state
@@ -299,9 +275,9 @@ export function useUnoGame(auth, roomId, playerName) {
             console.log('📨 REAL-TIME UPDATE RECEIVED via Ably:', {
                 hasGameState: !!data?.game_state,
                 currentPlayerIndex: data?.game_state?.currentPlayerIndex,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
-            
+
             if (data && data.game_state) {
                 updateGameStateFromData(data.game_state);
             } else {
@@ -329,17 +305,23 @@ export function useUnoGame(auth, roomId, playerName) {
     // Fullscreen toggle
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().then(() => {
-                setIsFullscreen(true);
-            }).catch(err => {
-                console.error('Error attempting to enable fullscreen:', err);
-            });
+            document.documentElement
+                .requestFullscreen()
+                .then(() => {
+                    setIsFullscreen(true);
+                })
+                .catch((err) => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
         } else {
-            document.exitFullscreen().then(() => {
-                setIsFullscreen(false);
-            }).catch(err => {
-                console.error('Error attempting to exit fullscreen:', err);
-            });
+            document
+                .exitFullscreen()
+                .then(() => {
+                    setIsFullscreen(false);
+                })
+                .catch((err) => {
+                    console.error('Error attempting to exit fullscreen:', err);
+                });
         }
     };
 
@@ -357,13 +339,16 @@ export function useUnoGame(auth, roomId, playerName) {
     useEffect(() => {
         if (gameStarted && !isFullscreen && !document.fullscreenElement) {
             const timer = setTimeout(() => {
-                document.documentElement.requestFullscreen().then(() => {
-                    setIsFullscreen(true);
-                }).catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
-                });
+                document.documentElement
+                    .requestFullscreen()
+                    .then(() => {
+                        setIsFullscreen(true);
+                    })
+                    .catch((err) => {
+                        console.error('Error attempting to enable fullscreen:', err);
+                    });
             }, 100);
-            
+
             return () => clearTimeout(timer);
         }
     }, [gameStarted, isFullscreen]);
@@ -389,7 +374,7 @@ export function useUnoGame(auth, roomId, playerName) {
         laughAnimation,
         ablyConnected,
         assignedPlayerIndex,
-        
+
         // Setters
         setDeck,
         setDiscardPile,
@@ -409,7 +394,7 @@ export function useUnoGame(auth, roomId, playerName) {
         setUnoAnimation,
         setLaughAnimation,
         setAssignedPlayerIndex,
-        
+
         // Functions
         initializeGame,
         applyCardEffect,
@@ -417,12 +402,9 @@ export function useUnoGame(auth, roomId, playerName) {
         updateGameStateFromData,
         fetchInitialGameState,
         toggleFullscreen,
-        
+
         // Refs
         fullGameStateRef,
         gameStateRef,
     };
 }
-
-
-

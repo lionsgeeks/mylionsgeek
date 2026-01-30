@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import { Head, router } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
 import ReservationModalMeetingRoom from './ReservationModalMeetingRoom';
 
 export default function MeetingRoomCalendar({ meetingRoom, reservations = [] }) {
@@ -65,16 +65,12 @@ export default function MeetingRoomCalendar({ meetingRoom, reservations = [] }) 
 
             <div className="p-6">
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-white">
-                        {meetingRoom.name}
-                    </h1>
+                    <h1 className="text-2xl font-bold text-white">{meetingRoom.name}</h1>
                     <p className="text-white/60">Meeting Room Calendar</p>
                 </div>
 
-                <div className="bg-black/40 border border-white/10 rounded-lg p-6">
-                    {isRefreshing && (
-                        <div className="text-sm text-white/70 mb-2">Refreshing calendar…</div>
-                    )}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-6">
+                    {isRefreshing && <div className="mb-2 text-sm text-white/70">Refreshing calendar…</div>}
                     {selectionError && (
                         <div className="mb-4 rounded-lg border border-yellow-400/60 bg-yellow-300/15 px-3 py-2 text-sm text-yellow-100">
                             {selectionError}

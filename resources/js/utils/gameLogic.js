@@ -30,24 +30,24 @@ export function canStackOnTop(played, top) {
 
 export function bestCpuMove(hand, top) {
     // Prefer: stack same +4/+2 if applicable -> wild -> color match -> value match
-    const playable = hand.filter(c => canPlay(c, top));
+    const playable = hand.filter((c) => canPlay(c, top));
     if (playable.length === 0) return null;
-    const stackable = playable.find(c => canStackOnTop(c, top));
+    const stackable = playable.find((c) => canStackOnTop(c, top));
     if (stackable) return stackable;
-    const wild4 = playable.find(c => c.type === 'wild' && c.value === 'WildDraw4');
+    const wild4 = playable.find((c) => c.type === 'wild' && c.value === 'WildDraw4');
     if (wild4) return wild4;
-    const wild = playable.find(c => c.type === 'wild');
+    const wild = playable.find((c) => c.type === 'wild');
     if (wild) return wild;
-    const colorMatch = playable.find(c => top.chosenColor ? c.color === top.chosenColor : c.color === top.color);
+    const colorMatch = playable.find((c) => (top.chosenColor ? c.color === top.chosenColor : c.color === top.color));
     if (colorMatch) return colorMatch;
-    const valueMatch = playable.find(c => c.value === top.value);
+    const valueMatch = playable.find((c) => c.value === top.value);
     return valueMatch || playable[0];
 }
 
 export function chooseWildColorFromHand(hand) {
     const counts = COLORS.reduce((acc, c) => ({ ...acc, [c]: 0 }), {});
-    hand.forEach(c => { if (c.color) counts[c.color]++; });
-    return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0] || 'red';
+    hand.forEach((c) => {
+        if (c.color) counts[c.color]++;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] || 'red';
 }
-
-

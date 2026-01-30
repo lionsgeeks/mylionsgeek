@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { timeAgo } from '../../lib/utils';
 import { router, usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
+import { timeAgo } from '../../lib/utils';
 import { helpers } from '../utils/helpers';
+import PostCardFooter from './PostCardFooter';
 import PostCardHeader from './PostCardHeader';
 import PostCardMainContent from './PostCardMainContent';
-import PostCardFooter from './PostCardFooter';
 
 const PostCard = ({ user, posts }) => {
-    const { auth } = usePage().props
+    const { auth } = usePage().props;
     const { addOrRemoveFollow } = helpers();
     const [postList, setPostList] = useState(posts ?? []);
     const [deletingPostId, setDeletingPostId] = useState(null);
@@ -44,53 +44,56 @@ const PostCard = ({ user, posts }) => {
     }, []);
 
     const takeToUserProfile = (post) => {
-        return '/students/' + post?.user_id
-    }
+        return '/students/' + post?.user_id;
+    };
 
-    const handleDeletePost = useCallback((postId) => {
-        if (!postId) {
-            return Promise.resolve(false);
-        }
-
-        if (deletingPostId === postId) {
-            return Promise.resolve(false);
-        }
-
-        const rollback = handlePostRemoved(postId);
-        setDeletingPostId(postId);
-
-        return new Promise((resolve, reject) => {
-            try {
-                router.delete(`/posts/post/${postId}`, {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onSuccess: () => {
-                        resolve(true);
-                    },
-                    onError: (errors) => {
-                        rollback?.();
-                        reject(errors || new Error('Unable to delete post.'));
-                    },
-                    onFinish: () => {
-                        setDeletingPostId((current) => current === postId ? null : current);
-                    },
-                });
-            } catch (error) {
-                rollback?.();
-                setDeletingPostId((current) => current === postId ? null : current);
-                reject(error);
+    const handleDeletePost = useCallback(
+        (postId) => {
+            if (!postId) {
+                return Promise.resolve(false);
             }
-        });
-    }, [deletingPostId, handlePostRemoved]);
+
+            if (deletingPostId === postId) {
+                return Promise.resolve(false);
+            }
+
+            const rollback = handlePostRemoved(postId);
+            setDeletingPostId(postId);
+
+            return new Promise((resolve, reject) => {
+                try {
+                    router.delete(`/posts/post/${postId}`, {
+                        preserveScroll: true,
+                        preserveState: true,
+                        onSuccess: () => {
+                            resolve(true);
+                        },
+                        onError: (errors) => {
+                            rollback?.();
+                            reject(errors || new Error('Unable to delete post.'));
+                        },
+                        onFinish: () => {
+                            setDeletingPostId((current) => (current === postId ? null : current));
+                        },
+                    });
+                } catch (error) {
+                    rollback?.();
+                    setDeletingPostId((current) => (current === postId ? null : current));
+                    reject(error);
+                }
+            });
+        },
+        [deletingPostId, handlePostRemoved],
+    );
 
     return (
         <>
             {postList?.map((p, index) => {
                 const isDeleting = deletingPostId === p.id;
                 return (
-                    <div key={p.id ?? index} className="relative bg-white dark:bg-dark_gray rounded-lg shadow mb-4 overflow-hidden">
+                    <div key={p.id ?? index} className="relative mb-4 overflow-hidden rounded-lg bg-white shadow dark:bg-dark_gray">
                         {isDeleting && (
-                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-dark/70 text-dark dark:text-light text-sm font-semibold">
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 text-sm font-semibold text-dark dark:bg-dark/70 dark:text-light">
                                 Deleting...
                             </div>
                         )}
@@ -105,7 +108,13 @@ const PostCard = ({ user, posts }) => {
                         />
 
                         {/* Post Content */}
-                        <PostCardMainContent post={p} user={auth.user} addOrRemoveFollow={addOrRemoveFollow} timeAgo={timeAgo} takeToUserProfile={takeToUserProfile} />
+                        <PostCardMainContent
+                            post={p}
+                            user={auth.user}
+                            addOrRemoveFollow={addOrRemoveFollow}
+                            timeAgo={timeAgo}
+                            takeToUserProfile={takeToUserProfile}
+                        />
 
                         {/* post footer */}
                         <PostCardFooter post={p} user={auth.user} takeToUserProfile={takeToUserProfile} />

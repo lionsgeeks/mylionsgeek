@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { usePage, Link } from '@inertiajs/react';
-import { Bell, Clock, Calendar, User, Briefcase, Lock, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Avatar } from '@/components/ui/avatar';
+import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
+import { Bell, Briefcase, Calendar, CheckCircle, Clock, MessageSquare, User, Users, XCircle } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 export default function NotificationIcon() {
     const page = usePage();
@@ -37,7 +37,7 @@ export default function NotificationIcon() {
             const response = await fetch('/api/notifications', {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 credentials: 'same-origin',
@@ -79,9 +79,7 @@ export default function NotificationIcon() {
 
         // Add attendance alerts for coaches - only show active trainings
         if (isCoach && attendanceWarning?.hasWarning) {
-            const allTrainings = Array.isArray(attendanceWarning.trainings)
-                ? attendanceWarning.trainings
-                : [];
+            const allTrainings = Array.isArray(attendanceWarning.trainings) ? attendanceWarning.trainings : [];
 
             // Filter to only show active trainings (same logic as attendance-warning.jsx)
             const getTrainingStatus = (training) => {
@@ -145,14 +143,15 @@ export default function NotificationIcon() {
                         readAt: message.data.read_at ? new Date(message.data.read_at) : null,
                     };
 
-                    setNotifications(prev => [newNotification, ...prev].slice(0, 50));
-                    
-                    // Dispatch custom event for other components to listen
-                    window.dispatchEvent(new CustomEvent('ably-notification', {
-                        detail: newNotification
-                    }));
-                });
+                    setNotifications((prev) => [newNotification, ...prev].slice(0, 50));
 
+                    // Dispatch custom event for other components to listen
+                    window.dispatchEvent(
+                        new CustomEvent('ably-notification', {
+                            detail: newNotification,
+                        }),
+                    );
+                });
             } catch (error) {
                 console.error('Failed to initialize Ably:', error);
             }
@@ -204,7 +203,7 @@ export default function NotificationIcon() {
     };
 
     // Calculate unread count (notifications without readAt)
-    const unreadCount = notifications.filter(n => !n.readAt).length;
+    const unreadCount = notifications.filter((n) => !n.readAt).length;
 
     const markAsRead = async (notification) => {
         try {
@@ -212,7 +211,7 @@ export default function NotificationIcon() {
             // Handle compound types like "project-submission-123", "project-status-123", or "access-request-123"
             const parts = notification.id.split('-');
             let type, id;
-            
+
             if (parts.length === 3 && parts[0] === 'project') {
                 // Handle "project-submission-123" or "project-status-123"
                 type = `${parts[0]}-${parts[1]}`;
@@ -248,11 +247,7 @@ export default function NotificationIcon() {
             });
 
             // Update notification to mark as read (don't remove it)
-            setNotifications(prev => prev.map(n => 
-                n.id === notification.id 
-                    ? { ...n, readAt: new Date() }
-                    : n
-            ));
+            setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, readAt: new Date() } : n)));
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
         }
@@ -289,7 +284,7 @@ export default function NotificationIcon() {
             case 'x-circle':
                 return XCircle;
             case 'message-square':
-                return MessageSquare;
+                return Users;
             case 'user':
             default:
                 return User;
@@ -320,248 +315,244 @@ export default function NotificationIcon() {
 
     return (
         <>
-        <DropdownMenu open={isOpen} onOpenChange={handleDropdownClose}>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative h-9 w-9 rounded-md"
-                    aria-label="Notifications"
-                >
-                    <Bell className="h-5 w-5 flex-shrink-0" />
-                    {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-error)] text-[10px] font-bold text-white border border-white dark:border-[var(--color-dark)]">
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                    )}
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                className="w-96 p-0 max-h-[600px] flex flex-col"
-                align="end"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-                <div className="flex items-center justify-between p-4 border-b bg-[var(--color-card)] flex-shrink-0">
-                    <h3 className="font-semibold text-sm text-[var(--color-foreground)]">
-                        Notifications
-                    </h3>
-                </div>
-                <ScrollArea className="flex-1 max-h-[500px]">
-                    <div className="max-h-[500px] overflow-y-auto">
-                        {notifications.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-8 text-center">
-                                <Bell className="h-12 w-12 text-[var(--color-muted-foreground)]/50 mb-2" />
-                                <p className="text-sm text-[var(--color-muted-foreground)]">No notifications</p>
-                                <p className="text-xs text-[var(--color-muted-foreground)] mt-1">You're all caught up!</p>
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-[var(--color-border)]">
-                            {notifications.map((notification) => {
-                                const IconComponent = getIcon(notification.iconType);
-                                const iconColor = getIconColor(notification.iconType);
-                                const isAccessRequest = notification.type === 'access_request' && isAdmin;
-
-                                const handleApproveAccess = async (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (!notification.notificationId) return;
-                                    
-                                    try {
-                                        const response = await fetch(`/admin/access-requests/${notification.notificationId}/approve`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                            },
-                                        });
-                                        
-                                        if (response.ok) {
-                                            markAsRead(notification);
-                                            fetchNotifications();
-                                        }
-                                    } catch (error) {
-                                        console.error('Failed to approve access:', error);
-                                    }
-                                };
-
-                                const handleDenyAccess = async (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (!notification.notificationId) return;
-                                    
-                                    // Open modal to get denial reason
-                                    setDenyNotificationId(notification.notificationId);
-                                    setDenyModalOpen(true);
-                                };
-
-                                const handleConfirmDeny = async () => {
-                                    if (!denyNotificationId || !denialReason.trim()) {
-                                        alert('Please provide a reason for denial');
-                                        return;
-                                    }
-                                    
-                                    try {
-                                        const response = await fetch(`/admin/access-requests/${denyNotificationId}/deny`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                            },
-                                            body: JSON.stringify({
-                                                denial_reason: denialReason,
-                                            }),
-                                        });
-                                        
-                                        if (response.ok) {
-                                            const notificationToMark = notifications.find(n => n.notificationId === denyNotificationId);
-                                            if (notificationToMark) {
-                                                markAsRead(notificationToMark);
-                                            }
-                                            setDenyModalOpen(false);
-                                            setDenyNotificationId(null);
-                                            setDenialReason('');
-                                            fetchNotifications();
-                                        } else {
-                                            const data = await response.json();
-                                            alert(data.error || 'Failed to deny access request');
-                                        }
-                                    } catch (error) {
-                                        console.error('Failed to deny access:', error);
-                                        alert('An error occurred. Please try again.');
-                                    }
-                                };
-
-                                const NotificationContent = (
-                                    <div className={cn(
-                                        "flex items-start gap-3 p-4 hover:bg-[var(--color-muted)]/50 transition-colors",
-                                        notification.readAt ? "opacity-70" : "bg-[var(--color-muted)]/20",
-                                        isAccessRequest ? "" : "cursor-pointer"
-                                    )}>
-                                        <div className="flex-shrink-0 mt-1">
-                                            {notification.senderImage ? (
-                                                <Avatar
-                                                    className="h-10 w-10 rounded-full"
-                                                    image={notification.senderImage}
-                                                    name={notification.senderName}
-                                                />
-                                            ) : (
-                                                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-[var(--color-muted)]">
-                                                    <IconComponent className={cn("h-5 w-5", iconColor)} />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-sm font-semibold text-[var(--color-foreground)] mb-1">
-                                                    {notification.senderName}
-                                                </p>
-                                                {!notification.readAt && (
-                                                    <span className="h-2 w-2 rounded-full bg-[var(--color-error)] flex-shrink-0 mt-1"></span>
-                                                )}
-                                            </div>
-                                            <p className="text-sm text-[var(--color-muted-foreground)] line-clamp-2 mb-2">
-                                                {notification.message}
-                                            </p>
-                                            {isAccessRequest && notification.accessType && (
-                                                <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
-                                                    Requested: {notification.accessType === 'studio' ? 'Studio' : notification.accessType === 'cowork' ? 'Cowork' : 'Studio & Cowork'}
-                                                </p>
-                                            )}
-                                            {notification.type === 'access_request_response' && notification.denial_reason && (
-                                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-700 dark:text-red-300">
-                                                    <strong>Reason:</strong> {notification.denial_reason}
-                                                </div>
-                                            )}
-                                            {isAccessRequest && (
-                                                <div className="flex gap-2 mt-2">
-                                                    <button
-                                                        onClick={handleApproveAccess}
-                                                        className="px-3 py-1.5 text-xs font-semibold bg-green-600 text-white rounded hover:bg-green-700 transition"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        onClick={handleDenyAccess}
-                                                        className="px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded hover:bg-red-700 transition"
-                                                    >
-                                                        Deny
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <p className="text-xs text-[var(--color-muted-foreground)] mt-2">
-                                                {formatTimestamp(notification.timestamp)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-
-                                if (isAccessRequest) {
-                                    return (
-                                        <div key={notification.id} onClick={() => markAsRead(notification)}>
-                                            {NotificationContent}
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <Link
-                                        key={notification.id}
-                                        href={notification.link}
-                                        onClick={() => {
-                                            setIsOpen(false);
-                                            markAsRead(notification);
-                                        }}
-                                        className="block"
-                                    >
-                                        {NotificationContent}
-                                    </Link>
-                                );
-                            })}
-                            </div>
+            <DropdownMenu open={isOpen} onOpenChange={handleDropdownClose}>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-md" aria-label="Notifications">
+                        <Bell className="h-5 w-5 flex-shrink-0" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-[var(--color-error)] text-[10px] font-bold text-white dark:border-[var(--color-dark)]">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
                         )}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="flex max-h-[600px] w-96 flex-col p-0" align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <div className="flex flex-shrink-0 items-center justify-between border-b bg-[var(--color-card)] p-4">
+                        <h3 className="text-sm font-semibold text-[var(--color-foreground)]">Notifications</h3>
                     </div>
-                </ScrollArea>
-            </DropdownMenuContent>
-        </DropdownMenu>
+                    <ScrollArea className="max-h-[500px] flex-1">
+                        <div className="max-h-[500px] overflow-y-auto">
+                            {notifications.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center p-8 text-center">
+                                    <Bell className="mb-2 h-12 w-12 text-[var(--color-muted-foreground)]/50" />
+                                    <p className="text-sm text-[var(--color-muted-foreground)]">No notifications</p>
+                                    <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">You're all caught up!</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-[var(--color-border)]">
+                                    {notifications.map((notification) => {
+                                        const IconComponent = getIcon(notification.iconType);
+                                        const iconColor = getIconColor(notification.iconType);
+                                        const isAccessRequest = notification.type === 'access_request' && isAdmin;
 
-        {/* Denial Reason Modal */}
-        {denyModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-                    <h3 className="text-lg font-semibold mb-4 text-[var(--color-foreground)]">
-                        Deny Access Request
-                    </h3>
-                    <p className="text-sm text-[var(--color-muted-foreground)] mb-4">
-                        Please provide a reason for denying this access request. The user will see this reason in their notification.
-                    </p>
-                    <textarea
-                        value={denialReason}
-                        onChange={(e) => setDenialReason(e.target.value)}
-                        placeholder="Enter reason for denial..."
-                        className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg bg-[var(--color-background)] text-[var(--color-foreground)] mb-4 min-h-[100px] resize-y"
-                        maxLength={500}
-                    />
-                    <div className="flex gap-3 justify-end">
-                        <button
-                            onClick={() => {
-                                setDenyModalOpen(false);
-                                setDenyNotificationId(null);
-                                setDenialReason('');
-                            }}
-                            className="px-4 py-2 text-sm font-semibold border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-muted)] transition"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleConfirmDeny}
-                            className="px-4 py-2 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                        >
-                            Deny Access
-                        </button>
+                                        const handleApproveAccess = async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (!notification.notificationId) return;
+
+                                            try {
+                                                const response = await fetch(`/admin/access-requests/${notification.notificationId}/approve`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-CSRF-TOKEN':
+                                                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                    },
+                                                });
+
+                                                if (response.ok) {
+                                                    markAsRead(notification);
+                                                    fetchNotifications();
+                                                }
+                                            } catch (error) {
+                                                console.error('Failed to approve access:', error);
+                                            }
+                                        };
+
+                                        const handleDenyAccess = async (e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (!notification.notificationId) return;
+
+                                            // Open modal to get denial reason
+                                            setDenyNotificationId(notification.notificationId);
+                                            setDenyModalOpen(true);
+                                        };
+
+                                        const handleConfirmDeny = async () => {
+                                            if (!denyNotificationId || !denialReason.trim()) {
+                                                alert('Please provide a reason for denial');
+                                                return;
+                                            }
+
+                                            try {
+                                                const response = await fetch(`/admin/access-requests/${denyNotificationId}/deny`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-CSRF-TOKEN':
+                                                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                    },
+                                                    body: JSON.stringify({
+                                                        denial_reason: denialReason,
+                                                    }),
+                                                });
+
+                                                if (response.ok) {
+                                                    const notificationToMark = notifications.find((n) => n.notificationId === denyNotificationId);
+                                                    if (notificationToMark) {
+                                                        markAsRead(notificationToMark);
+                                                    }
+                                                    setDenyModalOpen(false);
+                                                    setDenyNotificationId(null);
+                                                    setDenialReason('');
+                                                    fetchNotifications();
+                                                } else {
+                                                    const data = await response.json();
+                                                    alert(data.error || 'Failed to deny access request');
+                                                }
+                                            } catch (error) {
+                                                console.error('Failed to deny access:', error);
+                                                alert('An error occurred. Please try again.');
+                                            }
+                                        };
+
+                                        const NotificationContent = (
+                                            <div
+                                                className={cn(
+                                                    'flex items-start gap-3 p-4 transition-colors hover:bg-[var(--color-muted)]/50',
+                                                    notification.readAt ? 'opacity-70' : 'bg-[var(--color-muted)]/20',
+                                                    isAccessRequest ? '' : 'cursor-pointer',
+                                                )}
+                                            >
+                                                <div className="mt-1 flex-shrink-0">
+                                                    {notification.senderImage ? (
+                                                        <Avatar
+                                                            className="h-10 w-10 rounded-full"
+                                                            image={notification.senderImage}
+                                                            name={notification.senderName}
+                                                        />
+                                                    ) : (
+                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-muted)]">
+                                                            <IconComponent className={cn('h-5 w-5', iconColor)} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="mb-1 text-sm font-semibold text-[var(--color-foreground)]">
+                                                            {notification.senderName}
+                                                        </p>
+                                                        {!notification.readAt && (
+                                                            <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[var(--color-error)]"></span>
+                                                        )}
+                                                    </div>
+                                                    <p className="mb-2 line-clamp-2 text-sm text-[var(--color-muted-foreground)]">
+                                                        {notification.message}
+                                                    </p>
+                                                    {isAccessRequest && notification.accessType && (
+                                                        <p className="mb-2 text-xs text-[var(--color-muted-foreground)]">
+                                                            Requested:{' '}
+                                                            {notification.accessType === 'studio'
+                                                                ? 'Studio'
+                                                                : notification.accessType === 'cowork'
+                                                                  ? 'Cowork'
+                                                                  : 'Studio & Cowork'}
+                                                        </p>
+                                                    )}
+                                                    {notification.type === 'access_request_response' && notification.denial_reason && (
+                                                        <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+                                                            <strong>Reason:</strong> {notification.denial_reason}
+                                                        </div>
+                                                    )}
+                                                    {isAccessRequest && (
+                                                        <div className="mt-2 flex gap-2">
+                                                            <button
+                                                                onClick={handleApproveAccess}
+                                                                className="rounded bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <button
+                                                                onClick={handleDenyAccess}
+                                                                className="rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700"
+                                                            >
+                                                                Deny
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <p className="mt-2 text-xs text-[var(--color-muted-foreground)]">
+                                                        {formatTimestamp(notification.timestamp)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+
+                                        if (isAccessRequest) {
+                                            return (
+                                                <div key={notification.id} onClick={() => markAsRead(notification)}>
+                                                    {NotificationContent}
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <Link
+                                                key={notification.id}
+                                                href={notification.link}
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    markAsRead(notification);
+                                                }}
+                                                className="block"
+                                            >
+                                                {NotificationContent}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Denial Reason Modal */}
+            {denyModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900">
+                        <h3 className="mb-4 text-lg font-semibold text-[var(--color-foreground)]">Deny Access Request</h3>
+                        <p className="mb-4 text-sm text-[var(--color-muted-foreground)]">
+                            Please provide a reason for denying this access request. The user will see this reason in their notification.
+                        </p>
+                        <textarea
+                            value={denialReason}
+                            onChange={(e) => setDenialReason(e.target.value)}
+                            placeholder="Enter reason for denial..."
+                            className="mb-4 min-h-[100px] w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[var(--color-foreground)]"
+                            maxLength={500}
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setDenyModalOpen(false);
+                                    setDenyNotificationId(null);
+                                    setDenialReason('');
+                                }}
+                                className="rounded-lg border border-[var(--color-border)] px-4 py-2 text-sm font-semibold transition hover:bg-[var(--color-muted)]"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmDeny}
+                                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                            >
+                                Deny Access
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
         </>
     );
 }

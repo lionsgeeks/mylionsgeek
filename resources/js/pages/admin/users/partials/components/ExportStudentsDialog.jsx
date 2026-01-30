@@ -1,15 +1,7 @@
-import React, { useMemo, useState } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useMemo, useState } from 'react';
 
 export default function ExportStudentsDialog({ open, setOpen }) {
     const [exportFields, setExportFields] = useState({
@@ -28,13 +20,13 @@ export default function ExportStudentsDialog({ open, setOpen }) {
         const selected = Object.entries(exportFields)
             .filter(([, v]) => v)
             .map(([k]) => k)
-            .join(",");
+            .join(',');
 
-        return selected.length ? selected : "name,email,cin";
+        return selected.length ? selected : 'name,email,cin';
     }, [exportFields]);
 
     const triggerExport = () => {
-        window.open(`/admin/users/export?fields=${encodeURIComponent(exportQuery)}`, "_blank");
+        window.open(`/admin/users/export?fields=${encodeURIComponent(exportQuery)}`, '_blank');
     };
 
     return (
@@ -57,7 +49,7 @@ export default function ExportStudentsDialog({ open, setOpen }) {
                                     }))
                                 }
                             />
-                            <label className="capitalize">{key.replace(/_/g, " ")}</label>
+                            <label className="capitalize">{key.replace(/_/g, ' ')}</label>
                         </div>
                     ))}
                 </div>
@@ -66,7 +58,10 @@ export default function ExportStudentsDialog({ open, setOpen }) {
                     <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                     </DialogClose>
-                    <Button onClick={triggerExport} className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer">
+                    <Button
+                        onClick={triggerExport}
+                        className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                    >
                         Export
                     </Button>
                     {/* <Button

@@ -24,7 +24,7 @@ export interface NavItem {
     badge?: string | number;
     chevron?: boolean;
     children?: NavItem[];
-    url:string;
+    url: string;
     authorizedRoles?: string[];
     excludedRoles?: string[];
 }

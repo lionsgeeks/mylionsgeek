@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { subscribeToChannel } from '../../lib/ablyManager';
 import CommentsModal from './CommentsModal';
 import LikesModal from './LikesModal';
-import { subscribeToChannel } from '../../lib/ablyManager';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => {
     const [likesCountMap, setLikesCountMap] = useState({});
@@ -13,11 +13,11 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
 
     // Initialize counts and liked state on mount
     useEffect(() => {
-        setLikesCountMap(prev => ({ ...prev, [post.id]: post.likes_count }));
-        setCommentsCountMap(prev => ({ ...prev, [post.id]: post.comments_count }));
+        setLikesCountMap((prev) => ({ ...prev, [post.id]: post.likes_count }));
+        setCommentsCountMap((prev) => ({ ...prev, [post.id]: post.comments_count }));
 
         if (post.is_liked_by_current_user) {
-            setLikedPostIds(prev => [...new Set([...prev, post.id])]);
+            setLikedPostIds((prev) => [...new Set([...prev, post.id])]);
         }
     }, [post.id, post.likes_count, post.comments_count, post.is_liked_by_current_user]);
 
@@ -58,11 +58,9 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
             const { liked, likes_count } = response.data;
 
             // Update likedPostIds based on backend response
-            setLikedPostIds(prev =>
-                liked ? [...new Set([...prev, postId])] : prev.filter(id => id !== postId)
-            );
+            setLikedPostIds((prev) => (liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)));
 
-            setLikesCountMap(prev => ({
+            setLikesCountMap((prev) => ({
                 ...prev,
                 [postId]: likes_count,
             }));
@@ -72,14 +70,14 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
     };
 
     const handleCommentAdded = (postId) => {
-        setCommentsCountMap(prev => ({
+        setCommentsCountMap((prev) => ({
             ...prev,
             [postId]: (prev[postId] || 0) + 1,
         }));
     };
 
     const handleCommentRemoved = (postId) => {
-        setCommentsCountMap(prev => ({
+        setCommentsCountMap((prev) => ({
             ...prev,
             [postId]: Math.max((prev[postId] || 1) - 1, 0),
         }));
@@ -92,31 +90,28 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
     return (
         <>
             {/* Counts */}
-            <div className={`px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-dark_gray/70 ${!PostModal && 'dark:bg-dark'}`}>
-                <div
-                    className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
-                    onClick={() => setLikesOpenFor(post?.id)}
-                >
+            <div
+                className={`flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-dark_gray/70 ${!PostModal && 'dark:bg-dark'}`}
+            >
+                <div className="cursor-pointer text-xs text-gray-600 hover:underline dark:text-gray-400" onClick={() => setLikesOpenFor(post?.id)}>
                     {likeCount} Likes
                 </div>
-                <div
-                    onClick={() => setCommentsOpenFor(post?.id)}
-                    className="text-xs text-gray-600 hover:underline cursor-pointer dark:text-gray-400"
-                >
+                <div onClick={() => setCommentsOpenFor(post?.id)} className="cursor-pointer text-xs text-gray-600 hover:underline dark:text-gray-400">
                     {commentCount} Comments
                 </div>
             </div>
 
             {/* Buttons */}
-            <div className={`px-2 py-2 flex justify-around items-center rounded-b-lg shadow-sm ${!PostModal ? 'dark:bg-dark bg-light' : ''}`}>
+            <div className={`flex items-center justify-around rounded-b-lg px-2 py-2 shadow-sm ${!PostModal ? 'bg-light dark:bg-dark' : ''}`}>
                 {/* Like Button */}
                 <button
                     onClick={() => toggleLike(post?.id)}
-                    className={`flex cursor-pointer items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light hover:text-alpha'
-                        }`}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${
+                        isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                    }`}
                 >
                     <svg
-                        className={`w-5 h-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
+                        className={`h-5 w-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -128,20 +123,15 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
                             d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
                         />
                     </svg>
-                    <span className="font-semibold text-sm">{isLiked ? 'Liked' : 'Like'}</span>
+                    <span className="text-sm font-semibold">{isLiked ? 'Liked' : 'Like'}</span>
                 </button>
 
                 {/* Comment Button */}
                 <button
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-beta dark:text-light hover:bg-dark_gray/10 cursor-pointer dark:hover:bg-light/10 hover:text-beta"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10"
                     onClick={() => setCommentsOpenFor(post?.id)}
                 >
-                    <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -167,12 +157,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true }) => 
             )}
 
             {/* Likes modal */}
-            <LikesModal
-                postId={likesOpenFor}
-                open={!!likesOpenFor}
-                onClose={() => setLikesOpenFor(null)}
-                takeToUserProfile={takeToUserProfile}
-            />
+            <LikesModal postId={likesOpenFor} open={!!likesOpenFor} onClose={() => setLikesOpenFor(null)} takeToUserProfile={takeToUserProfile} />
         </>
     );
 };

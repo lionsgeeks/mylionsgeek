@@ -1,46 +1,40 @@
-import { Fragment, useState } from 'react';
-import { Dialog, DialogPanel, Transition } from '@headlessui/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { router } from '@inertiajs/react';
+import { Dialog, DialogPanel, Transition } from '@headlessui/react';
+import { Fragment, useState } from 'react';
 
-const APPOINTMENT_PERSONS = [
-    "Mahdi Bouziane",
-    "Hamid Boumehraz",
-    "Amina Khabab",
-    "Ayman Boujjar"
-];
+const APPOINTMENT_PERSONS = ['Mahdi Bouziane', 'Hamid Boumehraz', 'Amina Khabab', 'Ayman Boujjar'];
 
 export default function BookAppointment({ isOpen, onClose, onSuccess }) {
     const [step, setStep] = useState(1);
-    const [selectedPerson, setSelectedPerson] = useState("");
-    const [day, setDay] = useState("");
-    const [start, setStart] = useState("");
-    const [end, setEnd] = useState("");
-    const [error, setError] = useState("");
+    const [selectedPerson, setSelectedPerson] = useState('');
+    const [day, setDay] = useState('');
+    const [start, setStart] = useState('');
+    const [end, setEnd] = useState('');
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleNext = () => {
-        setError("");
+        setError('');
         if (!selectedPerson) {
-            setError("Please select a person for the appointment");
+            setError('Please select a person for the appointment');
             return;
         }
         setStep(2);
     };
 
     const handleBack = () => {
-        setError("");
+        setError('');
         setStep(1);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");
+        setError('');
         setLoading(true);
 
         if (!day || !start || !end) {
-            setError("Please fill in all date and time fields");
+            setError('Please fill in all date and time fields');
             setLoading(false);
             return;
         }
@@ -49,7 +43,7 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
         const startTime = new Date(`${day}T${start}`);
         const endTime = new Date(`${day}T${end}`);
         if (endTime <= startTime) {
-            setError("End time must be after start time");
+            setError('End time must be after start time');
             setLoading(false);
             return;
         }
@@ -57,21 +51,21 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
         // Validate that the date is not in the past
         const now = new Date();
         if (startTime < now) {
-            setError("You cannot book appointments in the past");
+            setError('You cannot book appointments in the past');
             setLoading(false);
             return;
         }
 
         try {
             const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-            
+
             const response = await fetch('/appointments/book', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrf,
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify({
@@ -91,8 +85,8 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
             }
 
             // Success - show success message
-            alert(data?.message || 'Appointment request sent successfully! You will receive an email once it\'s approved or canceled.');
-            
+            alert(data?.message || "Appointment request sent successfully! You will receive an email once it's approved or canceled.");
+
             if (onSuccess) {
                 onSuccess({ person: selectedPerson, day, start, end });
             }
@@ -108,11 +102,11 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
 
     const resetForm = () => {
         setStep(1);
-        setSelectedPerson("");
-        setDay("");
-        setStart("");
-        setEnd("");
-        setError("");
+        setSelectedPerson('');
+        setDay('');
+        setStart('');
+        setEnd('');
+        setError('');
         setLoading(false);
     };
 
@@ -146,7 +140,7 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                 </Transition.Child>
 
                 {/* Modal Panel */}
-                <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-4">
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -157,11 +151,11 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                         leaveTo="opacity-0 scale-95"
                     >
                         <DialogPanel
-                            className="w-full max-w-md rounded-xl bg-white dark:bg-neutral-900 p-6 shadow-xl pointer-events-auto"
+                            className="pointer-events-auto w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-neutral-900"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="mb-6 flex items-center justify-between">
                                 <Dialog.Title className="text-xl font-bold">Book an Appointment</Dialog.Title>
                                 <button
                                     type="button"
@@ -170,10 +164,10 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                         e.preventDefault();
                                         handleClose();
                                     }}
-                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                    className="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
                                     aria-label="Close"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
@@ -183,16 +177,23 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                             <div className="mb-6">
                                 <div className="flex items-center justify-between">
                                     <div className={`flex items-center ${step >= 1 ? 'text-alpha' : 'text-gray-400'}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-alpha text-white' : 'bg-gray-200 dark:bg-neutral-700'}`}>
+                                        <div
+                                            className={`flex h-8 w-8 items-center justify-center rounded-full ${step >= 1 ? 'bg-alpha text-white' : 'bg-gray-200 dark:bg-neutral-700'}`}
+                                        >
                                             {step > 1 ? '✓' : '1'}
                                         </div>
                                         <span className="ml-2 text-sm font-medium">Select Person</span>
                                     </div>
-                                    <div className="flex-1 h-0.5 mx-4 bg-gray-200 dark:bg-neutral-700">
-                                        <div className={`h-full transition-all ${step >= 2 ? 'bg-alpha' : ''}`} style={{ width: step >= 2 ? '100%' : '0%' }}></div>
+                                    <div className="mx-4 h-0.5 flex-1 bg-gray-200 dark:bg-neutral-700">
+                                        <div
+                                            className={`h-full transition-all ${step >= 2 ? 'bg-alpha' : ''}`}
+                                            style={{ width: step >= 2 ? '100%' : '0%' }}
+                                        ></div>
                                     </div>
                                     <div className={`flex items-center ${step >= 2 ? 'text-alpha' : 'text-gray-400'}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-alpha text-white' : 'bg-gray-200 dark:bg-neutral-700'}`}>
+                                        <div
+                                            className={`flex h-8 w-8 items-center justify-center rounded-full ${step >= 2 ? 'bg-alpha text-white' : 'bg-gray-200 dark:bg-neutral-700'}`}
+                                        >
                                             2
                                         </div>
                                         <span className="ml-2 text-sm font-medium">Date & Time</span>
@@ -201,25 +202,19 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                             </div>
 
                             {/* Form */}
-                            <form
-                                className="space-y-6"
-                                onSubmit={handleSubmit}
-                                onClick={(e) => e.stopPropagation()}
-                            >
+                            <form className="space-y-6" onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()}>
                                 {step === 1 ? (
                                     <>
                                         <div>
-                                            <Label className="text-base font-medium mb-3 block">
-                                                Select a person for your appointment
-                                            </Label>
+                                            <Label className="mb-3 block text-base font-medium">Select a person for your appointment</Label>
                                             <div className="space-y-2">
                                                 {APPOINTMENT_PERSONS.map((person) => (
                                                     <label
                                                         key={person}
-                                                        className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                                        className={`flex cursor-pointer items-center rounded-lg border-2 p-4 transition-all ${
                                                             selectedPerson === person
                                                                 ? 'border-alpha bg-alpha/10 dark:bg-alpha/20'
-                                                                : 'border-gray-200 dark:border-neutral-700 hover:border-alpha/50 bg-white dark:bg-neutral-800'
+                                                                : 'border-gray-200 bg-white hover:border-alpha/50 dark:border-neutral-700 dark:bg-neutral-800'
                                                         }`}
                                                     >
                                                         <input
@@ -228,37 +223,26 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                                             value={person}
                                                             checked={selectedPerson === person}
                                                             onChange={(e) => setSelectedPerson(e.target.value)}
-                                                            className="w-4 h-4 text-alpha focus:ring-alpha border-gray-300 dark:border-neutral-600"
+                                                            className="h-4 w-4 border-gray-300 text-alpha focus:ring-alpha dark:border-neutral-600"
                                                         />
-                                                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                            {person}
-                                                        </span>
+                                                        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-100">{person}</span>
                                                     </label>
                                                 ))}
                                             </div>
                                         </div>
 
                                         {error && (
-                                            <div className="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20">
                                                 {error}
                                             </div>
                                         )}
 
                                         {/* Actions */}
                                         <div className="flex gap-3 pt-4">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={handleClose}
-                                                className="flex-1"
-                                            >
+                                            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
                                                 Cancel
                                             </Button>
-                                            <Button
-                                                type="button"
-                                                onClick={handleNext}
-                                                className="flex-1 bg-alpha text-beta hover:bg-alpha/90"
-                                            >
+                                            <Button type="button" onClick={handleNext} className="flex-1 bg-alpha text-beta hover:bg-alpha/90">
                                                 Next
                                             </Button>
                                         </div>
@@ -266,13 +250,9 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                 ) : (
                                     <>
                                         <div>
-                                            <Label className="text-base font-medium mb-3 block">
-                                                Selected Person
-                                            </Label>
-                                            <div className="p-3 rounded-lg bg-alpha/10 dark:bg-alpha/20 border border-alpha/30">
-                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                    {selectedPerson}
-                                                </span>
+                                            <Label className="mb-3 block text-base font-medium">Selected Person</Label>
+                                            <div className="rounded-lg border border-alpha/30 bg-alpha/10 p-3 dark:bg-alpha/20">
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedPerson}</span>
                                             </div>
                                         </div>
 
@@ -285,7 +265,7 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                                     value={day}
                                                     onChange={(e) => setDay(e.target.value)}
                                                     min={new Date().toISOString().split('T')[0]}
-                                                    className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha"
+                                                    className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-alpha focus:outline-none dark:bg-neutral-800"
                                                     required
                                                 />
                                             </div>
@@ -298,7 +278,7 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                                         type="time"
                                                         value={start}
                                                         onChange={(e) => setStart(e.target.value)}
-                                                        className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha"
+                                                        className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-alpha focus:outline-none dark:bg-neutral-800"
                                                         required
                                                     />
                                                 </div>
@@ -309,7 +289,7 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                                         type="time"
                                                         value={end}
                                                         onChange={(e) => setEnd(e.target.value)}
-                                                        className="w-full rounded-lg border px-3 py-2.5 bg-white dark:bg-neutral-800 text-sm focus:outline-none focus:ring-2 focus:ring-alpha"
+                                                        className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-alpha focus:outline-none dark:bg-neutral-800"
                                                         required
                                                     />
                                                 </div>
@@ -317,27 +297,17 @@ export default function BookAppointment({ isOpen, onClose, onSuccess }) {
                                         </div>
 
                                         {error && (
-                                            <div className="text-red-600 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20">
                                                 {error}
                                             </div>
                                         )}
 
                                         {/* Actions */}
                                         <div className="flex gap-3 pt-4">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={handleBack}
-                                                className="flex-1"
-                                                disabled={loading}
-                                            >
+                                            <Button type="button" variant="outline" onClick={handleBack} className="flex-1" disabled={loading}>
                                                 Back
                                             </Button>
-                                            <Button
-                                                type="submit"
-                                                className="flex-1 bg-alpha text-beta hover:bg-alpha/90"
-                                                disabled={loading}
-                                            >
+                                            <Button type="submit" className="flex-1 bg-alpha text-beta hover:bg-alpha/90" disabled={loading}>
                                                 {loading ? 'Booking...' : 'Book Appointment'}
                                             </Button>
                                         </div>

@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar } from '@/components/ui/avatar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, ExternalLink, CheckCircle2, XCircle, Clock, Edit, Trash2 } from 'lucide-react';
 import Rolegard from '@/components/rolegard';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
+import { ArrowLeft, CheckCircle2, Clock, Edit, ExternalLink, XCircle } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ProjectShow({ project }) {
     const { auth } = usePage().props;
@@ -36,14 +36,14 @@ export default function ProjectShow({ project }) {
             case 'approved':
                 return (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-600 dark:text-green-50">
-                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        <CheckCircle2 className="mr-1 h-3 w-3" />
                         Approved
                     </Badge>
                 );
             case 'rejected':
                 return (
                     <Badge className="bg-red-100 text-red-800 dark:bg-red-600 dark:text-red-50">
-                        <XCircle className="w-3 h-3 mr-1" />
+                        <XCircle className="mr-1 h-3 w-3" />
                         Rejected
                     </Badge>
                 );
@@ -51,7 +51,7 @@ export default function ProjectShow({ project }) {
             default:
                 return (
                     <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-600 dark:text-yellow-50">
-                        <Clock className="w-3 h-3 mr-1" />
+                        <Clock className="mr-1 h-3 w-3" />
                         Pending
                     </Badge>
                 );
@@ -64,26 +64,30 @@ export default function ProjectShow({ project }) {
 
     const confirmApprove = () => {
         setIsProcessing(true);
-        router.post(`/admin/projects/${project.id}/approve`, {
-            review_ratings: reviewRatings,
-            review_notes: reviewNotes.trim(),
-        }, {
-            onSuccess: () => {
-                setShowApproveModal(false);
-                setReviewRatings({
-                    good_structure: false,
-                    clean_code: false,
-                    pure_code: false,
-                    pure_ai: false,
-                    mix_vibe: false,
-                    responsive_design: false,
-                    good_performance: false,
-                });
-                setReviewNotes('');
-                router.reload();
+        router.post(
+            `/admin/projects/${project.id}/approve`,
+            {
+                review_ratings: reviewRatings,
+                review_notes: reviewNotes.trim(),
             },
-            onFinish: () => setIsProcessing(false)
-        });
+            {
+                onSuccess: () => {
+                    setShowApproveModal(false);
+                    setReviewRatings({
+                        good_structure: false,
+                        clean_code: false,
+                        pure_code: false,
+                        pure_ai: false,
+                        mix_vibe: false,
+                        responsive_design: false,
+                        good_performance: false,
+                    });
+                    setReviewNotes('');
+                    router.reload();
+                },
+                onFinish: () => setIsProcessing(false),
+            },
+        );
     };
 
     const handleReject = () => {
@@ -95,16 +99,20 @@ export default function ProjectShow({ project }) {
             return;
         }
         setIsProcessing(true);
-        router.post(`/admin/projects/${project.id}/reject`, {
-            rejection_reason: rejectionReason.trim(),
-        }, {
-            onSuccess: () => {
-                setShowRejectModal(false);
-                setRejectionReason('');
-                router.reload();
+        router.post(
+            `/admin/projects/${project.id}/reject`,
+            {
+                rejection_reason: rejectionReason.trim(),
             },
-            onFinish: () => setIsProcessing(false)
-        });
+            {
+                onSuccess: () => {
+                    setShowRejectModal(false);
+                    setRejectionReason('');
+                    router.reload();
+                },
+                onFinish: () => setIsProcessing(false),
+            },
+        );
     };
 
     return (
@@ -115,21 +123,14 @@ export default function ProjectShow({ project }) {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>   router.visit(`/students/project/${project.id}`)}
-                            className="h-9 w-9"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => router.visit(`/students/project/${project.id}`)} className="h-9 w-9">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                         <div>
                             <h1 className="text-3xl font-bold">{project.title || 'Untitled Project'}</h1>
-                            <div className="flex items-center gap-3 mt-2">
+                            <div className="mt-2 flex items-center gap-3">
                                 {getStatusBadge(project.status)}
-                                <span className="text-sm text-neutral-500">
-                                    Created {format(new Date(project.created_at), 'MMM d, yyyy')}
-                                </span>
+                                <span className="text-sm text-neutral-500">Created {format(new Date(project.created_at), 'MMM d, yyyy')}</span>
                             </div>
                         </div>
                     </div>
@@ -139,20 +140,12 @@ export default function ProjectShow({ project }) {
                         <div className="flex gap-2">
                             {project.status === 'pending' && (
                                 <>
-                                    <Button
-                                        onClick={handleApprove}
-                                        disabled={isProcessing}
-                                        className="bg-green-600 hover:bg-green-700 text-white"
-                                    >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    <Button onClick={handleApprove} disabled={isProcessing} className="bg-green-600 text-white hover:bg-green-700">
+                                        <CheckCircle2 className="mr-2 h-4 w-4" />
                                         {isProcessing ? 'Approving...' : 'Approve'}
                                     </Button>
-                                    <Button
-                                        onClick={handleReject}
-                                        disabled={isProcessing}
-                                        variant="destructive"
-                                    >
-                                        <XCircle className="w-4 h-4 mr-2" />
+                                    <Button onClick={handleReject} disabled={isProcessing} variant="destructive">
+                                        <XCircle className="mr-2 h-4 w-4" />
                                         Reject
                                     </Button>
                                 </>
@@ -161,81 +154,98 @@ export default function ProjectShow({ project }) {
                     </Rolegard>
 
                     {/* Owner Actions */}
-                    {(isOwner && (project.status === 'pending' || project.status === 'rejected')) && (
+                    {isOwner && (project.status === 'pending' || project.status === 'rejected') && (
                         <Button
                             onClick={() => router.visit(`/students/projects?edit=${project.id}`)}
                             className="bg-[var(--color-alpha)] text-black hover:text-white dark:hover:text-black"
                         >
-                            <Edit className="w-4 h-4 mr-2" />
+                            <Edit className="mr-2 h-4 w-4" />
                             Edit Project
                         </Button>
                     )}
                 </div>
 
                 {/* Main Content */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {/* Left Column - Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-6 lg:col-span-2">
                         {/* Project Image */}
                         {project.image && (
-                            <div className="rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-800">
-                                <img
-                                    src={`/storage/${project.image}`}
-                                    alt={project.title}
-                                    className="w-full h-auto object-cover"
-                                />
+                            <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+                                <img src={`/storage/${project.image}`} alt={project.title} className="h-auto w-full object-cover" />
                             </div>
                         )}
 
                         {/* Description */}
-                        <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                            <h2 className="text-xl font-semibold mb-4">Description</h2>
-                            <p className="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
+                        <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                            <h2 className="mb-4 text-xl font-semibold">Description</h2>
+                            <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">
                                 {project.description || 'No description provided.'}
                             </p>
                         </div>
 
                         {/* Review Ratings (if reviewed) */}
                         {(project.review_ratings || project.review_notes) && (
-                            <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                                <h2 className="text-xl font-semibold mb-4">Review Details</h2>
+                            <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                                <h2 className="mb-4 text-xl font-semibold">Review Details</h2>
 
                                 {project.review_ratings && Object.keys(project.review_ratings).length > 0 && (
                                     <div className="mb-4">
-                                        <h3 className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 mb-2">Ratings</h3>
+                                        <h3 className="mb-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">Ratings</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {project.review_ratings.good_structure && (
-                                                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300"
+                                                >
                                                     Good Structure
                                                 </Badge>
                                             )}
                                             {project.review_ratings.clean_code && (
-                                                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                                                >
                                                     Clean Code
                                                 </Badge>
                                             )}
                                             {project.review_ratings.pure_code && (
-                                                <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-300"
+                                                >
                                                     Pure Code
                                                 </Badge>
                                             )}
                                             {project.review_ratings.pure_ai && (
-                                                <Badge variant="outline" className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-300"
+                                                >
                                                     Pure AI
                                                 </Badge>
                                             )}
                                             {project.review_ratings.mix_vibe && (
-                                                <Badge variant="outline" className="bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-pink-200 bg-pink-50 text-pink-700 dark:border-pink-800 dark:bg-pink-900/20 dark:text-pink-300"
+                                                >
                                                     Mix Vibe One
                                                 </Badge>
                                             )}
                                             {project.review_ratings.responsive_design && (
-                                                <Badge variant="outline" className="bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-900/20 dark:text-cyan-300"
+                                                >
                                                     Responsive Design
                                                 </Badge>
                                             )}
                                             {project.review_ratings.good_performance && (
-                                                <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-300"
+                                                >
                                                     Good Performance
                                                 </Badge>
                                             )}
@@ -245,10 +255,8 @@ export default function ProjectShow({ project }) {
 
                                 {project.review_notes && (
                                     <div>
-                                        <h3 className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 mb-2">Review Notes</h3>
-                                        <p className="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap">
-                                            {project.review_notes}
-                                        </p>
+                                        <h3 className="mb-2 text-sm font-semibold text-neutral-500 dark:text-neutral-400">Review Notes</h3>
+                                        <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">{project.review_notes}</p>
                                     </div>
                                 )}
                             </div>
@@ -256,27 +264,23 @@ export default function ProjectShow({ project }) {
 
                         {/* Rejection Reason (if rejected) */}
                         {project.status === 'rejected' && project.rejection_reason && (
-                            <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 p-6">
-                                <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">
-                                    Rejection Reason
-                                </h3>
-                                <p className="text-red-700 dark:text-red-400">
-                                    {project.rejection_reason}
-                                </p>
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
+                                <h3 className="mb-2 text-lg font-semibold text-red-800 dark:text-red-300">Rejection Reason</h3>
+                                <p className="text-red-700 dark:text-red-400">{project.rejection_reason}</p>
                             </div>
                         )}
 
                         {/* Project Link */}
                         {project.project && (
-                            <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                                <h2 className="text-xl font-semibold mb-4">Project Link</h2>
+                            <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                                <h2 className="mb-4 text-xl font-semibold">Project Link</h2>
                                 <a
                                     href={project.project}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-[var(--color-alpha)] hover:underline font-medium"
+                                    className="inline-flex items-center gap-2 font-medium text-[var(--color-alpha)] hover:underline"
                                 >
-                                    <ExternalLink className="w-4 h-4" />
+                                    <ExternalLink className="h-4 w-4" />
                                     {project.project}
                                 </a>
                             </div>
@@ -286,41 +290,35 @@ export default function ProjectShow({ project }) {
                     {/* Right Column - Sidebar */}
                     <div className="space-y-6">
                         {/* Project Info Card */}
-                        <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                            <h3 className="text-lg font-semibold mb-4">Project Information</h3>
+                        <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                            <h3 className="mb-4 text-lg font-semibold">Project Information</h3>
                             <div className="space-y-4">
                                 <div>
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">Status</p>
+                                    <p className="mb-1 text-sm text-neutral-500 dark:text-neutral-400">Status</p>
                                     <div>{getStatusBadge(project.status)}</div>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">Created</p>
-                                    <p className="text-sm font-medium">
-                                        {format(new Date(project.created_at), 'MMM d, yyyy HH:mm')}
-                                    </p>
+                                    <p className="mb-1 text-sm text-neutral-500 dark:text-neutral-400">Created</p>
+                                    <p className="text-sm font-medium">{format(new Date(project.created_at), 'MMM d, yyyy HH:mm')}</p>
                                 </div>
                                 {project.updated_at && (
                                     <div>
-                                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">Last Updated</p>
-                                        <p className="text-sm font-medium">
-                                            {format(new Date(project.updated_at), 'MMM d, yyyy HH:mm')}
-                                        </p>
+                                        <p className="mb-1 text-sm text-neutral-500 dark:text-neutral-400">Last Updated</p>
+                                        <p className="text-sm font-medium">{format(new Date(project.updated_at), 'MMM d, yyyy HH:mm')}</p>
                                     </div>
                                 )}
                                 {project.approved_at && (
                                     <div>
-                                        <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">Approved</p>
-                                        <p className="text-sm font-medium">
-                                            {format(new Date(project.approved_at), 'MMM d, yyyy HH:mm')}
-                                        </p>
+                                        <p className="mb-1 text-sm text-neutral-500 dark:text-neutral-400">Approved</p>
+                                        <p className="text-sm font-medium">{format(new Date(project.approved_at), 'MMM d, yyyy HH:mm')}</p>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Owner Card */}
-                        <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                            <h3 className="text-lg font-semibold mb-4">Owner</h3>
+                        <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                            <h3 className="mb-4 text-lg font-semibold">Owner</h3>
                             {project.user && (
                                 <div className="flex items-center gap-3">
                                     <Avatar
@@ -339,8 +337,8 @@ export default function ProjectShow({ project }) {
                         {/* Admin Only - Approved By Card */}
                         <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
                             {project.approved_by && (
-                                <div className="bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-6">
-                                    <h3 className="text-lg font-semibold mb-4">Approved By</h3>
+                                <div className="rounded-lg border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                                    <h3 className="mb-4 text-lg font-semibold">Approved By</h3>
                                     <div className="flex items-center gap-3">
                                         <Avatar
                                             className="h-10 w-10"
@@ -361,12 +359,10 @@ export default function ProjectShow({ project }) {
 
             {/* Approval Modal with Ratings */}
             <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] bg-light dark:bg-dark overflow-y-auto">
+                <DialogContent className="max-h-[90vh] overflow-y-auto bg-light sm:max-w-[600px] dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Review & Approve Project</DialogTitle>
-                        <DialogDescription>
-                            Please rate the project and add any notes before approving.
-                        </DialogDescription>
+                        <DialogDescription>Please rate the project and add any notes before approving.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
                         {/* Rating Checkboxes */}
@@ -377,11 +373,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="good_structure"
                                         checked={reviewRatings.good_structure}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, good_structure: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, good_structure: checked }))}
                                     />
-                                    <Label htmlFor="good_structure" className="font-normal cursor-pointer">
+                                    <Label htmlFor="good_structure" className="cursor-pointer font-normal">
                                         Good Structure
                                     </Label>
                                 </div>
@@ -389,11 +383,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="clean_code"
                                         checked={reviewRatings.clean_code}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, clean_code: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, clean_code: checked }))}
                                     />
-                                    <Label htmlFor="clean_code" className="font-normal cursor-pointer">
+                                    <Label htmlFor="clean_code" className="cursor-pointer font-normal">
                                         Clean Code
                                     </Label>
                                 </div>
@@ -401,11 +393,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="pure_code"
                                         checked={reviewRatings.pure_code}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, pure_code: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, pure_code: checked }))}
                                     />
-                                    <Label htmlFor="pure_code" className="font-normal cursor-pointer">
+                                    <Label htmlFor="pure_code" className="cursor-pointer font-normal">
                                         Pure Code
                                     </Label>
                                 </div>
@@ -413,11 +403,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="pure_ai"
                                         checked={reviewRatings.pure_ai}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, pure_ai: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, pure_ai: checked }))}
                                     />
-                                    <Label htmlFor="pure_ai" className="font-normal cursor-pointer">
+                                    <Label htmlFor="pure_ai" className="cursor-pointer font-normal">
                                         Pure AI
                                     </Label>
                                 </div>
@@ -425,11 +413,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="mix_vibe"
                                         checked={reviewRatings.mix_vibe}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, mix_vibe: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, mix_vibe: checked }))}
                                     />
-                                    <Label htmlFor="mix_vibe" className="font-normal cursor-pointer">
+                                    <Label htmlFor="mix_vibe" className="cursor-pointer font-normal">
                                         Mix Vibe One
                                     </Label>
                                 </div>
@@ -437,11 +423,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="responsive_design"
                                         checked={reviewRatings.responsive_design}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, responsive_design: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, responsive_design: checked }))}
                                     />
-                                    <Label htmlFor="responsive_design" className="font-normal cursor-pointer">
+                                    <Label htmlFor="responsive_design" className="cursor-pointer font-normal">
                                         Responsive Design
                                     </Label>
                                 </div>
@@ -449,11 +433,9 @@ export default function ProjectShow({ project }) {
                                     <Checkbox
                                         id="good_performance"
                                         checked={reviewRatings.good_performance}
-                                        onCheckedChange={(checked) =>
-                                            setReviewRatings(prev => ({ ...prev, good_performance: checked }))
-                                        }
+                                        onCheckedChange={(checked) => setReviewRatings((prev) => ({ ...prev, good_performance: checked }))}
                                     />
-                                    <Label htmlFor="good_performance" className="font-normal cursor-pointer">
+                                    <Label htmlFor="good_performance" className="cursor-pointer font-normal">
                                         Good Performance
                                     </Label>
                                 </div>
@@ -493,11 +475,7 @@ export default function ProjectShow({ project }) {
                         >
                             Cancel
                         </Button>
-                        <Button
-                            onClick={confirmApprove}
-                            disabled={isProcessing}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                        >
+                        <Button onClick={confirmApprove} disabled={isProcessing} className="bg-green-600 text-white hover:bg-green-700">
                             {isProcessing ? 'Approving...' : 'Approve Project'}
                         </Button>
                     </DialogFooter>
@@ -506,7 +484,7 @@ export default function ProjectShow({ project }) {
 
             {/* Rejection Modal */}
             <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent className="sm:max-w-[500px] bg-light dark:bg-dark">
+                <DialogContent className="bg-light sm:max-w-[500px] dark:bg-dark">
                     <DialogHeader>
                         <DialogTitle>Reject Project</DialogTitle>
                         <DialogDescription>
@@ -537,11 +515,7 @@ export default function ProjectShow({ project }) {
                         >
                             Cancel
                         </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={confirmReject}
-                            disabled={!rejectionReason.trim() || isProcessing}
-                        >
+                        <Button variant="destructive" onClick={confirmReject} disabled={!rejectionReason.trim() || isProcessing}>
                             {isProcessing ? 'Rejecting...' : 'Reject Project'}
                         </Button>
                     </DialogFooter>
@@ -550,4 +524,3 @@ export default function ProjectShow({ project }) {
         </AppLayout>
     );
 }
-
