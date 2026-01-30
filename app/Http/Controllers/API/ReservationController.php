@@ -297,6 +297,100 @@ class ReservationController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                // Send Expo push notification to studio responsables
+                try {
+                    \Illuminate\Support\Facades\Log::info('Attempting to send push notification for reservation (API)', [
+                        'reservation_id' => $reservationId,
+                        'user_id' => $validated['user_id'],
+                    ]);
+                    
+                    // Get all users who should be notified (studio responsables and admins)
+                    // Roles can be stored as string or JSON array, so we need to check both
+                    $notifyUsers = \App\Models\User::where(function($query) {
+                        $query->where('role', 'studio_responsable')
+                            ->orWhereJsonContains('role', 'studio_responsable')
+                            ->orWhere('role', 'admin')
+                            ->orWhereJsonContains('role', 'admin')
+                            ->orWhere('role', 'super_admin')
+                            ->orWhereJsonContains('role', 'super_admin');
+                    })->get();
+                    
+                    \Illuminate\Support\Facades\Log::info('Found users to notify for reservation (API)', [
+                        'count' => $notifyUsers->count(),
+                        'ids' => $notifyUsers->pluck('id')->toArray(),
+                        'emails' => $notifyUsers->pluck('email')->toArray(),
+                    ]);
+                    
+                    $reservationUser = \App\Models\User::find($validated['user_id']);
+                    
+                    if ($reservationUser) {
+                        $reservationTitle = $validated['title'] ?? "Reservation #{$reservationId}";
+                        $reservationMessage = "{$reservationUser->name} submitted a new reservation: {$reservationTitle}";
+                        
+                        foreach ($notifyUsers as $notifyUser) {
+                            // Refresh user to get latest expo_push_token
+                            $notifyUser->refresh();
+                            
+                            \Illuminate\Support\Facades\Log::info('Processing user for push notification (API)', [
+                                'user_id' => $notifyUser->id,
+                                'user_email' => $notifyUser->email,
+                                'has_expo_token' => !empty($notifyUser->expo_push_token),
+                                'token_preview' => $notifyUser->expo_push_token ? substr($notifyUser->expo_push_token, 0, 30) . '...' : null,
+                            ]);
+                            
+                            if ($notifyUser->expo_push_token) {
+                                $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                                
+                                \Illuminate\Support\Facades\Log::info('Sending push notification for reservation (API)', [
+                                    'notify_user_id' => $notifyUser->id,
+                                    'reservation_id' => $reservationId,
+                                    'user_id' => $validated['user_id'],
+                                    'message' => $reservationMessage,
+                                ]);
+                                
+                                $success = $pushService->sendToUser($notifyUser, 'New Reservation', $reservationMessage, [
+                                    'type' => 'reservation',
+                                    'reservation_id' => $reservationId,
+                                    'user_id' => $validated['user_id'],
+                                    'user_name' => $reservationUser->name,
+                                    'title' => $reservationTitle,
+                                    'day' => $validated['day'],
+                                    'start' => $validated['start'],
+                                    'end' => $validated['end'],
+                                ]);
+                                
+                                if (!$success) {
+                                    \Illuminate\Support\Facades\Log::warning('Push notification send returned false for reservation (API)', [
+                                        'notify_user_id' => $notifyUser->id,
+                                        'reservation_id' => $reservationId,
+                                    ]);
+                                } else {
+                                    \Illuminate\Support\Facades\Log::info('Push notification sent successfully for reservation (API)', [
+                                        'notify_user_id' => $notifyUser->id,
+                                        'reservation_id' => $reservationId,
+                                    ]);
+                                }
+                            } else {
+                                \Illuminate\Support\Facades\Log::info('User does not have Expo push token, skipping push notification (API)', [
+                                    'user_id' => $notifyUser->id,
+                                    'user_email' => $notifyUser->email,
+                                ]);
+                            }
+                        }
+                    } else {
+                        \Illuminate\Support\Facades\Log::warning('Reservation user not found for push notification (API)', [
+                            'user_id' => $validated['user_id'],
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for reservation (API)', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'reservation_id' => $reservationId,
+                    ]);
+                    // Don't fail reservation creation if push fails
+                }
+
 
                 // Insert team members
                 if (!empty($validated['team_members'])) {
