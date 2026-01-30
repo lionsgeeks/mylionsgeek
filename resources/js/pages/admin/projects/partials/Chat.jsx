@@ -690,18 +690,21 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
     };
 
     return (
-        <div className="fixed bottom-4 right-4">
-            <Sheet open={chatOpen} onOpenChange={(open) => {
-                setChatOpen(open);
-                if (open && onChatOpen) {
-                    onChatOpen();
-                }
-            }}>
+        <div className="fixed right-4 bottom-4">
+            <Sheet
+                open={chatOpen}
+                onOpenChange={(open) => {
+                    setChatOpen(open);
+                    if (open && onChatOpen) {
+                        onChatOpen();
+                    }
+                }}
+            >
                 <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 rounded-full shadow-lg relative">
+                    <Button size="icon" className="relative h-12 w-12 rounded-full shadow-lg">
                         <MessageSquare className="h-6 w-6" />
                         {unreadCount > 0 && (
-                            <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-background">
+                            <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 text-[10px] font-bold text-white dark:border-background">
                                 {unreadCount > 99 ? '99+' : unreadCount}
                             </span>
                         )}

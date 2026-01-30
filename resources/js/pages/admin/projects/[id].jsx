@@ -1,8 +1,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
 import { isToday, parseISO } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
 
 // Import partial components
 import Activity from './partials/Activity';
@@ -85,9 +85,9 @@ const sampleTasks = [
 // Messages are now fetched from backend via the Chat component
 
 const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManageTeam = false, isProjectOwner = false }) => {
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState('overview');
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-    
+
     // //console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
@@ -101,7 +101,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                 const response = await fetch(`/admin/projects/${project.id}/messages/unread-count`, {
                     method: 'GET',
                     headers: {
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     credentials: 'same-origin',
@@ -117,22 +117,26 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         };
 
         fetchUnreadCount();
-        
+
         // Refresh every 30 seconds
         const interval = setInterval(fetchUnreadCount, 30000);
-        
+
         // Listen for Ably notifications (from NotificationIcon component)
         const handleAblyNotification = (event) => {
             const notification = event.detail;
-            if (notification && notification.type === 'project_message' && 
-                notification.link && notification.link.includes(`/admin/projects/${project.id}`)) {
+            if (
+                notification &&
+                notification.type === 'project_message' &&
+                notification.link &&
+                notification.link.includes(`/admin/projects/${project.id}`)
+            ) {
                 // Refresh count when new notification arrives
                 fetchUnreadCount();
             }
         };
 
         window.addEventListener('ably-notification', handleAblyNotification);
-        
+
         return () => {
             clearInterval(interval);
             window.removeEventListener('ably-notification', handleAblyNotification);
@@ -145,43 +149,42 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         fetch('/api/notifications', {
             method: 'GET',
             headers: {
-                'Accept': 'application/json',
+                Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
             credentials: 'same-origin',
         })
-        .then(res => res.json())
-        .then(data => {
-            const projectMessageNotifications = (data.notifications || [])
-                .filter(notif => 
-                    notif.type === 'project_message' && 
-                    !notif.readAt &&
-                    notif.link && 
-                    notif.link.includes(`/admin/projects/${project.id}`)
+            .then((res) => res.json())
+            .then((data) => {
+                const projectMessageNotifications = (data.notifications || []).filter(
+                    (notif) =>
+                        notif.type === 'project_message' && !notif.readAt && notif.link && notif.link.includes(`/admin/projects/${project.id}`),
                 );
-            
-            // Mark each as read
-            const markPromises = projectMessageNotifications.map(notif => {
-                const parts = notif.id.split('-');
-                if (parts.length === 3 && parts[0] === 'project' && parts[1] === 'message') {
-                    const id = parts[2];
-                    return fetch(`/api/notifications/project-message/${id}/read`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
-                        },
-                    });
-                }
-                return Promise.resolve();
-            });
-            
-            Promise.all(markPromises).then(() => {
-                // Refresh count after marking as read
-                setUnreadMessageCount(0);
-            }).catch(err => console.error('Failed to mark notifications as read:', err));
-        })
-        .catch(err => console.error('Failed to fetch notifications:', err));
+
+                // Mark each as read
+                const markPromises = projectMessageNotifications.map((notif) => {
+                    const parts = notif.id.split('-');
+                    if (parts.length === 3 && parts[0] === 'project' && parts[1] === 'message') {
+                        const id = parts[2];
+                        return fetch(`/api/notifications/project-message/${id}/read`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                            },
+                        });
+                    }
+                    return Promise.resolve();
+                });
+
+                Promise.all(markPromises)
+                    .then(() => {
+                        // Refresh count after marking as read
+                        setUnreadMessageCount(0);
+                    })
+                    .catch((err) => console.error('Failed to mark notifications as read:', err));
+            })
+            .catch((err) => console.error('Failed to fetch notifications:', err));
     };
 
     // Transform tasks with started_at into calendar events
@@ -357,7 +360,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                         {/* Navigation Tabs */}
                         <div className="mb-6 py-3">
                             <Tabs defaultValue="tasks" onValueChange={setActiveTab} value={activeTab}>
-                                <TabsList className="grid grid-cols-6 w-full">
+                                <TabsList className="grid w-full grid-cols-6">
                                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                                     <TabsTrigger value="overview">Overview</TabsTrigger>
                                     <TabsTrigger value="files">Attachments</TabsTrigger>
