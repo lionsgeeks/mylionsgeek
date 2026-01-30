@@ -1,93 +1,88 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import React, { useState, useMemo, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { isToday, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 
 // Import partial components
-import ProjectHeader from './partials/ProjectHeader';
+import Activity from './partials/Activity';
 import Calendar from './partials/Calendar';
-import Overview from './partials/Overview';
-import Tasks from './partials/Tasks';
+import Chat from './partials/Chat';
 import Files from './partials/Files';
 import Notes from './partials/Notes';
-import Activity from './partials/Activity';
-import Team from './partials/Team';
+import Overview from './partials/Overview';
+import ProjectHeader from './partials/ProjectHeader';
 import Sidebar from './partials/Sidebar';
-import Chat from './partials/Chat';
-import ProjectAttachments from './partials/ProjectAttachments';
+import Tasks from './partials/Tasks';
+import Team from './partials/Team';
 
 // Helper function to get priority color
 const getPriorityColor = (priority) => {
     const colorMap = {
-        urgent: "#ef4444", // red
-        high: "#f59e0b",   // amber
-        medium: "#3b82f6", // blue
-        low: "#10b981"     // green
+        urgent: '#ef4444', // red
+        high: '#f59e0b', // amber
+        medium: '#3b82f6', // blue
+        low: '#10b981', // green
     };
-    return colorMap[priority] || "#6b7280"; // default gray
+    return colorMap[priority] || '#6b7280'; // default gray
 };
 
 const sampleTasks = [
     {
-        id: "1",
-        title: "Implement user authentication",
-        description: "Create a secure authentication system with JWT tokens",
-        status: "completed",
-        priority: "high",
+        id: '1',
+        title: 'Implement user authentication',
+        description: 'Create a secure authentication system with JWT tokens',
+        status: 'completed',
+        priority: 'high',
         assignee: {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '1',
+            name: 'John Doe',
+            email: 'john@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-15",
-        completedDate: "2024-02-14",
-        project: "Project Alpha",
-        tags: ["backend", "security"],
+        dueDate: '2024-02-15',
+        completedDate: '2024-02-14',
+        project: 'Project Alpha',
+        tags: ['backend', 'security'],
         progress: 100,
     },
     {
-        id: "2",
-        title: "Design landing page",
-        description: "Create a modern, responsive landing page",
-        status: "in-progress",
-        priority: "medium",
+        id: '2',
+        title: 'Design landing page',
+        description: 'Create a modern, responsive landing page',
+        status: 'in-progress',
+        priority: 'medium',
         assignee: {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '2',
+            name: 'Jane Smith',
+            email: 'jane@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-20",
-        project: "Project Alpha",
-        tags: ["design", "frontend"],
+        dueDate: '2024-02-20',
+        project: 'Project Alpha',
+        tags: ['design', 'frontend'],
         progress: 65,
     },
     {
-        id: "3",
-        title: "Database optimization",
-        description: "Optimize database queries and add proper indexing",
-        status: "todo",
-        priority: "low",
+        id: '3',
+        title: 'Database optimization',
+        description: 'Optimize database queries and add proper indexing',
+        status: 'todo',
+        priority: 'low',
         assignee: {
-            id: "3",
-            name: "Mike Johnson",
-            email: "mike@example.com",
-            avatar: "/placeholder.svg?height=40&width=40",
+            id: '3',
+            name: 'Mike Johnson',
+            email: 'mike@example.com',
+            avatar: '/placeholder.svg?height=40&width=40',
         },
-        dueDate: "2024-02-25",
-        project: "Project Alpha",
-        tags: ["database", "performance"],
+        dueDate: '2024-02-25',
+        project: 'Project Alpha',
+        tags: ['database', 'performance'],
         progress: 0,
     },
 ];
 
-
-
 // Messages are now fetched from backend via the Chat component
-
 
 const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManageTeam = false, isProjectOwner = false }) => {
     const [activeTab, setActiveTab] = useState("overview");
@@ -96,7 +91,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
     // //console.log(notes)
     const todaysTasks = useMemo(() => {
         const today = new Date();
-        return tasks.filter(task => task.due_date && isToday(parseISO(task.due_date)));
+        return tasks.filter((task) => task.due_date && isToday(parseISO(task.due_date)));
     }, [tasks]);
 
     // Fetch unread project message notifications count directly from database
@@ -192,19 +187,19 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
     // Transform tasks with started_at into calendar events
     const calendarEvents = useMemo(() => {
         if (!tasks || tasks.length === 0) return [];
-        
+
         return tasks
-            .filter(task => task.started_at) // Only include tasks with started_at
-            .map(task => {
+            .filter((task) => task.started_at) // Only include tasks with started_at
+            .map((task) => {
                 const startDate = new Date(task.started_at);
-                
+
                 // Calculate end time: use due_date if available, otherwise add 1 hour to started_at
                 let endDate;
                 if (task.due_date) {
                     endDate = new Date(task.due_date);
                     const startDay = startDate.toDateString();
                     const dueDay = endDate.toDateString();
-                    
+
                     // If due_date is just a date (no time component)
                     if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && endDate.getSeconds() === 0) {
                         if (startDay === dueDay) {
@@ -221,7 +216,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                     endDate = new Date(startDate);
                     endDate.setHours(endDate.getHours() + 1);
                 }
-                
+
                 // Ensure end is after start
                 if (endDate <= startDate) {
                     endDate = new Date(startDate);
@@ -229,9 +224,13 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                 }
 
                 // Calculate progress from task
-                const progress = task.progress || (task.subtasks && task.subtasks.length > 0
-                    ? Math.round((task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100)
-                    : task.status === 'completed' ? 100 : 0);
+                const progress =
+                    task.progress ||
+                    (task.subtasks && task.subtasks.length > 0
+                        ? Math.round((task.subtasks.filter((st) => st.completed).length / task.subtasks.length) * 100)
+                        : task.status === 'completed'
+                          ? 100
+                          : 0);
 
                 return {
                     id: task.id,
@@ -245,8 +244,8 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                         taskId: task.id,
                         status: task.status,
                         priority: task.priority,
-                        description: task.description
-                    }
+                        description: task.description,
+                    },
                 };
             });
     }, [tasks]);
@@ -254,13 +253,13 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
     // Collect all task attachments
     const allTaskAttachments = useMemo(() => {
         const taskAttachments = [];
-        tasks.forEach(task => {
+        tasks.forEach((task) => {
             if (task.attachments && Array.isArray(task.attachments)) {
-                task.attachments.forEach(attachment => {
+                task.attachments.forEach((attachment) => {
                     taskAttachments.push({
                         ...attachment,
                         task_id: task.id,
-                        task_title: task.title
+                        task_title: task.title,
                     });
                 });
             }
@@ -283,7 +282,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         });
 
         // Task-related activities
-        tasks.forEach(task => {
+        tasks.forEach((task) => {
             // Task creation
             activities.push({
                 id: `task-created-${task.id}`,
@@ -309,7 +308,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
             }
 
             // Task comments
-            (task.comments || []).forEach(comment => {
+            (task.comments || []).forEach((comment) => {
                 activities.push({
                     id: `task-comment-${comment.id}`,
                     type: 'task_comment',
@@ -323,7 +322,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         });
 
         // Project notes
-        (project.notes || []).forEach(note => {
+        (project.notes || []).forEach((note) => {
             activities.push({
                 id: `note-created-${note.id}`,
                 type: 'note_creation',
@@ -344,18 +343,14 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
     return (
         <AppLayout>
             <Head title={`${project.name} - Project Details`} />
-            <div className="flex flex-col min-h-screen">
+            <div className="flex min-h-screen flex-col">
                 {/* Project Header with Banner */}
-                <ProjectHeader
-                    project={project}
-                    teamMembers={teamMembers}
-                    tasks={tasks}
-                />
+                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} />
 
                 {/* Main Content with Sidebar */}
-                <div className="flex flex-col lg:flex-row flex-1">
+                <div className="flex flex-1 flex-col lg:flex-row">
                     {/* Main Content */}
-                    <div className="flex-1 max-w-[1200px] mx-auto w-full p-6">
+                    <div className="mx-auto w-full max-w-[1200px] flex-1 p-6">
                         {/* Calendar Section */}
                         <Calendar events={calendarEvents} />
 
@@ -371,37 +366,24 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                     <TabsTrigger value="team">Team</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
                                         Activity
-                                        {recentActivities.filter(a => !a.read).length > 0 && (
+                                        {recentActivities.filter((a) => !a.read).length > 0 && (
                                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] text-primary-foreground">
-                                                {recentActivities.filter(a => !a.read).length}
+                                                {recentActivities.filter((a) => !a.read).length}
                                             </span>
                                         )}
                                     </TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="overview" className="mt-6">
-                                    <Overview
-                                        project={project}
-                                        teamMembers={teamMembers}
-                                        tasks={tasks}
-
-                                    />
+                                    <Overview project={project} teamMembers={teamMembers} tasks={tasks} />
                                 </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
-                                    <Tasks
-                                        tasks={tasks}
-                                        teamMembers={teamMembers}
-                                        projectId={project.id}
-                                    />
+                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} />
                                 </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
-                                    <Files
-                                        projectAttachments={attachments}
-                                        taskAttachments={allTaskAttachments}
-                                        projectId={project.id}
-                                    />
+                                    <Files projectAttachments={attachments} taskAttachments={allTaskAttachments} projectId={project.id} />
                                 </TabsContent>
 
                                 {/* <TabsContent value="attachments" className="mt-6">
@@ -417,9 +399,9 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                 </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">
-                                    <Team 
-                                        teamMembers={teamMembers} 
-                                        projectId={project.id} 
+                                    <Team
+                                        teamMembers={teamMembers}
+                                        projectId={project.id}
                                         canManageTeam={canManageTeam}
                                         isProjectOwner={isProjectOwner}
                                     />
@@ -440,4 +422,3 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
 };
 
 export default ProjectShow;
-

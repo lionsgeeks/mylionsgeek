@@ -1,6 +1,5 @@
-import React from "react";
-import { Link } from "@inertiajs/react";
-import Rolegard from "@/components/rolegard";
+import Rolegard from '@/components/rolegard';
+import { Link } from '@inertiajs/react';
 
 export default function StatsGrid({ statsData = [], items = [] }) {
     const data = (statsData?.length ? statsData : items) ?? [];
@@ -8,8 +7,8 @@ export default function StatsGrid({ statsData = [], items = [] }) {
     if (!data.length) return null;
 
     return (
-        <div className="bg-light dark:bg-dark py-0 sm:py-0">
-            <div className="w-full mx-auto">
+        <div className="bg-light py-0 sm:py-0 dark:bg-dark">
+            <div className="mx-auto w-full">
                 <div className={`grid grid-cols-1 sm:grid-cols-2 ${data.length > 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
                     {data.map((stat, index) => {
                         const Icon = stat.icon;
@@ -23,26 +22,17 @@ export default function StatsGrid({ statsData = [], items = [] }) {
                             <Rolegard key={stat.id || `${stat.title}-${index}`} except={excludeRoles}>
                                 <CardWrapper
                                     {...cardProps}
-                                    className={`relative rounded-2xl p-6 overflow-hidden bg-light dark:bg-dark_gray shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] transition-shadow duration-300 ${stat.href ? 'cursor-pointer' : ''}`}
-                            >
-                                {Icon && (
-                                    <Icon
-                                        size={70}
-                                        className="absolute text-alpha dark:text-alpha right-4 bottom-0 opacity-70"
-                                    />
-                                )}
-                                <h3 className="text-sm font-semibold text-beta dark:text-white/80 uppercase tracking-wide mb-2 relative z-10">
-                                    {stat.title}
-                                </h3>
-                                <p className="text-3xl sm:text-4xl font-bold text-beta dark:text-white mb-1 relative z-10">
-                                    {displayValue}
-                                    {stat.suffix && <span className="text-xl font-semibold ml-1">{stat.suffix}</span>}
-                                </p>
-                                {description && (
-                                    <p className="text-xs text-muted-foreground relative z-10">
-                                        {description}
+                                    className={`relative overflow-hidden rounded-2xl bg-light p-6 shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-300 hover:shadow-[0_6px_20px_rgba(0,0,0,0.12)] dark:bg-dark_gray ${stat.href ? 'cursor-pointer' : ''}`}
+                                >
+                                    {Icon && <Icon size={70} className="absolute right-4 bottom-0 text-alpha opacity-70 dark:text-alpha" />}
+                                    <h3 className="relative z-10 mb-2 text-sm font-semibold tracking-wide text-beta uppercase dark:text-white/80">
+                                        {stat.title}
+                                    </h3>
+                                    <p className="relative z-10 mb-1 text-3xl font-bold text-beta sm:text-4xl dark:text-white">
+                                        {displayValue}
+                                        {stat.suffix && <span className="ml-1 text-xl font-semibold">{stat.suffix}</span>}
                                     </p>
-                                )}
+                                    {description && <p className="relative z-10 text-xs text-muted-foreground">{description}</p>}
                                 </CardWrapper>
                             </Rolegard>
                         );

@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import { X, Send, Paperclip, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { Mic, Paperclip, Send, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import AudioRecorder from './AudioRecorder';
 
 // Component dial input dial message
@@ -42,25 +42,25 @@ export default function MessageInput({
     const handleInputChange = (e) => {
         const value = e.target.value;
         setNewMessage(value);
-        
+
         if (!onTypingStart || !onTypingStop) return;
 
         // Only trigger if user is actually typing (has content)
         if (value.trim().length > 0) {
             const now = Date.now();
-            
+
             // Debounce typing start - only trigger every 1 second max
-            if (!hasTypedRef.current || (now - lastTypingTimeRef.current) > 1000) {
+            if (!hasTypedRef.current || now - lastTypingTimeRef.current > 1000) {
                 onTypingStart();
                 hasTypedRef.current = true;
                 lastTypingTimeRef.current = now;
             }
-            
+
             // Clear existing timeout
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
             }
-            
+
             // Stop typing after 2 seconds of inactivity
             typingTimeoutRef.current = setTimeout(() => {
                 onTypingStop();
@@ -85,7 +85,7 @@ export default function MessageInput({
                 clearTimeout(typingTimeoutRef.current);
             }
         }
-        
+
         return () => {
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
@@ -104,22 +104,16 @@ export default function MessageInput({
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
     return (
-        <form onSubmit={handleSendMessage} className="p-4 border-t shrink-0 bg-alpha/5">
+        <form onSubmit={handleSendMessage} className="shrink-0 border-t bg-alpha/5 p-4">
             {/* Attachment Preview */}
             {attachment && (
-                <div className="mb-2 px-3 py-2 bg-background rounded-lg border flex items-center gap-2">
+                <div className="mb-2 flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
                     {attachment.type.startsWith('image/') ? (
                         <span className="text-xs">📷 Image selected</span>
                     ) : (
                         <span className="text-xs">📎 {attachment.name}</span>
                     )}
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setAttachment(null)}
-                        className="h-6 w-6 ml-auto"
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setAttachment(null)} className="ml-auto h-6 w-6">
                         <X className="h-3 w-3" />
                     </Button>
                 </div>
@@ -127,14 +121,10 @@ export default function MessageInput({
 
             {/* Audio Preview */}
             {audioURL && audioBlob && (
-                <div className="mb-2 px-3 py-2 bg-background rounded-lg border flex items-center gap-2">
-                    <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-                    <span className="text-xs flex-1">Voice message ready</span>
-                    {audioDuration && (
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                            {formatAudioDuration(audioDuration)}
-                        </span>
-                    )}
+                <div className="mb-2 flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+                    <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                    <span className="flex-1 text-xs">Voice message ready</span>
+                    {audioDuration && <span className="text-xs text-muted-foreground tabular-nums">{formatAudioDuration(audioDuration)}</span>}
                     <Button
                         type="button"
                         variant="ghost"
@@ -173,7 +163,7 @@ export default function MessageInput({
                 </div>
             )}
 
-            <div className="flex gap-2 items-end">
+            <div className="flex items-end gap-2">
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -191,17 +181,17 @@ export default function MessageInput({
                 >
                     <Paperclip className="h-4 w-4" />
                 </Button>
-                
-                <div className="flex-1 relative">
+
+                <div className="relative flex-1">
                     <Input
                         value={newMessage}
                         onChange={handleInputChange}
                         placeholder="Type a message..."
-                        className={cn("h-9 text-sm pr-12", isExpanded && "text-base h-10")}
+                        className={cn('h-9 pr-12 text-sm', isExpanded && 'h-10 text-base')}
                         disabled={sending || isRecording}
                     />
                 </div>
-                
+
                 {!isRecording ? (
                     <>
                         <Button
@@ -217,10 +207,10 @@ export default function MessageInput({
                         >
                             <Mic className="h-4 w-4" />
                         </Button>
-                        <Button 
-                            type="submit" 
-                            size="icon" 
-                            disabled={sending || (!newMessage.trim() && !attachment && !audioBlob)} 
+                        <Button
+                            type="submit"
+                            size="icon"
+                            disabled={sending || (!newMessage.trim() && !attachment && !audioBlob)}
                             className="h-9 w-9 shrink-0 bg-alpha text-beta hover:bg-alpha/90 disabled:opacity-50"
                         >
                             <Send className="h-4 w-4" />
@@ -231,4 +221,3 @@ export default function MessageInput({
         </form>
     );
 }
-

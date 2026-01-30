@@ -1,19 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { useForm } from '@inertiajs/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { helpers, MAX_POST_IMAGES } from '../utils/helpers';
+import PostMediaGrid from './composer/PostMediaGrid';
+import PostMediaPicker from './composer/PostMediaPicker';
 import PostModalShell from './composer/PostModalShell';
 import PostTextarea from './composer/PostTextarea';
-import PostMediaPicker from './composer/PostMediaPicker';
-import PostMediaGrid from './composer/PostMediaGrid';
 
 const CreatePostModal = ({ onOpenChange, user }) => {
-    const {
-        stopScrolling,
-        buildImageEntries,
-        revokePreviewUrls,
-        createImageRemovalHandler,
-    } = helpers();
+    const { stopScrolling, buildImageEntries, revokePreviewUrls, createImageRemovalHandler } = helpers();
     const [selectedImages, setSelectedImages] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [limitMessage, setLimitMessage] = useState('');
@@ -57,11 +52,12 @@ const CreatePostModal = ({ onOpenChange, user }) => {
     };
 
     const removeImage = useMemo(
-        () => createImageRemovalHandler({
-            revokePreviewUrls,
-            updateNewImages: setSelectedImages,
-        }),
-        [createImageRemovalHandler, revokePreviewUrls]
+        () =>
+            createImageRemovalHandler({
+                revokePreviewUrls,
+                updateNewImages: setSelectedImages,
+            }),
+        [createImageRemovalHandler, revokePreviewUrls],
     );
 
     const resetForm = () => {
@@ -111,11 +107,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
             footer={
                 <div className="flex w-full items-center justify-between gap-4">
                     <div className="flex flex-col gap-2">
-                        <PostMediaPicker
-                            id="create-post-media"
-                            onChange={handleImagePreviews}
-                            disabled={form.processing}
-                        />
+                        <PostMediaPicker id="create-post-media" onChange={handleImagePreviews} disabled={form.processing} />
                         <p className="text-xs text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/60">
                             {selectedImages.length}/{MAX_POST_IMAGES} images selected
                         </p>
@@ -123,10 +115,11 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                     <button
                         disabled={!canSubmit || form.processing || isUploading}
                         onClick={handleSubmit}
-                        className={`px-8 py-3 rounded-xl font-bold transition-all duration-200 shadow-md ${canSubmit
-                            ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
-                            : 'bg-[var(--color-dark_gray)]/30 dark:bg-[var(--color-light)]/10 text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/40 cursor-not-allowed opacity-60'
-                            }`}
+                        className={`rounded-xl px-8 py-3 font-bold shadow-md transition-all duration-200 ${
+                            canSubmit
+                                ? 'bg-[var(--color-alpha)] text-[var(--color-beta)] hover:scale-105 active:scale-95'
+                                : 'cursor-not-allowed bg-[var(--color-dark_gray)]/30 text-[var(--color-dark_gray)] opacity-60 dark:bg-[var(--color-light)]/10 dark:text-[var(--color-light)]/40'
+                        }`}
                     >
                         {form.processing ? 'Posting...' : 'Post'}
                     </button>
@@ -140,11 +133,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                 disabled={form.processing}
             />
             <InputError message={form.errors.description} />
-            <PostMediaGrid
-                images={selectedImages}
-                onRemove={removeImage}
-                isLoading={isUploading}
-            />
+            <PostMediaGrid images={selectedImages} onRemove={removeImage} isLoading={isUploading} />
             <InputError message={limitMessage || form.errors.images} />
         </PostModalShell>
     );

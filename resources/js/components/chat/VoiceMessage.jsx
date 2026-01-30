@@ -1,14 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Pause, Play } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-export default function VoiceMessage({ 
-    audioUrl, 
-    duration, 
-    isCurrentUser,
-    onPlayStateChange 
-}) {
+export default function VoiceMessage({ audioUrl, duration, isCurrentUser, onPlayStateChange }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
@@ -21,7 +15,7 @@ export default function VoiceMessage({
         const hours = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = Math.floor(seconds % 60);
-        
+
         if (hours > 0) {
             return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
@@ -37,7 +31,7 @@ export default function VoiceMessage({
         } else {
             // Pause all other audio elements on the page
             const allAudios = document.querySelectorAll('audio');
-            allAudios.forEach(audio => {
+            allAudios.forEach((audio) => {
                 if (audio !== audioRef.current && !audio.paused) {
                     audio.pause();
                     audio.currentTime = 0;
@@ -114,7 +108,7 @@ export default function VoiceMessage({
         // Pause if another audio starts playing
         const handleOtherAudioPlay = () => {
             const allAudios = document.querySelectorAll('audio');
-            allAudios.forEach(a => {
+            allAudios.forEach((a) => {
                 if (a !== audio && !a.paused) {
                     audio.pause();
                 }
@@ -159,61 +153,44 @@ export default function VoiceMessage({
     }, [audioUrl]);
 
     return (
-        <div className={cn(
-            "flex items-center gap-3",
-            isCurrentUser 
-                ? "text-primary-foreground" 
-                : "text-foreground"
-        )}>
-            <audio
-                ref={audioRef}
-                src={audioUrl}
-                preload="metadata"
-                className="hidden"
-            />
-            
+        <div className={cn('flex items-center gap-3', isCurrentUser ? 'text-primary-foreground' : 'text-foreground')}>
+            <audio ref={audioRef} src={audioUrl} preload="metadata" className="hidden" />
+
             {/* Simple circular play button */}
             <button
                 onClick={togglePlayback}
                 className={cn(
-                    "h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200",
-                    "hover:opacity-80 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    isCurrentUser 
-                        ? "bg-white text-foreground focus:ring-primary/50" 
-                        : "bg-white text-foreground border border-border/20 focus:ring-muted-foreground/30"
+                    'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200',
+                    'hover:opacity-80 focus:ring-2 focus:ring-offset-2 focus:outline-none active:scale-95',
+                    isCurrentUser
+                        ? 'bg-white text-foreground focus:ring-primary/50'
+                        : 'border border-border/20 bg-white text-foreground focus:ring-muted-foreground/30',
                 )}
             >
                 {isPlaying ? (
                     <Pause className="h-4 w-4 fill-current stroke-current" />
                 ) : (
-                    <Play className="h-4 w-4 ml-0.5 fill-current stroke-current" />
+                    <Play className="ml-0.5 h-4 w-4 fill-current stroke-current" />
                 )}
             </button>
 
             {/* Waveform bars - always visible, animated when playing */}
-            <div className="flex items-end gap-1 h-6 px-2">
+            <div className="flex h-6 items-end gap-1 px-2">
                 {[...Array(5)].map((_, i) => {
                     // Different base heights for visual variety
                     const baseHeights = [12, 18, 14, 20, 16];
                     const baseHeight = baseHeights[i];
-                    
+
                     return (
                         <div
                             key={i}
-                            className={cn(
-                                "w-1 rounded-full transition-all duration-300",
-                                isCurrentUser 
-                                    ? "bg-primary-foreground" 
-                                    : "bg-foreground"
-                            )}
+                            className={cn('w-1 rounded-full transition-all duration-300', isCurrentUser ? 'bg-primary-foreground' : 'bg-foreground')}
                             style={{
                                 height: isPlaying ? undefined : `${baseHeight}px`,
-                                animation: isPlaying 
-                                    ? `waveform ${0.6 + i * 0.1}s ease-in-out infinite`
-                                    : 'none',
+                                animation: isPlaying ? `waveform ${0.6 + i * 0.1}s ease-in-out infinite` : 'none',
                                 animationDelay: isPlaying ? `${i * 0.15}s` : '0s',
                                 minHeight: '8px',
-                                opacity: isPlaying ? 1 : 0.6
+                                opacity: isPlaying ? 1 : 0.6,
                             }}
                         />
                     );
@@ -221,27 +198,18 @@ export default function VoiceMessage({
             </div>
 
             {/* Duration display */}
-            <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {isPlaying ? (
                     <>
-                        <div className={cn(
-                            "text-xs font-medium tabular-nums",
-                            isCurrentUser ? "text-primary-foreground/90" : "text-foreground/90"
-                        )}>
+                        <div className={cn('text-xs font-medium tabular-nums', isCurrentUser ? 'text-primary-foreground/90' : 'text-foreground/90')}>
                             {formatTime(currentTime || 0)}
                         </div>
-                        <div className={cn(
-                            "text-xs tabular-nums opacity-70",
-                            isCurrentUser ? "text-primary-foreground/70" : "text-foreground/70"
-                        )}>
+                        <div className={cn('text-xs tabular-nums opacity-70', isCurrentUser ? 'text-primary-foreground/70' : 'text-foreground/70')}>
                             {formatTime(duration || 0)}
                         </div>
                     </>
                 ) : (
-                    <div className={cn(
-                        "text-sm font-medium tabular-nums",
-                        isCurrentUser ? "text-primary-foreground" : "text-foreground"
-                    )}>
+                    <div className={cn('text-sm font-medium tabular-nums', isCurrentUser ? 'text-primary-foreground' : 'text-foreground')}>
                         {formatTime(duration || 0)}
                     </div>
                 )}
@@ -249,4 +217,3 @@ export default function VoiceMessage({
         </div>
     );
 }
-

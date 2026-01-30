@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useForm } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { ChevronDown } from 'lucide-react';
-import TeamMemberSelector from './TeamMemberSelector';
-import EquipmentSelector from './EquipmentSelector';
 import {
     AlertDialog,
-    AlertDialogContent,
-    AlertDialogHeader,
-    AlertDialogFooter,
-    AlertDialogTitle,
-    AlertDialogDescription,
     AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import EquipmentSelector from './EquipmentSelector';
+import TeamMemberSelector from './TeamMemberSelector';
 
 const ReservationModal = ({
     isOpen,
@@ -124,9 +124,7 @@ const ReservationModal = ({
             setAvailableEquipment(availableList);
 
             if (availableList.length) {
-                setSelectedEquipment((prev) =>
-                    prev.filter((item) => availableList.some((available) => available.id === item.id))
-                );
+                setSelectedEquipment((prev) => prev.filter((item) => availableList.some((available) => available.id === item.id)));
             } else {
                 setSelectedEquipment([]);
             }
@@ -260,7 +258,6 @@ const ReservationModal = ({
         }
     };
 
-
     const handlePrevious = () => {
         if (currentStep > (shouldShowStudioSelection ? 0 : 1)) {
             setCurrentStep(currentStep - 1);
@@ -268,11 +265,17 @@ const ReservationModal = ({
     };
 
     useEffect(() => {
-        setData('team_members', selectedMembers.map(m => m.id));
+        setData(
+            'team_members',
+            selectedMembers.map((m) => m.id),
+        );
     }, [selectedMembers]);
 
     useEffect(() => {
-        setData('equipment', selectedEquipment.map(e => e.id));
+        setData(
+            'equipment',
+            selectedEquipment.map((e) => e.id),
+        );
     }, [selectedEquipment]);
 
     // Check if scrollable content exists and update scroll indicator
@@ -286,7 +289,7 @@ const ReservationModal = ({
                     setShowScrollIndicator(hasScroll && !isScrolledToBottom);
                 }
             };
-            
+
             // Wait for DOM to render
             const timeoutId = setTimeout(() => {
                 checkScroll();
@@ -296,7 +299,7 @@ const ReservationModal = ({
                     window.addEventListener('resize', checkScroll);
                 }
             }, 100);
-            
+
             return () => {
                 clearTimeout(timeoutId);
                 const container = scrollContainerRef.current;
@@ -357,8 +360,8 @@ const ReservationModal = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-3xl max-h-[85vh] max-md:w-[95vw] bg-light dark:bg-dark border border-gray-300 dark:border-gray-600 shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 ">
+            <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden border border-gray-300 bg-light p-0 shadow-2xl max-md:w-[95vw] dark:border-gray-600 dark:bg-dark">
+                <DialogHeader className="border-b border-gray-200 px-6 pt-6 pb-4 dark:border-gray-700">
                     <DialogTitle className="text-xl font-bold text-foreground">
                         {isExternal ? 'External Reservation' : 'Reservation'} — Step {currentStep + 1}/{shouldShowStudioSelection ? 4 : 3}
                     </DialogTitle>
@@ -367,24 +370,24 @@ const ReservationModal = ({
                 <form onSubmit={handleSubmit} className="space-y-6 px-6 py-4">
                     {/* Step 0: Studio Selection */}
                     {currentStep === 0 && shouldShowStudioSelection && (
-                        <div className="space-y-4 flex flex-col relative" style={{ maxHeight: 'calc(85vh - 180px)' }}>
-                            <Label className="text-base font-semibold mb-4 block text-foreground flex-shrink-0">Select Studio</Label>
-                            <div 
+                        <div className="relative flex flex-col space-y-4" style={{ maxHeight: 'calc(85vh - 180px)' }}>
+                            <Label className="mb-4 block flex-shrink-0 text-base font-semibold text-foreground">Select Studio</Label>
+                            <div
                                 ref={scrollContainerRef}
-                                className="flex flex-col gap-3 overflow-y-auto flex-1 min-h-0 pb-4 px-1 custom-scrollbar relative" 
+                                className="custom-scrollbar relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-4"
                                 style={{ scrollbarWidth: 'thin', scrollbarColor: '#ffc801 transparent' }}
                             >
-                                {availableStudios.map(s => {
+                                {availableStudios.map((s) => {
                                     const isSelected = selectedStudio?.id === s.id;
                                     return (
                                         <button
                                             key={s.id}
                                             type="button"
                                             onClick={() => setSelectedStudio(s)}
-                                            className={`group w-full rounded-xl border-2 p-4 transition-all duration-200 bg-card dark:bg-neutral-800/50 backdrop-blur-sm ${
+                                            className={`group w-full rounded-xl border-2 bg-card p-4 backdrop-blur-sm transition-all duration-200 dark:bg-neutral-800/50 ${
                                                 isSelected
-                                                    ? 'border-[#FFC801] bg-[#FFC801]/10 dark:bg-[#FFC801]/15 shadow-lg shadow-[#FFC801]/20 ring-2 ring-[#FFC801]/30'
-                                                    : 'border-border dark:border-neutral-700 hover:border-[#FFC801]/60 dark:hover:border-[#FFC801]/60 hover:bg-accent/50 dark:hover:bg-neutral-800/80 hover:shadow-md'
+                                                    ? 'border-[#FFC801] bg-[#FFC801]/10 shadow-lg ring-2 shadow-[#FFC801]/20 ring-[#FFC801]/30 dark:bg-[#FFC801]/15'
+                                                    : 'border-border hover:border-[#FFC801]/60 hover:bg-accent/50 hover:shadow-md dark:border-neutral-700 dark:hover:border-[#FFC801]/60 dark:hover:bg-neutral-800/80'
                                             }`}
                                         >
                                             <div className="flex items-center gap-4">
@@ -393,39 +396,52 @@ const ReservationModal = ({
                                                         <img
                                                             src={s.image}
                                                             alt={s.name}
-                                                            className={`w-20 h-20 object-cover rounded-lg border-2 transition-all duration-200 ${
+                                                            className={`h-20 w-20 rounded-lg border-2 object-cover transition-all duration-200 ${
                                                                 isSelected
                                                                     ? 'border-[#FFC801] shadow-md'
-                                                                    : 'border-border dark:border-neutral-700 group-hover:border-[#FFC801]/50'
+                                                                    : 'border-border group-hover:border-[#FFC801]/50 dark:border-neutral-700'
                                                             }`}
                                                         />
                                                     ) : (
-                                                        <div className={`w-20 h-20 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${
-                                                            isSelected
-                                                                ? 'border-[#FFC801] bg-muted/50'
-                                                                : 'border-border dark:border-neutral-700 bg-muted/30 group-hover:border-[#FFC801]/50'
-                                                        }`}>
-                                                            <span className="text-muted-foreground text-xs">No Image</span>
+                                                        <div
+                                                            className={`flex h-20 w-20 items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+                                                                isSelected
+                                                                    ? 'border-[#FFC801] bg-muted/50'
+                                                                    : 'border-border bg-muted/30 group-hover:border-[#FFC801]/50 dark:border-neutral-700'
+                                                            }`}
+                                                        >
+                                                            <span className="text-xs text-muted-foreground">No Image</span>
                                                         </div>
                                                     )}
                                                     {isSelected && (
-                                                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#FFC801] rounded-full flex items-center justify-center shadow-md">
-                                                            <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                        <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#FFC801] shadow-md">
+                                                            <svg className="h-3 w-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={3}
+                                                                    d="M5 13l4 4L19 7"
+                                                                />
                                                             </svg>
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-1 text-left min-w-0">
-                                                    <div className={`font-semibold text-foreground text-lg mb-1 transition-colors ${
-                                                        isSelected ? 'text-[#FFC801]' : 'group-hover:text-[#FFC801]'
-                                                    }`}>
+                                                <div className="min-w-0 flex-1 text-left">
+                                                    <div
+                                                        className={`mb-1 text-lg font-semibold text-foreground transition-colors ${
+                                                            isSelected ? 'text-[#FFC801]' : 'group-hover:text-[#FFC801]'
+                                                        }`}
+                                                    >
                                                         {s.name}
                                                     </div>
                                                     {isSelected && (
-                                                        <div className="inline-flex items-center gap-1.5 text-xs text-[#FFC801] font-medium px-2 py-1 rounded-full bg-[#FFC801]/10 dark:bg-[#FFC801]/20">
-                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FFC801]/10 px-2 py-1 text-xs font-medium text-[#FFC801] dark:bg-[#FFC801]/20">
+                                                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path
+                                                                    fillRule="evenodd"
+                                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                                    clipRule="evenodd"
+                                                                />
                                                             </svg>
                                                             Selected
                                                         </div>
@@ -436,20 +452,20 @@ const ReservationModal = ({
                                     );
                                 })}
                                 {availableStudios.length === 0 && (
-                                    <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 text-sm font-medium text-center">
+                                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center text-sm font-medium text-red-600">
                                         All studios are busy for this time slot. Please pick another time.
                                     </div>
                                 )}
                             </div>
                             {showScrollIndicator && (
-                                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
-                                    <div className="flex flex-col items-center gap-1 animate-bounce">
-                                        <ChevronDown className="w-5 h-5 text-[#FFC801] drop-shadow-lg" />
-                                        <div className="w-1 h-8 bg-gradient-to-b from-[#FFC801]/80 to-transparent rounded-full"></div>
+                                <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 -translate-x-1/2 transform">
+                                    <div className="flex animate-bounce flex-col items-center gap-1">
+                                        <ChevronDown className="h-5 w-5 text-[#FFC801] drop-shadow-lg" />
+                                        <div className="h-8 w-1 rounded-full bg-gradient-to-b from-[#FFC801]/80 to-transparent"></div>
                                     </div>
                                 </div>
                             )}
-                            <div className="flex justify-end pt-2 flex-shrink-0">
+                            <div className="flex flex-shrink-0 justify-end pt-2">
                                 <Button
                                     type="button"
                                     onClick={() => {
@@ -458,7 +474,7 @@ const ReservationModal = ({
                                         }
                                     }}
                                     disabled={!selectedStudio}
-                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700] px-6"
+                                    className="cursor-pointer bg-[#FFC801] px-6 text-black hover:bg-[#E5B700] hover:text-white dark:hover:text-black"
                                 >
                                     Next →
                                 </Button>
@@ -472,16 +488,14 @@ const ReservationModal = ({
                             <div>
                                 <Label htmlFor="title">Reservation Name</Label>
                                 <Input
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801]"
                                     id="title"
                                     value={data.title}
                                     onChange={(e) => setData('title', e.target.value)}
                                     placeholder="Enter reservation name"
                                     required
                                 />
-                                {errors.title && (
-                                    <p className="text-sm text-destructive mt-1">{errors.title}</p>
-                                )}
+                                {errors.title && <p className="mt-1 text-sm text-destructive">{errors.title}</p>}
                             </div>
 
                             <div>
@@ -490,7 +504,7 @@ const ReservationModal = ({
                                     {isExternal && <span className="text-red-500 ml-1">*</span>}
                                 </Label>
                                 <Textarea
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] bg-light dark:bg-dark"
+                                    className="mt-1 block w-full border-[#FFC801] bg-light focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:bg-dark"
                                     id="description"
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}
@@ -507,7 +521,7 @@ const ReservationModal = ({
                                 <div>
                                     <Label htmlFor="day">Date</Label>
                                     <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                         id="day"
                                         type="date"
                                         value={data.day}
@@ -518,7 +532,7 @@ const ReservationModal = ({
                                 <div>
                                     <Label htmlFor="start">Start Time</Label>
                                     <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                         id="start"
                                         type="time"
                                         value={data.start}
@@ -530,7 +544,7 @@ const ReservationModal = ({
                                 <div>
                                     <Label htmlFor="end">End Time</Label>
                                     <Input
-                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                        className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                         id="end"
                                         type="time"
                                         value={data.end}
@@ -541,16 +555,14 @@ const ReservationModal = ({
                                 </div>
                             </div>
 
-                            {timeError && (
-                                <p className="text-sm text-red-500 font-medium">{timeError}</p>
-                            )}
+                            {timeError && <p className="text-sm font-medium text-red-500">{timeError}</p>}
 
                             <div className="flex justify-end">
                                 <Button
                                     type="button"
                                     onClick={handleNext}
                                     disabled={checkingAvailability}
-                                    className="cursor-pointer text-black hover:text-white dark:hover:text-black bg-[#FFC801] hover:bg-[#E5B700]"
+                                    className="cursor-pointer bg-[#FFC801] text-black hover:bg-[#E5B700] hover:text-white dark:hover:text-black"
                                 >
                                     Next →
                                 </Button>
@@ -561,17 +573,17 @@ const ReservationModal = ({
                     {/* Step 2: Team Members */}
                     {currentStep === 2 && (
                         <div className="space-y-4">
-                            <TeamMemberSelector
-                                selected={selectedMembers}
-                                onSelect={setSelectedMembers}
-                                teamMemberOptions={teamMemberOptions}
-                            />
+                            <TeamMemberSelector selected={selectedMembers} onSelect={setSelectedMembers} teamMemberOptions={teamMemberOptions} />
 
                             <div className="flex justify-between">
                                 <Button type="button" variant="outline" onClick={handlePrevious} className="cursor-pointer dark:hover:bg-accent">
                                     ← Previous
                                 </Button>
-                                <Button type="button" onClick={handleNext} className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900">
+                                <Button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900"
+                                >
                                     Next →
                                 </Button>
                             </div>
@@ -581,18 +593,22 @@ const ReservationModal = ({
                     {/* Step 3: Equipment */}
                     {currentStep === 3 && (
                         <div className="space-y-4">
-                    <EquipmentSelector
-                        selected={selectedEquipment}
-                        onSelect={setSelectedEquipment}
-                        equipmentOptions={availableEquipment}
-                        loading={equipmentAvailabilityLoading}
-                    />
+                            <EquipmentSelector
+                                selected={selectedEquipment}
+                                onSelect={setSelectedEquipment}
+                                equipmentOptions={availableEquipment}
+                                loading={equipmentAvailabilityLoading}
+                            />
 
                             <div className="flex justify-between">
                                 <Button type="button" variant="outline" onClick={handlePrevious} className="cursor-pointer dark:hover:bg-accent">
                                     ← Previous
                                 </Button>
-                                <Button type="submit" disabled={processing || checkingAvailability} className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900">
+                                <Button
+                                    type="submit"
+                                    disabled={processing || checkingAvailability}
+                                    className="cursor-pointer text-gray-900 hover:text-white dark:hover:text-gray-900"
+                                >
                                     {processing ? 'Creating...' : 'Create Reservation'}
                                 </Button>
                             </div>
@@ -609,23 +625,20 @@ const ReservationModal = ({
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     {conflictDetails.length > 0 && (
-                        <div className="space-y-2 rounded-lg border border-border dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/60 px-4 py-3 text-sm">
+                        <div className="space-y-2 rounded-lg border border-border bg-white/80 px-4 py-3 text-sm dark:border-neutral-700 dark:bg-neutral-900/60">
                             {conflictDetails.map((conflict) => (
                                 <div key={conflict.id} className="flex flex-col">
-                                    <span className="font-semibold text-foreground">
-                                        {conflict.title || 'Existing reservation'}
-                                    </span>
+                                    <span className="font-semibold text-foreground">{conflict.title || 'Existing reservation'}</span>
                                     <span className="text-muted-foreground">
-                                        {conflict.start?.slice(0, 5)} - {conflict.end?.slice(0, 5)} {conflict.user_name ? `• ${conflict.user_name}` : ''}
+                                        {conflict.start?.slice(0, 5)} - {conflict.end?.slice(0, 5)}{' '}
+                                        {conflict.user_name ? `• ${conflict.user_name}` : ''}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     )}
                     <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setConflictModalOpen(false)}>
-                            Understood
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => setConflictModalOpen(false)}>Understood</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

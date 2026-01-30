@@ -1,15 +1,15 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { ImagePlus, ExternalLink, Plus, Pencil, Trash, Github, Twitter, Linkedin, Facebook, Instagram, MessageCircle, Send, Users, Briefcase } from 'lucide-react';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
+import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import RolesMultiSelect from './RolesMultiSelect';
 import Rolegard from '../../../../components/rolegard';
+import RolesMultiSelect from './RolesMultiSelect';
 
 const platformIcons = {
     instagram: Instagram,
@@ -44,11 +44,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const [socialValidationError, setSocialValidationError] = useState('');
     const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
     const canManageSocials = auth?.user?.id === editedUser?.id;
-    
+
     // Filter out platforms that are already added
-    const availablePlatforms = platforms.filter(platform => 
-        !socialLinks.some(link => link.title === platform.value)
-    );
+    const availablePlatforms = platforms.filter((platform) => !socialLinks.some((link) => link.title === platform.value));
 
     const [formData, setFormData] = useState({
         name: editedUser?.name || '',
@@ -73,12 +71,19 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 try {
                     const parsed = JSON.parse(editedUser.role);
                     if (Array.isArray(parsed)) rolesArray = parsed;
-                    else rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                    else
+                        rolesArray = editedUser.role
+                            .split(',')
+                            .map((r) => r.trim())
+                            .filter(Boolean);
                 } catch {
-                    rolesArray = editedUser.role.split(',').map((r) => r.trim()).filter(Boolean);
+                    rolesArray = editedUser.role
+                        .split(',')
+                        .map((r) => r.trim())
+                        .filter(Boolean);
                 }
             }
-            rolesArray = rolesArray.map(r => String(r).toLowerCase());
+            rolesArray = rolesArray.map((r) => String(r).toLowerCase());
             setFormData({
                 name: editedUser.name || '',
                 email: editedUser.email || '',
@@ -98,7 +103,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const validateSocialUrl = () => {
         if (!newSocialPlatform || !newSocialUrl) return false;
 
-        const platform = platforms.find(p => p.value === newSocialPlatform);
+        const platform = platforms.find((p) => p.value === newSocialPlatform);
         if (!platform) return false;
 
         // Portfolio doesn't require domain validation
@@ -115,7 +120,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         }
 
         const urlLower = newSocialUrl.toLowerCase();
-        const isValidDomain = platform.domains.some(domain => urlLower.includes(domain));
+        const isValidDomain = platform.domains.some((domain) => urlLower.includes(domain));
 
         if (!isValidDomain) {
             setSocialValidationError(`URL must contain ${platform.domains.join(' or ')}`);
@@ -129,26 +134,30 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const addSocialLink = () => {
         if (!validateSocialUrl()) return;
 
-        router.post('/studets/social-links', {
-            title: newSocialPlatform,
-            url: newSocialUrl,
-        }, {
-            onSuccess: () => {
-                setNewSocialPlatform('');
-                setNewSocialUrl('');
-                setSocialValidationError('');
+        router.post(
+            '/studets/social-links',
+            {
+                title: newSocialPlatform,
+                url: newSocialUrl,
             },
-            onError: (errors) => {
-                setSocialValidationError(errors.url || 'Failed to add social link');
-            }
-        });
+            {
+                onSuccess: () => {
+                    setNewSocialPlatform('');
+                    setNewSocialUrl('');
+                    setSocialValidationError('');
+                },
+                onError: (errors) => {
+                    setSocialValidationError(errors.url || 'Failed to add social link');
+                },
+            },
+        );
     };
 
     const deleteSocialLink = (linkId) => {
         router.delete(`/students/social-links/${linkId}`, {
             onSuccess: () => {
                 // Social links will be updated via Inertia
-            }
+            },
         });
     };
 
@@ -199,38 +208,34 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             },
             onError: () => {
                 //alert('Error resetting password');
-            }
+            },
         });
     };
 
     return (
         <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-            <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-y-auto bg-light text-dark dark:bg-dark dark:text-light">
+            <DialogContent className="max-h-[80vh] overflow-y-auto bg-light text-dark sm:max-w-[720px] dark:bg-dark dark:text-light">
                 <DialogHeader>
                     <DialogTitle>{editedUser ? getInitials(editedUser.name) : 'Modify user'}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={submitEdit} className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <form onSubmit={submitEdit} className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* Avatar */}
-                    <div className="col-span-1 md:col-span-2 flex flex-col items-center gap-4 mb-4">
-                        <div className="relative w-24 h-24">
+                    <div className="col-span-1 mb-4 flex flex-col items-center gap-4 md:col-span-2">
+                        <div className="relative h-24 w-24">
                             <Avatar
-                                image={
-                                    formData?.image instanceof File
-                                        ? URL.createObjectURL(formData?.image)
-                                        : formData?.image || editedUser?.image
-                                }
+                                image={formData?.image instanceof File ? URL.createObjectURL(formData?.image) : formData?.image || editedUser?.image}
                                 name={formData?.name}
                                 lastActivity={editedUser?.last_online || null}
-                                className="w-24 h-24 rounded-full overflow-hidden"
+                                className="h-24 w-24 overflow-hidden rounded-full"
                                 onlineCircleClass="hidden"
                             />
 
-                            <label className="absolute bottom-0 right-0 flex items-center justify-center w-8 h-8 bg-alpha rounded-full cursor-pointer border-2 border-white hover:bg-alpha/80">
+                            <label className="absolute right-0 bottom-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-alpha hover:bg-alpha/80">
                                 <ImagePlus size={18} className="text-white" />
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    className="absolute inset-0 cursor-pointer opacity-0"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0] || null;
                                         setFormData({ ...formData, image: file });
@@ -243,49 +248,29 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                     {/* Form Fields - Left Column */}
                     <div className="col-span-1">
                         <Label htmlFor="name">Name</Label>
-                        <Input
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        />
+                        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
                     </div>
                     {/* Right Column - Email */}
                     <div className="col-span-1">
                         <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
+                        <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     {/* Left Column - Phone */}
                     <div className="col-span-1">
                         <Label htmlFor="phone">Phone</Label>
-                        <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
+                        <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
                     {/* Right Column - CIN */}
                     {isAdminOrStudioResponsable && (
                         <div className="col-span-1">
                             <Label htmlFor="cin">CIN</Label>
-                            <Input
-                                id="cin"
-                                value={formData.cin || ''}
-                                onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
-                            />
+                            <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
                         </div>
                     )}
                     {/* Left Column - Status */}
                     <div className="col-span-1">
                         <Label>Status</Label>
-                        <Select
-                            value={formData.status}
-                            onValueChange={(v) => setFormData({ ...formData, status: v })}
-                        >
+                        <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select status" />
                             </SelectTrigger>
@@ -305,17 +290,20 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <Label>Socials</Label>
 
                             <div className="mt-3">
-                                <div className="flex w-full gap-3 items-center">
+                                <div className="flex w-full items-center gap-3">
                                     <div className="w-[40%]">
-                                        <Select value={newSocialPlatform} onValueChange={(value) => {
-                                            setNewSocialPlatform(value);
-                                            setSocialValidationError('');
-                                        }}>
-                                            <SelectTrigger className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha">
+                                        <Select
+                                            value={newSocialPlatform}
+                                            onValueChange={(value) => {
+                                                setNewSocialPlatform(value);
+                                                setSocialValidationError('');
+                                            }}
+                                        >
+                                            <SelectTrigger className="border-beta/30 focus:border-alpha focus:ring-alpha dark:border-light/20">
                                                 <SelectValue placeholder="Select platform" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {availablePlatforms.map(platform => (
+                                                {availablePlatforms.map((platform) => (
                                                     <SelectItem key={platform.value} value={platform.value}>
                                                         {platform.label}
                                                     </SelectItem>
@@ -332,7 +320,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                                 setNewSocialUrl(e.target.value);
                                                 setSocialValidationError('');
                                             }}
-                                            className="border-beta/30 dark:border-light/20 focus:border-alpha focus:ring-alpha"
+                                            className="border-beta/30 focus:border-alpha focus:ring-alpha dark:border-light/20"
                                         />
                                     </div>
                                     <div className="w-[20%]">
@@ -340,15 +328,13 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                             type="button"
                                             onClick={addSocialLink}
                                             disabled={!newSocialPlatform || !newSocialUrl}
-                                            className="w-full px-3 py-2 bg-alpha text-white rounded-full text-sm font-medium hover:bg-alpha/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full rounded-full bg-alpha px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-alpha/90 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             Save
                                         </button>
                                     </div>
                                 </div>
-                                {socialValidationError && (
-                                    <p className="text-red-500 text-xs mt-1">{socialValidationError}</p>
-                                )}
+                                {socialValidationError && <p className="mt-1 text-xs text-red-500">{socialValidationError}</p>}
                             </div>
 
                             {/* Display existing social links */}
@@ -359,30 +345,27 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     socialLinks.map((link) => {
                                         const IconComponent = platformIcons[link.title] || ExternalLink;
                                         return (
-                                            <div key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                        <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                            <div
+                                                key={link.id}
+                                                className="flex items-center justify-between gap-3 rounded-lg border border-beta/10 p-3 transition hover:bg-beta/5 dark:border-light/10 dark:hover:bg-light/5"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-beta/5 dark:bg-light/5">
+                                                        <IconComponent className="h-4 w-4 text-beta/70 dark:text-light/70" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="text-sm font-semibold text-beta dark:text-light">
-                                                            {link.title}
-                                                        </div>
+                                                        <div className="text-sm font-semibold text-beta dark:text-light">{link.title}</div>
                                                         <a
                                                             href={link.url}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                            className="block truncate text-xs text-beta/60 hover:underline dark:text-light/60"
                                                         >
                                                             {link.url}
                                                         </a>
                                                     </div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => deleteSocialLink(link.id)}
-                                                    className="text-error"
-                                                >
+                                                <button type="button" onClick={() => deleteSocialLink(link.id)} className="text-error">
                                                     <Trash size={16} />
                                                 </button>
                                             </div>
@@ -393,7 +376,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     )}
                     {/* Right Column - Roles */}
-                    <Rolegard authorized={"admin"}>
+                    <Rolegard authorized={'admin'}>
                         {isAdminOrStudioResponsable && (
                             <div className="col-span-1">
                                 <Label htmlFor="roles">Roles</Label>
@@ -462,30 +445,34 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                     )}
 
                     {/* Footer */}
-                    <div className="col-span-1 md:col-span-2 mt-6">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-t pt-4">
+                    <div className="col-span-1 mt-6 md:col-span-2">
+                        <div className="flex flex-col items-center justify-between gap-4 border-t pt-4 md:flex-row">
                             {/* Left side - Resend Link */}
-                            {editedUser?.activation_token != null ?
+                            {editedUser?.activation_token != null ? (
                                 <Button
                                     onClick={() => resendLink(editedUser.id)}
                                     type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                                 >
                                     Resend Link
                                 </Button>
-                                :
+                            ) : (
                                 <Button
                                     onClick={() => resetPassword(editedUser.id)}
                                     type="button"
-                                    className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]"
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
                                 >
                                     Reset Password
                                 </Button>
-                            }
+                            )}
 
                             {/* Right side - Action buttons */}
                             <div className="flex gap-2">
-                                <Button type="button" className="bg-[#e5e5e5] dark:bg-[#262626] text-[#0a0a0a] dark:text-white cursor-pointer py-1 px-2 w-fit flex gap-2 items-center rounded-lg hover:bg-[#e5e5e5] hover:text-[#0a0a0a]" onClick={onClose}>
+                                <Button
+                                    type="button"
+                                    className="flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#e5e5e5] px-2 py-1 text-[#0a0a0a] hover:bg-[#e5e5e5] hover:text-[#0a0a0a] dark:bg-[#262626] dark:text-white"
+                                    onClick={onClose}
+                                >
                                     Cancel
                                 </Button>
                                 <Button type="submit">Save changes</Button>

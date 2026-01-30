@@ -1,13 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import axios from 'axios';
 import useAblyChannelGames from '@/hooks/useAblyChannelGames';
+import AppLayout from '@/layouts/app-layout';
+import { Link, usePage } from '@inertiajs/react';
+import axios from 'axios';
+import React, { useEffect, useRef, useState } from 'react';
 
 const WINNING_COMBINATIONS = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6] // Diagonals
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8], // Rows
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8], // Columns
+    [0, 4, 8],
+    [2, 4, 6], // Diagonals
 ];
 
 export default function TicTacToe() {
@@ -31,18 +36,14 @@ export default function TicTacToe() {
     // Ably channel for real-time game updates - EXACTLY like messages
     // When Ayman (X) or Yahya (O) makes a move, the other sees it IMMEDIATELY
     const gameChannelName = roomId ? `game:${roomId}` : 'game:placeholder';
-    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(
-        gameChannelName,
-        ['game-state-updated', 'game-reset'],
-        {
-            onConnected: () => {
-                //console.log('✅ Ably connected for game room:', roomId, 'Channel:', gameChannelName);
-            },
-            onError: (error) => {
-                console.error('❌ Ably connection error:', error);
-            },
-        }
-    );
+    const { isConnected: ablyConnected, subscribe } = useAblyChannelGames(gameChannelName, ['game-state-updated', 'game-reset'], {
+        onConnected: () => {
+            //console.log('✅ Ably connected for game room:', roomId, 'Channel:', gameChannelName);
+        },
+        onError: (error) => {
+            console.error('❌ Ably connection error:', error);
+        },
+    });
 
     // Check for winner
     const checkWinner = (currentBoard) => {
@@ -57,7 +58,7 @@ export default function TicTacToe() {
 
     // Check if board is full
     const isBoardFull = (currentBoard) => {
-        return currentBoard.every(cell => cell !== null);
+        return currentBoard.every((cell) => cell !== null);
     };
 
     // Computer move (simple AI)
@@ -94,7 +95,7 @@ export default function TicTacToe() {
         }
 
         // Random move
-        const availableMoves = currentBoard.map((cell, index) => cell === null ? index : null).filter(val => val !== null);
+        const availableMoves = currentBoard.map((cell, index) => (cell === null ? index : null)).filter((val) => val !== null);
         return availableMoves[Math.floor(Math.random() * availableMoves.length)];
     };
 
@@ -110,15 +111,15 @@ export default function TicTacToe() {
         if (currentWinner) {
             setWinner(currentWinner);
             setGameOver(true);
-            setScores(prev => ({
+            setScores((prev) => ({
                 ...prev,
-                [currentWinner]: prev[currentWinner] + 1
+                [currentWinner]: prev[currentWinner] + 1,
             }));
         } else if (isBoardFull(newBoard)) {
             setGameOver(true);
-            setScores(prev => ({
+            setScores((prev) => ({
                 ...prev,
-                ties: prev.ties + 1
+                ties: prev.ties + 1,
             }));
         } else {
             setIsXNext(!isXNext);
@@ -141,13 +142,13 @@ export default function TicTacToe() {
     // Reset game - Database + Ably flow
     const resetGame = () => {
         const newBoard = Array(9).fill(null);
-        
+
         // Optimistic update
         setBoard(newBoard);
         setIsXNext(true);
         setWinner(null);
         setGameOver(false);
-        
+
         // POST reset to server - server saves to database and broadcasts via Ably
         if (isConnected && roomId) {
             const newState = {
@@ -158,14 +159,16 @@ export default function TicTacToe() {
                 scores, // Preserve scores
                 // Note: players array is preserved by server's updateState merge
             };
-            
-            axios.post(`/api/games/reset/${roomId}`, {
-                game_type: 'tictactoe',
-                initial_state: newState,
-            }).catch(err => {
-                console.error('Failed to reset game:', err);
-                // Revert on error - but scores should stay
-            });
+
+            axios
+                .post(`/api/games/reset/${roomId}`, {
+                    game_type: 'tictactoe',
+                    initial_state: newState,
+                })
+                .catch((err) => {
+                    console.error('Failed to reset game:', err);
+                    // Revert on error - but scores should stay
+                });
         }
     };
 
@@ -177,24 +180,15 @@ export default function TicTacToe() {
     // Render cell
     const renderCell = (index) => {
         const value = board[index];
-        const isWinningCell = winner && WINNING_COMBINATIONS.some(combination =>
-            combination.includes(index) &&
-            combination.every(pos => board[pos] === winner)
-        );
+        const isWinningCell =
+            winner && WINNING_COMBINATIONS.some((combination) => combination.includes(index) && combination.every((pos) => board[pos] === winner));
 
         return (
             <button
                 key={index}
                 onClick={() => handleCellClick(index)}
                 disabled={gameOver || value}
-                className={`
-                    w-20 h-20 text-3xl font-bold rounded-lg border-2 transition-all duration-200
-                    ${value === 'X' ? 'text-blue-600 bg-blue-50 border-blue-300' : ''}
-                    ${value === 'O' ? 'text-red-600 bg-red-50 border-red-300' : ''}
-                    ${!value && !gameOver ? 'hover:bg-gray-50 border-gray-300 hover:border-gray-400' : ''}
-                    ${isWinningCell ? 'bg-yellow-200 border-yellow-400 shadow-lg' : ''}
-                    ${gameOver ? 'cursor-not-allowed' : 'cursor-pointer'}
-                `}
+                className={`h-20 w-20 rounded-lg border-2 text-3xl font-bold transition-all duration-200 ${value === 'X' ? 'border-blue-300 bg-blue-50 text-blue-600' : ''} ${value === 'O' ? 'border-red-300 bg-red-50 text-red-600' : ''} ${!value && !gameOver ? 'border-gray-300 hover:border-gray-400 hover:bg-gray-50' : ''} ${isWinningCell ? 'border-yellow-400 bg-yellow-200 shadow-lg' : ''} ${gameOver ? 'cursor-not-allowed' : 'cursor-pointer'} `}
             >
                 {value}
             </button>
@@ -202,64 +196,67 @@ export default function TicTacToe() {
     };
 
     // Update game state from received data
-    const updateGameStateFromData = React.useCallback((state) => {
-        if (!state) return;
-        
-        const stateHash = JSON.stringify(state);
-        
-        // Only update if state changed
-        if (stateHash !== lastStateHashRef.current) {
-            lastStateHashRef.current = stateHash;
-            
-            // Update all state from server
-            if (state.board && Array.isArray(state.board)) {
-                setBoard(state.board);
-            }
-            
-            if (state.isXNext !== undefined) {
-                setIsXNext(state.isXNext);
-            }
-            
-            if (state.winner !== undefined) {
-                setWinner(state.winner);
-            }
-            
-            if (state.gameOver !== undefined) {
-                setGameOver(state.gameOver);
-            }
-            
-            if (state.scores) {
-                setScores(state.scores);
-            }
-            
-            // Assign symbol based on stored symbol for this player, not array index
-            if (state.players && state.players.length > 0) {
-                const playerIndex = state.players.findIndex(p => p.name === playerName);
-                if (playerIndex >= 0) {
-                    const sym = state.players[playerIndex]?.symbol;
-                    if (sym === 'X' || sym === 'O') {
-                        setAssignedSymbol(sym);
-                    }
-                } else {
-                    // If name not found:
-                    // - Keep current role if already assigned (never flip)
-                    // - If no role yet and there is exactly 1 player, infer the opposite
-                    // - If 0 or 2+ players, do not guess; wait for explicit assignment
-                    if (!assignedSymbol && state.players.length === 1) {
-                        const onlySym = state.players[0]?.symbol;
-                        if (onlySym === 'X' || onlySym === 'O') {
-                            setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
+    const updateGameStateFromData = React.useCallback(
+        (state) => {
+            if (!state) return;
+
+            const stateHash = JSON.stringify(state);
+
+            // Only update if state changed
+            if (stateHash !== lastStateHashRef.current) {
+                lastStateHashRef.current = stateHash;
+
+                // Update all state from server
+                if (state.board && Array.isArray(state.board)) {
+                    setBoard(state.board);
+                }
+
+                if (state.isXNext !== undefined) {
+                    setIsXNext(state.isXNext);
+                }
+
+                if (state.winner !== undefined) {
+                    setWinner(state.winner);
+                }
+
+                if (state.gameOver !== undefined) {
+                    setGameOver(state.gameOver);
+                }
+
+                if (state.scores) {
+                    setScores(state.scores);
+                }
+
+                // Assign symbol based on stored symbol for this player, not array index
+                if (state.players && state.players.length > 0) {
+                    const playerIndex = state.players.findIndex((p) => p.name === playerName);
+                    if (playerIndex >= 0) {
+                        const sym = state.players[playerIndex]?.symbol;
+                        if (sym === 'X' || sym === 'O') {
+                            setAssignedSymbol(sym);
+                        }
+                    } else {
+                        // If name not found:
+                        // - Keep current role if already assigned (never flip)
+                        // - If no role yet and there is exactly 1 player, infer the opposite
+                        // - If 0 or 2+ players, do not guess; wait for explicit assignment
+                        if (!assignedSymbol && state.players.length === 1) {
+                            const onlySym = state.players[0]?.symbol;
+                            if (onlySym === 'X' || onlySym === 'O') {
+                                setAssignedSymbol(onlySym === 'X' ? 'O' : 'X');
+                            }
                         }
                     }
                 }
             }
-        }
-    }, [playerName, assignedSymbol]);
+        },
+        [playerName, assignedSymbol],
+    );
 
     // Fetch initial game state
     const fetchInitialGameState = React.useCallback(async () => {
         if (!isConnected || !roomId) return;
-        
+
         try {
             const response = await axios.get(`/api/games/state/${roomId}`);
             if (response.data.exists && response.data.game_state) {
@@ -273,25 +270,25 @@ export default function TicTacToe() {
     // Online multiplayer handlers
     const connectRoom = async () => {
         if (!roomId || !playerName.trim()) return;
-        
+
         setIsConnected(true);
-        
+
         try {
             // Try to get existing state first
             const existingState = await axios.get(`/api/games/state/${roomId}`);
-            
+
             if (existingState.data.exists) {
                 // Game already exists, sync with it
                 const state = existingState.data.game_state;
-                
+
                 // Ensure a unique join name if needed (avoid taking host's symbol due to name collision)
                 let joinName = playerName;
                 if (state.players && Array.isArray(state.players) && requestedSymbol === 'O') {
-                    if (state.players.some(p => p?.name === joinName)) {
+                    if (state.players.some((p) => p?.name === joinName)) {
                         // Create a unique variant of the name
                         let suffix = 2;
                         let candidate = `${joinName} (${requestedSymbol})`;
-                        while (state.players.some(p => p?.name === candidate)) {
+                        while (state.players.some((p) => p?.name === candidate)) {
                             candidate = `${joinName} (${requestedSymbol} ${suffix++})`;
                         }
                         joinName = candidate;
@@ -303,7 +300,7 @@ export default function TicTacToe() {
                 if (state.winner !== undefined) setWinner(state.winner);
                 if (state.gameOver !== undefined) setGameOver(state.gameOver);
                 if (state.scores) setScores(state.scores);
-                
+
                 // Assign symbol
                 let playerSymbol = null;
                 if (state.players && state.players.length === 1) {
@@ -311,13 +308,13 @@ export default function TicTacToe() {
                     setAssignedSymbol(playerSymbol);
                     state.players.push({ name: joinName, symbol: playerSymbol });
                 } else if (state.players && state.players.length > 0) {
-                    const playerIndex = state.players.findIndex(p => p.name === joinName);
+                    const playerIndex = state.players.findIndex((p) => p.name === joinName);
                     if (playerIndex >= 0) {
                         // Player with same (possibly adjusted) name exists in state
                         const storedSymbol = state.players[playerIndex].symbol;
                         // If a requested symbol exists and differs, and it's free, switch to requested
                         if ((requestedSymbol === 'X' || requestedSymbol === 'O') && storedSymbol !== requestedSymbol) {
-                            const symbolTaken = state.players.some(p => p.symbol === requestedSymbol);
+                            const symbolTaken = state.players.some((p) => p.symbol === requestedSymbol);
                             if (!symbolTaken) {
                                 state.players[playerIndex].symbol = requestedSymbol;
                                 playerSymbol = requestedSymbol;
@@ -336,7 +333,7 @@ export default function TicTacToe() {
                         state.players.push({ name: joinName, symbol: playerSymbol });
                     }
                 }
-                
+
                 // Update server with new player
                 await axios.post(`/api/games/state/${roomId}`, {
                     game_type: 'tictactoe',
@@ -344,7 +341,7 @@ export default function TicTacToe() {
                 });
             } else {
                 // Initialize new game — honor requested symbol (so invitee can be 'O' even if first)
-                const creatorSymbol = (requestedSymbol === 'X' || requestedSymbol === 'O') ? requestedSymbol : 'X';
+                const creatorSymbol = requestedSymbol === 'X' || requestedSymbol === 'O' ? requestedSymbol : 'X';
                 const initialState = {
                     board: Array(9).fill(null),
                     isXNext: true,
@@ -353,18 +350,17 @@ export default function TicTacToe() {
                     scores: { X: 0, O: 0, ties: 0 },
                     players: [{ name: playerName, symbol: creatorSymbol }],
                 };
-                
+
                 await axios.post(`/api/games/state/${roomId}`, {
                     game_type: 'tictactoe',
                     game_state: initialState,
                 });
-                
+
                 setAssignedSymbol(creatorSymbol);
             }
-            
+
             // Fetch initial state after connecting
             await fetchInitialGameState();
-            
         } catch (error) {
             console.error('Failed to connect to room:', error);
             setIsConnected(false);
@@ -391,7 +387,7 @@ export default function TicTacToe() {
     // Handle clicks with online support - Database + Ably flow
     const handleCellClickNetworked = async (index) => {
         if (board[index] || gameOver) return;
-        
+
         const symbol = isXNext ? 'X' : 'O';
 
         // In online mode, strictly enforce assigned role. If role is unknown yet, block moves.
@@ -400,14 +396,14 @@ export default function TicTacToe() {
                 return; // Not your turn or role not assigned yet
             }
         }
-        
+
         // Calculate new state
         const newBoard = [...board];
         newBoard[index] = symbol;
         const currentWinner = checkWinner(newBoard);
         const currentIsXNext = !isXNext;
         const currentGameOver = currentWinner !== null || isBoardFull(newBoard);
-        
+
         // Calculate new scores
         let newScores = { ...scores };
         if (currentWinner) {
@@ -415,7 +411,7 @@ export default function TicTacToe() {
         } else if (currentGameOver && !currentWinner) {
             newScores.ties = (newScores.ties || 0) + 1;
         }
-        
+
         // Optimistic update for better UX (will be confirmed by Ably)
         setBoard(newBoard);
         setIsXNext(currentIsXNext);
@@ -427,7 +423,7 @@ export default function TicTacToe() {
             setGameOver(true);
             setScores(newScores);
         }
-        
+
         // POST move to server - server saves to database and broadcasts via Ably IMMEDIATELY
         if (isConnected && roomId) {
             // Prepare state to send - server will preserve players array
@@ -439,7 +435,7 @@ export default function TicTacToe() {
                 scores: newScores,
                 // Note: players array is preserved by server's updateState method
             };
-            
+
             try {
                 //console.log('📤 Sending move to server - Room:', roomId, 'Player:', playerName, 'Symbol:', symbol);
                 // Save to database and broadcast via Ably
@@ -450,10 +446,10 @@ export default function TicTacToe() {
                     game_type: 'tictactoe',
                     game_state: currentState,
                 });
-                
+
                 //console.log('✅ Move saved! Server broadcasted to all players via Ably');
                 //console.log('📡 Other player should receive update NOW via Ably subscription');
-                
+
                 // Ably broadcasts immediately after DB save
                 // The other player (Yahya if Ayman moved, or Ayman if Yahya moved) receives update instantly
                 // The handleGameStateUpdate function will update their board
@@ -478,14 +474,14 @@ export default function TicTacToe() {
         return url.toString();
     };
     const inviteUrl = React.useMemo(() => (roomId && playerName ? buildInviteUrl() : ''), [roomId, playerName]);
-    
+
     // Auto-fill player name from authenticated user if available
     useEffect(() => {
         if (!playerName) {
             const n = auth?.user?.name || new URLSearchParams(window.location.search).get('name') || 'Player';
             setPlayerName(n);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     useEffect(() => {
         const sp = new URLSearchParams(window.location.search);
@@ -520,35 +516,35 @@ export default function TicTacToe() {
             if (data && data.game_state) {
                 // Always update from server's authoritative state (from database)
                 const state = data.game_state;
-                
+
                 //console.log('📋 Updating game state from Ably - Board:', state.board, 'isXNext:', state.isXNext);
-                
+
                 // Update all state from Ably message - this is the database state
                 // This happens IMMEDIATELY when X makes a move, so O sees it instantly
                 if (state.board && Array.isArray(state.board)) {
                     //console.log('✅ Setting board to:', state.board);
                     setBoard(state.board);
                 }
-                
+
                 if (state.isXNext !== undefined) {
                     setIsXNext(state.isXNext);
                 }
-                
+
                 if (state.winner !== undefined) {
                     setWinner(state.winner);
                 }
-                
+
                 if (state.gameOver !== undefined) {
                     setGameOver(state.gameOver);
                 }
-                
+
                 if (state.scores) {
                     setScores(state.scores);
                 }
-                
+
                 // Update player symbol assignment from database
                 if (state.players && state.players.length > 0) {
-                    const playerIndex = state.players.findIndex(p => p.name === playerName);
+                    const playerIndex = state.players.findIndex((p) => p.name === playerName);
                     if (playerIndex >= 0) {
                         const sym = state.players[playerIndex]?.symbol;
                         if (sym === 'X' || sym === 'O') {
@@ -562,7 +558,7 @@ export default function TicTacToe() {
                         }
                     }
                 }
-                
+
                 // Update hash for change detection
                 lastStateHashRef.current = JSON.stringify(state);
             }
@@ -589,35 +585,26 @@ export default function TicTacToe() {
     return (
         <AppLayout>
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-100 py-8">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
                     {/* Header */}
-                    <div className="text-center mb-8">
-                        <Link
-                            href="/games"
-                            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
-                        >
+                    <div className="mb-8 text-center">
+                        <Link href="/games" className="mb-4 inline-flex items-center text-blue-600 hover:text-blue-800">
                             ← Back to Games
                         </Link>
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                            ⭕ Tic Tac Toe
-                        </h1>
-                        <p className="text-gray-600">
-                            Get three in a row to win! Play against a friend or the computer.
-                        </p>
+                        <h1 className="mb-2 text-4xl font-bold text-gray-900">⭕ Tic Tac Toe</h1>
+                        <p className="text-gray-600">Get three in a row to win! Play against a friend or the computer.</p>
                     </div>
 
                     {/* Game Mode Selection */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-white rounded-lg p-1 shadow-md">
+                    <div className="mb-6 flex justify-center">
+                        <div className="rounded-lg bg-white p-1 shadow-md">
                             <button
                                 onClick={() => {
                                     setGameMode('human');
                                     resetGame();
                                 }}
-                                className={`px-4 py-2 rounded-md transition-colors ${
-                                    gameMode === 'human'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                className={`rounded-md px-4 py-2 transition-colors ${
+                                    gameMode === 'human' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
                                 👥 Two Players
@@ -627,10 +614,8 @@ export default function TicTacToe() {
                                     setGameMode('computer');
                                     resetGame();
                                 }}
-                                className={`px-4 py-2 rounded-md transition-colors ${
-                                    gameMode === 'computer'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                className={`rounded-md px-4 py-2 transition-colors ${
+                                    gameMode === 'computer' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
                                 🤖 vs Computer
@@ -639,15 +624,15 @@ export default function TicTacToe() {
                     </div>
 
                     {/* Online multiplayer room controls */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-white rounded-lg p-3 shadow-md flex flex-col gap-2 w-full max-w-xl">
+                    <div className="mb-6 flex justify-center">
+                        <div className="flex w-full max-w-xl flex-col gap-2 rounded-lg bg-white p-3 shadow-md">
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     placeholder="Room ID (e.g. ttt-abc123)"
                                     value={roomId}
                                     onChange={(e) => setRoomId(e.target.value)}
-                                    className="flex-1 border rounded px-3 py-2"
+                                    className="flex-1 rounded border px-3 py-2"
                                     disabled={isConnected}
                                 />
                                 <button
@@ -657,53 +642,72 @@ export default function TicTacToe() {
                                             setRoomId(randomId);
                                         }
                                     }}
-                                    className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200"
+                                    className="rounded border bg-gray-100 px-3 py-2 hover:bg-gray-200"
                                     disabled={isConnected}
-                                >Generate</button>
+                                >
+                                    Generate
+                                </button>
                             </div>
-                            <div className="flex gap-2 items-center">
+                            <div className="flex items-center gap-2">
                                 {!isConnected ? (
-                                    <button 
-                                        onClick={connectRoom} 
-                                        className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+                                    <button
+                                        onClick={connectRoom}
+                                        className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
                                         disabled={!roomId || !playerName.trim()}
-                                    >Join Room</button>
+                                    >
+                                        Join Room
+                                    </button>
                                 ) : (
-                                    <button 
-                                        onClick={disconnectRoom} 
-                                        className="px-4 py-2 rounded bg-gray-600 text-white hover:bg-gray-700"
-                                    >Leave Room</button>
+                                    <button onClick={disconnectRoom} className="rounded bg-gray-600 px-4 py-2 text-white hover:bg-gray-700">
+                                        Leave Room
+                                    </button>
                                 )}
-                                <div className="flex-1 hidden md:flex items-center gap-2">
+                                <div className="hidden flex-1 items-center gap-2 md:flex">
                                     <input
                                         type="text"
                                         readOnly
                                         value={inviteUrl}
                                         placeholder="Invite link will appear here"
-                                        className="flex-1 border rounded px-3 py-2 text-xs"
+                                        className="flex-1 rounded border px-3 py-2 text-xs"
                                     />
                                     <button
-                                        onClick={async () => { if (inviteUrl) { try { await navigator.clipboard.writeText(inviteUrl); } catch {} } }}
-                                        className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200 text-sm"
+                                        onClick={async () => {
+                                            if (inviteUrl) {
+                                                try {
+                                                    await navigator.clipboard.writeText(inviteUrl);
+                                                } catch {}
+                                            }
+                                        }}
+                                        className="rounded border bg-gray-100 px-3 py-2 text-sm hover:bg-gray-200"
                                         disabled={!inviteUrl}
-                                    >Copy</button>
+                                    >
+                                        Copy
+                                    </button>
                                     <button
-                                        onClick={() => { if (inviteUrl) window.open(inviteUrl, '_blank'); }}
-                                        className="px-3 py-2 rounded bg-gray-100 border hover:bg-gray-200 text-sm"
+                                        onClick={() => {
+                                            if (inviteUrl) window.open(inviteUrl, '_blank');
+                                        }}
+                                        className="rounded border bg-gray-100 px-3 py-2 text-sm hover:bg-gray-200"
                                         disabled={!inviteUrl}
-                                    >Open</button>
+                                    >
+                                        Open
+                                    </button>
                                 </div>
                                 <button
                                     onClick={async () => {
                                         const link = buildInviteUrl();
-                                        try { await navigator.clipboard.writeText(link); } catch {}
+                                        try {
+                                            await navigator.clipboard.writeText(link);
+                                        } catch {}
                                         //alert('Invite link copied. Share it with your friend.');
                                     }}
-                                    className="px-4 py-2 rounded bg-gray-100 border hover:bg-gray-200 md:hidden"
+                                    className="rounded border bg-gray-100 px-4 py-2 hover:bg-gray-200 md:hidden"
                                     disabled={!roomId || !playerName.trim()}
-                                >Copy Link</button>
+                                >
+                                    Copy Link
+                                </button>
                                 {isConnected && (
-                                    <div className="text-sm text-gray-600 self-center">
+                                    <div className="self-center text-sm text-gray-600">
                                         Connected as <strong>{assignedSymbol ?? '?'}</strong> {ablyConnected ? '— Real-time' : '— Connecting...'}
                                     </div>
                                 )}
@@ -712,85 +716,73 @@ export default function TicTacToe() {
                     </div>
 
                     {/* Game Board */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-white p-6 rounded-2xl shadow-lg border-4 border-gray-300">
+                    <div className="mb-6 flex justify-center">
+                        <div className="rounded-2xl border-4 border-gray-300 bg-white p-6 shadow-lg">
                             <div className="grid grid-cols-3 gap-2">
-                                {Array(9).fill(null).map((_, index) => {
-                                    const value = board[index];
-                                    const isWinningCell = winner && WINNING_COMBINATIONS.some(combination =>
-                                        combination.includes(index) &&
-                                        combination.every(pos => board[pos] === winner)
-                                    );
-                                    return (
-                                        <button
-                                            key={index}
-                                            onClick={() => handleCellClickNetworked(index)}
-                                            disabled={gameOver || value}
-                                            className={`
-                                                w-20 h-20 text-3xl font-bold rounded-lg border-2 transition-all duration-200
-                                                ${value === 'X' ? 'text-blue-600 bg-blue-50 border-blue-300' : ''}
-                                                ${value === 'O' ? 'text-red-600 bg-red-50 border-red-300' : ''}
-                                                ${!value && !gameOver ? 'hover:bg-gray-50 border-gray-300 hover:border-gray-400' : ''}
-                                                ${isWinningCell ? 'bg-yellow-200 border-yellow-400 shadow-lg' : ''}
-                                                ${gameOver ? 'cursor-not-allowed' : 'cursor-pointer'}
-                                            `}
-                                        >
-                                            {value}
-                                        </button>
-                                    );
-                                })}
+                                {Array(9)
+                                    .fill(null)
+                                    .map((_, index) => {
+                                        const value = board[index];
+                                        const isWinningCell =
+                                            winner &&
+                                            WINNING_COMBINATIONS.some(
+                                                (combination) => combination.includes(index) && combination.every((pos) => board[pos] === winner),
+                                            );
+                                        return (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleCellClickNetworked(index)}
+                                                disabled={gameOver || value}
+                                                className={`h-20 w-20 rounded-lg border-2 text-3xl font-bold transition-all duration-200 ${value === 'X' ? 'border-blue-300 bg-blue-50 text-blue-600' : ''} ${value === 'O' ? 'border-red-300 bg-red-50 text-red-600' : ''} ${!value && !gameOver ? 'border-gray-300 hover:border-gray-400 hover:bg-gray-50' : ''} ${isWinningCell ? 'border-yellow-400 bg-yellow-200 shadow-lg' : ''} ${gameOver ? 'cursor-not-allowed' : 'cursor-pointer'} `}
+                                            >
+                                                {value}
+                                            </button>
+                                        );
+                                    })}
                             </div>
                         </div>
                     </div>
 
                     {/* Game Status */}
-                    <div className="text-center mb-6">
+                    <div className="mb-6 text-center">
                         {!gameOver && (
                             <div className="text-xl font-semibold text-gray-700">
-                                {isConnected ? (
-                                    (() => {
-                                        const currentTurnSymbol = isXNext ? 'X' : 'O';
-                                        const isMyTurn = assignedSymbol && currentTurnSymbol === assignedSymbol;
-                                        return isMyTurn ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <span className="animate-pulse">●</span>
-                                                Your turn ({assignedSymbol})
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center justify-center gap-2 text-blue-600">
-                                                <span className="animate-bounce">⏳</span>
-                                                Waiting for opponent (Player {currentTurnSymbol})...
-                                            </span>
-                                        );
-                                    })()
-                                ) : gameMode === 'computer' ? (
-                                    isXNext ? "Your turn (X)" : "Computer's turn (O)"
-                                ) : (
-                                    `Player ${isXNext ? 'X' : 'O'}'s turn`
-                                )}
+                                {isConnected
+                                    ? (() => {
+                                          const currentTurnSymbol = isXNext ? 'X' : 'O';
+                                          const isMyTurn = assignedSymbol && currentTurnSymbol === assignedSymbol;
+                                          return isMyTurn ? (
+                                              <span className="flex items-center justify-center gap-2">
+                                                  <span className="animate-pulse">●</span>
+                                                  Your turn ({assignedSymbol})
+                                              </span>
+                                          ) : (
+                                              <span className="flex items-center justify-center gap-2 text-blue-600">
+                                                  <span className="animate-bounce">⏳</span>
+                                                  Waiting for opponent (Player {currentTurnSymbol})...
+                                              </span>
+                                          );
+                                      })()
+                                    : gameMode === 'computer'
+                                      ? isXNext
+                                          ? 'Your turn (X)'
+                                          : "Computer's turn (O)"
+                                      : `Player ${isXNext ? 'X' : 'O'}'s turn`}
                             </div>
                         )}
 
                         {winner && (
-                            <div className="text-2xl font-bold text-green-600 mb-4">
-                                {gameMode === 'computer' ? (
-                                    winner === 'X' ? "🎉 You Win!" : "🤖 Computer Wins!"
-                                ) : (
-                                    `🎉 Player ${winner} Wins!`
-                                )}
+                            <div className="mb-4 text-2xl font-bold text-green-600">
+                                {gameMode === 'computer' ? (winner === 'X' ? '🎉 You Win!' : '🤖 Computer Wins!') : `🎉 Player ${winner} Wins!`}
                             </div>
                         )}
 
-                        {gameOver && !winner && (
-                            <div className="text-2xl font-bold text-gray-600 mb-4">
-                                It's a tie! 🤝
-                            </div>
-                        )}
+                        {gameOver && !winner && <div className="mb-4 text-2xl font-bold text-gray-600">It's a tie! 🤝</div>}
 
                         {gameOver && (
                             <button
                                 onClick={resetGame}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                                className="rounded-lg bg-blue-600 px-6 py-2 font-bold text-white transition-colors hover:bg-blue-700"
                             >
                                 Play Again
                             </button>
@@ -798,9 +790,9 @@ export default function TicTacToe() {
                     </div>
 
                     {/* Score Board */}
-                    <div className="flex justify-center mb-8">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Score Board</h3>
+                    <div className="mb-8 flex justify-center">
+                        <div className="rounded-lg bg-white p-6 shadow-md">
+                            <h3 className="mb-4 text-center text-lg font-bold text-gray-900">Score Board</h3>
                             <div className="flex gap-8">
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-blue-600">{scores.X}</div>
@@ -817,7 +809,7 @@ export default function TicTacToe() {
                             </div>
                             <button
                                 onClick={resetScores}
-                                className="mt-4 w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                                className="mt-4 w-full rounded-lg bg-gray-500 px-4 py-2 font-semibold text-white transition-colors hover:bg-gray-600"
                             >
                                 Reset Scores
                             </button>
@@ -825,11 +817,11 @@ export default function TicTacToe() {
                     </div>
 
                     {/* Instructions */}
-                    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">How to Play</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+                        <h3 className="mb-4 text-xl font-bold text-gray-900">How to Play</h3>
+                        <div className="grid grid-cols-1 gap-4 text-sm text-gray-600 md:grid-cols-2">
                             <div>
-                                <h4 className="font-semibold text-gray-800 mb-2">Objective:</h4>
+                                <h4 className="mb-2 font-semibold text-gray-800">Objective:</h4>
                                 <ul className="space-y-1">
                                     <li>• Get three of your symbols in a row</li>
                                     <li>• Rows, columns, or diagonals count</li>
@@ -838,10 +830,14 @@ export default function TicTacToe() {
                                 </ul>
                             </div>
                             <div>
-                                <h4 className="font-semibold text-gray-800 mb-2">Game Modes:</h4>
+                                <h4 className="mb-2 font-semibold text-gray-800">Game Modes:</h4>
                                 <ul className="space-y-1">
-                                    <li>• <strong>Two Players:</strong> Take turns with a friend</li>
-                                    <li>• <strong>vs Computer:</strong> Play against AI</li>
+                                    <li>
+                                        • <strong>Two Players:</strong> Take turns with a friend
+                                    </li>
+                                    <li>
+                                        • <strong>vs Computer:</strong> Play against AI
+                                    </li>
                                     <li>• Computer uses smart strategy</li>
                                     <li>• Try to beat the computer!</li>
                                 </ul>
@@ -853,4 +849,3 @@ export default function TicTacToe() {
         </AppLayout>
     );
 }
-

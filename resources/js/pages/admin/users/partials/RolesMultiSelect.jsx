@@ -1,21 +1,12 @@
-import { ChevronDown, X } from "lucide-react";
-import { React, useEffect, useRef, useState } from "react";
+import { ChevronDown, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-const formatRoleLabel = (role) => role === 'studio_responsable' ? 'Responsable Studio' : role;
+const formatRoleLabel = (role) => (role === 'studio_responsable' ? 'Responsable Studio' : role);
 
 const RolesMultiSelect = ({ roles, onChange }) => {
-    const availableRoles = [
-        'admin',
-        'studio_responsable',
-        'student',
-        'coworker',
-        'coach',
-        'pro',
-        'moderateur',
-        'recruiter',
-    ];
-    const current = (roles || []).map(r => String(r).toLowerCase());
-    const options = availableRoles.filter(r => !current.includes(r));
+    const availableRoles = ['admin', 'studio_responsable', 'student', 'coworker', 'coach', 'pro', 'moderateur', 'recruiter'];
+    const current = (roles || []).map((r) => String(r).toLowerCase());
+    const options = availableRoles.filter((r) => !current.includes(r));
     const containerRef = useRef(null);
     const [open, setOpen] = useState(false);
 
@@ -33,17 +24,20 @@ const RolesMultiSelect = ({ roles, onChange }) => {
     };
     const remove = (r) => {
         const lr = r.toLowerCase();
-        onChange(current.filter(x => x !== lr));
+        onChange(current.filter((x) => x !== lr));
     };
 
     return (
         <div ref={containerRef} className="relative">
             {current.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="mb-2 flex flex-wrap gap-2">
                     {current.map((r) => (
-                        <span key={r} className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium">
+                        <span
+                            key={r}
+                            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                        >
                             {formatRoleLabel(r)}
-                            <button type="button" onClick={() => remove(r)} className="hover:bg-primary/20 rounded-full p-0.5">
+                            <button type="button" onClick={() => remove(r)} className="rounded-full p-0.5 hover:bg-primary/20">
                                 <X className="h-3 w-3" />
                             </button>
                         </span>
@@ -63,14 +57,14 @@ const RolesMultiSelect = ({ roles, onChange }) => {
 
             {open && (
                 <div className="absolute z-50 mt-2 w-full rounded-md border border-input bg-popover text-popover-foreground shadow-md">
-                    <div className="p-2 space-y-1 max-h-60 overflow-y-auto">
+                    <div className="max-h-60 space-y-1 overflow-y-auto p-2">
                         {options.length === 0 ? (
                             <div className="px-2 py-2 text-sm text-muted-foreground">All roles selected</div>
                         ) : (
                             options.map((r) => (
                                 <div
                                     key={r}
-                                    className="flex items-center gap-2 px-2 py-2 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+                                    className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 hover:bg-accent hover:text-accent-foreground"
                                     onClick={() => add(r)}
                                 >
                                     <span className="text-sm">{formatRoleLabel(r)}</span>

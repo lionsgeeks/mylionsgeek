@@ -1,25 +1,15 @@
-import React, { useState } from 'react';
-import { useForm } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar,  } from '@/components/ui/avatar';
-import { 
-    UserPlus, 
-    MoreVertical, 
-    Crown, 
-    Shield, 
-    User, 
-    Mail,
-    Calendar,
-    Trash,
-    Edit
-} from 'lucide-react';
+import { useForm } from '@inertiajs/react';
+import { Calendar, Crown, MoreVertical, Shield, Trash, User, UserPlus } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface TeamMember {
     id: number;
@@ -41,45 +31,55 @@ interface TeamManagerProps {
     onUpdateRole: (userId: number, role: string) => void;
 }
 
-const TeamManager: React.FC<TeamManagerProps> = ({
-    teamMembers,
-    availableUsers,
-    onInviteUser,
-    onRemoveUser,
-    onUpdateRole
-}) => {
+const TeamManager: React.FC<TeamManagerProps> = ({ teamMembers, availableUsers, onInviteUser, onRemoveUser, onUpdateRole }) => {
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const { data: inviteData, setData: setInviteData, processing } = useForm({
+    const {
+        data: inviteData,
+        setData: setInviteData,
+        processing,
+    } = useForm({
         user_id: '',
-        role: 'member'
+        role: 'member',
     });
 
     const getRoleIcon = (role: string) => {
         switch (role) {
-            case 'owner': return <Crown className="h-4 w-4 text-yellow-600" />;
-            case 'admin': return <Shield className="h-4 w-4 text-blue-600" />;
-            case 'member': return <User className="h-4 w-4 text-gray-600" />;
-            default: return <User className="h-4 w-4 text-gray-600" />;
+            case 'owner':
+                return <Crown className="h-4 w-4 text-yellow-600" />;
+            case 'admin':
+                return <Shield className="h-4 w-4 text-blue-600" />;
+            case 'member':
+                return <User className="h-4 w-4 text-gray-600" />;
+            default:
+                return <User className="h-4 w-4 text-gray-600" />;
         }
     };
 
     const getRoleColor = (role: string) => {
         switch (role) {
-            case 'owner': return 'bg-yellow-100 text-yellow-800';
-            case 'admin': return 'bg-blue-100 text-blue-800';
-            case 'member': return 'bg-gray-100 text-gray-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'owner':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'admin':
+                return 'bg-blue-100 text-blue-800';
+            case 'member':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
         }
     };
 
     const getRoleDescription = (role: string) => {
         switch (role) {
-            case 'owner': return 'Full access to project and team management';
-            case 'admin': return 'Can manage tasks and invite members';
-            case 'member': return 'Can view and participate in tasks';
-            default: return 'Team member';
+            case 'owner':
+                return 'Full access to project and team management';
+            case 'admin':
+                return 'Can manage tasks and invite members';
+            case 'member':
+                return 'Can view and participate in tasks';
+            default:
+                return 'Team member';
         }
     };
 
@@ -90,26 +90,23 @@ const TeamManager: React.FC<TeamManagerProps> = ({
         setInviteData({ user_id: '', role: 'member' });
     };
 
-    const filteredMembers = teamMembers.filter(member =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredMembers = teamMembers.filter(
+        (member) => member.name.toLowerCase().includes(searchTerm.toLowerCase()) || member.email.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
-    const availableUsersFiltered = availableUsers.filter(user =>
-        !teamMembers.some(member => member.id === user.id)
-    );
+    const availableUsersFiltered = availableUsers.filter((user) => !teamMembers.some((member) => member.id === user.id));
 
     const teamStats = {
         total: teamMembers.length,
-        owners: teamMembers.filter(m => m.pivot.role === 'owner').length,
-        admins: teamMembers.filter(m => m.pivot.role === 'admin').length,
-        members: teamMembers.filter(m => m.pivot.role === 'member').length
+        owners: teamMembers.filter((m) => m.pivot.role === 'owner').length,
+        admins: teamMembers.filter((m) => m.pivot.role === 'admin').length,
+        members: teamMembers.filter((m) => m.pivot.role === 'member').length,
     };
 
     return (
         <div className="space-y-6">
             {/* Team Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -121,7 +118,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -133,7 +130,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -145,7 +142,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card>
                     <CardContent className="p-4">
                         <div className="flex items-center space-x-2">
@@ -164,11 +161,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <CardTitle>Team Members</CardTitle>
-                        <Button 
-                            onClick={() => setIsInviteModalOpen(true)}
-                            className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90"
-                        >
-                            <UserPlus className="h-4 w-4 mr-2" />
+                        <Button onClick={() => setIsInviteModalOpen(true)} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <UserPlus className="mr-2 h-4 w-4" />
                             Invite Member
                         </Button>
                     </div>
@@ -176,24 +170,20 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                 <CardContent>
                     {/* Search */}
                     <div className="mb-6">
-                        <Input
-                            placeholder="Search team members..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <Input placeholder="Search team members..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
 
                     {/* Team Members Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {filteredMembers.map((member) => (
-                            <Card key={member.id} className="hover:shadow-md transition-shadow">
+                            <Card key={member.id} className="transition-shadow hover:shadow-md">
                                 <CardContent className="p-4">
                                     <div className="flex items-center space-x-3">
                                         <Avatar
                                             image={member.avatar}
                                             name={member.name}
                                             lastActivity={member.pivot.joined_at || member.pivot.invited_at || null}
-                                            className="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden ring-2 ring-alpha/20"
+                                            className="h-14 w-14 overflow-hidden rounded-full ring-2 ring-alpha/20 md:h-16 md:w-16"
                                         />
                                         <div className="flex-1">
                                             <h3 className="font-medium">{member.name}</h3>
@@ -202,13 +192,12 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                                                 {getRoleIcon(member.pivot.role)}
                                                 <span className="ml-1 capitalize">{member.pivot.role}</span>
                                             </Badge>
-                                            <div className="flex items-center space-x-2 mt-2 text-xs text-muted-foreground">
+                                            <div className="mt-2 flex items-center space-x-2 text-xs text-muted-foreground">
                                                 <Calendar className="h-3 w-3" />
                                                 <span>
-                                                    {member.pivot.joined_at 
+                                                    {member.pivot.joined_at
                                                         ? `Joined ${new Date(member.pivot.joined_at).toLocaleDateString()}`
-                                                        : 'Invited'
-                                                    }
+                                                        : 'Invited'}
                                                 </span>
                                             </div>
                                         </div>
@@ -220,18 +209,15 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => onUpdateRole(member.id, 'admin')}>
-                                                    <Shield className="h-4 w-4 mr-2" />
+                                                    <Shield className="mr-2 h-4 w-4" />
                                                     Make Admin
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => onUpdateRole(member.id, 'member')}>
-                                                    <User className="h-4 w-4 mr-2" />
+                                                    <User className="mr-2 h-4 w-4" />
                                                     Make Member
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={() => onRemoveUser(member.id)}
-                                                    className="text-red-600"
-                                                >
-                                                    <Trash className="h-4 w-4 mr-2" />
+                                                <DropdownMenuItem onClick={() => onRemoveUser(member.id)} className="text-red-600">
+                                                    <Trash className="mr-2 h-4 w-4" />
                                                     Remove
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -243,8 +229,8 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                     </div>
 
                     {filteredMembers.length === 0 && (
-                        <div className="text-center py-8">
-                            <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <div className="py-8 text-center">
+                            <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                             <h3 className="text-lg font-medium">No team members found</h3>
                             <p className="text-muted-foreground">Invite members to collaborate on this project.</p>
                         </div>
@@ -258,9 +244,9 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                     <CardTitle>Role Permissions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 border rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="rounded-lg border p-4">
+                            <div className="mb-2 flex items-center space-x-2">
                                 <Crown className="h-5 w-5 text-yellow-600" />
                                 <h3 className="font-medium">Owner</h3>
                             </div>
@@ -268,25 +254,21 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                                 Full access to project and team management. Can delete project and manage all aspects.
                             </p>
                         </div>
-                        
-                        <div className="p-4 border rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
+
+                        <div className="rounded-lg border p-4">
+                            <div className="mb-2 flex items-center space-x-2">
                                 <Shield className="h-5 w-5 text-blue-600" />
                                 <h3 className="font-medium">Admin</h3>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                                Can manage tasks, invite members, and access most project features.
-                            </p>
+                            <p className="text-sm text-muted-foreground">Can manage tasks, invite members, and access most project features.</p>
                         </div>
-                        
-                        <div className="p-4 border rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
+
+                        <div className="rounded-lg border p-4">
+                            <div className="mb-2 flex items-center space-x-2">
                                 <User className="h-5 w-5 text-gray-600" />
                                 <h3 className="font-medium">Member</h3>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                                Can view and participate in tasks, add comments, and upload files.
-                            </p>
+                            <p className="text-sm text-muted-foreground">Can view and participate in tasks, add comments, and upload files.</p>
                         </div>
                     </div>
                 </CardContent>
@@ -326,9 +308,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({
                                     <SelectItem value="admin">Admin</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">
-                                {getRoleDescription(inviteData.role)}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{getRoleDescription(inviteData.role)}</p>
                         </div>
 
                         <div className="flex justify-end space-x-2">

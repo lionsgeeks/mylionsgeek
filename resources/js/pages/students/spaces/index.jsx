@@ -1,15 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { usePage, router } from '@inertiajs/react';
+import BookAppointment from '@/components/book-appointment';
 import AppLayout from '@/layouts/app-layout';
 import ReservationModalCowork from '@/pages/admin/places/coworks/components/ReservationModalCowork';
 import ReservationModal from '@/pages/admin/places/studios/components/ReservationModal';
-import CalendarModal from './components/CalendarModal';
-import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import FullCalendar from '@fullcalendar/react';
+import timeGridPlugin from '@fullcalendar/timegrid';
 import { Button } from '@headlessui/react';
-import BookAppointment from '@/components/book-appointment';
+import { router, usePage } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
+import CalendarModal from './components/CalendarModal';
 
 const PRIVILEGED_ACCESS_ROLES = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
 
@@ -53,17 +53,20 @@ export default function SpacesPage() {
     const userRolesRaw = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const normalizedRoles = userRolesRaw.filter(Boolean).map((role) => `${role}`.toLowerCase());
 
-    const resolveAccessFlag = useCallback((key) => {
-        const direct = auth?.user?.[key];
-        if (direct !== undefined && direct !== null) {
-            return Boolean(Number(direct));
-        }
-        const nested = auth?.user?.access?.[key];
-        if (nested !== undefined && nested !== null) {
-            return Boolean(Number(nested));
-        }
-        return false;
-    }, [auth?.user]);
+    const resolveAccessFlag = useCallback(
+        (key) => {
+            const direct = auth?.user?.[key];
+            if (direct !== undefined && direct !== null) {
+                return Boolean(Number(direct));
+            }
+            const nested = auth?.user?.access?.[key];
+            if (nested !== undefined && nested !== null) {
+                return Boolean(Number(nested));
+            }
+            return false;
+        },
+        [auth?.user],
+    );
 
     const hasUnlimitedAccess = normalizedRoles.some((role) => PRIVILEGED_ACCESS_ROLES.includes(role));
     const canAccessStudio = hasUnlimitedAccess || resolveAccessFlag('access_studio');
@@ -94,13 +97,16 @@ export default function SpacesPage() {
         return true;
     }, [canAccessStudio, canAccessCowork, isMediaStudent]);
 
-    const openStudioModal = useCallback((payload) => {
-        if (!requireAccess('studio')) {
-            return false;
-        }
-        setModalStudio(payload);
-        return true;
-    }, [requireAccess]);
+    const openStudioModal = useCallback(
+        (payload) => {
+            if (!requireAccess('studio')) {
+                return false;
+            }
+            setModalStudio(payload);
+            return true;
+        },
+        [requireAccess],
+    );
 
     const openCoworkModal = useCallback(() => {
         if (!requireAccess('cowork')) {
@@ -110,9 +116,7 @@ export default function SpacesPage() {
         return true;
     }, [requireAccess]);
 
-    const breadcrumbs = [
-        { title: 'Spaces', href: '/students/spaces' }
-    ];
+    const breadcrumbs = [{ title: 'Spaces', href: '/students/spaces' }];
 
     const showStudios = type === 'all' || type === 'studio';
     const showCowork = type === 'all' || type === 'cowork';
@@ -121,7 +125,7 @@ export default function SpacesPage() {
 
     const cards = [];
     if (showStudios) {
-        studios.forEach(place => cards.push({ ...place, cardType: 'studio' }));
+        studios.forEach((place) => cards.push({ ...place, cardType: 'studio' }));
     }
     if (showCowork) {
         // Show just one "Cowork" card in all tab
@@ -131,7 +135,7 @@ export default function SpacesPage() {
             type: 'cowork',
             image: coworks[0]?.image || '',
             cardType: 'cowork',
-            state: coworks.some(c => c.state),
+            state: coworks.some((c) => c.state),
         });
     }
     if (showMeetingRooms && Array.isArray(meetingRooms)) {
@@ -160,21 +164,24 @@ export default function SpacesPage() {
         return [...priority.filter(Boolean), ...rest];
     })();
 
-    const requestEvents = useCallback((params) => {
-        setLoadingEvents(true);
-        setEvents([]);
-        setEventExtras({ team_members: [], equipments: [] });
-        setSelectedEvent(null);
-        setBlockedTableIds([]);
-        setBlockedStudioIds([]);
-        router.get('/students/spaces', params, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            only: ['events', 'calendarContext'],
-            onFinish: () => setLoadingEvents(false),
-        });
-    }, [router]);
+    const requestEvents = useCallback(
+        (params) => {
+            setLoadingEvents(true);
+            setEvents([]);
+            setEventExtras({ team_members: [], equipments: [] });
+            setSelectedEvent(null);
+            setBlockedTableIds([]);
+            setBlockedStudioIds([]);
+            router.get('/students/spaces', params, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['events', 'calendarContext'],
+                onFinish: () => setLoadingEvents(false),
+            });
+        },
+        [router],
+    );
 
     const rangesOverlap = (startA, endA, startB, endB) => startA < endB && startB < endA;
 
@@ -188,76 +195,88 @@ export default function SpacesPage() {
         return Number.isNaN(time) ? null : time;
     };
 
-    const computeBlockedTables = useCallback((startDate, endDate, sourceEvents = events) => {
-        const start = parseDateValue(startDate);
-        const end = parseDateValue(endDate);
-        if (start === null || end === null) return [];
+    const computeBlockedTables = useCallback(
+        (startDate, endDate, sourceEvents = events) => {
+            const start = parseDateValue(startDate);
+            const end = parseDateValue(endDate);
+            if (start === null || end === null) return [];
 
-        const blocked = new Set();
-        sourceEvents.forEach((ev) => {
-            const tableId = ev.extendedProps?.table_id ?? ev.table_id ?? ev.tableId;
-            if (!tableId) return;
+            const blocked = new Set();
+            sourceEvents.forEach((ev) => {
+                const tableId = ev.extendedProps?.table_id ?? ev.table_id ?? ev.tableId;
+                if (!tableId) return;
 
-            const evStart = parseDateValue(ev.start);
-            const evEnd = parseDateValue(ev.end);
-            if (evStart === null || evEnd === null) return;
+                const evStart = parseDateValue(ev.start);
+                const evEnd = parseDateValue(ev.end);
+                if (evStart === null || evEnd === null) return;
 
-            if (rangesOverlap(evStart, evEnd, start, end)) {
-                blocked.add(Number(tableId));
+                if (rangesOverlap(evStart, evEnd, start, end)) {
+                    blocked.add(Number(tableId));
+                }
+            });
+
+            return Array.from(blocked);
+        },
+        [events],
+    );
+
+    const computeBlockedStudios = useCallback(
+        (startDate, endDate, sourceEvents = events) => {
+            const start = parseDateValue(startDate);
+            const end = parseDateValue(endDate);
+            if (start === null || end === null) return [];
+
+            const blocked = new Set();
+            sourceEvents.forEach((ev) => {
+                const studioId = ev.extendedProps?.studio_id ?? ev.studio_id ?? ev.studioId;
+                if (!studioId) return;
+
+                const evStart = parseDateValue(ev.start);
+                const evEnd = parseDateValue(ev.end);
+                if (evStart === null || evEnd === null) return;
+
+                if (rangesOverlap(evStart, evEnd, start, end)) {
+                    blocked.add(Number(studioId));
+                }
+            });
+
+            return Array.from(blocked);
+        },
+        [events],
+    );
+
+    const handleStudioTimeChange = useCallback(
+        (range) => {
+            if (!range?.day || !range?.start || !range?.end) {
+                setBlockedStudioIds([]);
+                return;
             }
-        });
-
-        return Array.from(blocked);
-    }, [events]);
-
-    const computeBlockedStudios = useCallback((startDate, endDate, sourceEvents = events) => {
-        const start = parseDateValue(startDate);
-        const end = parseDateValue(endDate);
-        if (start === null || end === null) return [];
-
-        const blocked = new Set();
-        sourceEvents.forEach((ev) => {
-            const studioId = ev.extendedProps?.studio_id ?? ev.studio_id ?? ev.studioId;
-            if (!studioId) return;
-
-            const evStart = parseDateValue(ev.start);
-            const evEnd = parseDateValue(ev.end);
-            if (evStart === null || evEnd === null) return;
-
-            if (rangesOverlap(evStart, evEnd, start, end)) {
-                blocked.add(Number(studioId));
+            const start = new Date(`${range.day}T${range.start}`);
+            const end = new Date(`${range.day}T${range.end}`);
+            if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+                setBlockedStudioIds([]);
+                return;
             }
-        });
+            setBlockedStudioIds(computeBlockedStudios(start, end));
+        },
+        [computeBlockedStudios],
+    );
 
-        return Array.from(blocked);
-    }, [events]);
+    const selectionOverlapsExisting = useCallback(
+        (startDate, endDate, sourceEvents = events) => {
+            const start = parseDateValue(startDate);
+            const end = parseDateValue(endDate);
+            if (start === null || end === null) return false;
 
-    const handleStudioTimeChange = useCallback((range) => {
-        if (!range?.day || !range?.start || !range?.end) {
-            setBlockedStudioIds([]);
-            return;
-        }
-        const start = new Date(`${range.day}T${range.start}`);
-        const end = new Date(`${range.day}T${range.end}`);
-        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-            setBlockedStudioIds([]);
-            return;
-        }
-        setBlockedStudioIds(computeBlockedStudios(start, end));
-    }, [computeBlockedStudios]);
-
-    const selectionOverlapsExisting = useCallback((startDate, endDate, sourceEvents = events) => {
-        const start = parseDateValue(startDate);
-        const end = parseDateValue(endDate);
-        if (start === null || end === null) return false;
-
-        return sourceEvents.some((ev) => {
-            const evStart = parseDateValue(ev.start);
-            const evEnd = parseDateValue(ev.end);
-            if (evStart === null || evEnd === null) return false;
-            return rangesOverlap(evStart, evEnd, start, end);
-        });
-    }, [events]);
+            return sourceEvents.some((ev) => {
+                const evStart = parseDateValue(ev.start);
+                const evEnd = parseDateValue(ev.end);
+                if (evStart === null || evEnd === null) return false;
+                return rangesOverlap(evStart, evEnd, start, end);
+            });
+        },
+        [events],
+    );
 
     const validateSelectionWindow = useCallback((startDate, endDate) => {
         const now = new Date();
@@ -269,55 +288,72 @@ export default function SpacesPage() {
         return true;
     }, []);
 
-    const ensureFutureSelection = useCallback((selectInfo) => {
-        if (!selectInfo) return true;
-        return validateSelectionWindow(selectInfo.start, selectInfo.end);
-    }, [validateSelectionWindow]);
+    const ensureFutureSelection = useCallback(
+        (selectInfo) => {
+            if (!selectInfo) return true;
+            return validateSelectionWindow(selectInfo.start, selectInfo.end);
+        },
+        [validateSelectionWindow],
+    );
 
-    const activeStudioCalendar = calendarFor?.place_type === 'studio'
-        ? calendarFor
-        : (calendarContext?.place_type === 'studio' ? calendarContext : null);
+    const activeStudioCalendar =
+        calendarFor?.place_type === 'studio' ? calendarFor : calendarContext?.place_type === 'studio' ? calendarContext : null;
 
-    const selectAllowForMainCalendar = useCallback((selectInfo) => {
-        if (!ensureFutureSelection(selectInfo)) {
-            return false;
-        }
-        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+    const selectAllowForMainCalendar = useCallback(
+        (selectInfo) => {
+            if (!ensureFutureSelection(selectInfo)) {
+                return false;
+            }
+            const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
 
-        if (activeStudioCalendar && overlaps) {
-            return false;
-        }
-        if (type === 'studio') {
-            return canAccessStudio;
-        }
-        if (type === 'cowork') {
-            return canAccessCowork;
-        }
-        if (type === 'all' && calendarFor?.place_type === 'cowork') {
-            return canAccessCowork;
-        }
-        if (type === 'all' && calendarFor?.place_type === 'studio') {
-            return canAccessStudio;
-        }
-        return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [type, calendarFor, calendarContext, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection, activeStudioCalendar]);
+            if (activeStudioCalendar && overlaps) {
+                return false;
+            }
+            if (type === 'studio') {
+                return canAccessStudio;
+            }
+            if (type === 'cowork') {
+                return canAccessCowork;
+            }
+            if (type === 'all' && calendarFor?.place_type === 'cowork') {
+                return canAccessCowork;
+            }
+            if (type === 'all' && calendarFor?.place_type === 'studio') {
+                return canAccessStudio;
+            }
+            return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+        },
+        [
+            type,
+            calendarFor,
+            calendarContext,
+            selectionOverlapsExisting,
+            canAccessCowork,
+            canAccessStudio,
+            ensureFutureSelection,
+            activeStudioCalendar,
+        ],
+    );
 
-    const selectAllowForModal = useCallback((selectInfo) => {
-        if (!ensureFutureSelection(selectInfo)) {
-            return false;
-        }
-        const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-        if (calendarFor?.place_type === 'studio' && overlaps) {
-            return false;
-        }
-        if (calendarFor?.place_type === 'cowork') {
-            return canAccessCowork;
-        }
-        if (calendarFor?.place_type === 'studio') {
-            return canAccessStudio;
-        }
-        return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
-    }, [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection]);
+    const selectAllowForModal = useCallback(
+        (selectInfo) => {
+            if (!ensureFutureSelection(selectInfo)) {
+                return false;
+            }
+            const overlaps = selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+            if (calendarFor?.place_type === 'studio' && overlaps) {
+                return false;
+            }
+            if (calendarFor?.place_type === 'cowork') {
+                return canAccessCowork;
+            }
+            if (calendarFor?.place_type === 'studio') {
+                return canAccessStudio;
+            }
+            return !selectionOverlapsExisting(selectInfo.start, selectInfo.end);
+        },
+        [calendarFor, selectionOverlapsExisting, canAccessCowork, canAccessStudio, ensureFutureSelection],
+    );
 
     function handleCardClick(card) {
         if (card.cardType === 'studio') {
@@ -372,7 +408,6 @@ export default function SpacesPage() {
         setBlockedStudioIds([]);
         router.reload();
     }
-
 
     useEffect(() => {
         if (type === 'studio') {
@@ -519,21 +554,17 @@ export default function SpacesPage() {
         setModalCowork(false);
     }, [type]);
 
-
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <div className="relative max-w-7xl mx-auto px-6 py-4">
+            <div className="relative mx-auto max-w-7xl px-6 py-4">
                 {loadingEvents && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-neutral-900 text-center px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3">
+                        <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-8 py-6 text-center shadow-2xl dark:bg-neutral-900">
                             <svg className="h-10 w-10 animate-spin text-[#FFC801]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                             </svg>
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                Loading calendar…
-                            </p>
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Loading calendar…</p>
                         </div>
                     </div>
                 )}
@@ -627,70 +658,70 @@ export default function SpacesPage() {
                     </div>
                 </div>
 
-                <div className="inline-flex items-center rounded-xl border border-neutral-200 justify-center w-[94%] mx-3 md:w-fit dark:border-neutral-800 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-lg shadow-sm mb-6">
+                <div className="mx-3 mb-6 inline-flex w-[94%] items-center justify-center rounded-xl border border-neutral-200 bg-white/95 p-1 shadow-sm backdrop-blur-lg md:w-fit dark:border-neutral-800 dark:bg-neutral-900/95">
                     {TABS.map((tab) => (
                         <button
                             key={tab.key}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${type === tab.key
+                            className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                                type === tab.key
                                     ? 'text-alpha dark:text-alpha'
-                                    : 'text-neutral-600 dark:text-neutral-400 hover:text-alpha dark:hover:text-alpha'
-                                }`}
+                                    : 'text-neutral-600 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha'
+                            }`}
                             onClick={() => setType(tab.key)}
                         >
                             {tab.label}
-                            {type === tab.key && (
-                                <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-alpha dark:bg-white"></div>
-                            )}
+                            {type === tab.key && <div className="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-alpha dark:bg-white"></div>}
                         </button>
                     ))}
                 </div>
 
-
                 {type === 'all' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+                    <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         {cards.length === 0 && (
-                            <div className="col-span-full text-center text-md text-gray-500 py-8">No locations to reserve found for this type.</div>
+                            <div className="text-md col-span-full py-8 text-center text-gray-500">No locations to reserve found for this type.</div>
                         )}
                         {orderedCards.map((place) => (
                             <div
                                 key={place.id}
                                 onClick={() => handleCardClick(place)}
-                                className="relative group  cursor-pointer rounded-2xl overflow-hidden border border-gray-200 dark:border-sidebar-border/70 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition w-full aspect-[4/2] bg-gray-100"
+                                className="group relative aspect-[4/2] w-full cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-sidebar-border/70"
                             >
                                 {place.image ? (
-                                    <img src={place.image} alt={place.name} className="absolute group-hover:scale-125 transition inset-0 w-full h-full object-cover" />
+                                    <img
+                                        src={place.image}
+                                        alt={place.name}
+                                        className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-125"
+                                    />
                                 ) : (
                                     <div className="absolute inset-0 grid place-items-center text-gray-400">No Image</div>
                                 )}
                                 <div className="absolute top-3 left-3 flex items-center gap-2">
-                                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize backdrop-blur bg-white/85 text-gray-900`}>
+                                    <span
+                                        className={`rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-gray-900 capitalize backdrop-blur`}
+                                    >
                                         {place.type}
                                     </span>
                                 </div>
                                 <div className="absolute top-3 right-3">
-                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border border-white/30 shadow-sm ${place.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
+                                    <span
+                                        className={`inline-flex items-center rounded-full border border-white/30 px-2.5 py-1 text-[11px] font-semibold shadow-sm ${place.state ? 'bg-green-500/90 text-white' : 'bg-red-500/90 text-white'}`}
+                                    >
                                         {place.state ? 'Available' : 'Busy'}
                                     </span>
                                 </div>
-                                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
-                                    <div className="text-white font-semibold text-start drop-shadow-sm line-clamp-1">{place.name}</div>
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4">
+                                    <div className="line-clamp-1 text-start font-semibold text-white drop-shadow-sm">{place.name}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-light dark:bg-dark rounded-2xl border border-gray-200 dark:border-sidebar-border/70 shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-3 gap-3">
-                            <div className="md:text-lg text-sm font-semibold">
-                                {type === 'studio'
-                                    ? 'Studio Calendar'
-                                    : 'Cowork Calendar'
-                                }
-                            </div>
-
+                    <div className="rounded-2xl border border-gray-200 bg-light p-5 shadow-sm dark:border-sidebar-border/70 dark:bg-dark">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                            <div className="text-sm font-semibold md:text-lg">{type === 'studio' ? 'Studio Calendar' : 'Cowork Calendar'}</div>
 
                             <button
-                                className="ml-auto px-4 py-2 rounded-md text-sm font-semibold border bg-alpha text-black border-alpha hover:bg-alpha/90"
+                                className="ml-auto rounded-md border border-alpha bg-alpha px-4 py-2 text-sm font-semibold text-black hover:bg-alpha/90"
                                 onClick={() => {
                                     if (type === 'studio') {
                                         if (!openStudioModal({ id: null, name: '', cardType: 'studio' })) {
@@ -709,18 +740,22 @@ export default function SpacesPage() {
                             </button>
                         </div>
                         {loadingEvents ? (
-                            <div className="flex items-center justify-center h-[60vh]">Loading events...</div>
+                            <div className="flex h-[60vh] items-center justify-center">Loading events...</div>
                         ) : (
                             <div className="h-[70vh] bg-light dark:bg-dark">
                                 <FullCalendar
                                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                                    initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+                                    initialView={isMobile ? 'timeGridDay' : 'timeGridWeek'}
                                     initialDate={isMobile ? new Date() : undefined}
-                                    headerToolbar={{ left: 'prev,next today', center: 'title', right: isMobile ? '' : 'dayGridMonth,timeGridWeek,timeGridDay' }}
+                                    headerToolbar={{
+                                        left: 'prev,next today',
+                                        center: 'title',
+                                        right: isMobile ? '' : 'dayGridMonth,timeGridWeek,timeGridDay',
+                                    }}
                                     events={events}
                                     selectable={true}
                                     selectMirror={true}
-                                selectAllow={selectAllowForMainCalendar}
+                                    selectAllow={selectAllowForMainCalendar}
                                     select={onCalendarDateSelect}
                                     eventClick={(info) => {
                                         const e = info.event;
@@ -773,7 +808,6 @@ export default function SpacesPage() {
                     </div>
                 )}
 
-
                 {/* Calendar Modal - For 'all' tab */}
                 {type === 'all' && calendarFor && (
                     <CalendarModal
@@ -817,12 +851,8 @@ export default function SpacesPage() {
                                 return;
                             }
                             const extras = {
-                                team_members: Array.isArray(e.extendedProps?.team_members)
-                                    ? e.extendedProps.team_members
-                                    : [],
-                                equipments: Array.isArray(e.extendedProps?.equipments)
-                                    ? e.extendedProps.equipments
-                                    : [],
+                                team_members: Array.isArray(e.extendedProps?.team_members) ? e.extendedProps.team_members : [],
+                                equipments: Array.isArray(e.extendedProps?.equipments) ? e.extendedProps.equipments : [],
                             };
                             setSelectedEvent({
                                 id: e.id,
@@ -861,14 +891,16 @@ export default function SpacesPage() {
                             setModalCowork(false);
                             setBlockedTableIds([]);
                         }}
-                        cowork={selectedRange && selectedCoworkId ? coworks.find(c => c.id === selectedCoworkId) : null}
+                        cowork={selectedRange && selectedCoworkId ? coworks.find((c) => c.id === selectedCoworkId) : null}
                         selectedRange={selectedRange}
-                        coworks={coworks.filter(t => t.state).map(c => ({
-                            id: c.id,
-                            table: c.name?.replace('Table ', '') || c.id,
-                            state: c.state,
-                            image: c.image
-                        }))}
+                        coworks={coworks
+                            .filter((t) => t.state)
+                            .map((c) => ({
+                                id: c.id,
+                                table: c.name?.replace('Table ', '') || c.id,
+                                state: c.state,
+                                image: c.image,
+                            }))}
                         onSuccess={() => {
                             handleCoworkSuccess();
                             setBlockedTableIds([]);
@@ -916,11 +948,7 @@ export default function SpacesPage() {
                 )}
 
                 {/* Book Appointment Modal */}
-                <BookAppointment
-                    isOpen={isAppointmentModalOpen}
-                    onClose={() => setIsAppointmentModalOpen(false)}
-
-                />
+                <BookAppointment isOpen={isAppointmentModalOpen} onClose={() => setIsAppointmentModalOpen(false)} />
             </div>
         </AppLayout>
     );

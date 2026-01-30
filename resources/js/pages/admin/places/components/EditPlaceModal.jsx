@@ -1,21 +1,10 @@
-import React from 'react';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EditPlaceModal = ({ 
-    isOpen, 
-    onClose, 
-    editData, 
-    setEditData, 
-    editErrors, 
-    editProcessing, 
-    types, 
-    editingPlace, 
-    onSubmit 
-}) => {
+const EditPlaceModal = ({ isOpen, onClose, editData, setEditData, editErrors, editProcessing, types, editingPlace, onSubmit }) => {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg">
@@ -42,7 +31,7 @@ const EditPlaceModal = ({
                                 <SelectContent>
                                     {types.map((t) => (
                                         <SelectItem key={t} value={t}>
-                                            {t.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                            {t.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -80,7 +69,7 @@ const EditPlaceModal = ({
                             Cancel
                         </Button>
                         <Button
-                            className="bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer"
+                            className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
                             disabled={editProcessing}
                             onClick={onSubmit}
                         >
@@ -94,4 +83,3 @@ const EditPlaceModal = ({
 };
 
 export default EditPlaceModal;
-

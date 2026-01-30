@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle, AlertCircle, Clock, Activity } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertCircle, Bell, CheckCircle, Clock, X } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface Notification {
     id: string;
@@ -20,13 +19,9 @@ interface NotificationSystemProps {
     onClearAll: () => void;
 }
 
-const NotificationSystem: React.FC<NotificationSystemProps> = ({
-    notifications,
-    onMarkAsRead,
-    onClearAll
-}) => {
+const NotificationSystem: React.FC<NotificationSystemProps> = ({ notifications, onMarkAsRead, onClearAll }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const unreadCount = notifications.filter((n) => !n.read).length;
 
     const getNotificationIcon = (type: string) => {
         switch (type) {
@@ -56,57 +51,37 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
 
     return (
         <div className="relative">
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(!isOpen)}
-                className="relative"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)} className="relative">
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                        {unreadCount}
-                    </Badge>
+                    <Badge className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center p-0 text-xs">{unreadCount}</Badge>
                 )}
             </Button>
 
             {isOpen && (
-                <Card className="absolute right-0 top-10 w-80 z-50 shadow-lg">
+                <Card className="absolute top-10 right-0 z-50 w-80 shadow-lg">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Notifications
-                        </CardTitle>
+                        <CardTitle className="text-sm font-medium">Notifications</CardTitle>
                         <div className="flex space-x-2">
                             {unreadCount > 0 && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={onClearAll}
-                                    className="text-xs"
-                                >
+                                <Button variant="ghost" size="sm" onClick={onClearAll} className="text-xs">
                                     Mark all read
                                 </Button>
                             )}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setIsOpen(false)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
                     </CardHeader>
                     <CardContent className="max-h-96 overflow-y-auto">
                         {notifications.length === 0 ? (
-                            <div className="text-center py-4 text-muted-foreground">
-                                No notifications
-                            </div>
+                            <div className="py-4 text-center text-muted-foreground">No notifications</div>
                         ) : (
                             <div className="space-y-2">
                                 {notifications.map((notification) => (
                                     <div
                                         key={notification.id}
-                                        className={`p-3 rounded-lg border-l-4 ${getNotificationColor(notification.type)} ${
+                                        className={`rounded-lg border-l-4 p-3 ${getNotificationColor(notification.type)} ${
                                             !notification.read ? 'font-medium' : 'opacity-75'
                                         }`}
                                         onClick={() => onMarkAsRead(notification.id)}
@@ -114,19 +89,11 @@ const NotificationSystem: React.FC<NotificationSystemProps> = ({
                                         <div className="flex items-start space-x-2">
                                             {getNotificationIcon(notification.type)}
                                             <div className="flex-1">
-                                                <p className="text-sm font-medium">
-                                                    {notification.title}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {notification.message}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {notification.timestamp.toLocaleTimeString()}
-                                                </p>
+                                                <p className="text-sm font-medium">{notification.title}</p>
+                                                <p className="text-xs text-muted-foreground">{notification.message}</p>
+                                                <p className="mt-1 text-xs text-muted-foreground">{notification.timestamp.toLocaleTimeString()}</p>
                                             </div>
-                                            {!notification.read && (
-                                                <div className="w-2 h-2 bg-[var(--color-alpha)] rounded-full"></div>
-                                            )}
+                                            {!notification.read && <div className="h-2 w-2 rounded-full bg-[var(--color-alpha)]"></div>}
                                         </div>
                                     </div>
                                 ))}

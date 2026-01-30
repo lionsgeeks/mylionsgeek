@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useForm } from '@inertiajs/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useForm } from '@inertiajs/react';
+import { useCallback, useEffect, useState } from 'react';
 
 const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRange, onSuccess }) => {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -99,11 +99,9 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-md:w-[95vw]">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto max-md:w-[95vw]">
                 <DialogHeader>
-                    <DialogTitle>
-                        Reservation {meetingRoom?.name || 'Meeting Room'}
-                    </DialogTitle>
+                    <DialogTitle>Reservation {meetingRoom?.name || 'Meeting Room'}</DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -128,7 +126,7 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                     value={data.day}
                                     onChange={(e) => setData('day', e.target.value)}
                                     required
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                 />
                             </div>
 
@@ -143,11 +141,9 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                     required
                                     min="08:00"
                                     max="18:00"
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                 />
-                                {errors.start && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.start}</p>
-                                )}
+                                {errors.start && <p className="mt-1 text-sm text-red-500">{errors.start}</p>}
                             </div>
 
                             {/* End Time */}
@@ -161,34 +157,21 @@ const ReservationModalMeetingRoom = ({ isOpen, onClose, meetingRoom, selectedRan
                                     required
                                     min="08:00"
                                     max="18:00"
-                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[#FFC801] focus-visible:ring-[1.5px] dark:[color-scheme:dark]"
+                                    className="mt-1 block w-full border-[#FFC801] focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:[color-scheme:dark]"
                                 />
-                                {errors.end && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.end}</p>
-                                )}
+                                {errors.end && <p className="mt-1 text-sm text-red-500">{errors.end}</p>}
                             </div>
                         </div>
 
                         {/* Time validation error */}
-                        {timeError && (
-                            <p className="text-red-500 text-sm mt-2">{timeError}</p>
-                        )}
+                        {timeError && <p className="mt-2 text-sm text-red-500">{timeError}</p>}
 
                         {/* Buttons */}
                         <div className="flex justify-end gap-3">
-                            <Button
-                                type="button"
-                                onClick={handleClose}
-                                variant="outline"
-                                className="cursor-pointer"
-                            >
+                            <Button type="button" onClick={handleClose} variant="outline" className="cursor-pointer">
                                 Cancel
                             </Button>
-                            <Button
-                                type="submit"
-                                className="cursor-pointer text-black hover:text-white dark:hover:text-black"
-                                disabled={processing}
-                            >
+                            <Button type="submit" className="cursor-pointer text-black hover:text-white dark:hover:text-black" disabled={processing}>
                                 Save
                             </Button>
                         </div>

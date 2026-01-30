@@ -107,15 +107,15 @@
 //     );
 // }
 
-import React, { useState, useEffect } from 'react';
-import Hero from './partials/Hero';
+import { useEffect, useState } from 'react';
+import Faq from './partials/FAQ';
 import Features from './partials/Features';
-import HowItWorks from './partials/HowItWorks';
 import For from './partials/For';
+import Hero from './partials/Hero';
+import HowItWorks from './partials/HowItWorks';
 import Impact from './partials/Impact';
 import Footer from './partials/layouts/Footer';
 import Navbar from './partials/layouts/Navbar';
-import Faq from './partials/FAQ';
 
 export default function LionsGeekLanding() {
     const [darkMode, setDarkMode] = useState(false);
@@ -138,16 +138,22 @@ export default function LionsGeekLanding() {
     };
 
     return (
-        <div className="relative min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
+        <div className="relative min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
             {/* Dark mode gradient overlays */}
             <div className="pointer-events-none fixed inset-0 -z-10 hidden dark:block" aria-hidden="true">
-                <div className="absolute -left-40 -top-40 w-[560px] h-[560px] rounded-full bg-amber-500/20 blur-3xl" />
-                <div className="absolute left-1/3 top-1/4 w-[560px] h-[560px] rounded-full bg-alpha/15 blur-3xl" />
-                <div className="absolute right-[-10%] bottom-[-10%] w-[680px] h-[680px] rounded-full bg-amber-500/25 blur-3xl" />
+                <div className="absolute -top-40 -left-40 h-[560px] w-[560px] rounded-full bg-amber-500/20 blur-3xl" />
+                <div className="absolute top-1/4 left-1/3 h-[560px] w-[560px] rounded-full bg-alpha/15 blur-3xl" />
+                <div className="absolute right-[-10%] bottom-[-10%] h-[680px] w-[680px] rounded-full bg-amber-500/25 blur-3xl" />
             </div>
 
             {/* Header */}
-            <Navbar scrollToSection={scrollToSection} setDarkMode={setDarkMode} darkMode={darkMode} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+            <Navbar
+                scrollToSection={scrollToSection}
+                setDarkMode={setDarkMode}
+                darkMode={darkMode}
+                mobileMenuOpen={mobileMenuOpen}
+                setMobileMenuOpen={setMobileMenuOpen}
+            />
 
             <main>
                 {/* Hero Section */}
@@ -166,8 +172,7 @@ export default function LionsGeekLanding() {
                 <Impact />
 
                 {/* CTA Section */}
-               <Faq />
-
+                <Faq />
             </main>
 
             {/* Footer */}
@@ -175,4 +180,3 @@ export default function LionsGeekLanding() {
         </div>
     );
 }
-

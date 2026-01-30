@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { Link } from '@inertiajs/react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 const BOARD_SIZE = 20;
 const INITIAL_SNAKE = [{ x: 10, y: 10 }];
@@ -58,18 +58,16 @@ export default function SnakeGame() {
     const generateFood = useCallback(() => {
         const newFood = {
             x: Math.floor(Math.random() * BOARD_SIZE),
-            y: Math.floor(Math.random() * BOARD_SIZE)
+            y: Math.floor(Math.random() * BOARD_SIZE),
         };
-        
+
         // Make sure food doesn't spawn on snake
-        const isOnSnake = snake.some(segment => 
-            segment.x === newFood.x && segment.y === newFood.y
-        );
-        
+        const isOnSnake = snake.some((segment) => segment.x === newFood.x && segment.y === newFood.y);
+
         if (isOnSnake) {
             return generateFood();
         }
-        
+
         return newFood;
     }, [snake]);
 
@@ -77,17 +75,17 @@ export default function SnakeGame() {
     const moveSnake = useCallback(() => {
         if (!gameStarted || gameOver) return;
 
-        setSnake(prevSnake => {
+        setSnake((prevSnake) => {
             const newSnake = [...prevSnake];
             const head = { ...newSnake[0] };
             // Use next direction from queue if any
             let nextDir = direction;
             if (directionQueue.length) {
                 nextDir = directionQueue[0];
-                setDirectionQueue(q => q.slice(1));
+                setDirectionQueue((q) => q.slice(1));
                 setDirection(nextDir);
             }
-            
+
             head.x += nextDir.x;
             head.y += nextDir.y;
 
@@ -98,7 +96,7 @@ export default function SnakeGame() {
             }
 
             // Check self collision
-            if (newSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
+            if (newSnake.some((segment) => segment.x === head.x && segment.y === head.y)) {
                 setGameOver(true);
                 return prevSnake;
             }
@@ -107,7 +105,7 @@ export default function SnakeGame() {
 
             // Check food collision
             if (head.x === food.x && head.y === food.y) {
-                setScore(prev => prev + 10);
+                setScore((prev) => prev + 10);
                 setFood(generateFood());
                 sfxEat();
             } else {
@@ -116,44 +114,47 @@ export default function SnakeGame() {
 
             return newSnake;
         });
-        setTick(t => t + 1);
+        setTick((t) => t + 1);
     }, [direction, directionQueue.length, food, gameStarted, gameOver, generateFood, sfxEat]);
 
     // Handle keyboard input
-    const handleKeyPress = useCallback((e) => {
-        // Ignore auto-repeat to avoid spamming sounds and state updates
-        if (e.repeat) return;
-        // Prevent arrow keys from scrolling the page during game
-        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
-            e.preventDefault();
-        }
-        if (!gameStarted) {
-            setGameStarted(true);
-            return;
-        }
-        const lastDir = directionQueue.length ? directionQueue[directionQueue.length - 1] : direction;
-        let enqueued = false;
-        const pushDir = (d) => {
-            enqueued = true;
-            setDirectionQueue(q => [...q, d]);
-        };
-        switch (e.key) {
-            case 'ArrowUp':
-                if (lastDir.y === 0) pushDir({ x: 0, y: -1 });
-                break;
-            case 'ArrowDown':
-                if (lastDir.y === 0) pushDir({ x: 0, y: 1 });
-                break;
-            case 'ArrowLeft':
-                if (lastDir.x === 0) pushDir({ x: -1, y: 0 });
-                break;
-            case 'ArrowRight':
-                if (lastDir.x === 0) pushDir({ x: 1, y: 0 });
-                break;
-        }
-        // Only play turn sound if a valid turn was actually enqueued
-        if (enqueued && audioRef.current) sfxTurn();
-    }, [direction, directionQueue, gameStarted, sfxTurn]);
+    const handleKeyPress = useCallback(
+        (e) => {
+            // Ignore auto-repeat to avoid spamming sounds and state updates
+            if (e.repeat) return;
+            // Prevent arrow keys from scrolling the page during game
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+            if (!gameStarted) {
+                setGameStarted(true);
+                return;
+            }
+            const lastDir = directionQueue.length ? directionQueue[directionQueue.length - 1] : direction;
+            let enqueued = false;
+            const pushDir = (d) => {
+                enqueued = true;
+                setDirectionQueue((q) => [...q, d]);
+            };
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (lastDir.y === 0) pushDir({ x: 0, y: -1 });
+                    break;
+                case 'ArrowDown':
+                    if (lastDir.y === 0) pushDir({ x: 0, y: 1 });
+                    break;
+                case 'ArrowLeft':
+                    if (lastDir.x === 0) pushDir({ x: -1, y: 0 });
+                    break;
+                case 'ArrowRight':
+                    if (lastDir.x === 0) pushDir({ x: 1, y: 0 });
+                    break;
+            }
+            // Only play turn sound if a valid turn was actually enqueued
+            if (enqueued && audioRef.current) sfxTurn();
+        },
+        [direction, directionQueue, gameStarted, sfxTurn],
+    );
 
     // Dynamic speed based on score (faster as score increases)
     const getSpeedMs = () => {
@@ -171,7 +172,7 @@ export default function SnakeGame() {
     // Event listeners
     useEffect(() => {
         const onKeyDown = (e) => {
-            if (!audioReady && ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
+            if (!audioReady && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 initAudio();
             }
             handleKeyPress(e);
@@ -224,8 +225,8 @@ export default function SnakeGame() {
             const segmentSize = isHead ? baseSize : Math.max(baseSize - shrink, CELL_SIZE - 10);
             const hue = 130 - Math.min(20, idx * 2);
             const bodyGradient = isHead
-                ? `linear-gradient(135deg,hsl(${hue},55%,42%),hsl(${hue-12},55%,30%) 70%)`
-                : `linear-gradient(135deg,hsl(${hue+8},60%,50%),hsl(${hue-4},60%,38%) 70%)`;
+                ? `linear-gradient(135deg,hsl(${hue},55%,42%),hsl(${hue - 12},55%,30%) 70%)`
+                : `linear-gradient(135deg,hsl(${hue + 8},60%,50%),hsl(${hue - 4},60%,38%) 70%)`;
             return (
                 <div
                     key={idx}
@@ -249,11 +250,23 @@ export default function SnakeGame() {
                 >
                     {/* Add eyes if head */}
                     {isHead && (
-                        <div style={{display:'flex',gap:2, alignItems:'center'}}>
-                            <div style={{width:3,height:3,borderRadius:'50%',background:'#111',marginRight:2,marginTop:3}}></div>
-                            <div style={{width:3,height:3,borderRadius:'50%',background:'#111',marginLeft:2,marginTop:3}}></div>
+                        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                            <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#111', marginRight: 2, marginTop: 3 }}></div>
+                            <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#111', marginLeft: 2, marginTop: 3 }}></div>
                             {/* tongue flick */}
-                            <div style={{position:'absolute', bottom:-4, width:0, height:0, borderLeft:'3px solid transparent', borderRight:'3px solid transparent', borderTop:'6px solid #e11d48', opacity: (tick % 12 < 3) ? 0.9 : 0, transform:'translateY(2px)'}} />
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    bottom: -4,
+                                    width: 0,
+                                    height: 0,
+                                    borderLeft: '3px solid transparent',
+                                    borderRight: '3px solid transparent',
+                                    borderTop: '6px solid #e11d48',
+                                    opacity: tick % 12 < 3 ? 0.9 : 0,
+                                    transform: 'translateY(2px)',
+                                }}
+                            />
                         </div>
                     )}
                 </div>
@@ -278,63 +291,89 @@ export default function SnakeGame() {
             }}
         >
             {/* stylized apple */}
-            <div style={{position:'relative', width:'100%', height:'100%'}}>
-                <div style={{width:'100%', height:'100%', background:'radial-gradient(circle at 30% 30%, #ff7373, #e11d48)', borderRadius:8, boxShadow:'inset 0 0 6px #00000033, 0 2px 4px #e11d4844'}} />
-                <div style={{position:'absolute', top:-4, left:'45%', width:6, height:10, background:'#2f855a', borderRadius:'2px 2px 0 0', transform:'rotate(-15deg)'}} />
-                <div style={{position:'absolute', top:-2, left:'35%', width:10, height:6, background:'#2f855a', borderRadius:'50% 50% 0 50%', transform:'rotate(20deg)'}} />
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <div
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        background: 'radial-gradient(circle at 30% 30%, #ff7373, #e11d48)',
+                        borderRadius: 8,
+                        boxShadow: 'inset 0 0 6px #00000033, 0 2px 4px #e11d4844',
+                    }}
+                />
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: -4,
+                        left: '45%',
+                        width: 6,
+                        height: 10,
+                        background: '#2f855a',
+                        borderRadius: '2px 2px 0 0',
+                        transform: 'rotate(-15deg)',
+                    }}
+                />
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: -2,
+                        left: '35%',
+                        width: 10,
+                        height: 6,
+                        background: '#2f855a',
+                        borderRadius: '50% 50% 0 50%',
+                        transform: 'rotate(20deg)',
+                    }}
+                />
             </div>
         </div>
     );
 
     return (
         <AppLayout>
-            <div className="min-h-screen py-8" style={{
-                background: 'radial-gradient(1200px 600px at 50% -10%, #eafff3 10%, #d9f7e6 35%, #c4f1da 60%, #b3eacd 100%)'
-            }}>
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div
+                className="min-h-screen py-8"
+                style={{
+                    background: 'radial-gradient(1200px 600px at 50% -10%, #eafff3 10%, #d9f7e6 35%, #c4f1da 60%, #b3eacd 100%)',
+                }}
+            >
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
                     {/* Header */}
-                    <div className="text-center mb-8">
-                        <Link
-                            href="/games"
-                            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
-                        >
+                    <div className="mb-8 text-center">
+                        <Link href="/games" className="mb-4 inline-flex items-center text-blue-600 hover:text-blue-800">
                             ← Back to Games
                         </Link>
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                            🐍 Snake Game
-                        </h1>
-                        <p className="text-gray-600">
-                            Use arrow keys to control the snake. Eat the red food to grow and increase your score!
-                        </p>
+                        <h1 className="mb-2 text-4xl font-bold text-gray-900">🐍 Snake Game</h1>
+                        <p className="text-gray-600">Use arrow keys to control the snake. Eat the red food to grow and increase your score!</p>
                     </div>
 
                     {/* Game Stats */}
-                    <div className="flex justify-center gap-8 mb-6">
-                        <div className="bg-white rounded-lg px-6 py-3 shadow-md">
+                    <div className="mb-6 flex justify-center gap-8">
+                        <div className="rounded-lg bg-white px-6 py-3 shadow-md">
                             <div className="text-2xl font-bold text-green-600">{score}</div>
                             <div className="text-sm text-gray-600">Score</div>
                         </div>
-                        <div className="bg-white rounded-lg px-6 py-3 shadow-md">
+                        <div className="rounded-lg bg-white px-6 py-3 shadow-md">
                             <div className="text-2xl font-bold text-purple-600">{highScore}</div>
                             <div className="text-sm text-gray-600">High Score</div>
                         </div>
-                        <div className="bg-white rounded-lg px-6 py-3 shadow-md">
+                        <div className="rounded-lg bg-white px-6 py-3 shadow-md">
                             <div className="text-2xl font-bold text-blue-600">{snake.length}</div>
                             <div className="text-sm text-gray-600">Length</div>
                         </div>
                     </div>
 
                     {/* Game Board */}
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-lg border-4 border-gray-200">
+                    <div className="mb-6 flex justify-center">
+                        <div className="rounded-2xl border-4 border-gray-200 bg-white p-4 shadow-lg">
                             <div
                                 style={{
                                     position: 'relative',
                                     width: CELL_SIZE * BOARD_SIZE,
                                     height: CELL_SIZE * BOARD_SIZE,
                                     background:
-                                        'repeating-linear-gradient(90deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),'+
-                                        'repeating-linear-gradient(180deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),'+
+                                        'repeating-linear-gradient(90deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),' +
+                                        'repeating-linear-gradient(180deg, rgba(20,110,60,0.06) 0 1px, transparent 1px 20px),' +
                                         'linear-gradient(180deg, #ffffff, #f9fefb)',
                                     overflow: 'hidden',
                                     borderRadius: 16,
@@ -352,45 +391,33 @@ export default function SnakeGame() {
                     <div className="text-center">
                         {!gameStarted && !gameOver && (
                             <div className="space-y-4">
-                                <div className="text-xl font-semibold text-gray-700">
-                                    Press any arrow key to start!
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                    Use ↑ ↓ ← → keys to control the snake
-                                </div>
+                                <div className="text-xl font-semibold text-gray-700">Press any arrow key to start!</div>
+                                <div className="text-sm text-gray-500">Use ↑ ↓ ← → keys to control the snake</div>
                             </div>
                         )}
 
                         {gameOver && (
                             <div className="space-y-4">
-                                <div className="text-2xl font-bold text-red-600">
-                                    Game Over! 🎮
-                                </div>
-                                <div className="text-lg text-gray-700">
-                                    Final Score: {score}
-                                </div>
+                                <div className="text-2xl font-bold text-red-600">Game Over! 🎮</div>
+                                <div className="text-lg text-gray-700">Final Score: {score}</div>
                                 <button
                                     onClick={resetGame}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                                    className="rounded-lg bg-green-600 px-6 py-3 font-bold text-white transition-colors hover:bg-green-700"
                                 >
                                     Play Again
                                 </button>
                             </div>
                         )}
 
-                        {gameStarted && !gameOver && (
-                            <div className="text-sm text-gray-500">
-                                Use arrow keys to control the snake
-                            </div>
-                        )}
+                        {gameStarted && !gameOver && <div className="text-sm text-gray-500">Use arrow keys to control the snake</div>}
                     </div>
 
                     {/* Instructions */}
-                    <div className="mt-12 bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">How to Play</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+                        <h3 className="mb-4 text-xl font-bold text-gray-900">How to Play</h3>
+                        <div className="grid grid-cols-1 gap-4 text-sm text-gray-600 md:grid-cols-2">
                             <div>
-                                <h4 className="font-semibold text-gray-800 mb-2">Controls:</h4>
+                                <h4 className="mb-2 font-semibold text-gray-800">Controls:</h4>
                                 <ul className="space-y-1">
                                     <li>• ↑ Arrow Up - Move up</li>
                                     <li>• ↓ Arrow Down - Move down</li>
@@ -399,7 +426,7 @@ export default function SnakeGame() {
                                 </ul>
                             </div>
                             <div>
-                                <h4 className="font-semibold text-gray-800 mb-2">Objective:</h4>
+                                <h4 className="mb-2 font-semibold text-gray-800">Objective:</h4>
                                 <ul className="space-y-1">
                                     <li>• Eat red food to grow longer</li>
                                     <li>• Each food gives 10 points</li>

@@ -1,4 +1,3 @@
-import React from 'react';
 import { X } from 'lucide-react';
 
 const ProfilePictureModal = ({ open, onOpenChange, user }) => {
@@ -13,14 +12,11 @@ const ProfilePictureModal = ({ open, onOpenChange, user }) => {
     return (
         <>
             {/* Backdrop */}
-            <div 
-                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-                onClick={handleClose}
-            >
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" onClick={handleClose}>
                 {/* Close Button */}
                 <button
                     onClick={() => onOpenChange(false)}
-                    className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+                    className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
                 >
                     <X size={20} />
                 </button>
@@ -29,7 +25,7 @@ const ProfilePictureModal = ({ open, onOpenChange, user }) => {
                 <img
                     src={`/storage/img/profile/${user.image}`}
                     alt={`${user.name}'s profile picture`}
-                    className="w-full h-full max-w-3xl max-h-[50vh] object-contain"
+                    className="h-full max-h-[50vh] w-full max-w-3xl object-contain"
                 />
             </div>
         </>

@@ -1,19 +1,13 @@
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
+import Banner from '@/components/banner';
 import AppLayout from '@/layouts/app-layout';
 import { Head, usePage } from '@inertiajs/react';
-import React from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import MainDashboard from './admin/dashboard/index'
-import Banner from '@/components/banner'
-import illustration from "../../../public/assets/images/banner/men.png"
-import pattern from "../../../public/assets/images/banner/pattern.png"
+import illustration from '../../../public/assets/images/banner/men.png';
+import pattern from '../../../public/assets/images/banner/pattern.png';
+import MainDashboard from './admin/dashboard/index';
 const breadcrumbs = [
     {
         title: 'Dashboard',
-        href: "/admin/dashboard",
+        href: '/admin/dashboard',
     },
 ];
 
@@ -30,26 +24,23 @@ export default function Dashboard({
     weekReservations,
     monthReservations,
 }) {
-    const { auth } = usePage().props
+    const { auth } = usePage().props;
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:p-6">
-
                 {/* l9aw  liha blasa  */}
-
 
                 <Banner
                     illustration={illustration}
                     pattern={pattern}
-                    description='Easily book, manage and track studio gear and equipment Streamline your studio workflow'
-                    title='Welcome to the Dashboard'
+                    description="Easily book, manage and track studio gear and equipment Streamline your studio workflow"
+                    title="Welcome to the Dashboard"
                     userName={auth.user.name}
-                    greeting='Hi'
+                    greeting="Hi"
                 />
 
-
-                <MainDashboard 
+                <MainDashboard
                     stats={stats}
                     computerStats={computerStats}
                     equipmentStats={equipmentStats}

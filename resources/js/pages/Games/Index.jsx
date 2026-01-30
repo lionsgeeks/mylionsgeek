@@ -1,6 +1,5 @@
-import React from 'react';
-import { Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { Link } from '@inertiajs/react';
 
 const games = [
     {
@@ -9,7 +8,7 @@ const games = [
         description: 'Classic snake game - eat food and grow longer!',
         icon: '🐍',
         color: 'from-green-500 to-emerald-600',
-        link: '/games/snake'
+        link: '/games/snake',
     },
     {
         id: 'tic-tac-toe',
@@ -17,7 +16,7 @@ const games = [
         description: 'Play against the computer in this classic game',
         icon: '⭕',
         color: 'from-blue-500 to-cyan-600',
-        link: '/games/tic-tac-toe'
+        link: '/games/tic-tac-toe',
     },
     {
         id: 'memory',
@@ -25,7 +24,7 @@ const games = [
         description: 'Test your memory by matching pairs of cards',
         icon: '🧠',
         color: 'from-purple-500 to-violet-600',
-        link: '/games/memory'
+        link: '/games/memory',
     },
     {
         id: 'tetris',
@@ -33,7 +32,7 @@ const games = [
         description: 'Stack falling blocks and clear lines',
         icon: '🧩',
         color: 'from-orange-500 to-red-600',
-        link: '/games/tetris'
+        link: '/games/tetris',
     },
     {
         id: 'connect-four',
@@ -41,7 +40,7 @@ const games = [
         description: 'Drop discs and connect four in a row',
         icon: '🟡',
         color: 'from-yellow-400 to-amber-600',
-        link: '/games/connect-four'
+        link: '/games/connect-four',
     },
     // {
     //     id: 'rock-paper-scissors',
@@ -57,7 +56,7 @@ const games = [
         description: 'Chomp the dots, outsmart the ghost, classic arcade style!',
         icon: '🟡',
         color: 'from-yellow-300 to-yellow-500',
-        link: '/games/pacman'
+        link: '/games/pacman',
     },
 ];
 
@@ -65,41 +64,35 @@ export default function GamesIndex() {
     return (
         <AppLayout>
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {/* Header */}
-                    <div className="text-center mb-12">
-                        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                            🎮 Games Arcade
-                        </h1>
-                        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <div className="mb-12 text-center">
+                        <h1 className="mb-4 text-4xl font-bold text-gray-900">🎮 Games Arcade</h1>
+                        <p className="mx-auto max-w-2xl text-xl text-gray-600">
                             Choose your favorite game and have some fun! Challenge yourself and beat your high scores.
                         </p>
                     </div>
 
                     {/* Games Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                         {games.map((game) => (
                             <Link
                                 key={game.id}
                                 href={game.link}
                                 className="group block transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
                             >
-                                <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 group-hover:border-gray-300">
+                                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg group-hover:border-gray-300">
                                     <div className={`h-32 bg-gradient-to-br ${game.color} flex items-center justify-center`}>
-                                        <span className="text-6xl group-hover:scale-110 transition-transform duration-300">
-                                            {game.icon}
-                                        </span>
+                                        <span className="text-6xl transition-transform duration-300 group-hover:scale-110">{game.icon}</span>
                                     </div>
 
                                     <div className="p-6">
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-gray-700">
-                                            {game.name}
-                                        </h3>
-                                        <p className="text-gray-600 text-sm leading-relaxed">
-                                            {game.description}
-                                        </p>
+                                        <h3 className="mb-2 text-xl font-bold text-gray-900 group-hover:text-gray-700">{game.name}</h3>
+                                        <p className="text-sm leading-relaxed text-gray-600">{game.description}</p>
                                         <div className="mt-4">
-                                            <div className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${game.color} text-white font-semibold rounded-lg group-hover:shadow-lg transition-all duration-300`}>
+                                            <div
+                                                className={`inline-flex items-center bg-gradient-to-r px-4 py-2 ${game.color} rounded-lg font-semibold text-white transition-all duration-300 group-hover:shadow-lg`}
+                                            >
                                                 <span className="mr-2">▶️</span>
                                                 Play Now
                                             </div>
@@ -133,9 +126,7 @@ export default function GamesIndex() {
 
                     {/* Footer */}
                     <div className="mt-12 text-center">
-                        <p className="text-gray-500">
-                            🎯 Challenge yourself and have fun! All games are optimized for the best experience.
-                        </p>
+                        <p className="text-gray-500">🎯 Challenge yourself and have fun! All games are optimized for the best experience.</p>
                     </div>
                 </div>
             </div>

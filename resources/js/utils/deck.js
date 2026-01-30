@@ -40,5 +40,3 @@ export function shuffle(array) {
 export function cardToKey(card) {
     return `${card.type}:${card.color || 'wild'}:${card.value}`;
 }
-
-

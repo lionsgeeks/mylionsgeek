@@ -1,4 +1,3 @@
-import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const EventDetailsModal = ({ isOpen, onClose, event }) => {
@@ -32,7 +31,10 @@ const EventDetailsModal = ({ isOpen, onClose, event }) => {
                         </div>
                         <div>
                             <div className="text-muted-foreground">Time</div>
-                            <div className="font-medium">{event.start || '—'}{event.end ? ` - ${event.end}` : ''}</div>
+                            <div className="font-medium">
+                                {event.start || '—'}
+                                {event.end ? ` - ${event.end}` : ''}
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">User</div>
@@ -40,13 +42,11 @@ const EventDetailsModal = ({ isOpen, onClose, event }) => {
                         </div>
                         <div>
                             <div className="text-muted-foreground">Status</div>
-                            <div className="font-medium">
-                                {event.canceled ? 'Canceled' : event.approved ? 'Approved' : 'Pending'}
-                            </div>
+                            <div className="font-medium">{event.canceled ? 'Canceled' : event.approved ? 'Approved' : 'Pending'}</div>
                         </div>
                         <div className="col-span-2">
                             <div className="text-muted-foreground">Description</div>
-                            <div className="font-medium whitespace-pre-wrap break-words">{event.description || '—'}</div>
+                            <div className="font-medium break-words whitespace-pre-wrap">{event.description || '—'}</div>
                         </div>
                     </div>
                 </div>
@@ -56,4 +56,3 @@ const EventDetailsModal = ({ isOpen, onClose, event }) => {
 };
 
 export default EventDetailsModal;
-

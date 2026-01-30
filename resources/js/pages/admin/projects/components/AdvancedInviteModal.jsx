@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import FlashMessage from '@/components/FlashMessage';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { useForm, usePage, router } from '@inertiajs/react';
-import { Mail, UserPlus, X, Check, User, AtSign, AlertCircle } from 'lucide-react';
-import { Avatar, } from '@/components/ui/avatar';
-import FlashMessage from '@/components/FlashMessage';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { AlertCircle, AtSign, Check, Mail, UserPlus, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = [] }) => {
     const [inputValue, setInputValue] = useState('');
@@ -23,7 +22,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputRef = useRef(null);
     const suggestionRef = useRef(null);
-    
+
     // Get flash messages from Inertia
     const { flash } = usePage().props;
 
@@ -32,7 +31,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
         usernames: [],
         role: 'member',
         message: '',
-        project_id: projectId || null
+        project_id: projectId || null,
     });
 
     // Update project_id when projectId prop changes
@@ -50,21 +49,24 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
 
     // Check if user exists by email
     const findUserByEmail = (email) => {
-        return users.find(user => user.email.toLowerCase() === email.toLowerCase());
+        return users.find((user) => user.email.toLowerCase() === email.toLowerCase());
     };
 
     // Check if user exists by username
     const findUserByUsername = (username) => {
-        return users.find(user => user.name.toLowerCase().includes(username.toLowerCase()));
+        return users.find((user) => user.name.toLowerCase().includes(username.toLowerCase()));
     };
 
     // Get username suggestions
     const getUsernameSuggestions = (query) => {
         if (query.length < 2) return [];
-        return users.filter(user =>
-            user.name.toLowerCase().includes(query.toLowerCase()) &&
-            !selectedItems.some(item => item.type === 'username' && item.value === user.name)
-        ).slice(0, 5);
+        return users
+            .filter(
+                (user) =>
+                    user.name.toLowerCase().includes(query.toLowerCase()) &&
+                    !selectedItems.some((item) => item.type === 'username' && item.value === user.name),
+            )
+            .slice(0, 5);
     };
 
     // Handle input change
@@ -117,7 +119,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
             addCurrentInput();
         } else if (e.key === 'Backspace' && inputValue === '' && selectedItems.length > 0) {
             // Remove last selected item
-            setSelectedItems(prev => prev.slice(0, -1));
+            setSelectedItems((prev) => prev.slice(0, -1));
         } else if (e.key === 'Escape') {
             setShowSuggestions(false);
             setShowUsernameSuggestions(false);
@@ -138,9 +140,9 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                 value: trimmedValue,
                 display: trimmedValue,
                 user: user,
-                exists: !!user
+                exists: !!user,
             };
-            setSelectedItems(prev => [...prev, newItem]);
+            setSelectedItems((prev) => [...prev, newItem]);
         } else if (trimmedValue.startsWith('@')) {
             // Handle @username
             const username = trimmedValue.substring(1);
@@ -151,9 +153,9 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                 value: username,
                 display: `@${username}`,
                 user: user,
-                exists: !!user
+                exists: !!user,
             };
-            setSelectedItems(prev => [...prev, newItem]);
+            setSelectedItems((prev) => [...prev, newItem]);
         } else {
             // Treat as email if no @ at start
             const user = findUserByEmail(trimmedValue);
@@ -163,9 +165,9 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                 value: trimmedValue,
                 display: trimmedValue,
                 user: user,
-                exists: !!user
+                exists: !!user,
             };
-            setSelectedItems(prev => [...prev, newItem]);
+            setSelectedItems((prev) => [...prev, newItem]);
         }
 
         setInputValue('');
@@ -181,9 +183,9 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
             value: suggestion.value,
             display: suggestion.type === 'username' ? `@${suggestion.value}` : suggestion.value,
             user: suggestion.user,
-            exists: true
+            exists: true,
         };
-        setSelectedItems(prev => [...prev, newItem]);
+        setSelectedItems((prev) => [...prev, newItem]);
         setInputValue('');
         setShowSuggestions(false);
         setShowUsernameSuggestions(false);
@@ -191,7 +193,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
 
     // Remove selected item
     const removeItem = (id) => {
-        setSelectedItems(prev => prev.filter(item => item.id !== id));
+        setSelectedItems((prev) => prev.filter((item) => item.id !== id));
     };
 
     // Handle flash messages from Inertia
@@ -225,22 +227,22 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
         e.preventDefault();
 
         if (selectedItems.length === 0) {
-            setFlashMessage({ 
-                message: 'Please add at least one email address or username to invite.', 
-                type: 'error' 
+            setFlashMessage({
+                message: 'Please add at least one email address or username to invite.',
+                type: 'error',
             });
             return;
         }
 
-        const emails = selectedItems.filter(item => item.type === 'email').map(item => item.value);
-        const usernames = selectedItems.filter(item => item.type === 'username').map(item => item.value);
+        const emails = selectedItems.filter((item) => item.type === 'email').map((item) => item.value);
+        const usernames = selectedItems.filter((item) => item.type === 'username').map((item) => item.value);
 
         // Validate emails
-        const invalidEmails = emails.filter(email => !emailRegex.test(email));
+        const invalidEmails = emails.filter((email) => !emailRegex.test(email));
         if (invalidEmails.length > 0) {
-            setFlashMessage({ 
-                message: `Invalid email addresses: ${invalidEmails.join(', ')}`, 
-                type: 'error' 
+            setFlashMessage({
+                message: `Invalid email addresses: ${invalidEmails.join(', ')}`,
+                type: 'error',
             });
             return;
         }
@@ -251,7 +253,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
             emails: emails,
             usernames: usernames,
             role: data.role || 'member',
-            message: data.message || ''
+            message: data.message || '',
         };
 
         //console.log('Submitting invitation:', submissionData);
@@ -276,9 +278,9 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                     // Don't reset here, let the useEffect handle it
                 } else if (!page.props.flash?.warning && !page.props.flash?.error) {
                     // Fallback success message
-                    setFlashMessage({ 
-                        message: `${emails.length + usernames.length} invitation(s) sent successfully!`, 
-                        type: 'success' 
+                    setFlashMessage({
+                        message: `${emails.length + usernames.length} invitation(s) sent successfully!`,
+                        type: 'success',
                     });
                     setTimeout(() => {
                         reset();
@@ -293,45 +295,45 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                 setIsSubmitting(false);
                 console.error('Invitation errors:', errors);
                 const errorMessages = [];
-                
+
                 if (errors.project_id) {
                     const projectErrors = Array.isArray(errors.project_id) ? errors.project_id : [errors.project_id];
                     errorMessages.push(`Project: ${projectErrors.join(', ')}`);
                 }
-                
+
                 if (errors.emails) {
                     const emailErrors = Array.isArray(errors.emails) ? errors.emails : [errors.emails];
                     errorMessages.push(`Emails: ${emailErrors.join(', ')}`);
                 }
-                
+
                 if (errors.usernames) {
                     const usernameErrors = Array.isArray(errors.usernames) ? errors.usernames : [errors.usernames];
                     errorMessages.push(`Usernames: ${usernameErrors.join(', ')}`);
                 }
-                
+
                 if (errors.role) {
                     const roleErrors = Array.isArray(errors.role) ? errors.role : [errors.role];
                     errorMessages.push(`Role: ${roleErrors.join(', ')}`);
                 }
-                
+
                 if (errors.message) {
                     errorMessages.push(errors.message);
                 }
-                
+
                 // Check for general error message
                 if (Object.keys(errors).length > 0 && errorMessages.length === 0) {
                     errorMessages.push('Validation failed. Please check your input.');
                 }
-                
+
                 if (errorMessages.length === 0) {
                     errorMessages.push('Failed to send invitations. Please try again.');
                 }
-                
-                setFlashMessage({ 
-                    message: errorMessages.join('. '), 
-                    type: 'error' 
+
+                setFlashMessage({
+                    message: errorMessages.join('. '),
+                    type: 'error',
                 });
-            }
+            },
         });
     };
 
@@ -369,28 +371,23 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                 </DialogHeader>
 
                 {/* Flash Messages */}
-                {flashMessage && (
-                    <FlashMessage
-                        message={flashMessage.message}
-                        type={flashMessage.type}
-                        onClose={() => setFlashMessage(null)}
-                    />
-                )}
+                {flashMessage && <FlashMessage message={flashMessage.message} type={flashMessage.type} onClose={() => setFlashMessage(null)} />}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="invitees">Invite People</Label>
                         <div className="relative">
-                            <div className=" p-3 mt-3 border border-input rounded-md focus-within:ring-2 focus-within:ring-[var(--color-alpha)] focus-within:border-[var(--color-alpha)]">
-                                <div className="flex flex-wrap gap-2 ">
+                            <div className="mt-3 rounded-md border border-input p-3 focus-within:border-[var(--color-alpha)] focus-within:ring-2 focus-within:ring-[var(--color-alpha)]">
+                                <div className="flex flex-wrap gap-2">
                                     {selectedItems.map((item) => (
                                         <Badge
                                             key={item.id}
-                                            variant={item.exists ? "default" : "secondary"}
-                                            className={`flex items-center gap-1 px-2 py-1 ${item.exists
-                                                ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200'
-                                                : 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200'
-                                                }`}
+                                            variant={item.exists ? 'default' : 'secondary'}
+                                            className={`flex items-center gap-1 px-2 py-1 ${
+                                                item.exists
+                                                    ? 'border-green-200 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    : 'border-yellow-200 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                            }`}
                                         >
                                             {item.type === 'username' && <AtSign className="h-3 w-3" />}
                                             {item.type === 'email' && <Mail className="h-3 w-3" />}
@@ -402,7 +399,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                                 //     </AvatarFallback>
                                                 // </Avatar>
                                                 <Avatar
-                                                    className="w-12 h-12 overflow-hidden relative z-50"
+                                                    className="relative z-50 h-12 w-12 overflow-hidden"
                                                     image={item.user.image}
                                                     name={item.user.name}
                                                     lastActivity={item.user.last_online || null}
@@ -414,7 +411,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                             <button
                                                 type="button"
                                                 onClick={() => removeItem(item.id)}
-                                                className="ml-1 hover:bg-black/10 rounded-full p-0.5"
+                                                className="ml-1 rounded-full p-0.5 hover:bg-black/10"
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
@@ -428,22 +425,27 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                     onChange={handleInputChange}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Type email addresses or @usernames..."
-                                    className="w-full py-3 outline-none bg-transparent text-sm"
+                                    className="w-full bg-transparent py-3 text-sm outline-none"
                                 />
                             </div>
 
                             {/* Email Suggestions */}
                             {showSuggestions && suggestions.length > 0 && (
-                                <div ref={suggestionRef} className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                <div
+                                    ref={suggestionRef}
+                                    className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                                >
                                     {suggestions.map((user, index) => (
                                         <div
                                             key={index}
-                                            onClick={() => handleSuggestionClick({
-                                                type: 'email',
-                                                value: user.email,
-                                                user: user
-                                            })}
-                                            className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                                            onClick={() =>
+                                                handleSuggestionClick({
+                                                    type: 'email',
+                                                    value: user.email,
+                                                    user: user,
+                                                })
+                                            }
+                                            className="flex cursor-pointer items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         >
                                             {/* <Avatar className="h-8 w-8">
                                                 <AvatarImage src={user.image ? `/storage/${user.image}` : null} />
@@ -452,14 +454,14 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                                 </AvatarFallback>
                                             </Avatar> */}
                                             <Avatar
-                                                className="h-8 w-8 overflow-hidden relative z-50"
+                                                className="relative z-50 h-8 w-8 overflow-hidden"
                                                 image={user.image}
                                                 name={user.name}
                                                 lastActivity={user.last_online || null}
                                                 onlineCircleClass="hidden"
                                             />
                                             <div className="flex-1">
-                                                <div className="font-medium text-sm">{user.name}</div>
+                                                <div className="text-sm font-medium">{user.name}</div>
                                                 <div className="text-xs text-gray-500">{user.email}</div>
                                             </div>
                                             <Check className="h-4 w-4 text-green-500" />
@@ -470,16 +472,21 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
 
                             {/* Username Suggestions */}
                             {showUsernameSuggestions && usernameSuggestions.length > 0 && (
-                                <div ref={suggestionRef} className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                <div
+                                    ref={suggestionRef}
+                                    className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                                >
                                     {usernameSuggestions.map((user, index) => (
                                         <div
                                             key={index}
-                                            onClick={() => handleSuggestionClick({
-                                                type: 'username',
-                                                value: user.name,
-                                                user: user
-                                            })}
-                                            className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                                            onClick={() =>
+                                                handleSuggestionClick({
+                                                    type: 'username',
+                                                    value: user.name,
+                                                    user: user,
+                                                })
+                                            }
+                                            className="flex cursor-pointer items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700"
                                         >
                                             {/* <Avatar className="h-8 w-8">
                                                 <AvatarImage src={user.image ? `/storage/${user.image}` : null} />
@@ -488,14 +495,14 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                                 </AvatarFallback>
                                             </Avatar> */}
                                             <Avatar
-                                                className="h-8 w-8 overflow-hidden relative z-50"
+                                                className="relative z-50 h-8 w-8 overflow-hidden"
                                                 image={user.image}
                                                 name={user.name}
                                                 lastActivity={user.ast_online || null}
                                                 onlineCircleClass="hidden"
                                             />
                                             <div className="flex-1">
-                                                <div className="font-medium text-sm flex items-center gap-1">
+                                                <div className="flex items-center gap-1 text-sm font-medium">
                                                     <AtSign className="h-3 w-3" />
                                                     {user.name}
                                                 </div>
@@ -507,9 +514,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                 </div>
                             )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Type email addresses or @usernames. Press Enter or comma to add.
-                        </p>
+                        <p className="text-xs text-muted-foreground">Type email addresses or @usernames. Press Enter or comma to add.</p>
                         {errors.emails && (
                             <div className="flex items-center gap-2 text-sm text-red-600">
                                 <AlertCircle className="h-4 w-4" />
@@ -546,9 +551,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                             onChange={(e) => setData('message', e.target.value)}
                             className="min-h-[80px]"
                         />
-                        <p className="text-xs text-muted-foreground">
-                            This message will be included in the invitation email sent to recipients.
-                        </p>
+                        <p className="text-xs text-muted-foreground">This message will be included in the invitation email sent to recipients.</p>
                     </div>
 
                     <DialogFooter>
@@ -562,19 +565,17 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                         >
                             {isSubmitting ? (
                                 <>
-                                    <Mail className="h-4 w-4 mr-2 animate-pulse" />
+                                    <Mail className="mr-2 h-4 w-4 animate-pulse" />
                                     Sending Invitations...
                                 </>
                             ) : (
                                 <>
-                                    <Mail className="h-4 w-4 mr-2" />
+                                    <Mail className="mr-2 h-4 w-4" />
                                     Send {selectedItems.length} Invitation{selectedItems.length !== 1 ? 's' : ''} via Email
                                 </>
                             )}
                         </Button>
-                        {!projectId && (
-                            <p className="text-xs text-red-600 mt-1">Project ID is missing. Please close and try again.</p>
-                        )}
+                        {!projectId && <p className="mt-1 text-xs text-red-600">Project ID is missing. Please close and try again.</p>}
                     </DialogFooter>
                 </form>
             </DialogContent>

@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Send, AtSign } from 'lucide-react';
+import { AtSign, MessageSquare, Send } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => {
     const [newComment, setNewComment] = useState('');
@@ -17,11 +17,11 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
             const newCommentObj = {
                 id: comments.length + 1,
                 user: {
-                    name: "You",
-                    avatar: "/placeholder.svg?height=32&width=32"
+                    name: 'You',
+                    avatar: '/placeholder.svg?height=32&width=32',
                 },
                 content: newComment,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             };
             onUpdateComments([...comments, newCommentObj]);
             setNewComment('');
@@ -86,21 +86,21 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
                                 <AvatarFallback>{comment.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar> */}
                             <Avatar
-                                className="h-8 w-8 overflow-hidden relative z-50"
+                                className="relative z-50 h-8 w-8 overflow-hidden"
                                 image={comment.user.image}
                                 name={comment.user.name}
                                 lastActivity={comment.user.last_online || null}
                                 onlineCircleClass="hidden"
                             />
                             <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm">{comment.user.name}</span>
+                                <div className="mb-1 flex items-center gap-2">
+                                    <span className="text-sm font-medium">{comment.user.name}</span>
                                     <span className="text-xs text-muted-foreground">
                                         {new Date(comment.timestamp).toLocaleString(undefined, {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            day: "numeric",
-                                            month: "short",
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            day: 'numeric',
+                                            month: 'short',
                                         })}
                                     </span>
                                 </div>
@@ -129,8 +129,8 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
 
                     {/* Mention dropdown */}
                     {showMentions && (
-                        <div className="border rounded-lg bg-background shadow-lg p-2 max-h-32 overflow-y-auto">
-                            <div className="text-xs text-muted-foreground mb-2">Mention someone:</div>
+                        <div className="max-h-32 overflow-y-auto rounded-lg border bg-background p-2 shadow-lg">
+                            <div className="mb-2 text-xs text-muted-foreground">Mention someone:</div>
                             {teamMembers.slice(0, 5).map((member) => (
                                 <Button
                                     key={member?.id || Math.random()}
@@ -139,7 +139,7 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
                                     className="h-8 w-full justify-start"
                                     onClick={() => handleMention(member)}
                                 >
-                                    <AtSign className="h-3 w-3 mr-2" />
+                                    <AtSign className="mr-2 h-3 w-3" />
                                     {member?.name || 'Unknown'}
                                 </Button>
                             ))}

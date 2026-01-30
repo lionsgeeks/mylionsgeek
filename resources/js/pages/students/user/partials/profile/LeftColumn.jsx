@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Edit2, ExternalLink, Plus, Pencil, Trash, Github, Linkedin, Instagram, Briefcase } from 'lucide-react';
 import { router, usePage } from '@inertiajs/react';
+import { Briefcase, Edit2, ExternalLink, Github, Instagram, Linkedin, Pencil, Plus, Trash } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import AboutModal from '../../../../../components/AboutModal';
 import CreateSocialLinkModal from '../../../../../components/CreateSocialLinkModal';
-import SocialLinksModal from '../../../../../components/SocialLinksModal';
 import DeleteModal from '../../../../../components/DeleteModal';
+import SocialLinksModal from '../../../../../components/SocialLinksModal';
 
 const platformIcons = {
     instagram: Instagram,
@@ -24,22 +24,21 @@ const platforms = [
 
 const LeftColumn = ({ user }) => {
     //console.log(user?.social_links);
-    
-    const [openAbout, setOpenAbout] = useState(false)
-    const [openSocialModal, setOpenSocialModal] = useState(false)
-    const [editingSocial, setEditingSocial] = useState(null)
-    const [openAllSocials, setOpenAllSocials] = useState(false)
-    const [openDeleteSocial, setOpenDeleteSocial] = useState(false)
-    const [deletingSocial, setDeletingSocial] = useState(null)
-    const [draggedItem, setDraggedItem] = useState(null)
-    const [socialLinks, setSocialLinks] = useState(user?.social_links || [])
-    const { auth } = usePage().props
+
+    const [openAbout, setOpenAbout] = useState(false);
+    const [openSocialModal, setOpenSocialModal] = useState(false);
+    const [editingSocial, setEditingSocial] = useState(null);
+    const [openAllSocials, setOpenAllSocials] = useState(false);
+    const [openDeleteSocial, setOpenDeleteSocial] = useState(false);
+    const [deletingSocial, setDeletingSocial] = useState(null);
+    const [draggedItem, setDraggedItem] = useState(null);
+    const [socialLinks, setSocialLinks] = useState(user?.social_links || []);
+    const { auth } = usePage().props;
     // const visibleLinks = socialLinks.slice(0, 2)
-    const canManage = auth?.user?.id == user?.id
+    const canManage = auth?.user?.id == user?.id;
 
     // Check if user is a coding user
-    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || 
-                        user?.formation?.toLowerCase().includes('coding');
+    const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || user?.formation?.toLowerCase().includes('coding');
 
     // Sync socialLinks with user data when it changes
     useEffect(() => {
@@ -47,13 +46,13 @@ const LeftColumn = ({ user }) => {
     }, [user?.social_links]);
 
     // Filter out platforms that are already added and filter GitHub for coding users
-    const availablePlatforms = platforms.filter(platform => {
+    const availablePlatforms = platforms.filter((platform) => {
         // For GitHub, only show to coding users
         if (platform.value === 'github' && !isCodingUser) {
             return false;
         }
         // Filter out platforms that are already added
-        return !socialLinks.some(link => link.title === platform.value);
+        return !socialLinks.some((link) => link.title === platform.value);
     });
 
     // Drag and drop handlers
@@ -97,56 +96,52 @@ const LeftColumn = ({ user }) => {
                 'X-Requested-With': 'XMLHttpRequest',
             },
             body: JSON.stringify({
-                links: links.map(link => link.id)
+                links: links.map((link) => link.id),
+            }),
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Failed to reorder social links');
+                }
+                return response.json();
             })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to reorder social links');
-            }
-            return response.json();
-        })
-        .then(data => {
-            //console.log('Social links reordered successfully');
-        })
-        .catch(error => {
-            console.error('Failed to reorder social links:', error);
-            // Revert to original order on error
-            setSocialLinks(user?.social_links || []);
-        });
+            .then((data) => {
+                //console.log('Social links reordered successfully');
+            })
+            .catch((error) => {
+                console.error('Failed to reorder social links:', error);
+                // Revert to original order on error
+                setSocialLinks(user?.social_links || []);
+            });
     };
 
     return (
         <>
-            <div className="lg:col-span-1 space-y-4">
+            <div className="space-y-4 lg:col-span-1">
                 {/* About Card */}
-                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
-                    <div className="flex items-center justify-between mb-3">
+                <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
+                    <div className="mb-3 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">About</h2>
-                        <button className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded">
-                            {
-                                auth?.user.id == user?.id && <Edit2 onClick={() => setOpenAbout(true)} className="w-4 h-4 text-beta/70 dark:text-light/70" />
-                            }
+                        <button className="rounded p-1 hover:bg-beta/5 dark:hover:bg-light/5">
+                            {auth?.user.id == user?.id && (
+                                <Edit2 onClick={() => setOpenAbout(true)} className="h-4 w-4 text-beta/70 dark:text-light/70" />
+                            )}
                         </button>
                     </div>
-                    <p className="text-sm break-words whitespace-pre-wrap text-beta/80 dark:text-light/80">
-                        {user.about}
-                    </p>
+                    <p className="text-sm break-words whitespace-pre-wrap text-beta/80 dark:text-light/80">{user.about}</p>
                 </div>
 
                 {/* Skills Card */}
-                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
-                    <div className="flex items-center justify-between mb-3">
+                <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
+                    <div className="mb-3 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">Badges</h2>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-
-                    </div>
+                    <div className="flex flex-wrap gap-2"></div>
                 </div>
 
                 {/* Contact Info Card */}
-                <div className="bg-white dark:bg-dark_gray rounded-lg shadow p-4">
-                    <div className="flex items-center justify-between mb-3">
+                <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
+                    <div className="mb-3 flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-beta dark:text-light">Socials</h2>
                         {canManage && (
                             <button
@@ -154,18 +149,16 @@ const LeftColumn = ({ user }) => {
                                     setEditingSocial(null);
                                     setOpenSocialModal(true);
                                 }}
-                                className="p-1 hover:bg-beta/5 dark:hover:bg-light/5 rounded"
+                                className="rounded p-1 hover:bg-beta/5 dark:hover:bg-light/5"
                             >
-                                <Plus className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                <Plus className="h-4 w-4 text-beta/70 dark:text-light/70" />
                             </button>
                         )}
                     </div>
 
                     <div className="space-y-2">
                         {socialLinks.length === 0 ? (
-                            <p className="text-sm text-beta/60 dark:text-light/60">
-                                No links added.
-                            </p>
+                            <p className="text-sm text-beta/60 dark:text-light/60">No links added.</p>
                         ) : (
                             <>
                                 {socialLinks.map((link, index) => {
@@ -177,20 +170,20 @@ const LeftColumn = ({ user }) => {
                                             onDragStart={(e) => handleDragStart(e, index)}
                                             onDragOver={handleDragOver}
                                             onDrop={(e) => handleDrop(e, index)}
-                                            className={`flex items-center justify-between gap-3 rounded-lg border border-beta/10 dark:border-light/10 p-3 hover:bg-beta/5 dark:hover:bg-light/5 transition group ${
+                                            className={`group flex items-center justify-between gap-3 rounded-lg border border-beta/10 p-3 transition hover:bg-beta/5 dark:border-light/10 dark:hover:bg-light/5 ${
                                                 canManage ? 'cursor-move' : ''
                                             } ${draggedItem === index ? 'opacity-50' : ''}`}
                                         >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="w-9 h-9 rounded-lg bg-beta/5 dark:bg-light/5 flex items-center justify-center flex-shrink-0">
-                                                    <IconComponent className="w-4 h-4 text-beta/70 dark:text-light/70" />
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-beta/5 dark:bg-light/5">
+                                                    <IconComponent className="h-4 w-4 text-beta/70 dark:text-light/70" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <a
                                                         href={link.url}
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="text-sm font-semibold text-beta dark:text-light hover:underline truncate block"
+                                                        className="block truncate text-sm font-semibold text-beta hover:underline dark:text-light"
                                                     >
                                                         {link.title}
                                                     </a>
@@ -198,7 +191,7 @@ const LeftColumn = ({ user }) => {
                                                         href={link.url}
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="text-xs text-beta/60 dark:text-light/60 hover:underline truncate block"
+                                                        className="block truncate text-xs text-beta/60 hover:underline dark:text-light/60"
                                                     >
                                                         {link.url}
                                                     </a>
@@ -206,7 +199,7 @@ const LeftColumn = ({ user }) => {
                                             </div>
 
                                             {canManage && (
-                                                <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition">
+                                                <div className="flex flex-shrink-0 items-center gap-2 opacity-0 transition group-hover:opacity-100">
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -230,7 +223,7 @@ const LeftColumn = ({ user }) => {
                                                 </div>
                                             )}
                                         </div>
-                                    )
+                                    );
                                 })}
 
                                 {/* {socialLinks.length > 2 && (

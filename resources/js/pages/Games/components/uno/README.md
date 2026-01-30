@@ -38,35 +38,35 @@ uno/
 ### Core Components
 
 1. **Card.jsx** - Displays individual Uno cards
-   - Props: `card`, `onClick`, `disabled`, `isPlayable`, `isDrawnCard`, `className`, `style`
+    - Props: `card`, `onClick`, `disabled`, `isPlayable`, `isDrawnCard`, `className`, `style`
 
 2. **PlayerHand.jsx** - Displays the current player's hand of cards
-   - Props: `hand`, `topCard`, `currentColor`, `currentPlayerIndex`, `assignedPlayerIndex`, `winner`, `pendingDraw`, `drawnCardIndex`, `onCardClick`
+    - Props: `hand`, `topCard`, `currentColor`, `currentPlayerIndex`, `assignedPlayerIndex`, `winner`, `pendingDraw`, `drawnCardIndex`, `onCardClick`
 
 3. **OpponentPlayer.jsx** - Displays opponent players with face-down cards
-   - Props: `player`, `playerIndex`, `currentPlayerIndex`, `assignedPlayerIndex`, `unoCalled`, `position` ('top', 'left', 'right')
+    - Props: `player`, `playerIndex`, `currentPlayerIndex`, `assignedPlayerIndex`, `unoCalled`, `position` ('top', 'left', 'right')
 
 ### Game Board Components
 
 4. **Deck.jsx** - Draw pile component
-   - Props: `deckLength`, `pendingDraw`, `currentPlayerIndex`, `assignedPlayerIndex`, `winner`, `onDraw`
+    - Props: `deckLength`, `pendingDraw`, `currentPlayerIndex`, `assignedPlayerIndex`, `winner`, `onDraw`
 
 5. **DiscardPile.jsx** - Discard pile with current color indicator
-   - Props: `topCard`, `currentColor`, `currentPlayer`, `assignedPlayerIndex`, `pendingDraw`
+    - Props: `topCard`, `currentColor`, `currentPlayer`, `assignedPlayerIndex`, `pendingDraw`
 
 6. **CenterArea.jsx** - Combines Deck and DiscardPile in the center
-   - Props: `deck`, `discardPile`, `currentColor`, `currentPlayer`, `currentPlayerIndex`, `assignedPlayerIndex`, `pendingDraw`, `winner`, `onDraw`
+    - Props: `deck`, `discardPile`, `currentColor`, `currentPlayer`, `currentPlayerIndex`, `assignedPlayerIndex`, `pendingDraw`, `winner`, `onDraw`
 
 ### UI Components
 
 7. **ColorPicker.jsx** - Modal for choosing color when playing wild cards
-   - Props: `show`, `selectedCard`, `onColorSelect`, `onCancel`
+    - Props: `show`, `selectedCard`, `onColorSelect`, `onCancel`
 
 8. **UnoAnimation.jsx** - Animation shown when player calls UNO
-   - Props: `show`, `playerIndex`, `assignedPlayerIndex`
+    - Props: `show`, `playerIndex`, `assignedPlayerIndex`
 
 9. **LaughAnimation.jsx** - Animation shown when player draws cards (+2 or +4)
-   - Props: `show`, `playerIndex`, `assignedPlayerIndex`
+    - Props: `show`, `playerIndex`, `assignedPlayerIndex`
 
 10. **WinnerModal.jsx** - Modal shown when a player wins
     - Props: `winner`, `winnerName`, `onNewGame`
@@ -77,12 +77,14 @@ uno/
 ## Utilities
 
 ### constants.js
+
 - `COLORS` - Array of card colors
 - `NUMBERS` - Array of number values
 - `ACTION_CARDS` - Array of action card types
 - `WILD_CARDS` - Array of wild card types
 
 ### utils.js
+
 - `initializeDeck()` - Creates a full Uno deck (108 cards)
 - `shuffleDeck(deck)` - Shuffles the deck using Fisher-Yates algorithm
 - `dealCards(deck, numPlayers, cardsPerPlayer)` - Deals cards to players
@@ -147,7 +149,9 @@ import {
 ## 🎯 Game Logic Files
 
 ### `rules.js`
+
 Contains all Uno game rules and rule validation:
+
 - `applyCardEffect()` - Applies card effects (Skip, Reverse, Draw 2, etc.)
 - `validateMove()` - Validates if a move is legal
 - `canPlayWildDraw4()` - Checks Wild Draw 4 restrictions
@@ -155,14 +159,18 @@ Contains all Uno game rules and rule validation:
 - `getGameStatus()` - Current game status message
 
 ### `gameLogic.js`
+
 Clean game state management functions:
+
 - `initializeGame()` - Sets up a new game
 - `playCard()` - Handles playing a card
 - `drawCard()` - Handles drawing a card
 - `callUno()` - Handles UNO calls
 
 ### `utils.js`
+
 Utility functions:
+
 - `initializeDeck()` - Creates full Uno deck (108 cards)
 - `shuffleDeck()` - Shuffles deck
 - `dealCards()` - Deals cards to players
@@ -171,7 +179,9 @@ Utility functions:
 - `drawCards()` - Draws cards from deck (with reshuffle)
 
 ### `constants.js`
+
 Game constants:
+
 - `COLORS` - ['red', 'green', 'blue', 'yellow']
 - `NUMBERS` - [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 - `ACTION_CARDS` - ['skip', 'reverse', 'draw2']
@@ -180,6 +190,7 @@ Game constants:
 ## 📖 Complete Rules
 
 See **[RULES.md](./RULES.md)** for:
+
 - Complete Uno game rules
 - All card types and effects
 - UNO rule explanation
@@ -196,4 +207,3 @@ See **[RULES.md](./RULES.md)** for:
 5. **Readability** - Main Uno component is cleaner and easier to understand
 6. **Clear Rules** - All rules documented in RULES.md
 7. **Clean Logic** - Game logic separated from UI components
-

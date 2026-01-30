@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import BookAppointment from '@/components/book-appointment';
 import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
@@ -6,9 +6,9 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings, Dock, User as UserIcon, Book, LayoutGrid } from 'lucide-react';
+import { Book, Dock, LayoutGrid, LogOut, Settings, User as UserIcon } from 'lucide-react';
+import { useState } from 'react';
 import { AddDocumentModal } from './add-document-modal';
-import BookAppointment from '@/components/book-appointment';
 import Rolegard from './rolegard';
 
 interface UserMenuContentProps {
@@ -55,18 +55,20 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                             setIsDocModalOpen(true);
                         }, 150);
                     }}
-                    className="flex items-center cursor-pointer"
+                    className="flex cursor-pointer items-center"
                 >
                     <Dock className="mr-2" />
                     Add document
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onSelect={(e) => {
-                    e.preventDefault();
-                    setTimeout(() => {
-                        setIsAppointmentModalOpen(true);
-                    }, 150);
-                }}>
+                <DropdownMenuItem
+                    onSelect={(e) => {
+                        e.preventDefault();
+                        setTimeout(() => {
+                            setIsAppointmentModalOpen(true);
+                        }, 150);
+                    }}
+                >
                     <Book className="mr-2" />
                     Book an appointment
                 </DropdownMenuItem>
@@ -86,17 +88,12 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuItem>
 
             {/* Add Document Modal */}
-            <AddDocumentModal
-                user={user}
-                isOpen={isDocModalOpen}
-                onClose={() => setIsDocModalOpen(false)}
-            />
+            <AddDocumentModal user={user} isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} />
             <BookAppointment
                 isOpen={isAppointmentModalOpen}
                 onClose={() => setIsAppointmentModalOpen(false)}
                 onSuccess={(selectedPerson) => {
                     console.log('Appointment booked with:', selectedPerson);
-
                 }}
             />
         </>

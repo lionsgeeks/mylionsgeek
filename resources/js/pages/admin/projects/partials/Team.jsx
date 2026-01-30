@@ -1,32 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import FlashMessage from '@/components/FlashMessage';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, } from '@/components/ui/avatar';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router, usePage } from '@inertiajs/react';
-import FlashMessage from '@/components/FlashMessage';
-import {
-    MoreHorizontal,
-    MessageSquare,
-    Users,
-    Trash,
-    Plus,
-    Search,
-    Mail,
-    UserPlus
-} from 'lucide-react';
+import { Mail, MessageSquare, MoreHorizontal, Search, Trash, UserPlus, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwner = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [inviteData, setInviteData] = useState({
         email: '',
-        role: 'member'
+        role: 'member',
     });
     const [flashMessage, setFlashMessage] = useState(null);
     const [isInviting, setIsInviting] = useState(false);
@@ -43,14 +34,11 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
         }
     }, [flash]);
 
-
-    const filteredMembers = teamMembers.filter(member => {
+    const filteredMembers = teamMembers.filter((member) => {
         const name = member.name || member.user?.name || '';
         const email = member.email || member.user?.email || '';
-        return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-               email.toLowerCase().includes(searchTerm.toLowerCase());
+        return name.toLowerCase().includes(searchTerm.toLowerCase()) || email.toLowerCase().includes(searchTerm.toLowerCase());
     });
-
 
     const handleInvite = () => {
         if (!inviteData.email.trim()) {
@@ -60,29 +48,35 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
 
         setIsInviting(true);
 
-        router.post(`/admin/projects/${projectId}/invite`, {
-            email: inviteData.email.trim(),
-            role: inviteData.role
-        }, {
-            onSuccess: () => {
-                setInviteData({
-                    email: '',
-                    role: 'member'
-                });
-                setIsInviteModalOpen(false);
-                setIsInviting(false);
+        router.post(
+            `/admin/projects/${projectId}/invite`,
+            {
+                email: inviteData.email.trim(),
+                role: inviteData.role,
             },
-            onError: (errors) => {
-                setIsInviting(false);
-                const errorMessage = errors.email
-                    ? Array.isArray(errors.email) ? errors.email.join(', ') : errors.email
-                    : errors.message || 'Failed to send invitation. Please try again.';
-                setFlashMessage({
-                    message: errorMessage,
-                    type: 'error'
-                });
-            }
-        });
+            {
+                onSuccess: () => {
+                    setInviteData({
+                        email: '',
+                        role: 'member',
+                    });
+                    setIsInviteModalOpen(false);
+                    setIsInviting(false);
+                },
+                onError: (errors) => {
+                    setIsInviting(false);
+                    const errorMessage = errors.email
+                        ? Array.isArray(errors.email)
+                            ? errors.email.join(', ')
+                            : errors.email
+                        : errors.message || 'Failed to send invitation. Please try again.';
+                    setFlashMessage({
+                        message: errorMessage,
+                        type: 'error',
+                    });
+                },
+            },
+        );
     };
 
     const handleDeleteTeamMember = (member) => {
@@ -95,16 +89,16 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                 console.error('Failed to delete team member:', errors);
                 const errorMessage = errors.message || 'Failed to remove team member. Please try again.';
                 setFlashMessage({ message: errorMessage, type: 'error' });
-            }
+            },
         });
     };
 
     const getRoleBadge = (role) => {
         const roleConfig = {
-            owner: { color: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300", label: "Owner" },
-            admin: { color: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300", label: "Admin" },
-            member: { color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300", label: "Member" },
-            viewer: { color: "bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300", label: "Viewer" }
+            owner: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300', label: 'Owner' },
+            admin: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300', label: 'Admin' },
+            member: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', label: 'Member' },
+            viewer: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-950 dark:text-gray-300', label: 'Viewer' },
         };
 
         const config = roleConfig[role] || roleConfig.member;
@@ -119,8 +113,7 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
     const getStatusIndicator = (status) => {
         return (
             <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
+                <div className={`h-2 w-2 rounded-full ${status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                 <span className="capitalize">{status}</span>
             </div>
         );
@@ -129,23 +122,17 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
     return (
         <div className="space-y-6">
             {/* Flash Messages */}
-            {flashMessage && (
-                <FlashMessage
-                    message={flashMessage.message}
-                    type={flashMessage.type}
-                    onClose={() => setFlashMessage(null)}
-                />
-            )}
+            {flashMessage && <FlashMessage message={flashMessage.message} type={flashMessage.type} onClose={() => setFlashMessage(null)} />}
 
             {/* Header and Search */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-2">
                     <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                             type="search"
                             placeholder="Search team members..."
-                            className="pl-8 w-[200px] md:w-[300px]"
+                            className="w-[200px] pl-8 md:w-[300px]"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -154,7 +141,7 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
 
                 {canManageTeam && (
                     <Button onClick={() => setIsInviteModalOpen(true)}>
-                        <UserPlus className="h-4 w-4 mr-2" />
+                        <UserPlus className="mr-2 h-4 w-4" />
                         Invite Member
                     </Button>
                 )}
@@ -169,15 +156,13 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                             <TableHead>Role</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Last Active</TableHead>
-                            {canManageTeam && (
-                                <TableHead className="text-right">Actions</TableHead>
-                            )}
+                            {canManageTeam && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredMembers.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={canManageTeam ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={canManageTeam ? 5 : 4} className="py-8 text-center text-muted-foreground">
                                     {searchTerm ? 'No members match your search' : 'No team members yet'}
                                 </TableCell>
                             </TableRow>
@@ -194,57 +179,53 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                                             />
                                             <div>
                                                 <div className="font-medium">{member.name || member.user?.name || 'No Name'}</div>
-                                                <div className="text-sm text-muted-foreground">{member.email || member.user?.email || 'No Email'}</div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {member.email || member.user?.email || 'No Email'}
+                                                </div>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        {getRoleBadge(member.role || 'member')}
-                                    </TableCell>
-                                    <TableCell>
-                                        {getStatusIndicator(member.status || 'active')}
-                                    </TableCell>
-                                    <TableCell>
-                                        {member.lastActive || 'Just now'}
-                                    </TableCell>
+                                    <TableCell>{getRoleBadge(member.role || 'member')}</TableCell>
+                                    <TableCell>{getStatusIndicator(member.status || 'active')}</TableCell>
+                                    <TableCell>{member.lastActive || 'Just now'}</TableCell>
                                     {canManageTeam && (
                                         <TableCell className="text-right">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
-                                                    <MessageSquare className="mr-2 h-4 w-4" />
-                                                    <span>Message</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem>
-                                                    <Mail className="mr-2 h-4 w-4" />
-                                                    <span>Send Email</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    disabled={member.isOwner}
-                                                    className={member.isOwner ? 'opacity-50 cursor-not-allowed' : ''}
-                                                    title={member.isOwner ? 'Cannot change the role of the project owner' : ''}
-                                                >
-                                                    <Users className="mr-2 h-4 w-4" />
-                                                    <span>Change Role</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem 
-                                                    className={`${member.isOwner ? 'opacity-50 cursor-not-allowed' : 'text-destructive'}`}
-                                                    onClick={() => !member.isOwner && handleDeleteTeamMember(member)}
-                                                    disabled={member.isOwner}
-                                                    title={member.isOwner ? 'Cannot remove the project owner from the project' : ''}
-                                                >
-                                                    <Trash className="mr-2 h-4 w-4" />
-                                                    <span>Remove</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem>
+                                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                                        <span>Message</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem>
+                                                        <Mail className="mr-2 h-4 w-4" />
+                                                        <span>Send Email</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        disabled={member.isOwner}
+                                                        className={member.isOwner ? 'cursor-not-allowed opacity-50' : ''}
+                                                        title={member.isOwner ? 'Cannot change the role of the project owner' : ''}
+                                                    >
+                                                        <Users className="mr-2 h-4 w-4" />
+                                                        <span>Change Role</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        className={`${member.isOwner ? 'cursor-not-allowed opacity-50' : 'text-destructive'}`}
+                                                        onClick={() => !member.isOwner && handleDeleteTeamMember(member)}
+                                                        disabled={member.isOwner}
+                                                        title={member.isOwner ? 'Cannot remove the project owner from the project' : ''}
+                                                    >
+                                                        <Trash className="mr-2 h-4 w-4" />
+                                                        <span>Remove</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
                                     )}
                                 </TableRow>
                             ))
@@ -258,9 +239,7 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Invite Team Member</DialogTitle>
-                        <DialogDescription>
-                            Send an invitation to join this project
-                        </DialogDescription>
+                        <DialogDescription>Send an invitation to join this project</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
@@ -275,10 +254,7 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                         </div>
                         <div>
                             <Label htmlFor="role">Role</Label>
-                            <Select
-                                value={inviteData.role}
-                                onValueChange={(value) => setInviteData({ ...inviteData, role: value })}
-                            >
+                            <Select value={inviteData.role} onValueChange={(value) => setInviteData({ ...inviteData, role: value })}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -289,8 +265,12 @@ const Team = ({ teamMembers = [], projectId, canManageTeam = false, isProjectOwn
                             </Select>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            <p><strong>Member:</strong> Can edit and manage tasks</p>
-                            <p><strong>Admin:</strong> Can manage project settings and team members</p>
+                            <p>
+                                <strong>Member:</strong> Can edit and manage tasks
+                            </p>
+                            <p>
+                                <strong>Admin:</strong> Can manage project settings and team members
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>

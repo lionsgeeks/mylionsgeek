@@ -1,19 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import useAblyChannel from '@/hooks/useAblyChannel';
+import { useRecordingIndicator } from '@/hooks/useRecordingIndicator';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { hasNotificationPermission, requestNotificationPermission, showDesktopNotification } from '@/lib/notificationManager';
+import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { format, isToday, isYesterday } from 'date-fns';
-import { cn } from '@/lib/utils';
-import useAblyChannel from '@/hooks/useAblyChannel';
-import { useTypingIndicator } from '@/hooks/useTypingIndicator';
-import { useRecordingIndicator } from '@/hooks/useRecordingIndicator';
-import { publishToChannel } from '@/lib/ablyManager';
-import { showDesktopNotification, requestNotificationPermission, hasNotificationPermission } from '@/lib/notificationManager';
+import { useEffect, useRef, useState } from 'react';
 import ChatHeader from './partials/ChatHeader';
-import MessageList from './partials/MessageList';
-import MessageInput from './partials/MessageInput';
-import PreviewPanel from './partials/PreviewPanel';
 import ChatToolbox from './partials/ChatToolbox';
-import TypingIndicator from './partials/TypingIndicator';
-import RecordingIndicator from './partials/RecordingIndicator';
+import MessageInput from './partials/MessageInput';
+import MessageList from './partials/MessageList';
+import PreviewPanel from './partials/PreviewPanel';
 
 // Main ChatBox component - refactored b components so9or
 export default function ChatBox({ conversation, onClose, onBack, isExpanded, onExpand }) {
@@ -45,29 +42,25 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const pendingTempIdsRef = useRef(new Set());
 
     const channelName = `chat:conversation:${conversation.id}`;
-    
+
     // Real-time messaging with Ably - Tssma3 3la channel dial conversation
-    const { isConnected, subscribe, publish } = useAblyChannel(
-        channelName,
-        ['new-message', 'message-deleted', 'seen', 'typing', 'recording'],
-        {
-            onConnected: () => {
-                //console.log('Ably connected for conversation:', conversation.id);
-                // Request notification permission on first connection
-                requestNotificationPermission();
-            },
-            onError: (error) => {
-                console.error('Ably connection error:', error);
-            },
-        }
-    );
+    const { isConnected, subscribe, publish } = useAblyChannel(channelName, ['new-message', 'message-deleted', 'seen', 'typing', 'recording'], {
+        onConnected: () => {
+            //console.log('Ably connected for conversation:', conversation.id);
+            // Request notification permission on first connection
+            requestNotificationPermission();
+        },
+        onError: (error) => {
+            console.error('Ably connection error:', error);
+        },
+    });
 
     // Typing indicator
     const { typingUsers, startTyping, stopTyping } = useTypingIndicator(channelName, currentUser.id, isConnected);
-    
+
     // Recording indicator
     const { recordingUsers, startRecordingIndicator, stopRecordingIndicator } = useRecordingIndicator(channelName, currentUser.id, isConnected);
-    
+
     // Real-time seen status
     const [seenStatus, setSeenStatus] = useState({});
 
@@ -82,26 +75,23 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             if (messageData.conversation_id && messageData.conversation_id !== conversation.id) {
                 return;
             }
-            
+
             const isFromOtherUser = messageData.sender_id !== currentUser.id;
-            
+
             // Show notification if chatbox is closed or minimized
             if (isFromOtherUser) {
                 // Desktop notification
                 if (hasNotificationPermission() && (document.hidden || !document.hasFocus())) {
                     //console.log(messageData);
-                    showDesktopNotification(
-                        `${messageData.sender?.name || 'New message'}`,
-                        {
-                            body: messageData.body || '📎 Attachment',
-                            icon:"storage/img/profile/" +  messageData.sender?.image || '/favicon.ico',
-                            tag: `chat-${conversation.id}`,
-                            data: {
-                                conversationId: conversation.id,
-                                userId: messageData.sender_id,
-                            },
-                        }
-                    );
+                    showDesktopNotification(`${messageData.sender?.name || 'New message'}`, {
+                        body: messageData.body || '📎 Attachment',
+                        icon: 'storage/img/profile/' + messageData.sender?.image || '/favicon.ico',
+                        tag: `chat-${conversation.id}`,
+                        data: {
+                            conversationId: conversation.id,
+                            userId: messageData.sender_id,
+                        },
+                    });
                 }
 
                 // Toast notifications are handled globally - no need to show here
@@ -109,47 +99,50 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             }
 
             // Check if message already exists (avoid duplicates)
-            setMessages(prev => {
-                const exists = prev.some(msg => msg.id === messageData.id);
+            setMessages((prev) => {
+                const exists = prev.some((msg) => msg.id === messageData.id);
                 if (exists) return prev;
 
                 // Check if it's a pending message that was just sent
-                const isPending = prev.some(msg => 
-                    msg.tempId && pendingTempIdsRef.current.has(msg.tempId) &&
-                    msg.sender_id === messageData.sender_id
+                const isPending = prev.some(
+                    (msg) => msg.tempId && pendingTempIdsRef.current.has(msg.tempId) && msg.sender_id === messageData.sender_id,
                 );
-                
+
                 // If we have a pending message, replace it with the real one
                 if (isPending) {
-                    const filtered = prev.filter(msg => 
-                        !msg.tempId || !pendingTempIdsRef.current.has(msg.tempId)
-                    );
+                    const filtered = prev.filter((msg) => !msg.tempId || !pendingTempIdsRef.current.has(msg.tempId));
                     // Clean up temp IDs for this sender
-                    pendingTempIdsRef.current.forEach(tempId => {
-                        const msg = prev.find(m => m.tempId === tempId);
+                    pendingTempIdsRef.current.forEach((tempId) => {
+                        const msg = prev.find((m) => m.tempId === tempId);
                         if (msg && msg.sender_id === messageData.sender_id) {
                             pendingTempIdsRef.current.delete(tempId);
                         }
                     });
-                    return [...filtered, {
+                    return [
+                        ...filtered,
+                        {
+                            ...messageData,
+                            sender: messageData.sender || {
+                                id: messageData.sender_id,
+                                name: '',
+                                image: '',
+                            },
+                        },
+                    ];
+                }
+
+                // Add new message from other user
+                return [
+                    ...prev,
+                    {
                         ...messageData,
                         sender: messageData.sender || {
                             id: messageData.sender_id,
                             name: '',
                             image: '',
-                        }
-                    }];
-                }
-
-                // Add new message from other user
-                return [...prev, {
-                    ...messageData,
-                    sender: messageData.sender || {
-                        id: messageData.sender_id,
-                        name: '',
-                        image: '',
-                    }
-                }];
+                        },
+                    },
+                ];
             });
 
             // Mark as read if message is from other user and chatbox is visible and focused
@@ -159,26 +152,28 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': getCsrfToken(),
                     },
-                }).catch(err => console.error('Failed to mark as read:', err));
+                }).catch((err) => console.error('Failed to mark as read:', err));
             }
-            
+
             // When other user sends a message, it means they've seen your messages
             // So mark all your sent messages as read immediately
             if (isFromOtherUser) {
-                setMessages(prev => prev.map(msg => {
-                    if (msg.sender_id === currentUser.id && !msg.is_read) {
-                        return {
-                            ...msg,
-                            is_read: true,
-                            read_at: messageData.created_at, // Use the new message's timestamp
-                        };
-                    }
-                    return msg;
-                }));
+                setMessages((prev) =>
+                    prev.map((msg) => {
+                        if (msg.sender_id === currentUser.id && !msg.is_read) {
+                            return {
+                                ...msg,
+                                is_read: true,
+                                read_at: messageData.created_at, // Use the new message's timestamp
+                            };
+                        }
+                        return msg;
+                    }),
+                );
             }
 
             scrollToBottom();
@@ -186,15 +181,15 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
         // Handle message deletions
         const handleMessageDeleted = (data) => {
-            setMessages(prev => prev.filter(msg => msg.id !== data.message_id));
+            setMessages((prev) => prev.filter((msg) => msg.id !== data.message_id));
         };
 
         // Handle seen status updates - updates when ANY user marks messages as read
         const handleSeen = (data) => {
             console.log('📖 Seen event received:', data);
-            
+
             // Update seen status for the conversation
-            setSeenStatus(prev => ({
+            setSeenStatus((prev) => ({
                 ...prev,
                 [conversation.id]: {
                     read_at: data.read_at,
@@ -207,10 +202,10 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 // Update ALL messages sent by current user that were sent before or at the read_at time
                 // This ensures read receipts update in real-time
                 const readAtTime = new Date(data.read_at).getTime();
-                
-                setMessages(prev => {
+
+                setMessages((prev) => {
                     let updatedCount = 0;
-                    const updated = prev.map(msg => {
+                    const updated = prev.map((msg) => {
                         if (msg.sender_id === currentUser.id) {
                             const msgTime = new Date(msg.created_at).getTime();
                             // Update if message was sent before or at the read time
@@ -229,25 +224,27 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         }
                         return msg;
                     });
-                    
+
                     if (updatedCount > 0) {
                         console.log(`✅ Updated ${updatedCount} message(s) to read status`);
                     }
-                    
+
                     return updated;
                 });
             } else {
                 // If current user marked messages as read, update received messages
-                setMessages(prev => prev.map(msg => {
-                    if (msg.sender_id !== currentUser.id && !msg.is_read) {
-                        return {
-                            ...msg,
-                            is_read: true,
-                            read_at: data.read_at,
-                        };
-                    }
-                    return msg;
-                }));
+                setMessages((prev) =>
+                    prev.map((msg) => {
+                        if (msg.sender_id !== currentUser.id && !msg.is_read) {
+                            return {
+                                ...msg,
+                                is_read: true,
+                                read_at: data.read_at,
+                            };
+                        }
+                        return msg;
+                    }),
+                );
             }
         };
 
@@ -264,11 +261,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     useEffect(() => {
         // Clear messages immediately when switching conversations
         // Only keep pending messages that might be for this conversation
-        setMessages(prev => {
+        setMessages((prev) => {
             // Keep only pending messages (they should be for current conversation if recently sent)
-            return prev.filter(m => m.pending && pendingTempIdsRef.current.has(m.tempId));
+            return prev.filter((m) => m.pending && pendingTempIdsRef.current.has(m.tempId));
         });
-        
+
         // Fetch messages for the new conversation
         fetchMessages();
     }, [conversation.id]);
@@ -281,7 +278,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     useEffect(() => {
         if (isRecording && !isPaused) {
             recordingTimerRef.current = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
+                setRecordingTime((prev) => prev + 1);
             }, 1000);
         } else {
             if (recordingTimerRef.current) {
@@ -289,7 +286,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 recordingTimerRef.current = null;
             }
         }
-        
+
         return () => {
             if (recordingTimerRef.current) {
                 clearInterval(recordingTimerRef.current);
@@ -299,16 +296,16 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     // Load audio durations when messages change
     useEffect(() => {
-        messages.forEach(message => {
+        messages.forEach((message) => {
             if (message.attachment_type === 'audio' && message.attachment_path && !audioDuration[message.id]) {
                 const audio = document.getElementById(`audio-${message.id}`);
                 if (audio) {
                     const loadDuration = () => {
                         if (audio.duration && isFinite(audio.duration)) {
-                            setAudioDuration(prev => ({ ...prev, [message.id]: audio.duration }));
+                            setAudioDuration((prev) => ({ ...prev, [message.id]: audio.duration }));
                         }
                     };
-                    
+
                     if (audio.readyState >= 1) {
                         loadDuration();
                     } else {
@@ -332,7 +329,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             const response = await fetch(`/chat/conversation/${conversation.id}/messages`, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             });
@@ -345,14 +342,14 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             const fetchedMessages = data.messages || [];
 
             // Set messages for current conversation - only merge with pending messages for this conversation
-            setMessages(prev => {
+            setMessages((prev) => {
                 // Only keep pending messages that are truly pending (not yet confirmed by server)
-                const pendingMessages = prev.filter(m => m.pending && pendingTempIdsRef.current.has(m.tempId));
-                const existingIds = new Set(fetchedMessages.map(m => m.id));
-                
+                const pendingMessages = prev.filter((m) => m.pending && pendingTempIdsRef.current.has(m.tempId));
+                const existingIds = new Set(fetchedMessages.map((m) => m.id));
+
                 // Filter out pending messages that have been confirmed (exist in fetchedMessages)
-                const stillPending = pendingMessages.filter(m => !existingIds.has(m.tempId));
-                
+                const stillPending = pendingMessages.filter((m) => !existingIds.has(m.tempId));
+
                 // Return fetched messages plus any still-pending messages
                 return [...fetchedMessages, ...stillPending];
             });
@@ -364,11 +361,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': getCsrfToken(),
                     },
-                }).catch(err => console.error('Failed to mark as read:', err));
+                }).catch((err) => console.error('Failed to mark as read:', err));
             }
         } catch (error) {
             console.error('Failed to fetch messages:', error);
@@ -398,17 +395,17 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             }
 
             // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
-                } 
+                },
             });
-            
+
             // Store stream reference
             audioStreamRef.current = stream;
-            
+
             // Check if MediaRecorder is available
             if (!window.MediaRecorder) {
                 throw new Error('MediaRecorder is not supported in this browser');
@@ -426,10 +423,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 }
             }
 
-            const mediaRecorder = mimeType 
-                ? new MediaRecorder(stream, { mimeType })
-                : new MediaRecorder(stream);
-            
+            const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
             chunksRef.current = [];
 
             mediaRecorder.ondataavailable = (e) => {
@@ -445,26 +440,26 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     setAudioBlob(blob);
                     const url = URL.createObjectURL(blob);
                     setAudioURL(url);
-                    
+
                     // Calculate audio duration from blob
                     const audio = new Audio(url);
                     audio.addEventListener('loadedmetadata', () => {
                         if (audio.duration && isFinite(audio.duration)) {
                             // Store duration for preview
-                            setAudioDuration(prev => ({ ...prev, 'preview': audio.duration }));
+                            setAudioDuration((prev) => ({ ...prev, preview: audio.duration }));
                         }
                     });
                     audio.load();
                 }
-                
+
                 // Stop all tracks
                 if (audioStreamRef.current) {
-                    audioStreamRef.current.getTracks().forEach(track => {
+                    audioStreamRef.current.getTracks().forEach((track) => {
                         track.stop();
                     });
                     audioStreamRef.current = null;
                 }
-                
+
                 // Stop recording indicator
                 if (stopRecordingIndicator) {
                     stopRecordingIndicator();
@@ -475,13 +470,13 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 console.error('MediaRecorder error:', e);
                 setIsRecording(false);
                 setIsPaused(false);
-                
+
                 // Clean up stream
                 if (audioStreamRef.current) {
-                    audioStreamRef.current.getTracks().forEach(track => track.stop());
+                    audioStreamRef.current.getTracks().forEach((track) => track.stop());
                     audioStreamRef.current = null;
                 }
-                
+
                 stopRecordingIndicator();
             };
 
@@ -492,14 +487,14 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             setIsPaused(false);
             setRecordingTime(0);
             chunksRef.current = [];
-            
+
             // Start recording indicator
             if (startRecordingIndicator) {
                 startRecordingIndicator();
             }
         } catch (error) {
             console.error('Error accessing microphone:', error);
-            
+
             let errorMessage = 'Failed to access microphone. ';
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                 errorMessage += 'Please allow microphone access in your browser settings.';
@@ -508,19 +503,19 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             } else {
                 errorMessage += error.message || 'Unknown error occurred.';
             }
-            
+
             alert(errorMessage);
             setIsRecording(false);
             setIsPaused(false);
-            
+
             // Stop recording indicator if function exists
             if (stopRecordingIndicator) {
                 stopRecordingIndicator();
             }
-            
+
             // Clean up any partial stream
             if (audioStreamRef.current) {
-                audioStreamRef.current.getTracks().forEach(track => track.stop());
+                audioStreamRef.current.getTracks().forEach((track) => track.stop());
                 audioStreamRef.current = null;
             }
         }
@@ -557,7 +552,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
             if (audioStreamRef.current) {
-                audioStreamRef.current.getTracks().forEach(track => track.stop());
+                audioStreamRef.current.getTracks().forEach((track) => track.stop());
                 audioStreamRef.current = null;
             }
             setIsRecording(false);
@@ -567,7 +562,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             setRecordingTime(0);
             chunksRef.current = [];
             stopRecordingIndicator();
-            setAudioDuration(prev => {
+            setAudioDuration((prev) => {
                 const newState = { ...prev };
                 delete newState['preview'];
                 return newState;
@@ -582,7 +577,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const messageBody = newMessage.trim();
         const tempId = Date.now();
         pendingTempIdsRef.current.add(tempId);
-        
+
         // Create optimistic message bach yban b7al b9a send (pending status)
         const optimisticMessage = {
             id: tempId,
@@ -610,7 +605,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             optimisticMessage.attachment_path = attachmentURL;
             optimisticMessage.attachment_name = attachment.name;
             optimisticMessage.attachment_size = attachment.size;
-            
+
             if (attachment.type.startsWith('image/')) {
                 optimisticMessage.attachment_type = 'image';
             } else if (attachment.type.startsWith('video/')) {
@@ -632,7 +627,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         }
 
         // Zwid message m9bl ma yban b7al send (optimistic)
-        setMessages(prev => [...prev, optimisticMessage]);
+        setMessages((prev) => [...prev, optimisticMessage]);
         scrollToBottom();
 
         // Save form data before clearing
@@ -640,7 +635,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const formAttachment = attachment;
         const formAudioBlob = audioBlob;
         const prevAudioURL = audioURL;
-        
+
         // Clear form
         setNewMessage('');
         setAttachment(null);
@@ -656,15 +651,13 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const formData = new FormData();
         formData.append('body', formMessageBody);
         formData.append('_token', getCsrfToken());
-        
+
         if (formAttachment) {
             formData.append('attachment', formAttachment);
-            const attachmentType = formAttachment.type.startsWith('image/') ? 'image' 
-                : formAttachment.type.startsWith('video/') ? 'video' 
-                : 'file';
+            const attachmentType = formAttachment.type.startsWith('image/') ? 'image' : formAttachment.type.startsWith('video/') ? 'video' : 'file';
             formData.append('attachment_type', attachmentType);
         }
-        
+
         if (formAudioBlob) {
             formData.append('attachment', formAudioBlob, 'audio.webm');
             formData.append('attachment_type', 'audio');
@@ -674,7 +667,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             const response = await fetch(`/chat/conversation/${conversation.id}/send`, {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': getCsrfToken(),
                 },
@@ -691,12 +684,12 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
             // When you send a message, mark all previous messages from the other user as read
             // This happens on the backend, but we also update the UI immediately
-            setMessages(prev => {
+            setMessages((prev) => {
                 // Remove optimistic message
-                const filtered = prev.filter(msg => msg.tempId !== tempId);
-                
+                const filtered = prev.filter((msg) => msg.tempId !== tempId);
+
                 // Mark all messages from other user as read (since you replied, you've seen them)
-                const updated = filtered.map(msg => {
+                const updated = filtered.map((msg) => {
                     if (msg.sender_id !== currentUser.id && !msg.is_read) {
                         return {
                             ...msg,
@@ -706,25 +699,28 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     }
                     return msg;
                 });
-                
+
                 // Add real message (avoid duplicates)
-                const exists = updated.some(msg => msg.id === newMessageData.id);
+                const exists = updated.some((msg) => msg.id === newMessageData.id);
                 if (!exists) {
-                    return [...updated, {
-                        ...newMessageData,
-                        sender: newMessageData.sender || {
-                            id: currentUser.id,
-                            name: currentUser.name,
-                            image: currentUser.image,
-                        }
-                    }];
+                    return [
+                        ...updated,
+                        {
+                            ...newMessageData,
+                            sender: newMessageData.sender || {
+                                id: currentUser.id,
+                                name: currentUser.name,
+                                image: currentUser.image,
+                            },
+                        },
+                    ];
                 }
                 return updated;
             });
 
             // Clean up temp ID
             pendingTempIdsRef.current.delete(tempId);
-            
+
             // Clean up audio URL if it was a blob
             if (prevAudioURL && prevAudioURL.startsWith('blob:')) {
                 URL.revokeObjectURL(prevAudioURL);
@@ -733,13 +729,13 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             scrollToBottom();
         } catch (error) {
             // 7yed failed optimistic message
-            setMessages(prev => prev.filter(msg => msg.tempId !== tempId));
+            setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
             pendingTempIdsRef.current.delete(tempId);
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
             setSending(false);
             // Clean up preview duration
-            setAudioDuration(prev => {
+            setAudioDuration((prev) => {
                 const newState = { ...prev };
                 delete newState['preview'];
                 return newState;
@@ -781,7 +777,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 audio.pause();
                 audio.currentTime = 0;
                 setIsPlayingAudio(null);
-                setAudioProgress(prev => ({ ...prev, [messageId]: 0 }));
+                setAudioProgress((prev) => ({ ...prev, [messageId]: 0 }));
             }
         } else {
             if (isPlayingAudio) {
@@ -790,9 +786,9 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
                 }
-                setAudioProgress(prev => ({ ...prev, [isPlayingAudio]: 0 }));
+                setAudioProgress((prev) => ({ ...prev, [isPlayingAudio]: 0 }));
             }
-            
+
             setIsPlayingAudio(messageId);
             setTimeout(() => {
                 const audio = document.getElementById(`audio-${messageId}`);
@@ -800,35 +796,35 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     // Jib duration dyal audio
                     const loadDuration = () => {
                         if (audio.duration && isFinite(audio.duration)) {
-                            setAudioDuration(prev => ({ ...prev, [messageId]: audio.duration }));
+                            setAudioDuration((prev) => ({ ...prev, [messageId]: audio.duration }));
                         }
                     };
-                    
+
                     // Check ila duration kayna b9a
                     if (audio.readyState >= 1) {
                         loadDuration();
                     } else {
                         audio.addEventListener('loadedmetadata', loadDuration, { once: true });
                     }
-                    
+
                     audio.play();
-                    
+
                     const updateProgress = () => {
                         if (audio.duration) {
                             const percent = (audio.currentTime / audio.duration) * 100;
-                            setAudioProgress(prev => ({ ...prev, [messageId]: percent }));
+                            setAudioProgress((prev) => ({ ...prev, [messageId]: percent }));
                         }
                     };
-                    
+
                     audio.addEventListener('timeupdate', updateProgress);
                     audio.onended = () => {
                         setIsPlayingAudio(null);
-                        setAudioProgress(prev => ({ ...prev, [messageId]: 100 }));
+                        setAudioProgress((prev) => ({ ...prev, [messageId]: 100 }));
                         audio.removeEventListener('timeupdate', updateProgress);
                     };
                     audio.onerror = () => {
                         setIsPlayingAudio(null);
-                        setAudioProgress(prev => ({ ...prev, [messageId]: 0 }));
+                        setAudioProgress((prev) => ({ ...prev, [messageId]: 0 }));
                         alert('Failed to play audio');
                         audio.removeEventListener('timeupdate', updateProgress);
                     };
@@ -839,13 +835,13 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const handleDeleteMessage = async (messageId) => {
         if (!confirm('Are you sure you want to delete this message?')) return;
-        
+
         try {
             const response = await fetch(`/chat/message/${messageId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': getCsrfToken(),
                 },
@@ -855,7 +851,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 throw new Error('Failed to delete message');
             }
 
-            setMessages(prev => prev.filter(msg => msg.id !== messageId));
+            setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
         } catch (error) {
             alert(error.message || 'Failed to delete message');
         }
@@ -872,13 +868,14 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     };
 
     const getAttachmentsForPreview = () => {
-        return messages.filter(m => m.attachment_path && ['image', 'video'].includes(m.attachment_type))
-            .map(m => ({ type: m.attachment_type, path: m.attachment_path, name: m.attachment_name }));
+        return messages
+            .filter((m) => m.attachment_path && ['image', 'video'].includes(m.attachment_type))
+            .map((m) => ({ type: m.attachment_type, path: m.attachment_path, name: m.attachment_name }));
     };
 
     const handlePreviewAttachment = (att) => {
         const all = getAttachmentsForPreview();
-        const idx = all.findIndex(a => a.path === att.path);
+        const idx = all.findIndex((a) => a.path === att.path);
         setPreviewIndex(idx >= 0 ? idx : 0);
         setPreviewAttachment(all[idx >= 0 ? idx : 0]);
         setShowToolbox(false);
@@ -906,17 +903,17 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const hasMultipleAttachments = allAttachments.length > 1;
 
     return (
-        <div className="bg-background flex h-full overflow-hidden relative">
+        <div className="relative flex h-full overflow-hidden bg-background">
             {/* Main Chat Area */}
-            <div className={cn("flex flex-col h-full transition-all duration-300 w-full", previewAttachment && "opacity-0 pointer-events-none")}>
-                <ChatHeader 
+            <div className={cn('flex h-full w-full flex-col transition-all duration-300', previewAttachment && 'pointer-events-none opacity-0')}>
+                <ChatHeader
                     conversation={conversation}
                     onClose={showToolbox ? () => setShowToolbox(false) : onClose}
                     onBack={onBack}
                     onToolboxToggle={() => setShowToolbox(!showToolbox)}
                 />
 
-                <div className="flex-1 min-h-0 flex overflow-hidden">
+                <div className="flex min-h-0 flex-1 overflow-hidden">
                     <MessageList
                         messages={messages}
                         loading={loading}
@@ -939,11 +936,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         typingUsers={typingUsers}
                         recordingUsers={recordingUsers}
                     />
-                    
+
                     {/* Toolbox f right side dial messages */}
                     {showToolbox && !previewAttachment && (
-                        <div className="w-full border-l flex-shrink-0">
-                            <ChatToolbox 
+                        <div className="w-full flex-shrink-0 border-l">
+                            <ChatToolbox
                                 conversationId={conversation.id}
                                 otherUserId={conversation.other_user.id}
                                 onPreviewAttachment={handlePreviewAttachment}
@@ -983,7 +980,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
             {/* Preview Panel - Full Width */}
             {previewAttachment && (
-                <div className="absolute inset-0 z-50 bg-background flex flex-col">
+                <div className="absolute inset-0 z-50 flex flex-col bg-background">
                     <PreviewPanel
                         attachment={previewAttachment}
                         onClose={() => setPreviewAttachment(null)}

@@ -1,14 +1,12 @@
-import { Calendar, RefreshCw, Trophy } from 'lucide-react';
-import React from 'react';
+import { Calendar } from 'lucide-react';
 
-const BoardHeader = ({ fetchLeaderboardData, isRefreshing , fetchPreviousWeekPodium }) => {
+const BoardHeader = ({ fetchLeaderboardData, isRefreshing, fetchPreviousWeekPodium }) => {
     return (
         <>
-
             {/* Header Section */}
-            <div className="text-center mb-12">
-                <div className="flex flex-col lg:flex-row items-start justify-between mb-8 gap-6">
-                    <div className="flex  gap-4">
+            <div className="mb-12 text-center">
+                <div className="mb-8 flex flex-col items-start justify-between gap-6 lg:flex-row">
+                    <div className="flex gap-4">
                         {/* <div className="p-4 bg-gradient-to-br from-yellow-400 via-alpha to-alpha rounded-2xl shadow-2xl">
                             <Trophy className="w-10 h-10 text-dark" />
                         </div> */}
@@ -31,12 +29,12 @@ const BoardHeader = ({ fetchLeaderboardData, isRefreshing , fetchPreviousWeekPod
                         </button>
                     </div> */}
 
-                    <div className="flex justify-end mb-4">
+                    <div className="mb-4 flex justify-end">
                         <button
                             onClick={fetchPreviousWeekPodium}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] cursor-pointer transition-colors"
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-4 py-2 text-black transition-colors hover:bg-transparent hover:text-[var(--color-alpha)]"
                         >
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="h-4 w-4" />
                             Previous week podium
                         </button>
                     </div>

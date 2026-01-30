@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
-import { helpers } from './utils/helpers';
 import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
+import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { helpers } from './utils/helpers';
 
 const FollowModal = ({ openChange, onOpenChange, student }) => {
     const [activeTab, setActiveTab] = useState(openChange[1]);
@@ -10,7 +10,7 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
     const { stopScrolling, addOrRemoveFollow } = helpers();
 
     useEffect(() => {
-        stopScrolling(openChange[0])
+        stopScrolling(openChange[0]);
         return () => stopScrolling(false);
     }, [openChange[0]]);
 
@@ -20,9 +20,10 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
 
     const rawList = activeTab === 'followers' ? student?.followers || [] : student?.following || [];
 
-    const displayList = rawList.filter((user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()))
+    const displayList = rawList.filter(
+        (user) =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase())),
     );
 
     if (!openChange[0]) return null;
@@ -30,22 +31,15 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
     return (
         <>
             {/* Overlay */}
-            <div
-                onClick={closeModal}
-                className="fixed inset-0 h-full z-30 bg-b/50 dark:bg-beta/60 backdrop-blur-md transition-all duration-300"
-            />
+            <div onClick={closeModal} className="bg-b/50 fixed inset-0 z-30 h-full backdrop-blur-md transition-all duration-300 dark:bg-beta/60" />
 
             {/* Modal */}
-            <div className="bg-light dark:bg-dark rounded-2xl z-50 fixed inset-0 mx-auto top-1/2 -translate-y-1/2 w-full max-w-md shadow-2xl flex flex-col h-[90vh]">
-
+            <div className="fixed inset-0 top-1/2 z-50 mx-auto flex h-[90vh] w-full max-w-md -translate-y-1/2 flex-col rounded-2xl bg-light shadow-2xl dark:bg-dark">
                 {/* Header */}
-                <div className="border-b dark:border-beta flex items-center justify-between p-4">
+                <div className="flex items-center justify-between border-b p-4 dark:border-beta">
                     <div className="w-6" />
                     <h2 className="text-base font-semibold text-beta dark:text-light">{student?.name?.toLowerCase()}</h2>
-                    <button
-                        onClick={closeModal}
-                        className="text-beta dark:text-light hover:text-alpha transition-colors"
-                    >
+                    <button onClick={closeModal} className="text-beta transition-colors hover:text-alpha dark:text-light">
                         <X size={24} />
                     </button>
                 </div>
@@ -54,30 +48,26 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                 <div className="flex border-b dark:border-beta">
                     <button
                         onClick={() => setActiveTab('followers')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'followers' ? 'text-beta dark:text-light' : 'text-beta dark:text-alpha'}`}
+                        className={`relative flex-1 py-3 text-sm font-semibold transition-colors ${activeTab === 'followers' ? 'text-beta dark:text-light' : 'text-beta dark:text-alpha'}`}
                     >
                         Followers ({student?.followers?.length || 0})
-                        {activeTab === 'followers' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-alpha" />
-                        )}
+                        {activeTab === 'followers' && <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-alpha" />}
                     </button>
                     <button
                         onClick={() => setActiveTab('following')}
-                        className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${activeTab === 'following' ? 'text-beta dark:text-light' : 'text-b dark:text-alpha'}`}
+                        className={`relative flex-1 py-3 text-sm font-semibold transition-colors ${activeTab === 'following' ? 'text-beta dark:text-light' : 'text-b dark:text-alpha'}`}
                     >
                         Following ({student?.following?.length || 0})
-                        {activeTab === 'following' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-alpha" />
-                        )}
+                        {activeTab === 'following' && <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-alpha" />}
                     </button>
                 </div>
 
                 {/* Search Bar */}
-                <div className="p-3 border-b dark:border-beta">
+                <div className="border-b p-3 dark:border-beta">
                     <input
                         type="text"
                         placeholder="Search"
-                        className="w-full bg-light dark:bg-dark_gray text-beta dark:text-light rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-alpha"
+                        className="w-full rounded-lg bg-light px-4 py-2 text-sm text-beta focus:ring-1 focus:ring-alpha focus:outline-none dark:bg-dark_gray dark:text-light"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -86,25 +76,23 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                 {/* User List */}
                 <div className="flex-1 overflow-y-auto">
                     {displayList.length === 0 ? (
-                        <p className="p-4 text-center text-b dark:text-light">No users found.</p>
+                        <p className="text-b p-4 text-center dark:text-light">No users found.</p>
                     ) : (
                         displayList.map((user) => (
                             <div
                                 key={user.id}
-                                className="flex items-center justify-between p-3 hover:bg-alpha/10 dark:hover:bg-alpha/20 transition-colors rounded-lg"
+                                className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-alpha/10 dark:hover:bg-alpha/20"
                             >
-                                <Link href={`/students/${user.id}`} className="flex items-center gap-3 flex-1 z-20">
+                                <Link href={`/students/${user.id}`} className="z-20 flex flex-1 items-center gap-3">
                                     <Avatar
-                                        className="w-14 h-14 overflow-hidden ring-2 ring-light dark:ring-dark_gray"
+                                        className="h-14 w-14 overflow-hidden ring-2 ring-light dark:ring-dark_gray"
                                         image={user.image}
                                         name={user.name}
                                         lastActivity={user.last_online || null}
                                         onlineCircleClass="hidden"
                                     />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-beta dark:text-light truncate">
-                                            {user.username || user.name}
-                                        </p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold text-beta dark:text-light">{user.username || user.name}</p>
                                     </div>
                                 </Link>
                                 {/* <button

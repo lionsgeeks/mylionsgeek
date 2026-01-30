@@ -1,32 +1,29 @@
-import React from 'react';
-import { Calendar, Users, BookOpen, Hash } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
-
 
 const LeftSideBar = ({ user }) => {
     //////console.log(user);
     const getField = (user) => {
         if (user?.field == 'media') {
-            return 'Content Creator'
+            return 'Content Creator';
         }
-        return 'Full Stack Developer'
-    }
+        return 'Full Stack Developer';
+    };
 
     return (
         <>
             {/* Left Sidebar - Fixed */}
-            <div className="lg:col-span-3  h-fit lg:sticky top-0 space-y-4">
+            <div className="top-0 h-fit space-y-4 lg:sticky lg:col-span-3">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-dark_gray rounded-lg  overflow-hidden">
-                    <div className="h-16 dark:bg-light bg-dark">
-                        <img src={`/storage/${user.cover}`} alt={user.name} className="w-full h-full object-cover bg" />
+                <div className="overflow-hidden rounded-lg bg-white dark:bg-dark_gray">
+                    <div className="h-16 bg-dark dark:bg-light">
+                        <img src={`/storage/${user.cover}`} alt={user.name} className="bg h-full w-full object-cover" />
                     </div>
                     <div className="px-4 pb-4">
                         <div className="relative -mt-8 mb-4">
                             <Link href={'/students/' + user.id}>
                                 <Avatar
-                                    className="w-20 h-20 rounded-full overflow-hidden"
+                                    className="h-20 w-20 overflow-hidden rounded-full"
                                     image={user?.image}
                                     name={user?.name}
                                     lastActivity={user?.last_online || null}
@@ -35,13 +32,9 @@ const LeftSideBar = ({ user }) => {
                             </Link>
                         </div>
                         <Link href={'/students/' + user.id}>
-                            <h3 className="font-semibold text-gray-900 dark:text-light text-sm">
-                                {user?.name}
-                            </h3>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-light">{user?.name}</h3>
                         </Link>
-                        <p className="text-xs text-dark dark:text-light mt-1">
-                            {getField(user)}
-                        </p>
+                        <p className="mt-1 text-xs text-dark dark:text-light">{getField(user)}</p>
                         {/* <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#2e3235]">
                             <div className="flex justify-between text-xs mb-2">
                                 <span className=" text-dark dark:text-light">Profile viewers</span>
@@ -77,7 +70,6 @@ const LeftSideBar = ({ user }) => {
                     </div>
                 </div> */}
             </div>
-
         </>
     );
 };

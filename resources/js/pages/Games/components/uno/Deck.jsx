@@ -1,24 +1,15 @@
-import React from 'react';
-
-export default function Deck({ 
-    deckLength, 
-    pendingDraw, 
-    currentPlayerIndex, 
-    assignedPlayerIndex, 
-    winner,
-    onDraw 
-}) {
+export default function Deck({ deckLength, pendingDraw, currentPlayerIndex, assignedPlayerIndex, winner, onDraw }) {
     const isMyTurn = currentPlayerIndex === assignedPlayerIndex;
     const canDraw = isMyTurn && !winner;
 
     return (
         <div className="flex flex-col items-center">
-            <div className="text-white font-semibold text-[10px] sm:text-xs mb-1.5 sm:mb-2">Draw</div>
+            <div className="mb-1.5 text-[10px] font-semibold text-white sm:mb-2 sm:text-xs">Draw</div>
             <button
                 onClick={onDraw}
                 disabled={!canDraw}
-                className={`relative w-12 h-16 sm:w-14 sm:h-20 md:w-16 md:h-22 rounded-md border-2 border-white shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden touch-manipulation ${
-                    canDraw ? 'active:scale-95 hover:scale-105 cursor-pointer ring-2 ring-yellow-400/50' : ''
+                className={`relative h-16 w-12 touch-manipulation overflow-hidden rounded-md border-2 border-white shadow-xl transition-all disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:w-14 md:h-22 md:w-16 ${
+                    canDraw ? 'cursor-pointer ring-2 ring-yellow-400/50 hover:scale-105 active:scale-95' : ''
                 }`}
                 style={{
                     transform: 'rotate(-3deg)',
@@ -27,7 +18,7 @@ export default function Deck({
                 <img
                     src="/assets/images/uno-card-images/backofthecardred.png"
                     alt="Draw pile"
-                    className="w-full h-full object-contain"
+                    className="h-full w-full object-contain"
                     onError={(e) => {
                         e.target.style.display = 'none';
                         const fallback = document.createElement('div');
@@ -37,18 +28,10 @@ export default function Deck({
                     }}
                 />
             </button>
-            <div className="text-white text-[9px] sm:text-[10px] mt-1 font-medium">{deckLength}</div>
+            <div className="mt-1 text-[9px] font-medium text-white sm:text-[10px]">{deckLength}</div>
             {pendingDraw > 0 && isMyTurn && (
-                <div className="text-red-300 text-[9px] sm:text-[10px] mt-0.5 font-bold bg-red-900/30 px-1.5 py-0.5 rounded">
-                    +{pendingDraw}
-                </div>
+                <div className="mt-0.5 rounded bg-red-900/30 px-1.5 py-0.5 text-[9px] font-bold text-red-300 sm:text-[10px]">+{pendingDraw}</div>
             )}
         </div>
     );
 }
-
-
-
-
-
-
