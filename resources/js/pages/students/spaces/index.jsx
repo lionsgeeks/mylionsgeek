@@ -71,31 +71,36 @@ export default function SpacesPage() {
     const hasUnlimitedAccess = normalizedRoles.some((role) => PRIVILEGED_ACCESS_ROLES.includes(role));
     const canAccessStudio = hasUnlimitedAccess || resolveAccessFlag('access_studio');
     const canAccessCowork = hasUnlimitedAccess || resolveAccessFlag('access_cowork');
-    
+
     // Check if user has media field (required for studio access requests)
     const userField = auth?.user?.field ? String(auth.user.field).toLowerCase().trim() : '';
     const isMediaStudent = userField === 'media';
 
-    const requireAccess = useCallback((target) => {
-        if (target === 'studio' && !canAccessStudio) {
-            if (isMediaStudent) {
-                setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
-                setAccessErrorType('studio');
-            } else {
-                setAccessError('Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.');
-                setAccessErrorType(null); // Don't allow request access for non-media students
+    const requireAccess = useCallback(
+        (target) => {
+            if (target === 'studio' && !canAccessStudio) {
+                if (isMediaStudent) {
+                    setAccessError('You do not currently have access to reserve studios. Please contact the staff for assistance.');
+                    setAccessErrorType('studio');
+                } else {
+                    setAccessError(
+                        'Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.',
+                    );
+                    setAccessErrorType(null); // Don't allow request access for non-media students
+                }
+                return false;
             }
-            return false;
-        }
-        if (target === 'cowork' && !canAccessCowork) {
-            setAccessError('You do not currently have access to reserve cowork tables. Please contact the staff for assistance.');
-            setAccessErrorType('cowork');
-            return false;
-        }
-        setAccessError('');
-        setAccessErrorType(null);
-        return true;
-    }, [canAccessStudio, canAccessCowork, isMediaStudent]);
+            if (target === 'cowork' && !canAccessCowork) {
+                setAccessError('You do not currently have access to reserve cowork tables. Please contact the staff for assistance.');
+                setAccessErrorType('cowork');
+                return false;
+            }
+            setAccessError('');
+            setAccessErrorType(null);
+            return true;
+        },
+        [canAccessStudio, canAccessCowork, isMediaStudent],
+    );
 
     const openStudioModal = useCallback(
         (payload) => {
@@ -461,7 +466,7 @@ export default function SpacesPage() {
 
     const handleRequestAccess = async (accessType) => {
         if (requestingAccess) return;
-        
+
         setRequestingAccess(true);
         try {
             const response = await fetch('/access-requests', {
@@ -572,7 +577,7 @@ export default function SpacesPage() {
                 {accessError && (
                     <div className="mb-4 flex items-start justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-100">
                         <span className="flex-1">{accessError}</span>
-                        <div className="flex items-center gap-2 ml-4">
+                        <div className="ml-4 flex items-center gap-2">
                             {accessErrorType && isMediaStudent && (
                                 <button
                                     type="button"
@@ -581,7 +586,7 @@ export default function SpacesPage() {
                                         setAccessError('');
                                         setAccessErrorType(null);
                                     }}
-                                    className="px-4 py-2 bg-alpha text-black rounded-lg font-semibold hover:bg-alpha/90 transition text-sm whitespace-nowrap"
+                                    className="rounded-lg bg-alpha px-4 py-2 text-sm font-semibold whitespace-nowrap text-black transition hover:bg-alpha/90"
                                 >
                                     Request Access
                                 </button>
@@ -607,17 +612,16 @@ export default function SpacesPage() {
                 )}
 
                 {type === 'studio' && !canAccessStudio && (
-                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100 flex items-center justify-between">
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
                         <span>
-                            {isMediaStudent 
+                            {isMediaStudent
                                 ? 'You currently do not have studio reservation access. Please contact the staff if you believe this is an error.'
-                                : 'Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.'
-                            }
+                                : 'Studio access requests are only available for students with the "media" field. Please contact the staff if you need studio access.'}
                         </span>
                         {isMediaStudent && (
                             <button
                                 onClick={() => handleRequestAccess('studio')}
-                                className="ml-4 px-4 py-2 bg-alpha text-black rounded-lg font-semibold hover:bg-alpha/90 transition"
+                                className="ml-4 rounded-lg bg-alpha px-4 py-2 font-semibold text-black transition hover:bg-alpha/90"
                             >
                                 Request Access
                             </button>
@@ -625,11 +629,11 @@ export default function SpacesPage() {
                     </div>
                 )}
                 {type === 'cowork' && !canAccessCowork && (
-                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100 flex items-center justify-between">
+                    <div className="mb-4 flex items-center justify-between rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/60 dark:bg-yellow-900/30 dark:text-yellow-100">
                         <span>You currently do not have cowork reservation access. Please contact the staff if you need access.</span>
                         <button
                             onClick={() => handleRequestAccess('cowork')}
-                            className="ml-4 px-4 py-2 bg-alpha text-black rounded-lg font-semibold hover:bg-alpha/90 transition"
+                            className="ml-4 rounded-lg bg-alpha px-4 py-2 font-semibold text-black transition hover:bg-alpha/90"
                         >
                             Request Access
                         </button>
@@ -637,22 +641,17 @@ export default function SpacesPage() {
                 )}
 
                 <div className="mb-6 flex justify-between">
-                <div>
-
-                    <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
-                    <p className="text-sm text-muted-foreground mt-1 hidden md:block">Browse available studios and cowork tables, or open a calendar to reserve.</p>
-                </div>
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Spaces</h1>
+                        <p className="mt-1 hidden text-sm text-muted-foreground md:block">
+                            Browse available studios and cowork tables, or open a calendar to reserve.
+                        </p>
+                    </div>
                     <div className="flex gap-2">
-                        <Button
-                            className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
-                            onClick={() => setIsExternalReservationModalOpen(true)}
-                        >
+                        <Button className="h-fit rounded-lg bg-alpha px-2 py-2 text-beta" onClick={() => setIsExternalReservationModalOpen(true)}>
                             External Reservation
                         </Button>
-                        <Button
-                            className="bg-alpha px-2 rounded-lg text-beta h-fit py-2"
-                            onClick={() => setIsAppointmentModalOpen(true)}
-                        >
+                        <Button className="h-fit rounded-lg bg-alpha px-2 py-2 text-beta" onClick={() => setIsAppointmentModalOpen(true)}>
                             Book an appointment
                         </Button>
                     </div>

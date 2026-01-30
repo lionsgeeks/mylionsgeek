@@ -93,8 +93,10 @@ export default function AdminReservationDetails({ reservation }) {
         }
         if (reservation.type === 'exterior' && reservation.studio_responsable_approved) {
             return (
-                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/20`}>
-                    <AlertCircle className="w-4 h-4" />
+                <span
+                    className={`inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-800 dark:text-blue-300`}
+                >
+                    <AlertCircle className="h-4 w-4" />
                     Pending (Studio Approved)
                 </span>
             );
@@ -332,7 +334,10 @@ export default function AdminReservationDetails({ reservation }) {
                                                 </Badge>
                                             )}
                                             {reservation.type === 'exterior' && reservation.studio_responsable_approved && !reservation.approved && (
-                                                <Badge variant="default" className="text-xs bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/20">
+                                                <Badge
+                                                    variant="default"
+                                                    className="border border-blue-500/20 bg-blue-500/15 text-xs text-blue-800 dark:text-blue-300"
+                                                >
                                                     Studio Approved
                                                 </Badge>
                                             )}

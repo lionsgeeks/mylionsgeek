@@ -33,10 +33,7 @@ const ReservationModal = ({
 }) => {
     // If studio is already provided, skip step 0. Otherwise, show studio selection if studios array is provided
     // For external reservations, skip studio selection
-    const availableStudios = useMemo(
-        () => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)),
-        [studios, blockedStudioIds]
-    );
+    const availableStudios = useMemo(() => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)), [studios, blockedStudioIds]);
     const shouldShowStudioSelection = !isExternal && studios.length > 0 && !studio?.id;
     const [currentStep, setCurrentStep] = useState(shouldShowStudioSelection ? 0 : 1);
     const [selectedMembers, setSelectedMembers] = useState([]);
@@ -58,7 +55,7 @@ const ReservationModal = ({
     const scrollContainerRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        studio_id: isExternal ? null : (selectedStudio?.id || studio?.id || ''),
+        studio_id: isExternal ? null : selectedStudio?.id || studio?.id || '',
         title: '',
         description: '',
         day: selectedRange?.day || '',
@@ -157,7 +154,7 @@ const ReservationModal = ({
 
     const handleClose = () => {
         reset();
-        setCurrentStep(isExternal ? 1 : (shouldShowStudioSelection ? 0 : 1));
+        setCurrentStep(isExternal ? 1 : shouldShowStudioSelection ? 0 : 1);
         setSelectedMembers([]);
         setSelectedEquipment([]);
         setSelectedStudio(isExternal ? null : studio);
@@ -344,9 +341,9 @@ const ReservationModal = ({
         const formData = {
             ...data,
             studio_id: isExternal ? null : data.studio_id,
-            type: isExternal ? 'exterior' : (data.type || 'studio'),
-            team_members: selectedMembers.map(m => m.id),
-            equipment: selectedEquipment.map(e => e.id),
+            type: isExternal ? 'exterior' : data.type || 'studio',
+            team_members: selectedMembers.map((m) => m.id),
+            equipment: selectedEquipment.map((e) => e.id),
         };
 
         post('/admin/reservations/store', {
@@ -501,20 +498,18 @@ const ReservationModal = ({
                             <div>
                                 <Label htmlFor="description">
                                     {isExternal ? 'Motif' : 'Description'}
-                                    {isExternal && <span className="text-red-500 ml-1">*</span>}
+                                    {isExternal && <span className="ml-1 text-red-500">*</span>}
                                 </Label>
                                 <Textarea
                                     className="mt-1 block w-full border-[#FFC801] bg-light focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:bg-dark"
                                     id="description"
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}
-                                    placeholder={isExternal ? "Enter motif (required)" : "Enter description (optional)"}
+                                    placeholder={isExternal ? 'Enter motif (required)' : 'Enter description (optional)'}
                                     rows={3}
                                     required={isExternal}
                                 />
-                                {errors.description && (
-                                    <p className="text-sm text-destructive mt-1">{errors.description}</p>
-                                )}
+                                {errors.description && <p className="mt-1 text-sm text-destructive">{errors.description}</p>}
                             </div>
 
                             <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
@@ -538,7 +533,7 @@ const ReservationModal = ({
                                         value={data.start}
                                         onChange={(e) => handleRangeFieldChange('start', e.target.value)}
                                         required
-                                        {...(!isExternal && { min: "08:00", max: "18:00" })}
+                                        {...(!isExternal && { min: '08:00', max: '18:00' })}
                                     />
                                 </div>
                                 <div>
@@ -550,7 +545,7 @@ const ReservationModal = ({
                                         value={data.end}
                                         onChange={(e) => handleRangeFieldChange('end', e.target.value)}
                                         required
-                                        {...(!isExternal && { min: "08:00", max: "18:00" })}
+                                        {...(!isExternal && { min: '08:00', max: '18:00' })}
                                     />
                                 </div>
                             </div>

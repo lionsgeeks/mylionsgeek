@@ -18,9 +18,9 @@ const ReservationDetailsModal = ({ reservation, loadingAction, setLoadingAction 
             return <Badge className="border-0 bg-green-500/90 text-white">Approved</Badge>;
         }
         if (reservation.type === 'exterior' && reservation.studio_responsable_approved) {
-            return <Badge className="bg-blue-500/90 text-white border-0">Pending (Studio Approved)</Badge>;
+            return <Badge className="border-0 bg-blue-500/90 text-white">Pending (Studio Approved)</Badge>;
         }
-        return <Badge className="bg-yellow-500/90 text-white border-0">Pending</Badge>;
+        return <Badge className="border-0 bg-yellow-500/90 text-white">Pending</Badge>;
     };
 
     const getTypeBadge = () => {
@@ -109,11 +109,11 @@ const ReservationDetailsModal = ({ reservation, loadingAction, setLoadingAction 
 
                                 {reservation.type === 'exterior' && (
                                     <div className="space-y-2">
-                                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2 font-medium uppercase tracking-wide">
+                                        <div className="mb-2 flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                             <User className="h-3.5 w-3.5 text-[var(--color-alpha)]" />
                                             Studio Responsable Approval
                                         </div>
-                                        <div className="text-sm font-semibold text-foreground leading-relaxed">
+                                        <div className="text-sm leading-relaxed font-semibold text-foreground">
                                             {reservation.studio_responsable_approved ? (
                                                 <Badge className="bg-green-500/15 text-green-700 dark:text-green-300">Approved</Badge>
                                             ) : (
