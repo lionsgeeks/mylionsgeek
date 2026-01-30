@@ -18,6 +18,8 @@ class Reservation extends Model
         'type',
         'approved',
         'approve_id',
+        'studio_responsable_approved',
+        'studio_responsable_approve_id',
         'canceled',
         'passed',
         'start_signed',
@@ -29,6 +31,7 @@ class Reservation extends Model
     
     protected $casts = [
         'approved' => 'boolean',
+        'studio_responsable_approved' => 'boolean',
         'canceled' => 'boolean',
         'passed' => 'boolean',
         'start_signed' => 'boolean',

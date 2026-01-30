@@ -196,6 +196,11 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
         const typeMatch = (r) => {
             if (!effectiveFilterType) return true;
             if (effectiveFilterType === 'exterior') return isExterior(r);
+            // For studio responsable, include both studio and exterior reservations
+            if (isStudioResponsable && effectiveFilterType === 'studio') {
+                const type = (r?.type || '').toLowerCase();
+                return type === 'studio' || type === 'exterior';
+            }
             return (r?.type || '').toLowerCase() === effectiveFilterType;
         };
         const statusMatch = (r) => {
@@ -219,7 +224,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
             );
         };
         return baseAll.filter((r) => typeMatch(r) && statusMatch(r) && searchMatch(r));
-    }, [baseAll, searchTerm, effectiveFilterType, filterStatus, isExterior]);
+    }, [baseAll, searchTerm, effectiveFilterType, filterStatus, isExterior, isStudioResponsable]);
 
     const filteredCoworkReservations = useMemo(() => {
         if (!searchTerm) return baseCowork;

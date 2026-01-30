@@ -29,10 +29,15 @@ const ReservationModal = ({
     teamMemberOptions = [],
     blockedStudioIds = [],
     onTimeChange,
+    isExternal = false,
 }) => {
     // If studio is already provided, skip step 0. Otherwise, show studio selection if studios array is provided
-    const availableStudios = useMemo(() => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)), [studios, blockedStudioIds]);
-    const shouldShowStudioSelection = studios.length > 0 && !studio?.id;
+    // For external reservations, skip studio selection
+    const availableStudios = useMemo(
+        () => studios.filter((s) => s.state && !blockedStudioIds.includes(s.id)),
+        [studios, blockedStudioIds]
+    );
+    const shouldShowStudioSelection = !isExternal && studios.length > 0 && !studio?.id;
     const [currentStep, setCurrentStep] = useState(shouldShowStudioSelection ? 0 : 1);
     const [selectedMembers, setSelectedMembers] = useState([]);
     const [selectedEquipment, setSelectedEquipment] = useState([]);
@@ -53,7 +58,7 @@ const ReservationModal = ({
     const scrollContainerRef = useRef(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        studio_id: selectedStudio?.id || studio?.id || '',
+        studio_id: isExternal ? null : (selectedStudio?.id || studio?.id || ''),
         title: '',
         description: '',
         day: selectedRange?.day || '',
@@ -61,15 +66,19 @@ const ReservationModal = ({
         end: selectedRange?.end || '',
         team_members: [],
         equipment: [],
+        type: isExternal ? 'exterior' : 'studio',
     });
 
     useEffect(() => {
-        if (selectedStudio?.id) {
+        if (isExternal) {
+            setData('studio_id', null);
+            setData('type', 'exterior');
+        } else if (selectedStudio?.id) {
             setData('studio_id', selectedStudio.id);
         } else if (!studio?.id) {
             setData('studio_id', '');
         }
-    }, [selectedStudio, studio, setData]);
+    }, [selectedStudio, studio, setData, isExternal]);
 
     useEffect(() => {
         if (studio?.id) {
@@ -148,10 +157,10 @@ const ReservationModal = ({
 
     const handleClose = () => {
         reset();
-        setCurrentStep(shouldShowStudioSelection ? 0 : 1);
+        setCurrentStep(isExternal ? 1 : (shouldShowStudioSelection ? 0 : 1));
         setSelectedMembers([]);
         setSelectedEquipment([]);
-        setSelectedStudio(studio);
+        setSelectedStudio(isExternal ? null : studio);
         setTimeError('');
         onClose();
     };
@@ -163,6 +172,10 @@ const ReservationModal = ({
     }, []);
 
     const checkStudioAvailability = useCallback(async () => {
+        // Skip availability check for external reservations
+        if (isExternal) {
+            return true;
+        }
         const activeStudioId = selectedStudio?.id || studio?.id || data.studio_id;
         if (!activeStudioId || !data.day || !data.start || !data.end) {
             return true;
@@ -204,7 +217,7 @@ const ReservationModal = ({
         } finally {
             setCheckingAvailability(false);
         }
-    }, [data.day, data.start, data.end, data.studio_id, selectedStudio, studio]);
+    }, [data.day, data.start, data.end, data.studio_id, selectedStudio, studio, isExternal]);
 
     const handleNext = async () => {
         const startTime = data.start ? parseFloat(data.start.replace(':', '.')) : null;
@@ -215,7 +228,8 @@ const ReservationModal = ({
             return;
         }
 
-        if (startTime < 8.0 || endTime > 18.0) {
+        // Time restrictions only apply to studio reservations, not exterior
+        if (!isExternal && (startTime < 8.0 || endTime > 18.0)) {
             setTimeError('Reservation time must be between 08:00 and 18:00.');
             return;
         }
@@ -231,7 +245,7 @@ const ReservationModal = ({
         }
 
         setTimeError('');
-        if (currentStep === 1) {
+        if (currentStep === 1 && !isExternal) {
             const available = await checkStudioAvailability();
             if (!available) {
                 return;
@@ -319,15 +333,20 @@ const ReservationModal = ({
             return;
         }
 
-        const available = await checkStudioAvailability();
-        if (!available) {
-            return;
+        // Only check studio availability for non-external reservations
+        if (!isExternal) {
+            const available = await checkStudioAvailability();
+            if (!available) {
+                return;
+            }
         }
 
         const formData = {
             ...data,
-            team_members: selectedMembers.map((m) => m.id),
-            equipment: selectedEquipment.map((e) => e.id),
+            studio_id: isExternal ? null : data.studio_id,
+            type: isExternal ? 'exterior' : (data.type || 'studio'),
+            team_members: selectedMembers.map(m => m.id),
+            equipment: selectedEquipment.map(e => e.id),
         };
 
         post('/admin/reservations/store', {
@@ -344,7 +363,7 @@ const ReservationModal = ({
             <DialogContent className="max-h-[85vh] max-w-3xl overflow-hidden border border-gray-300 bg-light p-0 shadow-2xl max-md:w-[95vw] dark:border-gray-600 dark:bg-dark">
                 <DialogHeader className="border-b border-gray-200 px-6 pt-6 pb-4 dark:border-gray-700">
                     <DialogTitle className="text-xl font-bold text-foreground">
-                        Reservation — Step {currentStep + 1}/{shouldShowStudioSelection ? 4 : 3}
+                        {isExternal ? 'External Reservation' : 'Reservation'} — Step {currentStep + 1}/{shouldShowStudioSelection ? 4 : 3}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -480,15 +499,22 @@ const ReservationModal = ({
                             </div>
 
                             <div>
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">
+                                    {isExternal ? 'Motif' : 'Description'}
+                                    {isExternal && <span className="text-red-500 ml-1">*</span>}
+                                </Label>
                                 <Textarea
                                     className="mt-1 block w-full border-[#FFC801] bg-light focus-visible:border-[#FFC801] focus-visible:ring-[1.5px] focus-visible:ring-[#FFC801] dark:bg-dark"
                                     id="description"
                                     value={data.description}
                                     onChange={(e) => setData('description', e.target.value)}
-                                    placeholder="Enter description (optional)"
+                                    placeholder={isExternal ? "Enter motif (required)" : "Enter description (optional)"}
                                     rows={3}
+                                    required={isExternal}
                                 />
+                                {errors.description && (
+                                    <p className="text-sm text-destructive mt-1">{errors.description}</p>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1">
@@ -512,8 +538,7 @@ const ReservationModal = ({
                                         value={data.start}
                                         onChange={(e) => handleRangeFieldChange('start', e.target.value)}
                                         required
-                                        min="08:00"
-                                        max="18:00"
+                                        {...(!isExternal && { min: "08:00", max: "18:00" })}
                                     />
                                 </div>
                                 <div>
@@ -525,8 +550,7 @@ const ReservationModal = ({
                                         value={data.end}
                                         onChange={(e) => handleRangeFieldChange('end', e.target.value)}
                                         required
-                                        min="08:00"
-                                        max="18:00"
+                                        {...(!isExternal && { min: "08:00", max: "18:00" })}
                                     />
                                 </div>
                             </div>

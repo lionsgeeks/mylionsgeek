@@ -12,7 +12,7 @@ import useAblyChannel from '@/hooks/useAblyChannel';
 import { cn } from '@/lib/utils';
 import { Check, Edit2, MessageSquare, Reply, Send, Smile, Trash2, X, XCircle } from 'lucide-react';
 
-const Chat = ({ projectId, messages: initialMessages = [] }) => {
+const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCount = 0 }) => {
     const page = usePage();
     const { auth } = page.props;
     const currentUserId = auth?.user?.id;
@@ -690,11 +690,21 @@ const Chat = ({ projectId, messages: initialMessages = [] }) => {
     };
 
     return (
-        <div className="fixed right-4 bottom-4">
-            <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <div className="fixed bottom-4 right-4">
+            <Sheet open={chatOpen} onOpenChange={(open) => {
+                setChatOpen(open);
+                if (open && onChatOpen) {
+                    onChatOpen();
+                }
+            }}>
                 <SheetTrigger asChild>
-                    <Button size="icon" className="h-12 w-12 rounded-full shadow-lg">
+                    <Button size="icon" className="h-12 w-12 rounded-full shadow-lg relative">
                         <MessageSquare className="h-6 w-6" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white dark:border-background">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="flex flex-col bg-gradient-to-b from-background to-muted/20 p-0 lg:h-screen lg:w-1/3 xl:w-1/4">

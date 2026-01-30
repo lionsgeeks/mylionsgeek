@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\Project;
+use App\Models\TaskAssignmentNotification;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Ably\AblyRest;
 
 class TaskController extends Controller
 {
@@ -51,6 +55,18 @@ class TaskController extends Controller
 
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
+
+            // Create notification if task is assigned to a user
+            $assignedTo = $task->assigned_to ? (int)$task->assigned_to : null;
+            $currentUserId = (int)Auth::id();
+            if ($assignedTo) {
+                Log::info('Creating task assignment notification on create', [
+                    'task_id' => $task->id,
+                    'assigned_to' => $assignedTo,
+                    'assigned_by' => $currentUserId
+                ]);
+                $this->createTaskAssignmentNotification($task, $assignedTo, $currentUserId);
+            }
 
             // Update project last activity
             $project = Project::find($request->project_id);
@@ -106,13 +122,32 @@ class TaskController extends Controller
                 $data['assigned_to'] = null;
             }
 
+            // Check if assigned_to is being changed
+            $oldAssignedTo = $task->assigned_to ? (int)$task->assigned_to : null;
+            $newAssignedTo = isset($data['assigned_to']) ? ($data['assigned_to'] ? (int)$data['assigned_to'] : null) : $oldAssignedTo;
+            $currentUserId = (int)Auth::id();
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
             $task->update($data);
+            
+            // Refresh task to get updated data
+            $task->refresh();
 
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
+
+            // Create notification if assigned_to changed (always notify when task is assigned)
+            if ($newAssignedTo && $newAssignedTo !== $oldAssignedTo) {
+                Log::info('Creating task assignment notification on update', [
+                    'task_id' => $task->id,
+                    'assigned_to' => $newAssignedTo,
+                    'assigned_by' => $currentUserId,
+                    'old_assigned_to' => $oldAssignedTo
+                ]);
+                $this->createTaskAssignmentNotification($task, $newAssignedTo, $currentUserId);
+            }
 
             // Update project last activity
             $task->project->update([
@@ -441,14 +476,42 @@ class TaskController extends Controller
             ]);
 
             $assignedTo = $request->assigned_to ?? null;
+            $oldAssignedTo = $task->assigned_to;
+            
+            // Convert to integers for proper comparison
+            $assignedTo = $assignedTo ? (int)$assignedTo : null;
+            $oldAssignedTo = $oldAssignedTo ? (int)$oldAssignedTo : null;
+            $currentUserId = (int)Auth::id();
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
             $task->update(['assigned_to' => $assignedTo]);
+            
+            // Refresh task to get updated data
+            $task->refresh();
 
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
+
+            // Create notification if assigned_to changed (always notify when task is assigned)
+            if ($assignedTo && $assignedTo !== $oldAssignedTo) {
+                Log::info('Creating task assignment notification', [
+                    'task_id' => $task->id,
+                    'assigned_to' => $assignedTo,
+                    'assigned_by' => $currentUserId,
+                    'old_assigned_to' => $oldAssignedTo
+                ]);
+                $this->createTaskAssignmentNotification($task, $assignedTo, $currentUserId);
+            } else {
+                Log::info('Skipping task assignment notification', [
+                    'task_id' => $task->id,
+                    'assigned_to' => $assignedTo,
+                    'old_assigned_to' => $oldAssignedTo,
+                    'current_user_id' => $currentUserId,
+                    'reason' => $assignedTo === $oldAssignedTo ? 'Assignment unchanged' : 'No assignment'
+                ]);
+            }
 
             return back()->with('success', 'Task assignment updated successfully!');
         } catch (\Exception $e) {
@@ -541,6 +604,99 @@ class TaskController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to delete comment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Create and broadcast task assignment notification
+     */
+    private function createTaskAssignmentNotification(Task $task, $assignedToUserId, $assignedByUserId)
+    {
+        try {
+            $assignedToUser = User::find($assignedToUserId);
+            $assignedByUser = User::find($assignedByUserId);
+
+            if (!$assignedToUser) {
+                Log::warning('Cannot create task assignment notification: assigned_to_user not found', [
+                    'assigned_to_user_id' => $assignedToUserId,
+                    'task_id' => $task->id
+                ]);
+                return;
+            }
+
+            if (!$assignedByUser) {
+                Log::warning('Cannot create task assignment notification: assigned_by_user not found', [
+                    'assigned_by_user_id' => $assignedByUserId,
+                    'task_id' => $task->id
+                ]);
+                return;
+            }
+
+            $project = $task->project;
+            $message = "{$assignedByUser->name} assigned you the task \"{$task->title}\"";
+            if ($project) {
+                $message .= " in project \"{$project->name}\"";
+            }
+
+            $path = "/admin/projects/{$task->project_id}?task={$task->id}";
+
+            // Create notification
+            $notification = TaskAssignmentNotification::create([
+                'task_id' => $task->id,
+                'assigned_to_user_id' => $assignedToUserId,
+                'assigned_by_user_id' => $assignedByUserId,
+                'message_notification' => $message,
+                'path' => $path,
+            ]);
+
+            Log::info('Task assignment notification created successfully', [
+                'notification_id' => $notification->id,
+                'task_id' => $task->id,
+                'assigned_to_user_id' => $assignedToUserId,
+                'assigned_by_user_id' => $assignedByUserId
+            ]);
+
+            // Broadcast notification via Ably for real-time updates
+            try {
+                $ablyKey = config('services.ably.key');
+                if ($ablyKey) {
+                    $ably = new AblyRest($ablyKey);
+                    $channel = $ably->channels->get("notifications:{$assignedToUserId}");
+                    
+                    $channel->publish('new_notification', [
+                        'id' => 'task-assignment-' . $notification->id,
+                        'type' => 'task_assignment',
+                        'sender_name' => $assignedByUser->name,
+                        'sender_image' => $assignedByUser->image,
+                        'message' => $message,
+                        'link' => $path,
+                        'icon_type' => 'briefcase',
+                        'created_at' => $notification->created_at->format('Y-m-d H:i:s'),
+                        'read_at' => null,
+                    ]);
+                    
+                    Log::info('Task assignment notification broadcasted via Ably', [
+                        'notification_id' => $notification->id,
+                        'channel' => "notifications:{$assignedToUserId}"
+                    ]);
+                } else {
+                    Log::warning('Ably key not configured, skipping real-time broadcast');
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to broadcast task assignment notification via Ably', [
+                    'error' => $e->getMessage(),
+                    'notification_id' => $notification->id ?? null,
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to create task assignment notification', [
+                'error' => $e->getMessage(),
+                'task_id' => $task->id ?? null,
+                'assigned_to_user_id' => $assignedToUserId ?? null,
+                'assigned_by_user_id' => $assignedByUserId ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 }

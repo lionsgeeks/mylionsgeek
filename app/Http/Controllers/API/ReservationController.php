@@ -29,8 +29,8 @@ class ReservationController extends Controller
         $allFormation = Formation::orderBy('created_at', 'desc')->get();
 
         return response()->json([
-            "users" => $allUsers,
-            "formations" => $allFormation
+            "users" => $allUsers->toArray(),
+            "formations" => $allFormation->toArray()
         ]);
     }
     public function index(Request $request)
@@ -61,7 +61,9 @@ class ReservationController extends Controller
                     'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
                     'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
                 ];
-            });
+            })
+            ->values()
+            ->toArray();
 
         return response()->json(['reservations' => $reservations]);
     }
@@ -92,7 +94,9 @@ class ReservationController extends Controller
                     'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
                     'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
                 ];
-            });
+            })
+            ->values()
+            ->toArray();
 
         return response()->json(['reservations' => $reservations]);
     }
@@ -363,7 +367,9 @@ class ReservationController extends Controller
                     'type' => $e->equipmentType->name ?? 'other',
                     'image' => $img ? asset($img) : null,
                 ];
-            });
+            })
+            ->values()
+            ->toArray();
 
         return response()->json($equipment);
     }
@@ -391,7 +397,9 @@ class ReservationController extends Controller
                 'name' => $user->name,
                 'image' => $img ? asset($img) : null,
             ];
-        });
+        })
+        ->values()
+        ->toArray();
 
         return response()->json($users);
     }

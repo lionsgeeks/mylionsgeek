@@ -59,6 +59,13 @@ class ProfileController extends Controller
         // Always include last_online for profile display
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
 
+        // Add followers and following counts
+        $userData['followers_count'] = $user->followers()->count();
+        $userData['following_count'] = $user->following()->count();
+        
+        // Add posts count
+        $userData['posts_count'] = $user->posts()->count();
+
         return response()->json($userData);
     }
 
@@ -106,6 +113,13 @@ class ProfileController extends Controller
 
         // Always include last_online
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
+
+        // Add followers and following counts
+        $userData['followers_count'] = $user->followers()->count();
+        $userData['following_count'] = $user->following()->count();
+        
+        // Add posts count
+        $userData['posts_count'] = $user->posts()->count();
 
         // Sensitive fields - only for admins
         if ($isAdmin) {
