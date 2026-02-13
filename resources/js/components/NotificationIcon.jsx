@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
-import { Bell, Briefcase, Calendar, CheckCircle, Clock, MessageSquare, User, Users, XCircle } from 'lucide-react';
+import { Bell, Briefcase, Calendar, CheckCircle, Clock, Lock, MessageSquare, User, Users, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 export default function NotificationIcon() {
@@ -253,6 +253,44 @@ export default function NotificationIcon() {
         }
     };
 
+    // Handle confirm deny - moved outside the map loop to be accessible from modal
+    const handleConfirmDeny = async () => {
+        if (!denyNotificationId || !denialReason.trim()) {
+            alert('Please provide a reason for denial');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/access-requests/${denyNotificationId}/deny`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    denial_reason: denialReason,
+                }),
+            });
+
+            if (response.ok) {
+                const notificationToMark = notifications.find((n) => n.notificationId === denyNotificationId);
+                if (notificationToMark) {
+                    markAsRead(notificationToMark);
+                }
+                setDenyModalOpen(false);
+                setDenyNotificationId(null);
+                setDenialReason('');
+                fetchNotifications();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to deny access request');
+            }
+        } catch (error) {
+            console.error('Failed to deny access:', error);
+            alert('An error occurred. Please try again.');
+        }
+    };
+
     const formatTimestamp = (date) => {
         if (!date) return '';
         try {
@@ -376,45 +414,8 @@ export default function NotificationIcon() {
 
                                             // Open modal to get denial reason
                                             setDenyNotificationId(notification.notificationId);
+                                            setIsOpen(false);
                                             setDenyModalOpen(true);
-                                        };
-
-                                        const handleConfirmDeny = async () => {
-                                            if (!denyNotificationId || !denialReason.trim()) {
-                                                alert('Please provide a reason for denial');
-                                                return;
-                                            }
-
-                                            try {
-                                                const response = await fetch(`/admin/access-requests/${denyNotificationId}/deny`, {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                        'X-CSRF-TOKEN':
-                                                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                                    },
-                                                    body: JSON.stringify({
-                                                        denial_reason: denialReason,
-                                                    }),
-                                                });
-
-                                                if (response.ok) {
-                                                    const notificationToMark = notifications.find((n) => n.notificationId === denyNotificationId);
-                                                    if (notificationToMark) {
-                                                        markAsRead(notificationToMark);
-                                                    }
-                                                    setDenyModalOpen(false);
-                                                    setDenyNotificationId(null);
-                                                    setDenialReason('');
-                                                    fetchNotifications();
-                                                } else {
-                                                    const data = await response.json();
-                                                    alert(data.error || 'Failed to deny access request');
-                                                }
-                                            } catch (error) {
-                                                console.error('Failed to deny access:', error);
-                                                alert('An error occurred. Please try again.');
-                                            }
                                         };
 
                                         const NotificationContent = (
