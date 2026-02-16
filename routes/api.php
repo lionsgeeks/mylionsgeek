@@ -41,6 +41,14 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/reservations.php';
     require __DIR__ . '/api/leaderboard.php';
     require __DIR__ . '/api/search.php';
+    require __DIR__ . '/api/training.php';
+    
+    // Push token endpoint
+    Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
+    
+    // Test push notification endpoints (for debugging)
+    Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test']);
+    Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status']);
     
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {
@@ -56,4 +64,13 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
         Route::get('/user/{userId}/posts', [ChatController::class, 'getUserPosts'])->name('user.posts');
         Route::get('/ably-token', [ChatController::class, 'getAblyToken'])->name('ably-token');
     });
+
+    // Voice call routes
+    Route::get('/call/ably-token', [\App\Http\Controllers\API\CallController::class, 'getAblyToken'])->name('call.ably-token');
+    Route::post('/calls/initiate', [\App\Http\Controllers\API\CallController::class, 'initiate'])->name('calls.initiate');
+    Route::get('/calls/history', [\App\Http\Controllers\API\CallController::class, 'history'])->name('calls.history');
+    Route::get('/calls/{id}', [\App\Http\Controllers\API\CallController::class, 'show'])->name('calls.show');
+    Route::post('/calls/{id}/accept', [\App\Http\Controllers\API\CallController::class, 'accept'])->name('calls.accept');
+    Route::post('/calls/{id}/reject', [\App\Http\Controllers\API\CallController::class, 'reject'])->name('calls.reject');
+    Route::post('/calls/{id}/end', [\App\Http\Controllers\API\CallController::class, 'end'])->name('calls.end');
 });

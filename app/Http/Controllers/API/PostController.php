@@ -45,7 +45,14 @@ class PostController extends Controller
                                         if (strpos($image, 'http') === 0) {
                                             $imageUrls[] = $image;
                                         } else {
-                                            $imageUrls[] = url('storage/' . ltrim((string)$image, '/'));
+                                            // Check if image path already includes img/posts
+                                            $imagePath = ltrim((string)$image, '/');
+                                            if (strpos($imagePath, 'img/posts/') !== false) {
+                                                $imageUrls[] = url('storage/' . $imagePath);
+                                            } else {
+                                                // If it's just a filename, use /storage/img/posts/
+                                                $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                                            }
                                         }
                                     }
                                 }
@@ -70,7 +77,16 @@ class PostController extends Controller
                                 'user' => [
                                     'id' => $postUser->id ?? null,
                                     'name' => $postUser->name ?? 'User',
-                                    'avatar' => ($postUser && $postUser->image) ? url('storage/' . ltrim((string)$postUser->image, '/')) : null,
+                                    'avatar' => ($postUser && $postUser->image) ? (function() use ($postUser) {
+                                        $imagePath = ltrim((string)$postUser->image, '/');
+                                        // Check if image path already includes img/profile
+                                        if (strpos($imagePath, 'img/profile/') !== false) {
+                                            return url('storage/' . $imagePath);
+                                        } else {
+                                            // If it's just a filename, use /storage/img/profile/
+                                            return url('storage/img/profile/' . $imagePath);
+                                        }
+                                    })() : null,
                                     'image' => $postUser->image ?? null,
                                 ],
                                 'likes' => $post->likes ? $post->likes->count() : 0,
@@ -143,7 +159,16 @@ class PostController extends Controller
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'avatar' => $user->image ? url('storage/' . $user->image) : null,
+                    'avatar' => $user->image ? (function() use ($user) {
+                        $imagePath = ltrim((string)$user->image, '/');
+                        // Check if image path already includes img/profile
+                        if (strpos($imagePath, 'img/profile/') !== false) {
+                            return url('storage/' . $imagePath);
+                        } else {
+                            // If it's just a filename, use /storage/img/profile/
+                            return url('storage/img/profile/' . $imagePath);
+                        }
+                    })() : null,
                     'image' => $user->image ?? null,
                 ],
                 'created_at' => now()->toDateTimeString(),

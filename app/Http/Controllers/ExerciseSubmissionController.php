@@ -153,7 +153,7 @@ class ExerciseSubmissionController extends Controller
         }
 
         // Create the notification with link to the training
-        ExerciseReviewNotification::create([
+        $notification = ExerciseReviewNotification::create([
             'submission_id' => $submission->id,
             'user_id' => $user->id,
             'coach_id' => $coach->id,
@@ -161,6 +161,35 @@ class ExerciseSubmissionController extends Controller
             'message_notification' => "{$user->name} asked you to review his exercise: {$exercice->title}",
             'path' => "/trainings/{$training->id}",
         ]);
+
+        // Send Expo push notification
+        try {
+            $coach->refresh();
+            if ($coach->expo_push_token) {
+                $pushService = app(\App\Services\ExpoPushNotificationService::class);
+                \Illuminate\Support\Facades\Log::info('Sending push notification for exercise review', [
+                    'coach_id' => $coach->id,
+                    'user_id' => $user->id,
+                ]);
+                $success = $pushService->sendToUser($coach, 'Exercise Review Request', "{$user->name} asked you to review his exercise: {$exercice->title}", [
+                    'type' => 'exercise_review',
+                    'notification_id' => $notification->id,
+                    'submission_id' => $submission->id,
+                    'exercice_id' => $exercice->id,
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                ]);
+                if (!$success) {
+                    \Illuminate\Support\Facades\Log::warning('Push notification send returned false for exercise review');
+                }
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send Expo push notification for exercise review', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'notification_id' => $notification->id ?? null,
+            ]);
+        }
 
         return back()->with('success', 'Review request sent to your coach!');
     }
