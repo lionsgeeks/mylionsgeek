@@ -313,7 +313,7 @@ public function save(Request $request)
             'user_ids.*' => 'required|exists:users,id',
             'roles' => 'nullable|array',
             'roles.*' => 'nullable|string',
-            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing',
+            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing,Certified',
         ]);
 
         $users = User::whereIn('id', $validated['user_ids'])

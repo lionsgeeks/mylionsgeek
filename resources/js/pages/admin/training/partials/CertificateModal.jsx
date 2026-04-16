@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
+import { router } from '@inertiajs/react';
 import { Award, Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -131,6 +132,19 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
             const zipBlob = await zip.generateAsync({ type: 'blob' });
             saveAs(zipBlob, 'certificats.zip');
+
+            // Mark every printed student as "Certified" via the bulk-update route
+            router.post(
+                `/trainings/${training.id}/bulk-update-users`,
+                { user_ids: selectedIds, status: 'Certified' },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onError: (errors) => {
+                        console.error('Failed to mark students as Certified:', errors);
+                    },
+                },
+            );
 
             // Close modal after successful generation + download trigger
             setSelectedIds([]);
