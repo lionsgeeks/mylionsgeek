@@ -61,17 +61,26 @@ class FormationController extends Controller
     public function show(Formation $training)
 {
    $usersNull = User::whereNull('formation_id')->get();
-   
+
    // Get courses that belong to this training through exercises
    $courses = \App\Models\Course::whereHas('exercices', function($query) use ($training) {
        $query->where('training_id', $training->id);
    })->with('exercices')->get();
-   
-    return inertia('admin/training/[id]', [
-        'training' => $training->load('coach', 'users'),
-        'usersNull'=>$usersNull,
-        'courses' => $courses
-    ]);
+
+   $training->load('coach', 'users');
+
+   // Attach the discipline score to every enrolled user so the frontend
+   // can display the attendance percentage without extra API calls.
+   $disciplineService = new \App\Services\DisciplineService();
+   $training->users->each(function (User $user) use ($disciplineService) {
+       $user->discipline = $disciplineService->calculateDisciplineScore($user);
+   });
+
+   return inertia('admin/training/[id]', [
+       'training'  => $training,
+       'usersNull' => $usersNull,
+       'courses'   => $courses,
+   ]);
 }
 
 

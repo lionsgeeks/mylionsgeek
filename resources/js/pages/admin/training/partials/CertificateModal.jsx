@@ -9,6 +9,28 @@ import { router } from '@inertiajs/react';
 import { Award, Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+/**
+ * Coloured pill showing the student's attendance/discipline score.
+ * Green ≥ 80 · Amber 60–79 · Red < 60
+ */
+const AttendanceBadge = ({ score }) => {
+    const pct = Math.round(score);
+    const colour =
+        pct >= 80
+            ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-green-500/30'
+            : pct >= 60
+              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30'
+              : 'bg-red-500/15 text-red-600 dark:text-red-400 ring-red-500/30';
+    return (
+        <span
+            className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`}
+            title="Taux de présence"
+        >
+            {pct}%
+        </span>
+    );
+};
+
 // Maps a student's field/role to the display title on the certificate
 const resolveTitle = (field) => {
     const normalized = String(field || '').toLowerCase();
@@ -241,7 +263,12 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                             )}
                                         </div>
 
-                                        {/* Selected badge */}
+                                        {/* Attendance / discipline badge */}
+                                        {student.discipline != null && (
+                                            <AttendanceBadge score={student.discipline} />
+                                        )}
+
+                                        {/* Selected checkmark */}
                                         {checked && (
                                             <span className="flex-shrink-0 rounded-full bg-alpha/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-alpha uppercase">
                                                 ✓
