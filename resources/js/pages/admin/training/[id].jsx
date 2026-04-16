@@ -19,6 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import ExercicesModal from "@/components/EXP'S/exersices_modal";
 import CoursesModal from "@/components/EXP'S/courses_modal";
+import CertificateModal from './partials/CertificateModal';
 
 export default function Show({ training, usersNull, courses = [] }) {
     const { auth } = usePage().props;
@@ -59,6 +60,7 @@ export default function Show({ training, usersNull, courses = [] }) {
     const [bulkRoles, setBulkRoles] = useState([]);
     const [bulkStatus, setBulkStatus] = useState('');
     const [qrCodeDate, setQrCodeDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showCertificateModal, setShowCertificateModal] = useState(false);
 
 
 
@@ -477,6 +479,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                         >
                             <Settings size={16} />
                             <span>Update Users</span>
+                        </Button>
+                        <Button
+                            onClick={() => setShowCertificateModal(true)}
+                            className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
+                        >
+                            <Award size={16} />
+                            <span className="hidden sm:inline">Certificats</span>
                         </Button>
 
                         {/* Play Dropdown */}
@@ -1292,6 +1301,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                         </div>
                     </DialogContent>
                 </Dialog>
+
+                {/* Certificate Generation Modal */}
+                <CertificateModal
+                    open={showCertificateModal}
+                    onOpenChange={setShowCertificateModal}
+                    training={training}
+                />
 
                 {/* Bulk Update Users Modal */}
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>
