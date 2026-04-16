@@ -31,6 +31,12 @@ export default function RecruiterStudentsPagination({ meta }) {
     const last = meta.last_page;
     const items = buildPageItems(current, last);
 
+    const hrefForPage = (page) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', String(page));
+        return url.pathname + url.search;
+    };
+
     const pageLinkClass = (active) =>
         cn(
             buttonVariants({
@@ -57,7 +63,7 @@ export default function RecruiterStudentsPagination({ meta }) {
                             <span>Previous</span>
                         </span>
                     ) : (
-                        <Link href={`/recruiter/students?page=${current - 1}`} preserveScroll preserveState className={navBtnClass(false)}>
+                        <Link href={hrefForPage(current - 1)} preserveScroll preserveState className={navBtnClass(false)}>
                             <ChevronLeft className="size-4" />
                             <span>Previous</span>
                         </Link>
@@ -72,7 +78,7 @@ export default function RecruiterStudentsPagination({ meta }) {
                     ) : (
                         <PaginationItem key={item}>
                             <Link
-                                href={`/recruiter/students?page=${item}`}
+                                href={hrefForPage(item)}
                                 preserveScroll
                                 preserveState
                                 className={pageLinkClass(item === current)}
@@ -91,7 +97,7 @@ export default function RecruiterStudentsPagination({ meta }) {
                             <ChevronRight className="size-4" />
                         </span>
                     ) : (
-                        <Link href={`/recruiter/students?page=${current + 1}`} preserveScroll preserveState className={navBtnClass(false)}>
+                        <Link href={hrefForPage(current + 1)} preserveScroll preserveState className={navBtnClass(false)}>
                             <span>Next</span>
                             <ChevronRight className="size-4" />
                         </Link>

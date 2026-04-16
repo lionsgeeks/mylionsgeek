@@ -14,9 +14,18 @@ class RecruiterStudentController extends Controller
 {
     /** Staff / elevated roles: never listed or opened from the recruiter student directory. */
     private const EXCLUDED_ROLES_FROM_DIRECTORY = ['admin', 'coach', 'pro', 'moderateur'];
+    private const FIELD_FILTERS = ['coding', 'media'];
 
     public function index(Request $request): Response
     {
+        $q = $request->query('q');
+        $q = is_string($q) ? trim($q) : '';
+        $field = $request->query('field');
+        $field = is_string($field) ? trim($field) : '';
+        if (! in_array($field, self::FIELD_FILTERS, true)) {
+            $field = '';
+        }
+
         $students = User::query()
             ->with('formation:id,name')
             ->whereJsonContains('role', 'student')
@@ -27,6 +36,15 @@ class RecruiterStudentController extends Controller
         foreach (self::EXCLUDED_ROLES_FROM_DIRECTORY as $role) {
             $students->whereJsonDoesntContain('role', $role);
         }
+
+        if ($q !== '') {
+            $students->where('name', 'like', '%'.$q.'%');
+        }
+
+        if ($field !== '') {
+            $students->where('field', $field);
+        }
+
         $students = $students
             ->orderBy('name')
             ->paginate(12)
@@ -43,6 +61,10 @@ class RecruiterStudentController extends Controller
 
         return Inertia::render('recruiter/students/index', [
             'students' => $students,
+            'filters' => [
+                'q' => $q,
+                'field' => $field,
+            ],
         ]);
     }
 

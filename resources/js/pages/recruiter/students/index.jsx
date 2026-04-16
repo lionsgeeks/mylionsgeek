@@ -1,14 +1,52 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import RecruiterStudentsPagination from '@/pages/recruiter/students/partials/RecruiterStudentsPagination';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { GraduationCap } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-export default function RecruiterStudentsIndex({ students }) {
+export default function RecruiterStudentsIndex({ students, filters }) {
     const rows = students?.data ?? [];
     const meta = students?.meta;
+    const initialQ = filters?.q ?? '';
+    const initialField = filters?.field ?? '';
+
+    const [q, setQ] = useState(initialQ);
+    const [field, setField] = useState(initialField);
+
+    // Keep state in sync when navigating with pagination/back.
+    const syncKey = JSON.stringify({ q: initialQ, field: initialField });
+    useEffect(() => {
+        const payload = JSON.parse(syncKey);
+        setQ(payload.q ?? '');
+        setField(payload.field ?? '');
+    }, [syncKey]);
+
+    const applyFilters = useCallback((nextQ, nextField) => {
+        router.get(
+            '/recruiter/students',
+            {
+                q: nextQ || undefined,
+                field: nextField || undefined,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    }, []);
+
+    const fieldLabel = useMemo(() => {
+        if (field === 'coding') return 'Full Stack Developer';
+        if (field === 'media') return 'Media / Content Creator';
+        return 'All';
+    }, [field]);
 
     return (
         <AppLayout>
@@ -23,6 +61,43 @@ export default function RecruiterStudentsIndex({ students }) {
                         Browse students only (excluding status &quot;Studying&quot; and accounts that also have admin, coach, pro, or
                         moderateur roles). Select a card to open their full profile.
                     </p>
+                </div>
+
+                <div className="grid gap-4 rounded-lg border border-alpha/15 bg-white p-4 dark:border-light/10 dark:bg-dark_gray sm:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="student-search">Search by name</Label>
+                        <Input
+                            id="student-search"
+                            value={q}
+                            onChange={(e) => {
+                                const next = e.target.value;
+                                setQ(next);
+                                applyFilters(next, field);
+                            }}
+                            placeholder="Type a student name…"
+                            className="border-alpha/30 dark:border-light/15"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Filter by track</Label>
+                        <Select
+                            value={field || '__all__'}
+                            onValueChange={(v) => {
+                                const next = v === '__all__' ? '' : v;
+                                setField(next);
+                                applyFilters(q, next);
+                            }}
+                        >
+                            <SelectTrigger className="border-alpha/30 dark:border-light/15">
+                                <SelectValue placeholder={fieldLabel} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__all__">All</SelectItem>
+                                <SelectItem value="coding">Full Stack Developer</SelectItem>
+                                <SelectItem value="media">Media / Content Creator</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 {rows.length === 0 ? (
