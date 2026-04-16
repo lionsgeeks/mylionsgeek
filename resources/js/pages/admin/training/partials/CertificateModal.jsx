@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf';
 import { Award, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar } from '@/components/ui/avatar';
 import {
     Dialog,
     DialogContent,
@@ -163,108 +164,146 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-w-lg bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-                        <Award className="w-5 h-5 text-alpha" />
+            <DialogContent className="w-[95vw] max-w-3xl bg-light text-dark dark:bg-dark dark:text-light border border-alpha/20 p-0 overflow-hidden">
+
+                {/* ── Header ── */}
+                <div className="px-6 pt-6 pb-4 border-b border-alpha/10">
+                    <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                        <Award className="w-6 h-6 text-alpha flex-shrink-0" />
                         Imprimer Certificats
                     </DialogTitle>
-                    <DialogDescription className="text-dark/60 dark:text-light/60">
-                        Sélectionnez les étudiants qui ont complété la formation pour générer leurs
-                        certificats.
+                    <DialogDescription className="mt-1 text-sm text-dark/60 dark:text-light/60">
+                        Sélectionnez les étudiants qui ont complété{' '}
+                        <span className="font-semibold text-dark dark:text-light">
+                            {training.name ?? training.title}
+                        </span>{' '}
+                        pour générer leurs certificats.
                     </DialogDescription>
-                </DialogHeader>
 
-                {/* Select All toggle */}
-                <div className="flex items-center justify-between py-2 border-b border-alpha/10">
-                    <span className="text-sm font-semibold text-dark/70 dark:text-light/70">
-                        {selectedIds.length} / {students.length} sélectionné
-                        {selectedIds.length !== 1 ? 's' : ''}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={toggleSelectAll}
-                        className="text-sm font-medium text-alpha hover:underline"
-                    >
-                        {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
-                    </button>
+                    {/* Select-all bar */}
+                    <div className="flex items-center justify-between mt-4">
+                        <span className="text-sm font-medium text-dark/60 dark:text-light/60">
+                            <span className="text-alpha font-bold">{selectedIds.length}</span>
+                            {' / '}
+                            {students.length} sélectionné{selectedIds.length !== 1 ? 's' : ''}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={toggleSelectAll}
+                            className="text-sm font-semibold text-alpha hover:underline"
+                        >
+                            {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Student list */}
-                <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                {/* ── Student grid ── */}
+                <div className="px-6 py-4 overflow-y-auto max-h-[55vh]">
                     {students.length === 0 ? (
-                        <p className="text-center py-8 text-dark/50 dark:text-light/50 text-sm">
-                            Aucun étudiant inscrit à cette formation.
-                        </p>
+                        <div className="flex flex-col items-center justify-center py-16 gap-3 text-dark/40 dark:text-light/40">
+                            <Award className="w-12 h-12 opacity-30" />
+                            <p className="text-sm">Aucun étudiant inscrit à cette formation.</p>
+                        </div>
                     ) : (
-                        students.map((student) => {
-                            const checked = selectedIds.includes(student.id);
-                            const displayTitle = resolveTitle(
-                                student.field ?? student.specialite ?? student.domain ?? '',
-                            );
-                            return (
-                                <label
-                                    key={student.id}
-                                    htmlFor={`cert-student-${student.id}`}
-                                    className={`flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-colors ${
-                                        checked
-                                            ? 'bg-alpha/10 border border-alpha/30'
-                                            : 'hover:bg-alpha/5 border border-transparent'
-                                    }`}
-                                >
-                                    <Checkbox
-                                        id={`cert-student-${student.id}`}
-                                        checked={checked}
-                                        onCheckedChange={() => toggleStudent(student.id)}
-                                        className="data-[state=checked]:bg-alpha data-[state=checked]:border-alpha"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-sm truncate text-dark dark:text-light">
-                                            {student.name}
-                                        </p>
-                                        {displayTitle && (
-                                            <p className="text-xs text-dark/55 dark:text-light/55 truncate">
-                                                {displayTitle}
+                        <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
+                            {students.map((student) => {
+                                const checked = selectedIds.includes(student.id);
+                                const displayTitle = resolveTitle(
+                                    student.field ?? student.specialite ?? student.domain ?? '',
+                                );
+                                return (
+                                    <label
+                                        key={student.id}
+                                        htmlFor={`cert-student-${student.id}`}
+                                        className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border transition-all duration-150 ${
+                                            checked
+                                                ? 'bg-alpha/10 border-alpha/40 shadow-sm'
+                                                : 'bg-light dark:bg-dark border-alpha/10 hover:border-alpha/30 hover:bg-alpha/5'
+                                        }`}
+                                    >
+                                        {/* Checkbox */}
+                                        <Checkbox
+                                            id={`cert-student-${student.id}`}
+                                            checked={checked}
+                                            onCheckedChange={() => toggleStudent(student.id)}
+                                            className="data-[state=checked]:bg-alpha data-[state=checked]:border-alpha flex-shrink-0 w-5 h-5"
+                                        />
+
+                                        {/* Avatar */}
+                                        <Avatar
+                                            name={student.name}
+                                            image={student.image ?? null}
+                                            lastActivity={student.last_activity ?? null}
+                                            className="w-12 h-12 flex-shrink-0 text-base"
+                                            onlineCircleClass="w-3.5 h-3.5"
+                                        />
+
+                                        {/* Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-sm leading-tight truncate text-dark dark:text-light">
+                                                {student.name}
                                             </p>
+                                            {displayTitle && (
+                                                <p className="text-xs mt-0.5 truncate text-dark/55 dark:text-light/55">
+                                                    {displayTitle}
+                                                </p>
+                                            )}
+                                            {student.email && (
+                                                <p className="text-xs mt-0.5 truncate text-dark/40 dark:text-light/40">
+                                                    {student.email}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Selected badge */}
+                                        {checked && (
+                                            <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-alpha bg-alpha/10 px-2 py-0.5 rounded-full">
+                                                ✓
+                                            </span>
                                         )}
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-alpha/20 text-dark dark:text-light flex items-center justify-center font-bold text-sm flex-shrink-0">
-                                        {student.name.charAt(0).toUpperCase()}
-                                    </div>
-                                </label>
-                            );
-                        })
+                                    </label>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
 
-                <DialogFooter className="gap-2 pt-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleOpenChange(false)}
-                        disabled={isGenerating}
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={handleConfirm}
-                        disabled={selectedIds.length === 0 || isGenerating}
-                        className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isGenerating ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Génération…
-                            </>
-                        ) : (
-                            <>
-                                <Award className="w-4 h-4" />
-                                Confirmer ({selectedIds.length})
-                            </>
-                        )}
-                    </Button>
-                </DialogFooter>
+                {/* ── Footer ── */}
+                <div className="px-6 py-4 border-t border-alpha/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <p className="text-xs text-dark/50 dark:text-light/50 hidden sm:block">
+                        Un PDF par étudiant · téléchargé en .zip
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleOpenChange(false)}
+                            disabled={isGenerating}
+                            className="flex-1 sm:flex-none"
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleConfirm}
+                            disabled={selectedIds.length === 0 || isGenerating}
+                            className="flex-1 sm:flex-none gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Génération…
+                                </>
+                            ) : (
+                                <>
+                                    <Award className="w-4 h-4" />
+                                    Confirmer ({selectedIds.length})
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+
             </DialogContent>
         </Dialog>
     );
