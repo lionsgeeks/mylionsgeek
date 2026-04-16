@@ -36,6 +36,13 @@ const getRecruiterNavItems = () => [
         authorizedRoles: ['recruiter'],
     },
     {
+        id: 'recruiter_students',
+        title: 'Students',
+        href: '/recruiter/students',
+        icon: GraduationCap,
+        authorizedRoles: ['recruiter'],
+    },
+    {
         id: 'recruiter_applications',
         title: 'Applications',
         href: '/recruiter/applications',

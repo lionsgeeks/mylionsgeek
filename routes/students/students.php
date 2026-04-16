@@ -13,7 +13,7 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::get('/feed', [StudentController::class, 'index'])->name('student.feed');
 });
 
-// Recruiters may browse and apply to jobs only — not student social profiles.
+// Recruiters may browse and apply to jobs. Student directory / profiles for recruiters live under /recruiter/students.
 Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable,responsable_studio,coworker,moderateur,super_admin,recruiter'])->prefix('students')->group(function () {
     Route::get('/jobs', [StudentJobController::class, 'index'])->name('student.jobs.index');
     Route::get('/jobs/{job}', [StudentJobController::class, 'show'])->whereNumber('job')->name('student.jobs.show');

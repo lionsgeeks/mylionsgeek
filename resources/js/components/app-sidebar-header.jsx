@@ -11,9 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Home } from 'lucide-react';
 
 export function AppSidebarHeader({ breadcrumbs = [] }) {
-    const { auth } = usePage().props;
+    const page = usePage();
+    const { auth } = page.props;
+    const pathname = page.url.split('?')[0];
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isRecruiter = userRoles.includes('recruiter');
+    const isRecruiterStudentProfileShell = isRecruiter && /^\/recruiter\/students\/\d+$/.test(pathname);
     const homeHref = isRecruiter ? '/recruiter/jobs' : '/students/feed';
     const [now, setNow] = useState(new Date());
 
@@ -24,6 +27,14 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
 
     const hours = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
     const dateStr = now.toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' });
+
+    if (isRecruiterStudentProfileShell) {
+        return (
+            <header className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border/50 bg-light px-3 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-2 dark:bg-dark">
+                <SidebarTrigger className="-ml-1" />
+            </header>
+        );
+    }
 
     return (
         <header className="justifwy-between flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border/50 bg-light px-6 py-8 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4 dark:bg-dark">
