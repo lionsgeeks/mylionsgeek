@@ -4,11 +4,13 @@ use App\Http\Controllers\Recruiter\RecruiterApplicationController;
 use App\Http\Controllers\Recruiter\RecruiterDashboardController;
 use App\Http\Controllers\Recruiter\RecruiterInterviewController;
 use App\Http\Controllers\Recruiter\RecruiterJobController;
+use App\Http\Controllers\Recruiter\RecruiterJobPostingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('recruiter')->group(function () {
     Route::get('/dashboard', RecruiterDashboardController::class)->name('recruiter.dashboard');
     Route::get('/jobs', [RecruiterJobController::class, 'index'])->name('recruiter.jobs.index');
+    Route::post('/jobs', [RecruiterJobPostingController::class, 'store'])->name('recruiter.jobs.store');
     Route::get('/applications', [RecruiterApplicationController::class, 'index'])->name('recruiter.applications.index');
     Route::get('/applications/{application}/cv', [RecruiterApplicationController::class, 'downloadCv'])
         ->whereNumber('application')

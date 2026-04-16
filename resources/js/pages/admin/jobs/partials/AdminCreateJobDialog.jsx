@@ -15,7 +15,15 @@ function buildDefaults(jobTypeOptions) {
     };
 }
 
-export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOptions = [], jobTypeOptions = [] }) {
+export default function AdminCreateJobDialog({
+    open,
+    onOpenChange,
+    recruiterOptions = [],
+    jobTypeOptions = [],
+    actionUrl = '/admin/jobs',
+    showRecruiterSelect = true,
+    defaultRecruiterIds = [],
+}) {
     const { data, setData, post, processing, errors } = useForm(buildDefaults(jobTypeOptions));
 
     useEffect(() => {
@@ -23,12 +31,15 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
             return;
         }
         const d = buildDefaults(jobTypeOptions);
+        if (Array.isArray(defaultRecruiterIds) && defaultRecruiterIds.length > 0) {
+            d.recruiter_ids = defaultRecruiterIds;
+        }
         Object.keys(d).forEach((key) => setData(key, d[key]));
-    }, [open, jobTypeOptions, setData]);
+    }, [open, jobTypeOptions, setData, defaultRecruiterIds]);
 
     const submit = (e) => {
         e.preventDefault();
-        post('/admin/jobs', {
+        post(actionUrl, {
             preserveScroll: true,
             onSuccess: () => {
                 onOpenChange(false);
@@ -58,6 +69,7 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
                         onSubmit={submit}
                         jobTypeOptions={jobTypeOptions}
                         recruiterOptions={recruiterOptions}
+                        showRecruiterSelect={showRecruiterSelect}
                         onCancel={handleCancel}
                         submitLabel="Create posting"
                         embedInModal

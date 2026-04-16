@@ -16,6 +16,7 @@ export default function JobPostingForm({
     onSubmit,
     jobTypeOptions = [],
     recruiterOptions = [],
+    showRecruiterSelect = true,
     cancelHref,
     onCancel,
     reference = null,
@@ -98,12 +99,14 @@ export default function JobPostingForm({
                 {errors.skills && <p className="text-sm text-red-600">{errors.skills}</p>}
             </div>
 
-            <RecruiterMultiSelect
-                recruiterOptions={recruiterOptions}
-                selectedIds={data.recruiter_ids}
-                onChange={(ids) => setData('recruiter_ids', ids)}
-                error={errors.recruiter_ids}
-            />
+            {showRecruiterSelect && (
+                <RecruiterMultiSelect
+                    recruiterOptions={recruiterOptions}
+                    selectedIds={data.recruiter_ids}
+                    onChange={(ids) => setData('recruiter_ids', ids)}
+                    error={errors.recruiter_ids}
+                />
+            )}
 
             <div className="flex items-center space-x-2">
                 <Checkbox id="is_published" checked={data.is_published} onCheckedChange={(c) => setData('is_published', c === true)} />

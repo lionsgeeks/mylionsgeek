@@ -30,7 +30,7 @@ const getRecruiterNavItems = () => [
     },
     {
         id: 'recruiter_jobs',
-        title: 'Assigned jobs',
+        title: 'Jobs',
         href: '/recruiter/jobs',
         icon: Briefcase,
         authorizedRoles: ['recruiter'],
