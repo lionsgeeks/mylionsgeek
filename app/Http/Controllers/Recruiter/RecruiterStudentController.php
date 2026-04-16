@@ -30,7 +30,8 @@ class RecruiterStudentController extends Controller
             ->with('formation:id,name')
             ->whereJsonContains('role', 'student')
             ->where(function ($q) {
-                $q->where('status', '!=', 'Studying')
+                // Exclude "Studying" in a case/space-insensitive way.
+                $q->whereRaw('LOWER(TRIM(status)) != ?', ['studying'])
                     ->orWhereNull('status');
             });
         foreach (self::EXCLUDED_ROLES_FROM_DIRECTORY as $role) {
@@ -88,7 +89,9 @@ class RecruiterStudentController extends Controller
         if (! in_array('student', $roles, true)) {
             abort(404);
         }
-        if ($user->status === 'Studying') {
+        $status = $user->status;
+        $normalizedStatus = is_string($status) ? strtolower(trim($status)) : '';
+        if ($normalizedStatus === 'studying') {
             abort(404);
         }
         foreach (self::EXCLUDED_ROLES_FROM_DIRECTORY as $role) {
