@@ -2,9 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
-import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 
 export default function RecruiterJobsIndex({ jobs }) {
     const list = jobs ?? [];

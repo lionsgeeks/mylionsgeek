@@ -1,10 +1,4 @@
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import JobPostingForm from '@/pages/admin/jobs/partials/JobPostingForm';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -48,10 +42,7 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent
-                showCloseButton
-                className="max-h-[min(92vh,56rem)] w-[calc(100%-1.5rem)] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full"
-            >
+            <DialogContent showCloseButton className="max-h-[min(92vh,56rem)] w-[calc(100%-1.5rem)] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full">
                 <div className="max-h-[min(92vh,56rem)] overflow-y-auto p-6">
                     <DialogHeader className="text-left">
                         <DialogTitle className="text-xl">New job posting</DialogTitle>

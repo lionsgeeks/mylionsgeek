@@ -26,11 +26,7 @@ const StudentProfile = ({ user, profilePostsPreview = [], profilePostsTotal = 0 
                         <LeftColumn user={currentUser} />
 
                         {/* Right Column */}
-                        <RightColumn
-                            user={currentUser}
-                            postsPreview={profilePostsPreview}
-                            postsTotal={profilePostsTotal}
-                        />
+                        <RightColumn user={currentUser} postsPreview={profilePostsPreview} postsTotal={profilePostsTotal} />
                     </div>
                 </div>
             </div>

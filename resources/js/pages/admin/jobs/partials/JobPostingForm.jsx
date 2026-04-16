@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Link } from '@inertiajs/react';
 import RecruiterMultiSelect from '@/pages/admin/jobs/partials/RecruiterMultiSelect';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { Link } from '@inertiajs/react';
 
 export default function JobPostingForm({
     data,
@@ -22,7 +22,7 @@ export default function JobPostingForm({
     submitLabel = 'Save posting',
     embedInModal = false,
 }) {
-    const skillsValue = Array.isArray(data.skills) ? data.skills.join(', ') : data.skills ?? '';
+    const skillsValue = Array.isArray(data.skills) ? data.skills.join(', ') : (data.skills ?? '');
 
     return (
         <form onSubmit={onSubmit} className={embedInModal ? 'mt-4 space-y-4' : 'mt-6 space-y-4'}>
@@ -106,11 +106,7 @@ export default function JobPostingForm({
             />
 
             <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="is_published"
-                    checked={data.is_published}
-                    onCheckedChange={(c) => setData('is_published', c === true)}
-                />
+                <Checkbox id="is_published" checked={data.is_published} onCheckedChange={(c) => setData('is_published', c === true)} />
                 <Label htmlFor="is_published" className="text-sm font-normal">
                     Publish on the student job board
                 </Label>

@@ -25,15 +25,9 @@ export default function RecruiterMultiSelect({ recruiterOptions = [], selectedId
 
     const selectedSet = useMemo(() => new Set((selectedIds ?? []).map(Number)), [selectedIds]);
 
-    const selectedRecruiters = useMemo(
-        () => recruiterOptions.filter((r) => selectedSet.has(Number(r.id))),
-        [recruiterOptions, selectedSet],
-    );
+    const selectedRecruiters = useMemo(() => recruiterOptions.filter((r) => selectedSet.has(Number(r.id))), [recruiterOptions, selectedSet]);
 
-    const unselectedRecruiters = useMemo(
-        () => recruiterOptions.filter((r) => !selectedSet.has(Number(r.id))),
-        [recruiterOptions, selectedSet],
-    );
+    const unselectedRecruiters = useMemo(() => recruiterOptions.filter((r) => !selectedSet.has(Number(r.id))), [recruiterOptions, selectedSet]);
 
     const add = (id) => {
         const n = Number(id);
@@ -50,9 +44,7 @@ export default function RecruiterMultiSelect({ recruiterOptions = [], selectedId
         <div className="space-y-3">
             <div>
                 <Label className="text-base">Assigned recruiters</Label>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    They can view applications for this posting. Leave empty if none yet.
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground">They can view applications for this posting. Leave empty if none yet.</p>
             </div>
 
             {recruiterOptions.length === 0 ? (
@@ -62,17 +54,13 @@ export default function RecruiterMultiSelect({ recruiterOptions = [], selectedId
                     <div
                         className={cn(
                             'overflow-hidden rounded-md border border-alpha/15 bg-background shadow-xs dark:border-light/10',
-                            'focus-within:ring-ring/50 focus-within:ring-[3px]',
+                            'focus-within:ring-[3px] focus-within:ring-ring/50',
                         )}
                     >
                         {selectedRecruiters.length > 0 && (
                             <div className="flex flex-wrap gap-2 border-b border-alpha/15 bg-muted/40 p-3 dark:border-light/10">
                                 {selectedRecruiters.map((r) => (
-                                    <Badge
-                                        key={r.id}
-                                        variant="secondary"
-                                        className="max-w-full gap-1 py-1 pr-1 pl-2 text-left font-normal"
-                                    >
+                                    <Badge key={r.id} variant="secondary" className="max-w-full gap-1 py-1 pr-1 pl-2 text-left font-normal">
                                         <span className="truncate">{r.name}</span>
                                         <button
                                             type="button"
@@ -110,9 +98,7 @@ export default function RecruiterMultiSelect({ recruiterOptions = [], selectedId
                             >
                                 <div className="max-h-56 overflow-y-auto p-1">
                                     {unselectedRecruiters.length === 0 ? (
-                                        <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                                            All recruiters are already selected.
-                                        </p>
+                                        <p className="px-3 py-6 text-center text-sm text-muted-foreground">All recruiters are already selected.</p>
                                     ) : (
                                         unselectedRecruiters.map((r) => (
                                             <button

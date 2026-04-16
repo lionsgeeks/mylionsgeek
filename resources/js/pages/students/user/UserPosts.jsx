@@ -1,7 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
-import CenterFeed from './partials/feed/CenterFeed';
-import LeftSideBar from './partials/feed/LeftSideBar';
 import { Link, usePage } from '@inertiajs/react';
+import CenterFeed from './partials/feed/CenterFeed';
 
 export default function UserPosts({ user, posts, postsTotal }) {
     const currentUser = user.user;
@@ -13,7 +12,7 @@ export default function UserPosts({ user, posts, postsTotal }) {
             <div className="z-30 dark:bg-dark">
                 <div className="min-h-screen bg-transparent">
                     <div className="mx-auto max-w-7xl px-4">
-                        <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-4 justify-items-center">
+                        <div className="relative grid grid-cols-1 justify-items-center gap-6 lg:grid-cols-4">
                             {/* <LeftSideBar user={currentUser} /> */}
                             <CenterFeed
                                 displayAddPost={false}
@@ -23,10 +22,7 @@ export default function UserPosts({ user, posts, postsTotal }) {
                                 lead={
                                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-4 shadow shadow-alpha/10 dark:bg-dark_gray">
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <Link
-                                                href={`/students/${currentUser.id}`}
-                                                className="text-sm font-semibold text-alpha hover:underline"
-                                            >
+                                            <Link href={`/students/${currentUser.id}`} className="text-sm font-semibold text-alpha hover:underline">
                                                 ← Profile
                                             </Link>
                                             <h1 className="text-lg font-semibold text-beta dark:text-light">Posts</h1>

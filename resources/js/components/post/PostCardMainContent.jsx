@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { Link } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { helpers } from '../utils/helpers';
 import PostModal from './PostModal';
 
@@ -73,11 +73,7 @@ const PostCardMainContent = ({
 
                 if (resolvedId != null) {
                     return (
-                        <Link
-                            key={`${part}-${index}`}
-                            href={`/students/${resolvedId}`}
-                            className="text-alpha hover:underline"
-                        >
+                        <Link key={`${part}-${index}`} href={`/students/${resolvedId}`} className="text-alpha hover:underline">
                             {part}
                         </Link>
                     );
@@ -90,11 +86,7 @@ const PostCardMainContent = ({
                 );
             }
 
-            return (
-                <span key={index}>
-                    {part}
-                </span>
-            );
+            return <span key={index}>{part}</span>;
         });
     };
     return (

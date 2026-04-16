@@ -44,9 +44,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
     const userRoles: string[] = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
 
     const isRecruiter = userRoles.includes('recruiter');
-    const isStaff = userRoles.some((role) =>
-        ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(role),
-    );
+    const isStaff = userRoles.some((role) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(role));
 
     // Student-area pages: top navbar only (no admin sidebar) so staff browse like students.
     const pathname = page.url.split('?')[0];
@@ -55,14 +53,11 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
 
     const Layout = useSidebarLayout ? AppSidebarLayout : AppHeaderLayout;
 
-    const needsStudentHeaderOffset =
-        !useSidebarLayout && userRoles.some((r) => ['student', 'coworker'].includes(r));
+    const needsStudentHeaderOffset = !useSidebarLayout && userRoles.some((r) => ['student', 'coworker'].includes(r));
 
     return (
         <Layout breadcrumbs={breadcrumbs} {...props}>
-            <div
-                className={`bg-light dark:bg-dark ${needsStudentHeaderOffset ? 'pt-20' : ''} mx-auto my-6 h-full w-[96%] rounded-lg shadow-lg`}
-            >
+            <div className={`bg-light dark:bg-dark ${needsStudentHeaderOffset ? 'pt-20' : ''} mx-auto my-6 h-full w-[96%] rounded-lg shadow-lg`}>
                 <ShowSkippableModal />
                 {children}
             </div>

@@ -188,7 +188,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                 </div>
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light dark:border-light/10 dark:bg-dark sm:max-w-md">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light sm:max-w-md dark:border-light/10 dark:bg-dark">
                         <DialogHeader>
                             <DialogTitle>{editingId ? 'Edit interview' : 'Schedule interview'}</DialogTitle>
                         </DialogHeader>
@@ -302,10 +302,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={confirmDelete}
-                            >
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>
                                 Delete
                             </AlertDialogAction>
                         </AlertDialogFooter>

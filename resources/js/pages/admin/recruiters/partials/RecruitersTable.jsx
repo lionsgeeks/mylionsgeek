@@ -93,7 +93,11 @@ export default function RecruitersTable({ recruiters }) {
                             <TableCell className="font-medium">{user.status ?? '—'}</TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-2">
-                                    {user.role ? <RoleBadge role={user.role} email={user.email} /> : <span className="text-xs text-gray-400">No role</span>}
+                                    {user.role ? (
+                                        <RoleBadge role={user.role} email={user.email} />
+                                    ) : (
+                                        <span className="text-xs text-gray-400">No role</span>
+                                    )}
                                 </div>
                             </TableCell>
                             <TableCell className="flex items-center gap-2 font-medium">

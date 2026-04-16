@@ -73,9 +73,7 @@ export default function JobShow({ job }) {
                                 {(job.has_applied || job.can_apply) && (
                                     <div className="shrink-0">
                                         {job.has_applied ? (
-                                            <Badge className="bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-100">
-                                                Applied
-                                            </Badge>
+                                            <Badge className="bg-green-100 text-green-900 dark:bg-green-900/40 dark:text-green-100">Applied</Badge>
                                         ) : (
                                             <Button
                                                 type="button"
@@ -114,7 +112,7 @@ export default function JobShow({ job }) {
                                 </div>
                             )}
 
-                            <div className="prose prose-sm mt-6 max-w-none text-beta dark:prose-invert dark:text-light">
+                            <div className="prose prose-sm dark:prose-invert mt-6 max-w-none text-beta dark:text-light">
                                 <p className="whitespace-pre-wrap text-beta/90 dark:text-light/90">{job.description}</p>
                             </div>
 
@@ -123,11 +121,7 @@ export default function JobShow({ job }) {
                                     <p className="mb-3 text-sm text-beta/80 dark:text-light/80">
                                         Interested in this role? Submit your application with a short subject, description, and CV.
                                     </p>
-                                    <Button
-                                        type="button"
-                                        onClick={() => setApplyOpen(true)}
-                                        className="bg-alpha text-black hover:bg-alpha/90"
-                                    >
+                                    <Button type="button" onClick={() => setApplyOpen(true)} className="bg-alpha text-black hover:bg-alpha/90">
                                         <Send className="mr-2 h-4 w-4" />
                                         Open application
                                     </Button>
@@ -136,7 +130,7 @@ export default function JobShow({ job }) {
                         </article>
 
                         <Dialog open={applyOpen} onOpenChange={handleApplyDialogChange}>
-                            <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light dark:border-light/10 dark:bg-dark sm:max-w-lg">
+                            <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light sm:max-w-lg dark:border-light/10 dark:bg-dark">
                                 <DialogHeader>
                                     <DialogTitle className="text-beta dark:text-light">Apply — {job.title}</DialogTitle>
                                 </DialogHeader>

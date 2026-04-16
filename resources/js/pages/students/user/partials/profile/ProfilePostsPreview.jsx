@@ -17,10 +17,7 @@ export default function ProfilePostsPreview({ user, postsPreview, postsTotal }) 
                 <div className="space-y-4">
                     <PostCard user={user} posts={postsPreview} />
                     <div className="flex justify-center border-t border-beta/10 pt-4 dark:border-light/10">
-                        <Link
-                            href={postsHref}
-                            className="text-sm font-semibold text-alpha hover:underline dark:text-alpha"
-                        >
+                        <Link href={postsHref} className="text-sm font-semibold text-alpha hover:underline dark:text-alpha">
                             {postsTotal > 1 ? `See all posts (${postsTotal})` : 'See all posts'}
                         </Link>
                     </div>

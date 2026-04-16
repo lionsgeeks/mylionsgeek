@@ -27,11 +27,7 @@ export default function PostCommentComposer({
             <div className="flex flex-1 flex-col gap-2">
                 {newCommentImagePreview && (
                     <div className="relative">
-                        <img
-                            src={newCommentImagePreview}
-                            alt="Selected"
-                            className="max-h-48 w-full rounded-xl border border-alpha/20 object-cover"
-                        />
+                        <img src={newCommentImagePreview} alt="Selected" className="max-h-48 w-full rounded-xl border border-alpha/20 object-cover" />
                         <button
                             type="button"
                             onClick={clearNewCommentImage}

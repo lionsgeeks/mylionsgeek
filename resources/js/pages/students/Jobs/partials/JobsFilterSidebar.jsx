@@ -54,10 +54,7 @@ export default function JobsFilterSidebar({
                                     key={skill}
                                     className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1.5 hover:bg-beta/5 dark:hover:bg-light/5"
                                 >
-                                    <Checkbox
-                                        checked={selectedSkills.includes(skill)}
-                                        onCheckedChange={(c) => onToggleSkill(skill, c === true)}
-                                    />
+                                    <Checkbox checked={selectedSkills.includes(skill)} onCheckedChange={(c) => onToggleSkill(skill, c === true)} />
                                     <span className="text-sm text-beta dark:text-light">{skill}</span>
                                 </label>
                             ))}

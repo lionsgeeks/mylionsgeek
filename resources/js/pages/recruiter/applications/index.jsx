@@ -79,7 +79,7 @@ export default function RecruiterApplicationsIndex({ applications }) {
                                                 {row.status ?? 'pending'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="whitespace-nowrap text-sm">{formatDate(row.created_at)}</TableCell>
+                                        <TableCell className="text-sm whitespace-nowrap">{formatDate(row.created_at)}</TableCell>
                                         <TableCell className="max-w-xs text-sm text-beta/80 dark:text-light/80">
                                             {row.cover_letter ? (
                                                 <span className="line-clamp-3 whitespace-pre-wrap">{row.cover_letter}</span>

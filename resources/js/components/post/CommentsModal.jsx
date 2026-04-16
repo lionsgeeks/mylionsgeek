@@ -10,12 +10,7 @@ export default function CommentsModal({ open, onClose, postId, onCommentAdded, o
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <button
-                type="button"
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-                aria-label="Close comments"
-            />
+            <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-label="Close comments" />
             <div
                 className="relative z-10 max-h-[88vh] w-full max-w-md overflow-y-auto rounded-3xl p-1"
                 onClick={(e) => e.stopPropagation()}

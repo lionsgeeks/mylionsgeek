@@ -122,7 +122,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             <div
                 className={
                     isFacebook
-                        ? 'flex items-stretch '
+                        ? 'flex items-stretch'
                         : `flex items-center justify-around rounded-b-lg px-2 py-2 shadow-sm ${!PostModal ? 'bg-light dark:bg-dark' : ''}`
                 }
             >

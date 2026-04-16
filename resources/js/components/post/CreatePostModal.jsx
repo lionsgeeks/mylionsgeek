@@ -274,9 +274,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                                         onlineCircleClass="w-2.5 h-2.5"
                                     />
                                     <div className="flex min-w-0 flex-col">
-                                        <span className="truncate font-medium text-[var(--color-beta)] dark:text-[var(--color-light)]">
-                                            {u.name}
-                                        </span>
+                                        <span className="truncate font-medium text-[var(--color-beta)] dark:text-[var(--color-light)]">{u.name}</span>
                                         {u.email && (
                                             <span className="truncate text-xs text-[var(--color-dark_gray)] dark:text-[var(--color-light)]/70">
                                                 {u.email}

@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
+import { Briefcase, CalendarDays, ClipboardList } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ClipboardList, CalendarDays, Briefcase } from 'lucide-react';
 
 function formatDateTime(iso) {
     if (!iso) return '—';
@@ -82,10 +82,7 @@ export default function RecruiterDashboard({ stats, upcomingInterviews }) {
                                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                                     <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: 8 }}
-                                        formatter={(value) => [value, 'Applications']}
-                                    />
+                                    <Tooltip contentStyle={{ borderRadius: 8 }} formatter={(value) => [value, 'Applications']} />
                                     <Bar dataKey="value" fill="var(--color-alpha)" radius={[6, 6, 0, 0]} name="Applications" />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -108,9 +105,7 @@ export default function RecruiterDashboard({ stats, upcomingInterviews }) {
                                 <li key={row.id} className="flex flex-wrap items-start justify-between gap-2 py-3 first:pt-0">
                                     <div>
                                         <p className="font-medium text-beta dark:text-light">{row.title}</p>
-                                        {row.group_label && (
-                                            <p className="text-xs text-alpha dark:text-alpha">Group: {row.group_label}</p>
-                                        )}
+                                        {row.group_label && <p className="text-xs text-alpha dark:text-alpha">Group: {row.group_label}</p>}
                                         <p className="text-sm text-muted-foreground">{formatDateTime(row.starts_at)}</p>
                                     </div>
                                 </li>
