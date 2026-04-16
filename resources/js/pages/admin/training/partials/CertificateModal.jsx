@@ -143,6 +143,10 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
             const zipBlob = await zip.generateAsync({ type: 'blob' });
             saveAs(zipBlob, 'certificats.zip');
+
+            // Close modal after successful generation + download trigger
+            setSelectedIds([]);
+            onOpenChange(false);
         } catch (error) {
             console.error('Certificate generation failed:', error);
         } finally {

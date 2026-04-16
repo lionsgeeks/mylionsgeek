@@ -26,6 +26,8 @@ export default function Show({ training, usersNull, courses = [] }) {
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role].filter(Boolean);
     const isCoachRole = userRoles.includes('coach');
     const isTrainingCoach = auth?.user?.id && training?.coach?.id ? auth.user.id === training.coach.id : false;
+    const isAdminRole = userRoles.some((r) => ['admin', 'super_admin'].includes(r));
+    const canPrintCertificates = isAdminRole || (isCoachRole && isTrainingCoach);
     const trainingStatus = String(training?.status || '').toLowerCase();
     const isActiveTraining = !trainingStatus || trainingStatus === 'active';
     const [students, setStudents] = useState(training.users || []);
@@ -480,13 +482,15 @@ export default function Show({ training, usersNull, courses = [] }) {
                             <Settings size={16} />
                             <span>Update Users</span>
                         </Button>
-                        <Button
-                            onClick={() => setShowCertificateModal(true)}
-                            className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
-                        >
-                            <Award size={16} />
-                            <span className="hidden sm:inline">Certificats</span>
-                        </Button>
+                        {canPrintCertificates && (
+                            <Button
+                                onClick={() => setShowCertificateModal(true)}
+                                className="gap-2 bg-[var(--color-alpha)] text-black border border-[var(--color-alpha)] hover:bg-transparent hover:text-[var(--color-alpha)] flex-1 sm:flex-none"
+                            >
+                                <Award size={16} />
+                                <span className="hidden sm:inline">Certificats</span>
+                            </Button>
+                        )}
 
                         {/* Play Dropdown */}
                         <div className="relative flex-1 sm:flex-initial" ref={dropdownRef}>
@@ -1303,11 +1307,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                 </Dialog>
 
                 {/* Certificate Generation Modal */}
-                <CertificateModal
-                    open={showCertificateModal}
-                    onOpenChange={setShowCertificateModal}
-                    training={training}
-                />
+                {canPrintCertificates && (
+                    <CertificateModal
+                        open={showCertificateModal}
+                        onOpenChange={setShowCertificateModal}
+                        training={training}
+                    />
+                )}
 
                 {/* Bulk Update Users Modal */}
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>
