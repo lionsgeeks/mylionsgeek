@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class RecruiterApplicationController extends Controller
 {
@@ -79,7 +79,11 @@ class RecruiterApplicationController extends Controller
         ]);
     }
 
-    public function downloadCv(Request $request, JobApplication $application): StreamedResponse
+    /**
+     * Stream the CV for inline viewing (browser tab). Local disk does not support temporaryUrl();
+     * this keeps the file behind recruiter auth instead of exposing a public URL.
+     */
+    public function downloadCv(Request $request, JobApplication $application): BinaryFileResponse
     {
         $userId = $request->user()->id;
 
@@ -100,7 +104,15 @@ class RecruiterApplicationController extends Controller
         $applicant = $application->applicant;
         $safe = $applicant ? preg_replace('/[^a-z0-9_-]+/i', '_', $applicant->name) : 'cv';
         $ext = pathinfo($application->cv_path, PATHINFO_EXTENSION) ?: 'bin';
+        $downloadName = 'cv_'.$safe.'.'.$ext;
 
-        return Storage::disk('public')->download($application->cv_path, 'cv_'.$safe.'.'.$ext);
+        $absolutePath = Storage::disk('public')->path($application->cv_path);
+        if (! is_file($absolutePath)) {
+            abort(404);
+        }
+
+        return response()->file($absolutePath, [
+            'Content-Disposition' => 'inline; filename="'.$downloadName.'"',
+        ]);
     }
 }

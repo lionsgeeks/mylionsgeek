@@ -20,10 +20,14 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::post('/jobs/{job}/apply', [StudentJobController::class, 'apply'])->whereNumber('job')->name('student.jobs.apply');
 });
 
-Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable'])->prefix('students')->group(function () {
-    Route::put('/update/{user}', [UsersController::class, 'update']);
+// Read-only profile & posts: same roles as job browsing so staff and recruiters can open "See all posts".
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,student,studio_responsable,recruiter,coworker,responsable_studio'])->prefix('students')->group(function () {
     Route::get('/{id}/posts', [StudentController::class, 'userPosts'])->whereNumber('id')->name('student.posts');
     Route::get('/{id}', [StudentController::class, 'userProfile'])->whereNumber('id');
+});
+
+Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable'])->prefix('students')->group(function () {
+    Route::put('/update/{user}', [UsersController::class, 'update']);
     Route::post('/changeCover/{id}', [StudentController::class, 'changeCover']);
     Route::post('/changeProfileImage/{id}', [StudentController::class, 'changeProfileImage']);
     Route::post('/about/{id}', [StudentController::class, 'updateAbout']);

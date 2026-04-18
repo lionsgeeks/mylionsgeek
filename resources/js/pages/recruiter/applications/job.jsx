@@ -65,10 +65,10 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Applicant</TableHead>
-                                    <TableHead>Subject</TableHead>
+                                    {/* <TableHead>Subject</TableHead> */}
                                     <TableHead>Status</TableHead>
                                     <TableHead>Applied</TableHead>
-                                    <TableHead>Description</TableHead>
+                                    <TableHead className="w-[120px]">Profile</TableHead>
                                     <TableHead className="w-[120px]">CV</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -81,7 +81,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
 
                                     return (
                                         <TableRow key={row.id}>
-                                            <TableCell className="p-0 align-top">
+                                            <TableCell className="p-0 align-center">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {row.applicant ? (
@@ -121,7 +121,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     </div>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="max-w-[200px] p-0 align-top text-sm font-medium">
+                                            {/* <TableCell className="max-w-[200px] p-0 align-center text-sm font-medium">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {row.subject ?? '—'}
@@ -129,8 +129,8 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                 ) : (
                                                     <div className="px-3 py-3">{row.subject ?? '—'}</div>
                                                 )}
-                                            </TableCell>
-                                            <TableCell className="p-0 align-top">
+                                            </TableCell> */}
+                                            <TableCell className="p-0 align-center">
                                                 {href ? (
                                                     <Link href={href} className={`${profileLinkClass} flex items-start`}>
                                                         <Badge variant="secondary" className="capitalize">
@@ -145,7 +145,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     </div>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="p-0 align-top text-sm">
+                                            <TableCell className="p-0 align-center text-sm">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {formatDate(row.created_at)}
@@ -154,7 +154,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     <div className="px-3 py-3">{formatDate(row.created_at)}</div>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="max-w-md p-0 align-top text-sm text-beta/85 dark:text-light/85">
+                                            {/* <TableCell className="max-w-md p-0 align-center text-sm text-beta/85 dark:text-light/85">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {row.cover_letter ? (
@@ -172,19 +172,23 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                         )}
                                                     </div>
                                                 )}
-                                            </TableCell>
-                                            <TableCell className="p-0 align-top">
+                                            </TableCell> */}
+                                            <TableCell className="p-0 align-center">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {href ? (
-                                                        <Link href={href} className="text-sm font-medium text-alpha underline hover:text-alpha/90">
+                                                        <Link href={href} className="bg-alpha text-black px-5 py-1.5 rounded-md text-center">
                                                             View profile
                                                         </Link>
                                                     ) : null}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="p-0 align-center">
+                                                <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {row.has_cv ? (
-                                                        <Button variant="outline" size="sm" className="w-fit gap-1" asChild>
-                                                            <a href={`/recruiter/applications/${row.id}/cv`}>
+                                                        <Button  size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
+                                                            <a href={`/recruiter/applications/${row.id}/cv`} target='_blank'>
                                                                 <Download className="h-3.5 w-3.5" />
-                                                                Download CV
+                                                                Open CV
                                                             </a>
                                                         </Button>
                                                     ) : (

@@ -21,7 +21,8 @@ function parseFeedPostIdFromHash() {
     return null;
 }
 
-export default function CenterFeed({ user, posts, showComposer = true, lead = null, displayAddPost = true }) {
+export default function CenterFeed({ user, posts, showComposer = true, lead = null, displayAddPost = true, profileBackHref = null }) {
+    const profileHref = profileBackHref ?? `/students/${user.id}`;
     const [openAddPost, setOpenAddPost] = useState(false);
     const [openModalPostIdFromHash, setOpenModalPostIdFromHash] = useState(null);
 
@@ -48,7 +49,7 @@ export default function CenterFeed({ user, posts, showComposer = true, lead = nu
                 {showComposer && displayAddPost && (
                     <div className="rounded-lg bg-white p-4 shadow shadow-alpha/10 dark:bg-dark_gray">
                         <div className="mb-4 flex items-center gap-3">
-                            <Link href={'/students/' + user.id}>
+                            <Link href={profileHref}>
                                 <Avatar
                                     className="h-12 w-12 overflow-hidden rounded-full"
                                     image={user?.image}
