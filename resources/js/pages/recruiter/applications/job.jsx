@@ -1,0 +1,210 @@
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, Download, MapPin } from 'lucide-react';
+
+function formatDate(iso) {
+    if (!iso) return '—';
+    try {
+        return new Date(iso).toLocaleString();
+    } catch {
+        return iso;
+    }
+}
+
+function applicantProfileHref(applicantId) {
+    return `/recruiter/students/${applicantId}`;
+}
+
+export default function RecruiterApplicationsJob({ job, applications }) {
+    const list = applications ?? [];
+    const profileBase = (applicantId) => (applicantId ? applicantProfileHref(applicantId) : null);
+
+    return (
+        <AppLayout>
+            <Head title={job?.title ? `${job.title} · Applications` : 'Applications'} />
+            <div className="flex flex-col gap-6 p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                        <Button variant="ghost" size="sm" className="-ml-2 mb-2 gap-1 text-alpha" asChild>
+                            <Link href="/recruiter/applications">
+                                <ArrowLeft className="h-4 w-4" />
+                                All jobs
+                            </Link>
+                        </Button>
+                        <h1 className="text-2xl font-bold text-beta dark:text-light">{job?.title ?? 'Job'}</h1>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-beta/75 dark:text-light/75">
+                            <Badge className="bg-alpha/15 font-normal text-black dark:bg-alpha/25 dark:text-black">
+                                {formatJobTypeLabel(job?.job_type)}
+                            </Badge>
+                            {job?.location && (
+                                <span className="inline-flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" />
+                                    {job.location}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href="/recruiter/dashboard">Dashboard</Link>
+                    </Button>
+                </div>
+
+                {list.length === 0 ? (
+                    <div className="rounded-lg border border-alpha/15 bg-white p-10 text-center dark:border-light/10 dark:bg-dark_gray">
+                        <p className="text-beta dark:text-light">No applications for this job yet.</p>
+                        <p className="mt-2 text-sm text-beta/70 dark:text-light/70">Students will appear here after they apply.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-lg border border-alpha/15 bg-white shadow-sm dark:border-light/10 dark:bg-dark_gray">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Applicant</TableHead>
+                                    <TableHead>Subject</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Applied</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead className="w-[120px]">CV</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {list.map((row) => {
+                                    const applicantId = row.applicant?.id;
+                                    const href = profileBase(applicantId);
+                                    const profileLinkClass =
+                                        'block min-h-[48px] rounded-md px-3 py-3 text-left transition-colors hover:bg-alpha/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-alpha dark:hover:bg-light/[0.08]';
+
+                                    return (
+                                        <TableRow key={row.id}>
+                                            <TableCell className="p-0 align-top">
+                                                {href ? (
+                                                    <Link href={href} className={profileLinkClass}>
+                                                        {row.applicant ? (
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar
+                                                                    image={row.applicant.image}
+                                                                    name={row.applicant.name}
+                                                                    className="h-9 w-9 shrink-0"
+                                                                    onlineCircleClass="hidden"
+                                                                />
+                                                                <div className="min-w-0">
+                                                                    <span className="font-medium text-beta dark:text-light">{row.applicant.name}</span>
+                                                                    <span className="mt-0.5 block truncate text-xs text-beta/65 dark:text-light/65">
+                                                                        {row.applicant.email}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )}
+                                                    </Link>
+                                                ) : (
+                                                    <div className="px-3 py-3">
+                                                        {row.applicant ? (
+                                                            <div className="flex items-center gap-3">
+                                                                <Avatar
+                                                                    image={row.applicant.image}
+                                                                    name={row.applicant.name}
+                                                                    className="h-9 w-9 shrink-0"
+                                                                    onlineCircleClass="hidden"
+                                                                />
+                                                                <span className="font-medium text-beta dark:text-light">{row.applicant.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="max-w-[200px] p-0 align-top text-sm font-medium">
+                                                {href ? (
+                                                    <Link href={href} className={profileLinkClass}>
+                                                        {row.subject ?? '—'}
+                                                    </Link>
+                                                ) : (
+                                                    <div className="px-3 py-3">{row.subject ?? '—'}</div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="p-0 align-top">
+                                                {href ? (
+                                                    <Link href={href} className={`${profileLinkClass} flex items-start`}>
+                                                        <Badge variant="secondary" className="capitalize">
+                                                            {row.status ?? 'pending'}
+                                                        </Badge>
+                                                    </Link>
+                                                ) : (
+                                                    <div className="px-3 py-3">
+                                                        <Badge variant="secondary" className="capitalize">
+                                                            {row.status ?? 'pending'}
+                                                        </Badge>
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="p-0 align-top text-sm">
+                                                {href ? (
+                                                    <Link href={href} className={profileLinkClass}>
+                                                        {formatDate(row.created_at)}
+                                                    </Link>
+                                                ) : (
+                                                    <div className="px-3 py-3">{formatDate(row.created_at)}</div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="max-w-md p-0 align-top text-sm text-beta/85 dark:text-light/85">
+                                                {href ? (
+                                                    <Link href={href} className={profileLinkClass}>
+                                                        {row.cover_letter ? (
+                                                            <span className="line-clamp-4 whitespace-pre-wrap">{row.cover_letter}</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )}
+                                                    </Link>
+                                                ) : (
+                                                    <div className="px-3 py-3">
+                                                        {row.cover_letter ? (
+                                                            <span className="line-clamp-4 whitespace-pre-wrap">{row.cover_letter}</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="p-0 align-top">
+                                                <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
+                                                    {href ? (
+                                                        <Link href={href} className="text-sm font-medium text-alpha underline hover:text-alpha/90">
+                                                            View profile
+                                                        </Link>
+                                                    ) : null}
+                                                    {row.has_cv ? (
+                                                        <Button variant="outline" size="sm" className="w-fit gap-1" asChild>
+                                                            <a href={`/recruiter/applications/${row.id}/cv`}>
+                                                                <Download className="h-3.5 w-3.5" />
+                                                                Download CV
+                                                            </a>
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">No CV</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+                {list.length > 0 && (
+                    <p className="text-center text-xs text-beta/60 dark:text-light/60">
+                        Applicant, subject, status, applied date, and description open the student profile. Use Download CV for the file only.
+                    </p>
+                )}
+            </div>
+        </AppLayout>
+    );
+}

@@ -17,6 +17,9 @@ Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('recruiter')->
         ->whereNumber('user')
         ->name('recruiter.students.show');
     Route::get('/applications', [RecruiterApplicationController::class, 'index'])->name('recruiter.applications.index');
+    Route::get('/applications/jobs/{job}', [RecruiterApplicationController::class, 'showJob'])
+        ->whereNumber('job')
+        ->name('recruiter.applications.job');
     Route::get('/applications/{application}/cv', [RecruiterApplicationController::class, 'downloadCv'])
         ->whereNumber('application')
         ->name('recruiter.applications.cv');
