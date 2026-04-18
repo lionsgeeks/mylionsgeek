@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +38,7 @@ class RecruiterInterviewController extends Controller
                 'starts_at' => $row->starts_at->toIso8601String(),
                 'location' => $row->location,
                 'notes' => $row->notes,
+                'outcome' => $row->outcome,
                 'job_application_id' => $row->job_application_id,
                 'application' => $row->jobApplication ? [
                     'id' => $row->jobApplication->id,
@@ -189,6 +191,48 @@ class RecruiterInterviewController extends Controller
         $recruiterInterview->delete();
 
         return back()->with('success', __('Interview removed.'));
+    }
+
+    public function recordOutcome(Request $request, RecruiterInterview $recruiterInterview): RedirectResponse
+    {
+        $this->authorizeInterview($request, $recruiterInterview);
+
+        $validated = $request->validate([
+            'outcome' => ['required', 'string', Rule::in(['accepted', 'rejected'])],
+        ]);
+
+        if (! $recruiterInterview->job_application_id) {
+            abort(422);
+        }
+
+        $startsAt = $recruiterInterview->starts_at;
+        if (! $startsAt instanceof Carbon) {
+            abort(422);
+        }
+
+        $slotEnd = $startsAt->copy()->addMinutes(self::SLOT_MINUTES);
+        if (Carbon::now()->lt($slotEnd)) {
+            throw ValidationException::withMessages([
+                'outcome' => __('You can record a decision only after the interview slot has ended.'),
+            ]);
+        }
+
+        if (filled($recruiterInterview->outcome)) {
+            throw ValidationException::withMessages([
+                'outcome' => __('This interview already has a decision recorded.'),
+            ]);
+        }
+
+        DB::transaction(function () use ($recruiterInterview, $validated): void {
+            $recruiterInterview->update(['outcome' => $validated['outcome']]);
+
+            $application = JobApplication::query()->whereKey($recruiterInterview->job_application_id)->first();
+            if ($application) {
+                $application->update(['status' => $validated['outcome']]);
+            }
+        });
+
+        return back()->with('success', __('Interview outcome saved.'));
     }
 
     private function authorizeInterview(Request $request, RecruiterInterview $interview): void

@@ -32,4 +32,7 @@ Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('recruiter')->
     Route::delete('/interviews/{recruiterInterview}', [RecruiterInterviewController::class, 'destroy'])
         ->whereNumber('recruiterInterview')
         ->name('recruiter.interviews.destroy');
+    Route::patch('/interviews/{recruiterInterview}/outcome', [RecruiterInterviewController::class, 'recordOutcome'])
+        ->whereNumber('recruiterInterview')
+        ->name('recruiter.interviews.outcome');
 });

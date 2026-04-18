@@ -15,9 +15,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import ScheduleInterviewFromApplicationModal from '@/pages/recruiter/applications/partials/ScheduleInterviewFromApplicationModal';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
+
+const INTERVIEW_SLOT_MINUTES = 30;
 
 function formatDate(iso) {
     if (!iso) return '—';
@@ -28,15 +30,42 @@ function formatDate(iso) {
     }
 }
 
+function isInterviewSlotEnded(startsAtIso, slotMinutes = INTERVIEW_SLOT_MINUTES) {
+    if (!startsAtIso) return false;
+    const start = new Date(startsAtIso);
+    if (Number.isNaN(start.getTime())) return false;
+    const end = new Date(start.getTime() + slotMinutes * 60 * 1000);
+    return Date.now() >= end.getTime();
+}
+
 function applicantProfileHref(applicantId) {
     return `/recruiter/students/${applicantId}`;
 }
 
 export default function RecruiterApplicationsJob({ job, applications }) {
     const list = applications ?? [];
+    const { errors } = usePage().props;
     const profileBase = (applicantId) => (applicantId ? applicantProfileHref(applicantId) : null);
     const [scheduleForApplication, setScheduleForApplication] = useState(null);
     const [pendingDeleteInterviewId, setPendingDeleteInterviewId] = useState(null);
+    const [outcomeBusyInterviewId, setOutcomeBusyInterviewId] = useState(null);
+    const [lastOutcomeAttemptInterviewId, setLastOutcomeAttemptInterviewId] = useState(null);
+
+    const submitInterviewOutcome = (interviewId, outcome) => {
+        router.patch(
+            `/recruiter/interviews/${interviewId}/outcome`,
+            { outcome },
+            {
+                preserveScroll: true,
+                onStart: () => {
+                    setOutcomeBusyInterviewId(interviewId);
+                    setLastOutcomeAttemptInterviewId(interviewId);
+                },
+                onFinish: () => setOutcomeBusyInterviewId(null),
+                onSuccess: () => setLastOutcomeAttemptInterviewId(null),
+            },
+        );
+    };
 
     return (
         <AppLayout>
@@ -84,13 +113,17 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                     <TableHead>Applied</TableHead>
                                     <TableHead className="w-[120px]">Profile</TableHead>
                                     <TableHead className="w-[120px]">CV</TableHead>
-                                    <TableHead className="w-[140px]">Calendar</TableHead>
+                                    <TableHead className="min-w-[168px]">Interview</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {list.map((row) => {
                                     const applicantId = row.applicant?.id;
-                                    const scheduleInterviewId = row.recruiter_interview_id ?? null;
+                                    const interview = row.recruiter_interview;
+                                    const scheduleInterviewId = interview?.id ?? null;
+                                    const interviewOutcome = interview?.outcome ?? null;
+                                    const interviewStartsAt = interview?.starts_at ?? null;
+                                    const slotEnded = interviewStartsAt ? isInterviewSlotEnded(interviewStartsAt) : false;
                                     const href = profileBase(applicantId);
                                     const profileLinkClass =
                                         'block min-h-[48px] rounded-md px-3 py-3 text-left transition-colors hover:bg-alpha/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-alpha dark:hover:bg-light/[0.08]';
@@ -214,25 +247,78 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                             </TableCell>
                                             <TableCell className="p-0 align-center">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
-                                                    {scheduleInterviewId ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            className="px-5 py-1.5 text-center"
-                                                            onClick={() => setPendingDeleteInterviewId(scheduleInterviewId)}
-                                                        >
-                                                            Delete schedule
-                                                        </Button>
-                                                    ) : (
+                                                    {!scheduleInterviewId ? (
                                                         <Button
                                                             type="button"
                                                             size="sm"
-                                                            className="bg-alpha text-black px-5 py-1.5 text-center"
+                                                            className="bg-alpha px-5 py-1.5 text-center text-black"
                                                             onClick={() => setScheduleForApplication(row)}
                                                         >
-                                                            Add to calendar
+                                                            Add Schedule
                                                         </Button>
+                                                    ) : interviewOutcome ? (
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className={
+                                                                    interviewOutcome === 'accepted'
+                                                                        ? 'w-fit border border-green-600/40 bg-green-600/15 capitalize text-green-800 dark:text-green-200'
+                                                                        : 'w-fit border border-destructive/40 bg-destructive/10 capitalize text-destructive'
+                                                                }
+                                                            >
+                                                                {interviewOutcome}
+                                                            </Badge>
+                                                            <span className="text-xs text-beta/65 dark:text-light/65">
+                                                                {formatDate(interviewStartsAt)}
+                                                            </span>
+                                                        </div>
+                                                    ) : slotEnded ? (
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    disabled={outcomeBusyInterviewId === scheduleInterviewId}
+                                                                    className="bg-alpha px-3 text-black"
+                                                                    onClick={() =>
+                                                                        submitInterviewOutcome(scheduleInterviewId, 'accepted')
+                                                                    }
+                                                                >
+                                                                    Accepted
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="sm"
+                                                                    className="px-3"
+                                                                    disabled={outcomeBusyInterviewId === scheduleInterviewId}
+                                                                    onClick={() =>
+                                                                        submitInterviewOutcome(scheduleInterviewId, 'rejected')
+                                                                    }
+                                                                >
+                                                                    Rejected
+                                                                </Button>
+                                                            </div>
+                                                            {lastOutcomeAttemptInterviewId === scheduleInterviewId &&
+                                                            errors?.outcome ? (
+                                                                <p className="text-xs text-destructive">{errors.outcome}</p>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-xs text-beta/75 dark:text-light/75">
+                                                                Scheduled · {formatDate(interviewStartsAt)}
+                                                            </span>
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="px-5 py-1.5 text-center"
+                                                                onClick={() => setPendingDeleteInterviewId(scheduleInterviewId)}
+                                                            >
+                                                                Delete Schedule
+                                                            </Button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </TableCell>

@@ -54,29 +54,38 @@ class RecruiterApplicationController extends Controller
             ->get();
 
         $applicationIds = $applications->pluck('id');
-        $interviewIdsByApplication = $applicationIds->isEmpty()
+        $interviewsByApplicationId = $applicationIds->isEmpty()
             ? collect()
             : RecruiterInterview::query()
                 ->where('user_id', $userId)
                 ->whereIn('job_application_id', $applicationIds)
-                ->pluck('id', 'job_application_id');
+                ->get(['id', 'job_application_id', 'starts_at', 'outcome'])
+                ->keyBy('job_application_id');
 
-        $applications = $applications->map(fn (JobApplication $row) => [
-            'id' => $row->id,
-            'status' => $row->status,
-            'subject' => $row->subject,
-            'cover_letter' => $row->cover_letter,
-            'cv_path' => $row->cv_path,
-            'has_cv' => (bool) $row->cv_path,
-            'created_at' => $row->created_at?->toIso8601String(),
-            'recruiter_interview_id' => $interviewIdsByApplication[$row->id] ?? null,
-            'applicant' => $row->applicant ? [
-                'id' => $row->applicant->id,
-                'name' => $row->applicant->name,
-                'email' => $row->applicant->email,
-                'image' => $row->applicant->image,
-            ] : null,
-        ]);
+        $applications = $applications->map(function (JobApplication $row) use ($interviewsByApplicationId) {
+            $interview = $interviewsByApplicationId->get($row->id);
+
+            return [
+                'id' => $row->id,
+                'status' => $row->status,
+                'subject' => $row->subject,
+                'cover_letter' => $row->cover_letter,
+                'cv_path' => $row->cv_path,
+                'has_cv' => (bool) $row->cv_path,
+                'created_at' => $row->created_at?->toIso8601String(),
+                'recruiter_interview' => $interview ? [
+                    'id' => $interview->id,
+                    'starts_at' => $interview->starts_at->toIso8601String(),
+                    'outcome' => $interview->outcome,
+                ] : null,
+                'applicant' => $row->applicant ? [
+                    'id' => $row->applicant->id,
+                    'name' => $row->applicant->name,
+                    'email' => $row->applicant->email,
+                    'image' => $row->applicant->image,
+                ] : null,
+            ];
+        });
 
         return Inertia::render('recruiter/applications/job', [
             'job' => [

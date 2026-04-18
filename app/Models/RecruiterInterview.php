@@ -15,6 +15,7 @@ class RecruiterInterview extends Model
         'starts_at',
         'location',
         'notes',
+        'outcome',
     ];
 
     protected function casts(): array
