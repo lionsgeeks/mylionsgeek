@@ -3,9 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+import ScheduleInterviewFromApplicationModal from '@/pages/recruiter/applications/partials/ScheduleInterviewFromApplicationModal';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download, MapPin } from 'lucide-react';
+import { useState } from 'react';
 
 function formatDate(iso) {
     if (!iso) return '—';
@@ -23,6 +25,7 @@ function applicantProfileHref(applicantId) {
 export default function RecruiterApplicationsJob({ job, applications }) {
     const list = applications ?? [];
     const profileBase = (applicantId) => (applicantId ? applicantProfileHref(applicantId) : null);
+    const [scheduleForApplication, setScheduleForApplication] = useState(null);
 
     return (
         <AppLayout>
@@ -70,7 +73,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                     <TableHead>Applied</TableHead>
                                     <TableHead className="w-[120px]">Profile</TableHead>
                                     <TableHead className="w-[120px]">CV</TableHead>
-                                    <TableHead className="w-[120px]">Add To calander</TableHead>
+                                    <TableHead className="w-[140px]">Calendar</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -199,10 +202,13 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                             </TableCell>
                                             <TableCell className="p-0 align-center">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
-                                                    <Button size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
-                                                        <Link href={`/recruiter/applications/${row.id}/add-to-calander`}>
-                                                            Add To Calander
-                                                        </Link>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        className="bg-alpha text-black px-5 py-1.5 text-center"
+                                                        onClick={() => setScheduleForApplication(row)}
+                                                    >
+                                                        Add to calendar
                                                     </Button>
                                                 </div>
                                             </TableCell>
@@ -219,6 +225,12 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                     </p>
                 )}
             </div>
+            <ScheduleInterviewFromApplicationModal
+                open={!!scheduleForApplication}
+                onOpenChange={(open) => !open && setScheduleForApplication(null)}
+                application={scheduleForApplication}
+                jobTitle={job?.title}
+            />
         </AppLayout>
     );
 }

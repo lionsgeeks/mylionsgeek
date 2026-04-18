@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Recruiter;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InterviewScheduledToApplicantMail;
 use App\Models\JobApplication;
 use App\Models\RecruiterInterview;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -68,10 +72,9 @@ class RecruiterInterviewController extends Controller
             'job_application_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('job_applications', 'id')->where(function ($q) use ($userId) {
-                    $q->whereHas('job', fn ($j) => $j->whereHas('recruiters', fn ($r) => $r->where('users.id', $userId)));
-                }),
+                $this->jobApplicationExistsForRecruiterRule($userId),
             ],
+            'redirect' => ['nullable', 'string', Rule::in(['interviews'])],
         ]);
 
         $starts = Carbon::parse($validated['starts_at']);
@@ -79,7 +82,7 @@ class RecruiterInterviewController extends Controller
             ? Carbon::parse($validated['ends_at'])
             : $starts->copy()->addMinutes(30);
 
-        RecruiterInterview::create([
+        $interview = RecruiterInterview::create([
             'user_id' => $userId,
             'job_application_id' => $validated['job_application_id'] ?? null,
             'group_label' => $validated['group_label'] ?? null,
@@ -89,12 +92,24 @@ class RecruiterInterviewController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
-        return back()->with('success', __('Interview scheduled.'));
+        $this->notifyApplicantOfScheduledInterview($interview, $request->user());
+
+        $success = __('Interview scheduled.');
+
+        if (($validated['redirect'] ?? null) === 'interviews') {
+            return redirect()->route('recruiter.interviews.index')->with('success', $success);
+        }
+
+        return back()->with('success', $success);
     }
 
     public function update(Request $request, RecruiterInterview $recruiterInterview): RedirectResponse
     {
         $this->authorizeInterview($request, $recruiterInterview);
+
+        $previousApplicationId = $recruiterInterview->job_application_id;
+        $previousStartsIso = $recruiterInterview->starts_at?->toIso8601String();
+        $previousEndsIso = $recruiterInterview->ends_at?->toIso8601String();
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -105,10 +120,7 @@ class RecruiterInterviewController extends Controller
             'job_application_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('job_applications', 'id')->where(function ($q) use ($request) {
-                    $userId = $request->user()->id;
-                    $q->whereHas('job', fn ($j) => $j->whereHas('recruiters', fn ($r) => $r->where('users.id', $userId)));
-                }),
+                $this->jobApplicationExistsForRecruiterRule((int) $request->user()->id),
             ],
         ]);
 
@@ -126,6 +138,18 @@ class RecruiterInterviewController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
+        $newApplicationId = $validated['job_application_id'] ?? null;
+        if ($newApplicationId) {
+            $newStartsIso = $starts->toIso8601String();
+            $newEndsIso = $ends->toIso8601String();
+            $applicationChanged = (int) $previousApplicationId !== (int) $newApplicationId;
+            $scheduleChanged = $previousStartsIso !== $newStartsIso || $previousEndsIso !== $newEndsIso;
+            if ($applicationChanged || $scheduleChanged) {
+                $recruiterInterview->refresh();
+                $this->notifyApplicantOfScheduledInterview($recruiterInterview, $request->user());
+            }
+        }
+
         return back()->with('success', __('Interview updated.'));
     }
 
@@ -142,5 +166,62 @@ class RecruiterInterviewController extends Controller
         if ((int) $interview->user_id !== (int) $request->user()->id) {
             abort(403);
         }
+    }
+
+    private function notifyApplicantOfScheduledInterview(RecruiterInterview $interview, User $recruiter): void
+    {
+        if (! $interview->job_application_id) {
+            return;
+        }
+
+        $interview->loadMissing(['jobApplication.applicant', 'jobApplication.job']);
+
+        $application = $interview->jobApplication;
+        if (! $application) {
+            return;
+        }
+
+        $applicant = $application->applicant;
+        if (! $applicant || ! is_string($applicant->email) || trim($applicant->email) === '') {
+            return;
+        }
+
+        $startsAt = $interview->starts_at;
+        if (! $startsAt instanceof Carbon) {
+            return;
+        }
+
+        $endsAt = $interview->ends_at instanceof Carbon
+            ? $interview->ends_at
+            : $startsAt->copy()->addMinutes(30);
+
+        try {
+            Mail::to($applicant->email)->send(new InterviewScheduledToApplicantMail(
+                applicant: $applicant,
+                recruiter: $recruiter,
+                interviewTitle: (string) $interview->title,
+                jobTitle: $application->job?->title,
+                startsAt: $startsAt,
+                endsAt: $endsAt,
+                notes: $interview->notes,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Exists rule callbacks receive a query builder on `job_applications`, not Eloquent — use whereExists, not whereHas.
+     */
+    private function jobApplicationExistsForRecruiterRule(int $userId): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists('job_applications', 'id')->where(function (Builder $query) use ($userId): void {
+            $query->whereExists(function (Builder $sub) use ($userId): void {
+                $sub->selectRaw('1')
+                    ->from('job_posting_recruiter')
+                    ->whereColumn('job_posting_recruiter.job_posting_id', 'job_applications.job_posting_id')
+                    ->where('job_posting_recruiter.user_id', $userId);
+            });
+        });
     }
 }

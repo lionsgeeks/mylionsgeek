@@ -51,7 +51,7 @@ const getRecruiterNavItems = () => [
     },
     {
         id: 'recruiter_interviews',
-        title: 'Interviews',
+        title: 'Interview calendar',
         href: '/recruiter/interviews',
         icon: Calendar,
         authorizedRoles: ['recruiter'],
