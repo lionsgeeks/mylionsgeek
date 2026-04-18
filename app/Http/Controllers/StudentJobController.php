@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -94,13 +96,29 @@ class StudentJobController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
+        $useProfileCv = $request->boolean('use_profile_cv');
+
+        $rules = [
             'subject' => ['required', 'string', 'max:255'],
             'cover_letter' => ['required', 'string', 'max:10000'],
-            'cv' => ['required', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-        ]);
+        ];
 
-        $cvPath = $request->file('cv')->store('job-application-cvs', 'public');
+        if (! $useProfileCv) {
+            $rules['cv'] = ['required', 'file', 'mimes:pdf,doc,docx', 'max:10240'];
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($useProfileCv) {
+            $cvPath = $this->copyProfileResumeToApplicationCv($user);
+            if ($cvPath === null) {
+                return back()->withErrors([
+                    'cv' => __('You do not have a valid profile CV. Upload a CV on your profile or attach a file here.'),
+                ]);
+            }
+        } else {
+            $cvPath = $request->file('cv')->store('job-application-cvs', 'public');
+        }
 
         /** @var \App\Models\JobApplication $application */
         $application = $job->applications()->create([
@@ -174,6 +192,38 @@ class StudentJobController extends Controller
             'is_owner' => $isManager,
             'manage' => $manage,
         ];
+    }
+
+    /**
+     * Copy the user's profile resume (public/storage/resumes) into the public disk
+     * so application CVs stay on the same storage layout as uploaded application files.
+     */
+    private function copyProfileResumeToApplicationCv(\App\Models\User $user): ?string
+    {
+        $storedName = $user->resume;
+        if (! is_string($storedName) || $storedName === '') {
+            return null;
+        }
+
+        $safeName = basename($storedName);
+        if ($safeName === '') {
+            return null;
+        }
+
+        $src = public_path('storage/resumes/'.$safeName);
+        if (! is_file($src) || ! is_readable($src)) {
+            return null;
+        }
+
+        $ext = strtolower(pathinfo($safeName, PATHINFO_EXTENSION) ?: 'pdf');
+        if (! in_array($ext, ['pdf', 'doc', 'docx'], true)) {
+            return null;
+        }
+
+        $destRelative = 'job-application-cvs/'.Str::uuid()->toString().'.'.$ext;
+        $ok = Storage::disk('public')->put($destRelative, file_get_contents($src));
+
+        return $ok ? $destRelative : null;
     }
 
     private function userCanStartNewApplication(Job $job, \App\Models\User $user): bool
