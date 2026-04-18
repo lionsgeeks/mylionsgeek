@@ -70,6 +70,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                     <TableHead>Applied</TableHead>
                                     <TableHead className="w-[120px]">Profile</TableHead>
                                     <TableHead className="w-[120px]">CV</TableHead>
+                                    <TableHead className="w-[120px]">Add To calander</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -185,7 +186,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                             <TableCell className="p-0 align-center">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {row.has_cv ? (
-                                                        <Button  size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
+                                                        <Button size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
                                                             <a href={`/recruiter/applications/${row.id}/cv`} target='_blank'>
                                                                 <Download className="h-3.5 w-3.5" />
                                                                 Open CV
@@ -194,6 +195,15 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     ) : (
                                                         <span className="text-sm text-muted-foreground">No CV</span>
                                                     )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="p-0 align-center">
+                                                <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
+                                                    <Button size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
+                                                        <Link href={`/recruiter/applications/${row.id}/add-to-calander`}>
+                                                            Add To Calander
+                                                        </Link>
+                                                    </Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
