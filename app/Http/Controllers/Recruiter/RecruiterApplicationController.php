@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Recruiter;
 use App\Http\Controllers\Controller;
 use App\Models\Job;
 use App\Models\JobApplication;
+use App\Models\RecruiterInterview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -50,22 +51,32 @@ class RecruiterApplicationController extends Controller
             ->where('job_posting_id', $job->id)
             ->with(['applicant:id,name,email,image'])
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (JobApplication $row) => [
-                'id' => $row->id,
-                'status' => $row->status,
-                'subject' => $row->subject,
-                'cover_letter' => $row->cover_letter,
-                'cv_path' => $row->cv_path,
-                'has_cv' => (bool) $row->cv_path,
-                'created_at' => $row->created_at?->toIso8601String(),
-                'applicant' => $row->applicant ? [
-                    'id' => $row->applicant->id,
-                    'name' => $row->applicant->name,
-                    'email' => $row->applicant->email,
-                    'image' => $row->applicant->image,
-                ] : null,
-            ]);
+            ->get();
+
+        $applicationIds = $applications->pluck('id');
+        $interviewIdsByApplication = $applicationIds->isEmpty()
+            ? collect()
+            : RecruiterInterview::query()
+                ->where('user_id', $userId)
+                ->whereIn('job_application_id', $applicationIds)
+                ->pluck('id', 'job_application_id');
+
+        $applications = $applications->map(fn (JobApplication $row) => [
+            'id' => $row->id,
+            'status' => $row->status,
+            'subject' => $row->subject,
+            'cover_letter' => $row->cover_letter,
+            'cv_path' => $row->cv_path,
+            'has_cv' => (bool) $row->cv_path,
+            'created_at' => $row->created_at?->toIso8601String(),
+            'recruiter_interview_id' => $interviewIdsByApplication[$row->id] ?? null,
+            'applicant' => $row->applicant ? [
+                'id' => $row->applicant->id,
+                'name' => $row->applicant->name,
+                'email' => $row->applicant->email,
+                'image' => $row->applicant->image,
+            ] : null,
+        ]);
 
         return Inertia::render('recruiter/applications/job', [
             'job' => [

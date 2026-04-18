@@ -1,3 +1,13 @@
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -5,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import ScheduleInterviewFromApplicationModal from '@/pages/recruiter/applications/partials/ScheduleInterviewFromApplicationModal';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,6 +36,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
     const list = applications ?? [];
     const profileBase = (applicantId) => (applicantId ? applicantProfileHref(applicantId) : null);
     const [scheduleForApplication, setScheduleForApplication] = useState(null);
+    const [pendingDeleteInterviewId, setPendingDeleteInterviewId] = useState(null);
 
     return (
         <AppLayout>
@@ -79,6 +90,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                             <TableBody>
                                 {list.map((row) => {
                                     const applicantId = row.applicant?.id;
+                                    const scheduleInterviewId = row.recruiter_interview_id ?? null;
                                     const href = profileBase(applicantId);
                                     const profileLinkClass =
                                         'block min-h-[48px] rounded-md px-3 py-3 text-left transition-colors hover:bg-alpha/[0.08] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-alpha dark:hover:bg-light/[0.08]';
@@ -202,14 +214,26 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                             </TableCell>
                                             <TableCell className="p-0 align-center">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        className="bg-alpha text-black px-5 py-1.5 text-center"
-                                                        onClick={() => setScheduleForApplication(row)}
-                                                    >
-                                                        Add to calendar
-                                                    </Button>
+                                                    {scheduleInterviewId ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            className="px-5 py-1.5 text-center"
+                                                            onClick={() => setPendingDeleteInterviewId(scheduleInterviewId)}
+                                                        >
+                                                            Delete schedule
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            className="bg-alpha text-black px-5 py-1.5 text-center"
+                                                            onClick={() => setScheduleForApplication(row)}
+                                                        >
+                                                            Add to calendar
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -231,6 +255,32 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                 application={scheduleForApplication}
                 jobTitle={job?.title}
             />
+
+            <AlertDialog open={pendingDeleteInterviewId !== null} onOpenChange={(o) => !o && setPendingDeleteInterviewId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove this interview?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            The applicant will no longer have this slot on your calendar. You can schedule a new time afterwards.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => {
+                                if (pendingDeleteInterviewId == null) return;
+                                router.delete(`/recruiter/interviews/${pendingDeleteInterviewId}`, {
+                                    preserveScroll: true,
+                                    onFinish: () => setPendingDeleteInterviewId(null),
+                                });
+                            }}
+                        >
+                            Delete schedule
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AppLayout>
     );
 }

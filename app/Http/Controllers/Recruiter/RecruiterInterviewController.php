@@ -13,11 +13,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RecruiterInterviewController extends Controller
 {
+    private const SLOT_MINUTES = 30;
+
     public function index(Request $request): Response
     {
         $userId = $request->user()->id;
@@ -63,21 +66,33 @@ class RecruiterInterviewController extends Controller
     {
         $userId = $request->user()->id;
 
+        $uniqueApplication = Rule::unique('recruiter_interviews', 'job_application_id')
+            ->where(fn ($q) => $q->where('user_id', $userId));
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'group_label' => ['nullable', 'string', 'max:120'],
             'starts_at' => ['required', 'date'],
-            'location' => ['nullable', 'string', 'max:500'],
+            'location' => [
+                'nullable',
+                'string',
+                'max:500',
+                Rule::requiredIf(fn () => filled($request->input('job_application_id'))),
+            ],
             'notes' => ['nullable', 'string', 'max:5000'],
             'job_application_id' => [
                 'nullable',
                 'integer',
                 $this->jobApplicationExistsForRecruiterRule($userId),
+                $uniqueApplication,
             ],
             'redirect' => ['nullable', 'string', Rule::in(['interviews'])],
         ]);
 
         $starts = Carbon::parse($validated['starts_at']);
+        $jobApplicationId = isset($validated['job_application_id']) ? (int) $validated['job_application_id'] : null;
+        $this->validateInterviewScheduleRules($starts, $userId, $jobApplicationId, null);
+
         $location = isset($validated['location']) && trim($validated['location']) !== ''
             ? trim($validated['location'])
             : null;
@@ -107,24 +122,39 @@ class RecruiterInterviewController extends Controller
     {
         $this->authorizeInterview($request, $recruiterInterview);
 
+        $userId = (int) $request->user()->id;
+
         $previousApplicationId = $recruiterInterview->job_application_id;
         $previousStartsIso = $recruiterInterview->starts_at?->toIso8601String();
         $previousLocation = $recruiterInterview->location;
+
+        $uniqueApplication = Rule::unique('recruiter_interviews', 'job_application_id')
+            ->where(fn ($q) => $q->where('user_id', $userId))
+            ->ignore($recruiterInterview->id);
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'group_label' => ['nullable', 'string', 'max:120'],
             'starts_at' => ['required', 'date'],
-            'location' => ['nullable', 'string', 'max:500'],
+            'location' => [
+                'nullable',
+                'string',
+                'max:500',
+                Rule::requiredIf(fn () => filled($request->input('job_application_id'))),
+            ],
             'notes' => ['nullable', 'string', 'max:5000'],
             'job_application_id' => [
                 'nullable',
                 'integer',
-                $this->jobApplicationExistsForRecruiterRule((int) $request->user()->id),
+                $this->jobApplicationExistsForRecruiterRule($userId),
+                $uniqueApplication,
             ],
         ]);
 
         $starts = Carbon::parse($validated['starts_at']);
+        $jobApplicationId = isset($validated['job_application_id']) ? (int) $validated['job_application_id'] : null;
+        $this->validateInterviewScheduleRules($starts, $userId, $jobApplicationId, $recruiterInterview->id);
+
         $location = isset($validated['location']) && trim($validated['location']) !== ''
             ? trim($validated['location'])
             : null;
@@ -165,6 +195,71 @@ class RecruiterInterviewController extends Controller
     {
         if ((int) $interview->user_id !== (int) $request->user()->id) {
             abort(403);
+        }
+    }
+
+    private function validateInterviewScheduleRules(Carbon $start, int $recruiterUserId, ?int $jobApplicationId, ?int $ignoreInterviewId): void
+    {
+        if ($start->lte(Carbon::now())) {
+            throw ValidationException::withMessages([
+                'starts_at' => __('Choose a date and time in the future.'),
+            ]);
+        }
+
+        $local = $start->copy()->timezone(config('app.timezone'));
+        $minutesFromMidnight = ($local->hour * 60) + $local->minute;
+        $windowStart = 7 * 60;
+        $windowEndExclusive = 19 * 60;
+
+        if ($minutesFromMidnight < $windowStart || $minutesFromMidnight >= $windowEndExclusive) {
+            throw ValidationException::withMessages([
+                'starts_at' => __('Interview must start between 7:00 and 19:00 (:tz).', ['tz' => config('app.timezone')]),
+            ]);
+        }
+
+        $this->assertNoInterviewOverlap($start, $recruiterUserId, $jobApplicationId, $ignoreInterviewId);
+    }
+
+    /**
+     * Block overlapping 30-minute slots for (a) this recruiter’s calendar and (b) any other interview tied to the same job posting when an application is linked.
+     */
+    private function assertNoInterviewOverlap(Carbon $start, int $recruiterUserId, ?int $jobApplicationId, ?int $ignoreInterviewId): void
+    {
+        $newEnd = $start->copy()->addMinutes(self::SLOT_MINUTES);
+
+        $jobPostingId = null;
+        if ($jobApplicationId) {
+            $jobPostingId = JobApplication::query()->whereKey($jobApplicationId)->value('job_posting_id');
+        }
+
+        $candidates = RecruiterInterview::query()
+            ->when($ignoreInterviewId !== null, fn ($q) => $q->where('id', '!=', $ignoreInterviewId))
+            ->where(function ($q) use ($recruiterUserId, $jobPostingId) {
+                $q->where('user_id', $recruiterUserId);
+                if ($jobPostingId) {
+                    $q->orWhere(function ($q2) use ($jobPostingId) {
+                        $q2->whereNotNull('job_application_id')
+                            ->whereHas('jobApplication', fn ($j) => $j->where('job_posting_id', $jobPostingId));
+                    });
+                }
+            })
+            ->get(['id', 'starts_at']);
+
+        foreach ($candidates as $existing) {
+            $existingStart = $existing->starts_at;
+            if (! $existingStart instanceof Carbon) {
+                continue;
+            }
+            $existingEnd = $existingStart->copy()->addMinutes(self::SLOT_MINUTES);
+            if ($start->lt($existingEnd) && $newEnd->gt($existingStart)) {
+                $message = $jobPostingId
+                    ? __('This time slot is already reserved for another interview for this job.')
+                    : __('This time overlaps another interview on your calendar.');
+
+                throw ValidationException::withMessages([
+                    'starts_at' => $message,
+                ]);
+            }
         }
     }
 

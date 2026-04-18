@@ -120,6 +120,8 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
         }
     };
 
+    const linkedApplication = Boolean(form.job_application_id);
+
     const confirmDelete = () => {
         if (!deleteTarget) return;
         setProcessing(true);
@@ -193,12 +195,16 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                         </DialogHeader>
                         <div className="grid gap-4 py-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="int-title">Title</Label>
+                                <Label htmlFor="int-title">
+                                    Title <span className="text-destructive">*</span>
+                                </Label>
                                 <Input
                                     id="int-title"
                                     value={form.title}
                                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                                     className="border-alpha/30 dark:border-light/15"
+                                    required
+                                    aria-required
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -212,23 +218,35 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="int-start">Starts</Label>
+                                <Label htmlFor="int-start">
+                                    Starts <span className="text-destructive">*</span>
+                                </Label>
                                 <Input
                                     id="int-start"
                                     type="datetime-local"
                                     value={form.starts_at}
                                     onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
                                     className="border-alpha/30 dark:border-light/15"
+                                    required
+                                    aria-required
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    Must be in the future, start between 7:00–19:00 (app timezone), and not overlap your calendar or another interview for the same job.
+                                </p>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="int-location">Location (optional)</Label>
+                                <Label htmlFor="int-location">
+                                    Location
+                                    {linkedApplication ? <span className="text-destructive"> *</span> : ' (optional)'}
+                                </Label>
                                 <Input
                                     id="int-location"
                                     value={form.location}
                                     onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                                     placeholder="e.g. LionsGeek HQ, Room 2, or video link"
                                     className="border-alpha/30 dark:border-light/15"
+                                    required={linkedApplication}
+                                    aria-required={linkedApplication}
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -282,7 +300,12 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 </Button>
                                 <Button
                                     type="button"
-                                    disabled={processing || !form.title.trim() || !form.starts_at}
+                                    disabled={
+                                        processing ||
+                                        !form.title.trim() ||
+                                        !form.starts_at ||
+                                        (linkedApplication && !form.location?.trim())
+                                    }
                                     className="bg-alpha text-black hover:bg-alpha/90"
                                     onClick={submit}
                                 >
