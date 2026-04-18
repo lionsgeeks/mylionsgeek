@@ -34,6 +34,7 @@ class User extends Authenticatable
         'formation_id',
         'account_state',
         'image',
+        'resume',
         'cover', // add cover here
         'about', // short bio
         'socials', // social links JSON

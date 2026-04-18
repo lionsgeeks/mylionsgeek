@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Models\Follower;
@@ -578,6 +579,7 @@ class UsersController extends Controller
             'cin' => 'nullable|string',
             'image' => 'nullable|image',
             'cover' => 'nullable|image', // <-- allow cover image
+            'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
         ]);
@@ -607,6 +609,22 @@ class UsersController extends Controller
             $validated['cover'] = $coverName;
         }
 
+        if ($request->hasFile('resume')) {
+            $resumeFile = $request->file('resume');
+            $resumeName = $resumeFile->hashName();
+            $resumesDir = public_path('storage/resumes');
+            if (! File::isDirectory($resumesDir)) {
+                File::makeDirectory($resumesDir, 0755, true);
+            }
+            if ($user->resume) {
+                $oldPath = $resumesDir . DIRECTORY_SEPARATOR . $user->resume;
+                if (File::isFile($oldPath)) {
+                    File::delete($oldPath);
+                }
+            }
+            $resumeFile->move($resumesDir, $resumeName);
+            $validated['resume'] = $resumeName;
+        }
 
         // Map roles (array) to 'role' JSON column, lowercased
         if ($request->has('roles')) {

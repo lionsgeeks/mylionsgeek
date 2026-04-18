@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
-import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
+import { Briefcase, ExternalLink, Facebook, FileText, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Rolegard from '../../../../components/rolegard';
 import RolesMultiSelect from './RolesMultiSelect';
@@ -57,6 +57,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         phone: editedUser?.phone ?? '',
         cin: editedUser?.cin ?? '',
         image: editedUser?.image || null,
+        resumeFile: null,
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
         access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
     });
@@ -93,6 +94,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 phone: editedUser.phone ?? '',
                 cin: editedUser.cin ?? '',
                 image: editedUser?.image || null,
+                resumeFile: null,
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
             });
@@ -184,6 +186,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             form.append('image', formData?.image);
         }
 
+        if (formData?.resumeFile instanceof File) {
+            form.append('resume', formData.resumeFile);
+        }
+
         router.post(`/students/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
@@ -268,7 +274,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     )}
                     {/* Left Column - Status */}
-                    {editedUser?.status?.toLowerCase() == 'studying' ? null :  (
+                    {editedUser?.status?.toLowerCase() == 'studying' ? null : (
                         <div className="col-span-1">
                             <Label>Status</Label>
                             <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
@@ -287,6 +293,35 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                     )
 
                     }
+                    <div className='col-span-1'>
+                        <Label htmlFor="resume" className="flex items-center gap-2 mb-2">
+                            CV (PDF or Word)
+                        </Label>
+                        <Input
+                            id="resume"
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            className="border-beta/30 focus:border-alpha focus:ring-alpha dark:border-light/10 file:bg-beta/10 file:rounded-lg dark:file:bg-light/10 h-fit py-1 file:px-3 file:py-0.5"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                setFormData({ ...formData, resumeFile: file });
+                            }}
+                        />
+                        {errors.resume && <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>}
+                        {!formData.resumeFile && editedUser?.resume && (
+                            <a
+                                href={`/storage/resumes/${editedUser.resume}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"
+                            >
+                                View current CV
+                            </a>
+                        )}
+                        {formData.resumeFile && (
+                            <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>
+                        )}
+                    </div>
 
                     {/* Socials Section */}
                     {canManageSocials && (
