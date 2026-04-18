@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Recruiter;
 
 use App\Http\Controllers\Controller;
+use App\Mail\InterviewOutcomeToApplicantMail;
 use App\Mail\InterviewScheduledToApplicantMail;
 use App\Models\JobApplication;
 use App\Models\RecruiterInterview;
@@ -232,6 +233,9 @@ class RecruiterInterviewController extends Controller
             }
         });
 
+        $recruiterInterview->refresh();
+        $this->notifyApplicantOfInterviewOutcome($recruiterInterview, $request->user(), $validated['outcome']);
+
         return back()->with('success', __('Interview outcome saved.'));
     }
 
@@ -339,6 +343,43 @@ class RecruiterInterviewController extends Controller
                 startsAt: $startsAt,
                 location: $interview->location,
                 notes: $interview->notes,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    private function notifyApplicantOfInterviewOutcome(RecruiterInterview $interview, User $recruiter, string $outcome): void
+    {
+        if (! in_array($outcome, ['accepted', 'rejected'], true)) {
+            return;
+        }
+
+        $interview->loadMissing(['jobApplication.applicant', 'jobApplication.job']);
+
+        $application = $interview->jobApplication;
+        if (! $application) {
+            return;
+        }
+
+        $applicant = $application->applicant;
+        if (! $applicant || ! is_string($applicant->email) || trim($applicant->email) === '') {
+            return;
+        }
+
+        $startsAt = $interview->starts_at;
+        if (! $startsAt instanceof Carbon) {
+            return;
+        }
+
+        try {
+            Mail::to($applicant->email)->send(new InterviewOutcomeToApplicantMail(
+                applicant: $applicant,
+                recruiter: $recruiter,
+                outcome: $outcome,
+                jobTitle: $application->job?->title,
+                interviewTitle: (string) $interview->title,
+                startsAt: $startsAt,
             ));
         } catch (\Throwable $e) {
             report($e);
