@@ -256,7 +256,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     {/* Left Column - Phone */}
-                    <div className="col-span-1">
+                    <div className={editedUser?.status?.toLowerCase() == 'studying' ? 'col-span-2' : 'col-span-1'}>
                         <Label htmlFor="phone">Phone</Label>
                         <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
@@ -268,21 +268,25 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     )}
                     {/* Left Column - Status */}
-                    <div className="col-span-1">
-                        <Label>Status</Label>
-                        <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {status?.map((s, idx) => (
-                                    <SelectItem key={idx} value={s}>
-                                        {s}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {editedUser?.status?.toLowerCase() == 'studying' ? null :  (
+                        <div className="col-span-1">
+                            <Label>Status</Label>
+                            <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {status?.map((s, idx) => (
+                                        <SelectItem key={idx} value={s}>
+                                            {s}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )
+
+                    }
 
                     {/* Socials Section */}
                     {canManageSocials && (
