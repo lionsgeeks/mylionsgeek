@@ -15,28 +15,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import FullCalendar from '@fullcalendar/react';
-import timeGridPlugin from '@fullcalendar/timegrid';
+import InterviewCalendarExperience from '@/pages/recruiter/interviews/partials/InterviewCalendarExperience';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-function toDatetimeLocalValue(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
+function toDatetimeLocalValue(isoOrDate) {
+    const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+    if (!isoOrDate || Number.isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** FullCalendar needs an end; events are shown as 30 minutes from start. */
-function isoAddMinutes(iso, minutes) {
-    if (!iso) return iso;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    d.setMinutes(d.getMinutes() + minutes);
-    return d.toISOString();
+function pickerValueFromCalendarPick(dateInput) {
+    if (!dateInput) return '';
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        return `${dateInput}T09:00`;
+    }
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return '';
+    return toDatetimeLocalValue(d);
 }
 
 const emptyForm = {
@@ -56,24 +53,11 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [processing, setProcessing] = useState(false);
 
-    const events = useMemo(
-        () =>
-            interviews.map((row) => ({
-                id: String(row.id),
-                title: row.group_label ? `${row.group_label} · ${row.title}` : row.title,
-                start: row.starts_at,
-                end: isoAddMinutes(row.starts_at, 30),
-                extendedProps: row,
-            })),
-        [interviews],
-    );
-
-    const openCreate = useCallback((dateStr) => {
+    const openCreate = useCallback((dateInput) => {
         setEditingId(null);
-        const start = dateStr ? `${dateStr}T09:00` : '';
         setForm({
             ...emptyForm,
-            starts_at: start,
+            starts_at: pickerValueFromCalendarPick(dateInput),
         });
         setDialogOpen(true);
     }, []);
@@ -163,30 +147,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                     </div>
                 )}
 
-                <div className="rounded-lg border border-alpha/15 bg-white p-3 dark:border-light/10 dark:bg-dark_gray">
-                    <div className="min-h-[560px]">
-                        <FullCalendar
-                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                            initialView="timeGridWeek"
-                            headerToolbar={{
-                                left: 'prev,next today',
-                                center: 'title',
-                                right: 'dayGridMonth,timeGridWeek,timeGridDay',
-                            }}
-                            height="auto"
-                            slotDuration="00:30:00"
-                            allDaySlot={false}
-                            editable={false}
-                            selectable={false}
-                            events={events}
-                            dateClick={(info) => openCreate(info.dateStr)}
-                            eventClick={(info) => {
-                                const row = info.event.extendedProps;
-                                if (row?.id) openEdit(row);
-                            }}
-                        />
-                    </div>
-                </div>
+                <InterviewCalendarExperience interviews={interviews} onRequestCreate={openCreate} onEditInterview={openEdit} />
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light sm:max-w-md dark:border-light/10 dark:bg-dark">
