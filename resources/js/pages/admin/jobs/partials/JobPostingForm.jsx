@@ -1,9 +1,9 @@
+import JobDescriptionEditor from '@/components/JobDescriptionEditor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import RecruiterMultiSelect from '@/pages/admin/jobs/partials/RecruiterMultiSelect';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Link } from '@inertiajs/react';
@@ -45,18 +45,13 @@ export default function JobPostingForm({
                 {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                    id="description"
-                    value={data.description}
-                    onChange={(e) => setData('description', e.target.value)}
-                    rows={8}
-                    className="border-alpha/30 dark:border-light/15"
-                    required
-                />
-                {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
-            </div>
+            <JobDescriptionEditor
+                id="description"
+                label="Description"
+                value={data.description}
+                onChange={(html) => setData('description', html)}
+                error={errors.description}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

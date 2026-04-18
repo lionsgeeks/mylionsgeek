@@ -156,7 +156,8 @@ class StudentJobController extends Controller
     {
         $skills = $job->skills ?? [];
         $description = $job->description ?? '';
-        $excerpt = mb_strlen($description) > 220 ? mb_substr($description, 0, 217).'…' : $description;
+        $plain = trim(preg_replace('/\s+/u', ' ', strip_tags($description)));
+        $excerpt = mb_strlen($plain) > 220 ? mb_substr($plain, 0, 217).'…' : $plain;
 
         return [
             'id' => $job->id,

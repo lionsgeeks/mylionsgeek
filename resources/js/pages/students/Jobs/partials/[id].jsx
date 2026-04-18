@@ -6,13 +6,27 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import DOMPurify from 'dompurify';
 import { ArrowLeft, MapPin, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { formatJobTypeLabel } from './jobHelpers';
+
+function looksLikeHtml(s) {
+    const t = typeof s === 'string' ? s.trim() : '';
+    return t.startsWith('<') && /<\/?[a-z][a-z0-9]*[\s>/]/i.test(t);
+}
 
 export default function JobShow({ job }) {
     const { flash, auth } = usePage().props;
     const hasProfileResume = Boolean(auth?.user?.resume);
+
+    const descriptionHtml = useMemo(() => {
+        const raw = job?.description ?? '';
+        if (!looksLikeHtml(raw)) {
+            return null;
+        }
+        return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+    }, [job?.description]);
 
     const [applyOpen, setApplyOpen] = useState(false);
     const [cvInputKey, setCvInputKey] = useState(0);
@@ -127,7 +141,14 @@ export default function JobShow({ job }) {
                             )}
 
                             <div className="prose prose-sm dark:prose-invert mt-6 max-w-none text-beta dark:text-light">
-                                <p className="whitespace-pre-wrap text-beta/90 dark:text-light/90">{job.description}</p>
+                                {descriptionHtml != null ? (
+                                    <div
+                                        className="text-beta/90 dark:text-light/90"
+                                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                                    />
+                                ) : (
+                                    <p className="whitespace-pre-wrap text-beta/90 dark:text-light/90">{job?.description ?? ''}</p>
+                                )}
                             </div>
 
                             {job.can_apply && (

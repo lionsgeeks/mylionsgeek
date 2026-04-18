@@ -27,7 +27,11 @@ class JobPostingRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
+            'description' => ['required', 'string', 'max:50000', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! is_string($value) || trim(strip_tags($value)) === '') {
+                    $fail(__('The description field is required.'));
+                }
+            }],
             'location' => ['nullable', 'string', 'max:255'],
             'job_type' => ['required', 'string', Rule::in(Job::JOB_TYPES)],
             'skills' => ['nullable', 'array'],
@@ -41,4 +45,3 @@ class JobPostingRequest extends FormRequest
         ];
     }
 }
-
