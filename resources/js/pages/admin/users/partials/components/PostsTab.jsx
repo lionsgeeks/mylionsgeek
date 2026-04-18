@@ -1,5 +1,5 @@
-import PostCard from '../../../../../components/post/PostCard';
 import { Link } from '@inertiajs/react';
+import PostCard from '../../../../../components/post/PostCard';
 
 export default function PostsTab({ posts, user }) {
     return (
@@ -12,10 +12,7 @@ export default function PostsTab({ posts, user }) {
                                 ? `${posts.posts.length} ${posts.posts.length === 1 ? 'post' : 'posts'} in this tab.`
                                 : 'No posts in the preview below.'}
                         </p>
-                        <Link
-                            href={`/students/${user.id}/posts`}
-                            className="text-sm font-semibold text-alpha hover:underline dark:text-alpha"
-                        >
+                        <Link href={`/students/${user.id}/posts`} className="text-sm font-semibold text-alpha hover:underline dark:text-alpha">
                             See all posts (full page)
                         </Link>
                     </div>

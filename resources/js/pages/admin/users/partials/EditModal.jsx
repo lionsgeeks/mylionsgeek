@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
-import { Briefcase, ExternalLink, Facebook, FileText, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
+import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Rolegard from '../../../../components/rolegard';
 import RolesMultiSelect from './RolesMultiSelect';
@@ -290,24 +290,24 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 </SelectContent>
                             </Select>
                         </div>
-                    )
-
-                    }
-                    <div className='col-span-1'>
-                        <Label htmlFor="resume" className="flex items-center gap-2 mb-2">
+                    )}
+                    <div className="col-span-1">
+                        <Label htmlFor="resume" className="mb-2 flex items-center gap-2">
                             CV (PDF or Word)
                         </Label>
                         <Input
                             id="resume"
                             type="file"
                             accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            className="border-beta/30 focus:border-alpha focus:ring-alpha dark:border-light/10 file:bg-beta/10 file:rounded-lg dark:file:bg-light/10 h-fit py-1 file:px-3 file:py-0.5"
+                            className="h-fit border-beta/30 py-1 file:rounded-lg file:bg-beta/10 file:px-3 file:py-0.5 focus:border-alpha focus:ring-alpha dark:border-light/10 dark:file:bg-light/10"
                             onChange={(e) => {
                                 const file = e.target.files?.[0] || null;
                                 setFormData({ ...formData, resumeFile: file });
                             }}
                         />
-                        {errors.resume && <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>}
+                        {errors.resume && (
+                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
+                        )}
                         {!formData.resumeFile && editedUser?.resume && (
                             <a
                                 href={`/storage/resumes/${editedUser.resume}`}
@@ -318,9 +318,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                 View current CV
                             </a>
                         )}
-                        {formData.resumeFile && (
-                            <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>
-                        )}
+                        {formData.resumeFile && <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>}
                     </div>
 
                     {/* Socials Section */}

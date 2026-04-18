@@ -231,7 +231,8 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                     aria-required
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Must be in the future, start between 7:00–19:00 (app timezone), and not overlap your calendar or another interview for the same job.
+                                    Must be in the future, start between 7:00–19:00 (app timezone), and not overlap your calendar or another interview
+                                    for the same job.
                                 </p>
                             </div>
                             <div className="grid gap-2">
@@ -300,12 +301,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 </Button>
                                 <Button
                                     type="button"
-                                    disabled={
-                                        processing ||
-                                        !form.title.trim() ||
-                                        !form.starts_at ||
-                                        (linkedApplication && !form.location?.trim())
-                                    }
+                                    disabled={processing || !form.title.trim() || !form.starts_at || (linkedApplication && !form.location?.trim())}
                                     className="bg-alpha text-black hover:bg-alpha/90"
                                     onClick={submit}
                                 >

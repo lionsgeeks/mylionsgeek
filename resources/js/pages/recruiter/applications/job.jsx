@@ -73,7 +73,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
             <div className="flex flex-col gap-6 p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                        <Button variant="ghost" size="sm" className="-ml-2 mb-2 gap-1 text-alpha" asChild>
+                        <Button variant="ghost" size="sm" className="mb-2 -ml-2 gap-1 text-alpha" asChild>
                             <Link href="/recruiter/applications">
                                 <ArrowLeft className="h-4 w-4" />
                                 All jobs
@@ -130,7 +130,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
 
                                     return (
                                         <TableRow key={row.id}>
-                                            <TableCell className="p-0 align-center">
+                                            <TableCell className="align-center p-0">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {row.applicant ? (
@@ -142,7 +142,9 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                                     onlineCircleClass="hidden"
                                                                 />
                                                                 <div className="min-w-0">
-                                                                    <span className="font-medium text-beta dark:text-light">{row.applicant.name}</span>
+                                                                    <span className="font-medium text-beta dark:text-light">
+                                                                        {row.applicant.name}
+                                                                    </span>
                                                                     <span className="mt-0.5 block truncate text-xs text-beta/65 dark:text-light/65">
                                                                         {row.applicant.email}
                                                                     </span>
@@ -179,7 +181,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     <div className="px-3 py-3">{row.subject ?? '—'}</div>
                                                 )}
                                             </TableCell> */}
-                                            <TableCell className="p-0 align-center">
+                                            <TableCell className="align-center p-0">
                                                 {href ? (
                                                     <Link href={href} className={`${profileLinkClass} flex items-start`}>
                                                         <Badge variant="secondary" className="capitalize">
@@ -194,7 +196,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     </div>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="p-0 align-center text-sm">
+                                            <TableCell className="align-center p-0 text-sm">
                                                 {href ? (
                                                     <Link href={href} className={profileLinkClass}>
                                                         {formatDate(row.created_at)}
@@ -222,20 +224,20 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     </div>
                                                 )}
                                             </TableCell> */}
-                                            <TableCell className="p-0 align-center">
+                                            <TableCell className="align-center p-0">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {href ? (
-                                                        <Link href={href} className="bg-alpha text-black px-5 py-1.5 rounded-md text-center">
+                                                        <Link href={href} className="rounded-md bg-alpha px-5 py-1.5 text-center text-black">
                                                             View profile
                                                         </Link>
                                                     ) : null}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="p-0 align-center">
+                                            <TableCell className="align-center p-0">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {row.has_cv ? (
-                                                        <Button size="sm" className="bg-alpha text-black px-5 py-1.5 rounded-md text-center" asChild>
-                                                            <a href={`/recruiter/applications/${row.id}/cv`} target='_blank'>
+                                                        <Button size="sm" className="rounded-md bg-alpha px-5 py-1.5 text-center text-black" asChild>
+                                                            <a href={`/recruiter/applications/${row.id}/cv`} target="_blank">
                                                                 <Download className="h-3.5 w-3.5" />
                                                                 Open CV
                                                             </a>
@@ -245,7 +247,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="p-0 align-center">
+                                            <TableCell className="align-center p-0">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {!scheduleInterviewId ? (
                                                         <Button
@@ -262,8 +264,8 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                                 variant="secondary"
                                                                 className={
                                                                     interviewOutcome === 'accepted'
-                                                                        ? 'w-fit border border-green-600/40 bg-green-600/15 capitalize text-green-800 dark:text-green-200'
-                                                                        : 'w-fit border border-destructive/40 bg-destructive/10 capitalize text-destructive'
+                                                                        ? 'w-fit border border-green-600/40 bg-green-600/15 text-green-800 capitalize dark:text-green-200'
+                                                                        : 'w-fit border border-destructive/40 bg-destructive/10 text-destructive capitalize'
                                                                 }
                                                             >
                                                                 {interviewOutcome}
@@ -280,9 +282,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                                     size="sm"
                                                                     disabled={outcomeBusyInterviewId === scheduleInterviewId}
                                                                     className="bg-alpha px-3 text-black"
-                                                                    onClick={() =>
-                                                                        submitInterviewOutcome(scheduleInterviewId, 'accepted')
-                                                                    }
+                                                                    onClick={() => submitInterviewOutcome(scheduleInterviewId, 'accepted')}
                                                                 >
                                                                     Accepted
                                                                 </Button>
@@ -292,15 +292,12 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                                     size="sm"
                                                                     className="px-3"
                                                                     disabled={outcomeBusyInterviewId === scheduleInterviewId}
-                                                                    onClick={() =>
-                                                                        submitInterviewOutcome(scheduleInterviewId, 'rejected')
-                                                                    }
+                                                                    onClick={() => submitInterviewOutcome(scheduleInterviewId, 'rejected')}
                                                                 >
                                                                     Rejected
                                                                 </Button>
                                                             </div>
-                                                            {lastOutcomeAttemptInterviewId === scheduleInterviewId &&
-                                                            errors?.outcome ? (
+                                                            {lastOutcomeAttemptInterviewId === scheduleInterviewId && errors?.outcome ? (
                                                                 <p className="text-xs text-destructive">{errors.outcome}</p>
                                                             ) : null}
                                                         </div>

@@ -24,9 +24,7 @@ export default function RecruiterApplicationsIndex({ jobs }) {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-beta dark:text-light">Applications</h1>
-                        <p className="mt-1 text-sm text-beta/70 dark:text-light/70">
-                            Choose a job to view every application for that posting.
-                        </p>
+                        <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Choose a job to view every application for that posting.</p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
                         <Link href="/recruiter/dashboard">Dashboard</Link>
@@ -58,7 +56,9 @@ export default function RecruiterApplicationsIndex({ jobs }) {
                                             <Briefcase className="h-5 w-5" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <h2 className="font-semibold text-beta line-clamp-2 group-hover:text-alpha dark:text-light">{job.title}</h2>
+                                            <h2 className="line-clamp-2 font-semibold text-beta group-hover:text-alpha dark:text-light">
+                                                {job.title}
+                                            </h2>
                                             <p className="mt-1 font-mono text-xs text-beta/60 dark:text-light/60">{job.reference}</p>
                                         </div>
                                     </div>

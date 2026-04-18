@@ -2,10 +2,10 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { router } from '@inertiajs/react';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import JSZip from 'jszip';
-import { router } from '@inertiajs/react';
 import { Award, Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -22,10 +22,7 @@ const AttendanceBadge = ({ score }) => {
               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30'
               : 'bg-red-500/15 text-red-600 dark:text-red-400 ring-red-500/30';
     return (
-        <span
-            className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`}
-            title="Taux de présence"
-        >
+        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`} title="Taux de présence">
             {pct}%
         </span>
     );
@@ -264,9 +261,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                         </div>
 
                                         {/* Attendance / discipline badge */}
-                                        {student.discipline != null && (
-                                            <AttendanceBadge score={student.discipline} />
-                                        )}
+                                        {student.discipline != null && <AttendanceBadge score={student.discipline} />}
 
                                         {/* Selected checkmark */}
                                         {checked && (

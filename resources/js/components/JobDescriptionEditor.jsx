@@ -3,14 +3,12 @@ import { Label } from '@/components/ui/label';
 import { Toggle } from '@/components/ui/toggle';
 import { cn } from '@/lib/utils';
 import Bold from '@tiptap/extension-bold';
-import BulletList from '@tiptap/extension-bullet-list';
 import Document from '@tiptap/extension-document';
 import Gapcursor from '@tiptap/extension-gapcursor';
 import Heading from '@tiptap/extension-heading';
 import History from '@tiptap/extension-history';
 import Italic from '@tiptap/extension-italic';
-import ListItem from '@tiptap/extension-list-item';
-import OrderedList from '@tiptap/extension-ordered-list';
+import { ListKit } from '@tiptap/extension-list/kit';
 import Paragraph from '@tiptap/extension-paragraph';
 import Placeholder from '@tiptap/extension-placeholder';
 import Text from '@tiptap/extension-text';
@@ -29,45 +27,78 @@ import {
     ListOrdered,
     Underline as UnderlineIcon,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+
+const jobDescriptionEditorProps = {
+    attributes: {
+        class: cn('min-h-[220px] max-w-none px-3 py-2 outline-none', 'text-beta dark:text-light', 'focus-visible:outline-none'),
+    },
+};
+
+const jobDescriptionExtensions = [
+    Document,
+    Paragraph,
+    Text,
+    Bold,
+    Italic,
+    Underline,
+    Heading.configure({ levels: [2, 3] }),
+    ListKit.configure({
+        bulletList: {},
+        orderedList: {},
+        listItem: {},
+        listKeymap: {},
+        taskItem: false,
+        taskList: false,
+    }),
+    History,
+    Gapcursor,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Placeholder.configure({
+        placeholder: 'Describe the role, responsibilities, and what you are looking for…',
+    }),
+];
+
+function stopToolbarFromStealingFocus(event) {
+    if (event.button !== 0) {
+        return;
+    }
+    event.preventDefault();
+}
 
 export default function JobDescriptionEditor({ id = 'job-description', label = 'Description', value, onChange, error }) {
-    const editor = useEditor({
-        extensions: [
-            Document,
-            Paragraph,
-            Text,
-            Bold,
-            Italic,
-            Underline,
-            Heading.configure({ levels: [2, 3] }),
-            BulletList,
-            OrderedList,
-            ListItem,
-            History,
-            Gapcursor,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({
-                placeholder: 'Describe the role, responsibilities, and what you are looking for…',
-            }),
-        ],
-        content: value || '',
-        editorProps: {
-            attributes: {
-                class: cn(
-                    'prose prose-sm dark:prose-invert max-w-none min-h-[220px] px-3 py-2 outline-none',
-                    'text-beta dark:text-light [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold',
-                    'focus-visible:outline-none',
-                ),
+    const skipExternalContentSync = useRef(false);
+    const initialHtmlRef = useRef(value ?? '');
+
+    const editor = useEditor(
+        {
+            extensions: jobDescriptionExtensions,
+            shouldRerenderOnTransaction: true,
+            editorProps: jobDescriptionEditorProps,
+            onCreate: ({ editor: ed }) => {
+                const html = initialHtmlRef.current;
+                if (html) {
+                    ed.commands.setContent(html, { emitUpdate: false });
+                }
+            },
+            onUpdate: ({ editor: ed }) => {
+                skipExternalContentSync.current = true;
+                onChange(ed.getHTML());
             },
         },
-        onUpdate: ({ editor: ed }) => {
-            onChange(ed.getHTML());
-        },
-    });
+        [],
+    );
+
+    useEffect(() => {
+        initialHtmlRef.current = value ?? '';
+    }, [value]);
 
     useEffect(() => {
         if (!editor || editor.isDestroyed) {
+            return;
+        }
+        if (skipExternalContentSync.current) {
+            skipExternalContentSync.current = false;
             return;
         }
         const incoming = value || '';
@@ -90,7 +121,13 @@ export default function JobDescriptionEditor({ id = 'job-description', label = '
             >
                 {editor ? (
                     <div className="flex flex-col gap-2 p-2">
-                        <div className="flex flex-wrap gap-1 border-b border-alpha/15 pb-2 dark:border-light/10">
+                        <div
+                            className="flex flex-wrap gap-1 border-b border-alpha/15 pb-2 dark:border-light/10"
+                            onMouseDown={stopToolbarFromStealingFocus}
+                            onPointerDownCapture={stopToolbarFromStealingFocus}
+                            role="toolbar"
+                            aria-label="Formatting"
+                        >
                             <Toggle
                                 size="sm"
                                 variant="outline"
@@ -138,30 +175,38 @@ export default function JobDescriptionEditor({ id = 'job-description', label = '
                                 <Heading3 className="h-4 w-4" />
                             </Toggle>
                             <span className="mx-1 hidden h-6 w-px bg-alpha/20 sm:inline dark:bg-light/20" aria-hidden />
-                            <Toggle
+                            <Button
+                                type="button"
                                 size="sm"
-                                variant="outline"
-                                pressed={editor.isActive('bulletList')}
-                                onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+                                variant={editor.isActive('bulletList') ? 'secondary' : 'outline'}
+                                className="h-8 px-2"
+                                onMouseDown={stopToolbarFromStealingFocus}
+                                onPointerDownCapture={stopToolbarFromStealingFocus}
+                                onClick={() => editor.chain().focus().toggleBulletList().run()}
                                 aria-label="Bullet list"
                             >
                                 <List className="h-4 w-4" />
-                            </Toggle>
-                            <Toggle
+                            </Button>
+                            <Button
+                                type="button"
                                 size="sm"
-                                variant="outline"
-                                pressed={editor.isActive('orderedList')}
-                                onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+                                variant={editor.isActive('orderedList') ? 'secondary' : 'outline'}
+                                className="h-8 px-2"
+                                onMouseDown={stopToolbarFromStealingFocus}
+                                onPointerDownCapture={stopToolbarFromStealingFocus}
+                                onClick={() => editor.chain().focus().toggleOrderedList().run()}
                                 aria-label="Numbered list"
                             >
                                 <ListOrdered className="h-4 w-4" />
-                            </Toggle>
+                            </Button>
                             <span className="mx-1 hidden h-6 w-px bg-alpha/20 sm:inline dark:bg-light/20" aria-hidden />
                             <Button
                                 type="button"
                                 size="sm"
                                 variant={editor.isActive({ textAlign: 'left' }) ? 'secondary' : 'outline'}
                                 className="h-8 px-2"
+                                onMouseDown={stopToolbarFromStealingFocus}
+                                onPointerDownCapture={stopToolbarFromStealingFocus}
                                 onClick={() => editor.chain().focus().setTextAlign('left').run()}
                                 aria-label="Align left"
                             >
@@ -172,6 +217,8 @@ export default function JobDescriptionEditor({ id = 'job-description', label = '
                                 size="sm"
                                 variant={editor.isActive({ textAlign: 'center' }) ? 'secondary' : 'outline'}
                                 className="h-8 px-2"
+                                onMouseDown={stopToolbarFromStealingFocus}
+                                onPointerDownCapture={stopToolbarFromStealingFocus}
                                 onClick={() => editor.chain().focus().setTextAlign('center').run()}
                                 aria-label="Align center"
                             >
@@ -182,13 +229,17 @@ export default function JobDescriptionEditor({ id = 'job-description', label = '
                                 size="sm"
                                 variant={editor.isActive({ textAlign: 'right' }) ? 'secondary' : 'outline'}
                                 className="h-8 px-2"
+                                onMouseDown={stopToolbarFromStealingFocus}
+                                onPointerDownCapture={stopToolbarFromStealingFocus}
                                 onClick={() => editor.chain().focus().setTextAlign('right').run()}
                                 aria-label="Align right"
                             >
                                 <AlignRight className="h-4 w-4" />
                             </Button>
                         </div>
-                        <EditorContent editor={editor} className="max-h-[min(50vh,28rem)] overflow-y-auto" />
+                        <div className="prose prose-sm dark:prose-invert max-h-[min(50vh,28rem)] max-w-none overflow-y-auto text-beta dark:text-light [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold">
+                            <EditorContent editor={editor} />
+                        </div>
                     </div>
                 ) : (
                     <div className="min-h-[220px] animate-pulse rounded-md bg-muted/40" aria-hidden />

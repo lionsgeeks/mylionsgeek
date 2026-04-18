@@ -142,10 +142,7 @@ export default function JobShow({ job }) {
 
                             <div className="prose prose-sm dark:prose-invert mt-6 max-w-none text-beta dark:text-light">
                                 {descriptionHtml != null ? (
-                                    <div
-                                        className="text-beta/90 dark:text-light/90"
-                                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                                    />
+                                    <div className="text-beta/90 dark:text-light/90" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                                 ) : (
                                     <p className="whitespace-pre-wrap text-beta/90 dark:text-light/90">{job?.description ?? ''}</p>
                                 )}

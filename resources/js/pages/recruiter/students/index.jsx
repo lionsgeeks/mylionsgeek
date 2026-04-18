@@ -1,9 +1,9 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import RecruiterStudentsPagination from '@/pages/recruiter/students/partials/RecruiterStudentsPagination';
 import { Head, Link, router } from '@inertiajs/react';
@@ -58,12 +58,12 @@ export default function RecruiterStudentsIndex({ students, filters }) {
                         Students
                     </h1>
                     <p className="mt-1 text-sm text-beta/70 dark:text-light/70">
-                        Browse students only (excluding status &quot;Studying&quot; and accounts that also have admin, coach, pro, or
-                        moderateur roles). Select a card to open their full profile.
+                        Browse students only (excluding status &quot;Studying&quot; and accounts that also have admin, coach, pro, or moderateur
+                        roles). Select a card to open their full profile.
                     </p>
                 </div>
 
-                <div className="grid gap-4 rounded-lg border border-alpha/15 bg-white p-4 dark:border-light/10 dark:bg-dark_gray sm:grid-cols-2">
+                <div className="grid gap-4 rounded-lg border border-alpha/15 bg-white p-4 sm:grid-cols-2 dark:border-light/10 dark:bg-dark_gray">
                     <div className="space-y-2">
                         <Label htmlFor="student-search">Search by name</Label>
                         <Input
@@ -108,7 +108,11 @@ export default function RecruiterStudentsIndex({ students, filters }) {
                     <>
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {rows.map((s) => (
-                                <Link key={s.id} href={`/recruiter/students/${s.id}`} className="block rounded-xl outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-alpha">
+                                <Link
+                                    key={s.id}
+                                    href={`/recruiter/students/${s.id}`}
+                                    className="block rounded-xl ring-offset-background outline-none focus-visible:ring-2 focus-visible:ring-alpha"
+                                >
                                     <Card className="h-full border-alpha/15 transition-shadow hover:shadow-md dark:border-light/10 dark:bg-dark_gray">
                                         <CardHeader className="flex flex-row items-start gap-4 space-y-0">
                                             <Avatar name={s.name} image={s.image || undefined} className="h-14 w-14 shrink-0" />

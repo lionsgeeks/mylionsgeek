@@ -133,12 +133,7 @@ export default function ScheduleInterviewFromApplicationModal({ open, onOpenChan
                         </Button>
                         <Button
                             type="submit"
-                            disabled={
-                                form.processing ||
-                                !form.data.title?.trim() ||
-                                !form.data.starts_at ||
-                                !form.data.location?.trim()
-                            }
+                            disabled={form.processing || !form.data.title?.trim() || !form.data.starts_at || !form.data.location?.trim()}
                             className="bg-alpha text-black hover:bg-alpha/90"
                         >
                             {form.processing ? 'Saving…' : 'Add to calendar'}

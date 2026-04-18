@@ -180,24 +180,22 @@ export default function PostCommentItem({
                             </div>
                         )}
 
-                        {
-                            (!auth?.user?.role?.includes('recruiter')) && (
-                                <div className="mt-2 flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => onToggleLike(c.id)}
-                                        className={
-                                            `inline-flex items-center gap-2 text-xs font-semibold ` +
-                                            (c.liked ? 'text-alpha' : 'text-neutral-500 dark:text-neutral-300')
-                                        }
-                                    >
-                                        <ThumbsUp size={14} />
-                                        Like
-                                    </button>
-                                    <span className="text-xs text-neutral-500 dark:text-neutral-400">{Number(c.likes_count || 0)}</span>
-                                </div>
-                            )
-                        }
+                        {!auth?.user?.role?.includes('recruiter') && (
+                            <div className="mt-2 flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleLike(c.id)}
+                                    className={
+                                        `inline-flex items-center gap-2 text-xs font-semibold ` +
+                                        (c.liked ? 'text-alpha' : 'text-neutral-500 dark:text-neutral-300')
+                                    }
+                                >
+                                    <ThumbsUp size={14} />
+                                    Like
+                                </button>
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400">{Number(c.likes_count || 0)}</span>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

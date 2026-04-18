@@ -107,9 +107,7 @@ export default function RecruiterDashboard({ stats, upcomingInterviews }) {
                                         <p className="font-medium text-beta dark:text-light">{row.title}</p>
                                         {row.group_label && <p className="text-xs text-alpha dark:text-alpha">Group: {row.group_label}</p>}
                                         <p className="text-sm text-muted-foreground">{formatDateTime(row.starts_at)}</p>
-                                        {row.location ? (
-                                            <p className="mt-1 text-sm text-beta/80 dark:text-light/80">{row.location}</p>
-                                        ) : null}
+                                        {row.location ? <p className="mt-1 text-sm text-beta/80 dark:text-light/80">{row.location}</p> : null}
                                     </div>
                                 </li>
                             ))}

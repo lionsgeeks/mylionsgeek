@@ -212,14 +212,15 @@ const Header = ({ user, userFunctionality }) => {
                                     <span className="text-sm font-medium">Edit Profile</span>
                                 </button>
                             )}
-                            {(auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter')) && (
+                            {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
                                 <>
                                     <button
                                         onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
-                                        className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors sm:w-auto ${user?.isFollowing
-                                            ? 'bg-dark text-black hover:bg-dark/90 dark:bg-alpha dark:text-black'
-                                            : 'bg-alpha text-black hover:bg-alpha/90'
-                                            }`}
+                                        className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors sm:w-auto ${
+                                            user?.isFollowing
+                                                ? 'bg-dark text-black hover:bg-dark/90 dark:bg-alpha dark:text-black'
+                                                : 'bg-alpha text-black hover:bg-alpha/90'
+                                        }`}
                                     >
                                         <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>
                                     </button>
@@ -289,14 +290,15 @@ const Header = ({ user, userFunctionality }) => {
                                         <span className="text-sm font-medium">Edit Profile</span>
                                     </button>
                                 )}
-                                {(auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter')) && (
+                                {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
                                     <>
                                         <button
                                             onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
-                                            className={`flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors ${user?.isFollowing
-                                                ? 'bg-dark text-black hover:bg-dark/90 dark:bg-alpha dark:text-black'
-                                                : 'bg-alpha text-black hover:bg-alpha/90'
-                                                }`}
+                                            className={`flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors ${
+                                                user?.isFollowing
+                                                    ? 'bg-dark text-black hover:bg-dark/90 dark:bg-alpha dark:text-black'
+                                                    : 'bg-alpha text-black hover:bg-alpha/90'
+                                            }`}
                                         >
                                             <span className="text-sm font-medium">{user?.isFollowing ? 'Unfollow' : 'Follow'}</span>
                                         </button>
@@ -312,7 +314,7 @@ const Header = ({ user, userFunctionality }) => {
                                     </>
                                 )}
 
-                                {(auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter')) && (
+                                {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <MoreHorizontal className="h-5 w-5 text-beta dark:text-light" />
@@ -336,9 +338,7 @@ const Header = ({ user, userFunctionality }) => {
                                             </div>
                                         </PopoverContent>
                                     </Popover>
-                                )
-
-                                }
+                                )}
                             </div>
                         </div>
                     </div>

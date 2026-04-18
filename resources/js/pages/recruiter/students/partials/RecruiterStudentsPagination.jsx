@@ -47,11 +47,7 @@ export default function RecruiterStudentsPagination({ meta }) {
         );
 
     const navBtnClass = (disabled) =>
-        cn(
-            buttonVariants({ variant: 'ghost', size: 'default' }),
-            'gap-1 px-2.5',
-            disabled && 'pointer-events-none opacity-40',
-        );
+        cn(buttonVariants({ variant: 'ghost', size: 'default' }), 'gap-1 px-2.5', disabled && 'pointer-events-none opacity-40');
 
     return (
         <Pagination className="mt-8">
