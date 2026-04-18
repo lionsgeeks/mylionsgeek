@@ -25,7 +25,9 @@
             <h3 style="color: #2563eb; margin-top: 0;">{{ __('Interview') }}</h3>
             <p style="margin: 5px 0;"><strong>{{ __('Title') }}:</strong> {{ $interviewTitle }}</p>
             <p style="margin: 5px 0;"><strong>{{ __('Date and time') }}:</strong> {{ $startFormatted }}</p>
-            <p style="margin: 5px 0;"><strong>{{ __('End time') }}:</strong> {{ $endTimeFormatted }}</p>
+            @if ($locationPlain)
+                <p style="margin: 5px 0;"><strong>{{ __('Location') }}:</strong> {{ $locationPlain }}</p>
+            @endif
             @if ($notesPlain)
                 <p style="margin: 12px 0 0; white-space: pre-wrap;"><strong>{{ __('Notes') }}:</strong><br>{{ $notesPlain }}</p>
             @endif

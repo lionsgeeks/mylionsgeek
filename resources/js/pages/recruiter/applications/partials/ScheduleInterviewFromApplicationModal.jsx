@@ -10,6 +10,7 @@ export default function ScheduleInterviewFromApplicationModal({ open, onOpenChan
         title: '',
         group_label: '',
         starts_at: '',
+        location: '',
         notes: '',
         job_application_id: null,
         redirect: 'interviews',
@@ -25,6 +26,7 @@ export default function ScheduleInterviewFromApplicationModal({ open, onOpenChan
             title: `Interview — ${applicantName} · ${job}`,
             group_label: '',
             starts_at: '',
+            location: '',
             notes: '',
             job_application_id: application.id,
             redirect: 'interviews',
@@ -86,6 +88,17 @@ export default function ScheduleInterviewFromApplicationModal({ open, onOpenChan
                             required
                         />
                         {form.errors.starts_at && <p className="text-sm text-destructive">{form.errors.starts_at}</p>}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="sched-int-location">Location</Label>
+                        <Input
+                            id="sched-int-location"
+                            value={form.data.location}
+                            onChange={(e) => form.setData('location', e.target.value)}
+                            placeholder="Address, room, or video meeting link"
+                            className="border-alpha/30 dark:border-light/15"
+                        />
+                        {form.errors.location && <p className="text-sm text-destructive">{form.errors.location}</p>}
                     </div>
                     {form.errors.job_application_id && <p className="text-sm text-destructive">{form.errors.job_application_id}</p>}
                     <DialogFooter className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">

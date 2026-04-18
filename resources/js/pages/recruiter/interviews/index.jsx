@@ -30,20 +30,20 @@ function toDatetimeLocalValue(iso) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function addMinutesToDatetimeLocal(localStr, minutes) {
-    if (!localStr) return '';
-    const d = new Date(localStr);
-    if (Number.isNaN(d.getTime())) return '';
+/** FullCalendar needs an end; events are shown as 30 minutes from start. */
+function isoAddMinutes(iso, minutes) {
+    if (!iso) return iso;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
     d.setMinutes(d.getMinutes() + minutes);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return d.toISOString();
 }
 
 const emptyForm = {
     title: '',
     group_label: '',
     starts_at: '',
-    ends_at: '',
+    location: '',
     notes: '',
     job_application_id: '',
 };
@@ -62,7 +62,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                 id: String(row.id),
                 title: row.group_label ? `${row.group_label} · ${row.title}` : row.title,
                 start: row.starts_at,
-                end: row.ends_at || row.starts_at,
+                end: isoAddMinutes(row.starts_at, 30),
                 extendedProps: row,
             })),
         [interviews],
@@ -74,7 +74,6 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
         setForm({
             ...emptyForm,
             starts_at: start,
-            ends_at: start ? addMinutesToDatetimeLocal(start, 30) : '',
         });
         setDialogOpen(true);
     }, []);
@@ -85,7 +84,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
             title: row.title ?? '',
             group_label: row.group_label ?? '',
             starts_at: toDatetimeLocalValue(row.starts_at),
-            ends_at: row.ends_at ? toDatetimeLocalValue(row.ends_at) : '',
+            location: row.location ?? '',
             notes: row.notes ?? '',
             job_application_id: row.job_application_id ? String(row.job_application_id) : '',
         });
@@ -98,7 +97,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
             title: form.title,
             group_label: form.group_label || null,
             starts_at: form.starts_at,
-            ends_at: form.ends_at || null,
+            location: form.location?.trim() ? form.location.trim() : null,
             notes: form.notes || null,
             job_application_id: form.job_application_id ? parseInt(form.job_application_id, 10) : null,
         };
@@ -223,12 +222,12 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="int-end">Ends (optional, default +30 min)</Label>
+                                <Label htmlFor="int-location">Location (optional)</Label>
                                 <Input
-                                    id="int-end"
-                                    type="datetime-local"
-                                    value={form.ends_at}
-                                    onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
+                                    id="int-location"
+                                    value={form.location}
+                                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                                    placeholder="e.g. LionsGeek HQ, Room 2, or video link"
                                     className="border-alpha/30 dark:border-light/15"
                                 />
                             </div>

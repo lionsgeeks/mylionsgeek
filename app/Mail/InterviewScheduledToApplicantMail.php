@@ -19,7 +19,7 @@ class InterviewScheduledToApplicantMail extends Mailable
         public string $interviewTitle,
         public ?string $jobTitle,
         public Carbon $startsAt,
-        public Carbon $endsAt,
+        public ?string $location,
         public ?string $notes,
     ) {}
 
@@ -27,13 +27,13 @@ class InterviewScheduledToApplicantMail extends Mailable
     {
         $tz = config('app.timezone');
         $startLocal = $this->startsAt->copy()->timezone($tz);
-        $endLocal = $this->endsAt->copy()->timezone($tz);
 
         $subjectLine = $this->jobTitle
             ? __('Interview scheduled: :job', ['job' => $this->jobTitle])
             : __('Interview scheduled');
 
         $notesPlain = $this->notes ? Str::limit(trim(strip_tags($this->notes)), 800) : null;
+        $locationPlain = $this->location ? trim($this->location) : null;
 
         $startFormatted = $startLocal->translatedFormat('l j F Y').', '.$startLocal->format('H:i');
 
@@ -46,7 +46,7 @@ class InterviewScheduledToApplicantMail extends Mailable
                 'interviewTitle' => $this->interviewTitle,
                 'jobTitle' => $this->jobTitle,
                 'startFormatted' => $startFormatted,
-                'endTimeFormatted' => $endLocal->format('H:i'),
+                'locationPlain' => $locationPlain,
                 'notesPlain' => $notesPlain,
             ]);
     }

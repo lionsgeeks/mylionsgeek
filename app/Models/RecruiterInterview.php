@@ -13,7 +13,7 @@ class RecruiterInterview extends Model
         'group_label',
         'title',
         'starts_at',
-        'ends_at',
+        'location',
         'notes',
     ];
 
@@ -21,7 +21,6 @@ class RecruiterInterview extends Model
     {
         return [
             'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
         ];
     }
 

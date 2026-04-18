@@ -32,7 +32,7 @@ class RecruiterInterviewController extends Controller
                 'title' => $row->title,
                 'group_label' => $row->group_label,
                 'starts_at' => $row->starts_at->toIso8601String(),
-                'ends_at' => $row->ends_at?->toIso8601String(),
+                'location' => $row->location,
                 'notes' => $row->notes,
                 'job_application_id' => $row->job_application_id,
                 'application' => $row->jobApplication ? [
@@ -67,7 +67,7 @@ class RecruiterInterviewController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'group_label' => ['nullable', 'string', 'max:120'],
             'starts_at' => ['required', 'date'],
-            'ends_at' => ['nullable', 'date', 'after:starts_at'],
+            'location' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'job_application_id' => [
                 'nullable',
@@ -78,9 +78,9 @@ class RecruiterInterviewController extends Controller
         ]);
 
         $starts = Carbon::parse($validated['starts_at']);
-        $ends = isset($validated['ends_at'])
-            ? Carbon::parse($validated['ends_at'])
-            : $starts->copy()->addMinutes(30);
+        $location = isset($validated['location']) && trim($validated['location']) !== ''
+            ? trim($validated['location'])
+            : null;
 
         $interview = RecruiterInterview::create([
             'user_id' => $userId,
@@ -88,7 +88,7 @@ class RecruiterInterviewController extends Controller
             'group_label' => $validated['group_label'] ?? null,
             'title' => $validated['title'],
             'starts_at' => $starts,
-            'ends_at' => $ends,
+            'location' => $location,
             'notes' => $validated['notes'] ?? null,
         ]);
 
@@ -109,13 +109,13 @@ class RecruiterInterviewController extends Controller
 
         $previousApplicationId = $recruiterInterview->job_application_id;
         $previousStartsIso = $recruiterInterview->starts_at?->toIso8601String();
-        $previousEndsIso = $recruiterInterview->ends_at?->toIso8601String();
+        $previousLocation = $recruiterInterview->location;
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'group_label' => ['nullable', 'string', 'max:120'],
             'starts_at' => ['required', 'date'],
-            'ends_at' => ['nullable', 'date', 'after:starts_at'],
+            'location' => ['nullable', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'job_application_id' => [
                 'nullable',
@@ -125,26 +125,26 @@ class RecruiterInterviewController extends Controller
         ]);
 
         $starts = Carbon::parse($validated['starts_at']);
-        $ends = isset($validated['ends_at'])
-            ? Carbon::parse($validated['ends_at'])
-            : $starts->copy()->addMinutes(30);
+        $location = isset($validated['location']) && trim($validated['location']) !== ''
+            ? trim($validated['location'])
+            : null;
 
         $recruiterInterview->update([
             'job_application_id' => $validated['job_application_id'] ?? null,
             'group_label' => $validated['group_label'] ?? null,
             'title' => $validated['title'],
             'starts_at' => $starts,
-            'ends_at' => $ends,
+            'location' => $location,
             'notes' => $validated['notes'] ?? null,
         ]);
 
         $newApplicationId = $validated['job_application_id'] ?? null;
         if ($newApplicationId) {
             $newStartsIso = $starts->toIso8601String();
-            $newEndsIso = $ends->toIso8601String();
             $applicationChanged = (int) $previousApplicationId !== (int) $newApplicationId;
-            $scheduleChanged = $previousStartsIso !== $newStartsIso || $previousEndsIso !== $newEndsIso;
-            if ($applicationChanged || $scheduleChanged) {
+            $scheduleChanged = $previousStartsIso !== $newStartsIso;
+            $locationChanged = ($previousLocation ?? '') !== ($location ?? '');
+            if ($applicationChanged || $scheduleChanged || $locationChanged) {
                 $recruiterInterview->refresh();
                 $this->notifyApplicantOfScheduledInterview($recruiterInterview, $request->user());
             }
@@ -191,10 +191,6 @@ class RecruiterInterviewController extends Controller
             return;
         }
 
-        $endsAt = $interview->ends_at instanceof Carbon
-            ? $interview->ends_at
-            : $startsAt->copy()->addMinutes(30);
-
         try {
             Mail::to($applicant->email)->send(new InterviewScheduledToApplicantMail(
                 applicant: $applicant,
@@ -202,7 +198,7 @@ class RecruiterInterviewController extends Controller
                 interviewTitle: (string) $interview->title,
                 jobTitle: $application->job?->title,
                 startsAt: $startsAt,
-                endsAt: $endsAt,
+                location: $interview->location,
                 notes: $interview->notes,
             ));
         } catch (\Throwable $e) {
