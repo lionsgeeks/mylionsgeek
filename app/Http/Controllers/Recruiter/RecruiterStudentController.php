@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Recruiter;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\UsersController;
+use App\Models\JobApplication;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +15,7 @@ class RecruiterStudentController extends Controller
 {
     /** Staff / elevated roles: never listed or opened from the recruiter student directory. */
     private const EXCLUDED_ROLES_FROM_DIRECTORY = ['admin', 'coach', 'pro', 'moderateur'];
+
     private const FIELD_FILTERS = ['coding', 'media'];
 
     public function index(Request $request): Response
@@ -69,9 +71,14 @@ class RecruiterStudentController extends Controller
         ]);
     }
 
-    public function show(User $user, StudentController $studentController, UsersController $usersController): Response
+    public function show(Request $request, User $user, StudentController $studentController, UsersController $usersController): Response
     {
-        $this->ensureRecruiterCanViewStudent($user);
+        $recruiter = $request->user();
+        if (! $recruiter) {
+            abort(403);
+        }
+
+        $this->ensureRecruiterCanViewUser($user, $recruiter);
 
         $userPayload = $studentController->getUserInfo($user->id);
         $profilePosts = $usersController->getPostsForProfileUser((int) $user->id, 1);
@@ -83,21 +90,49 @@ class RecruiterStudentController extends Controller
         ]);
     }
 
-    private function ensureRecruiterCanViewStudent(User $user): void
+    /**
+     * Recruiters may open a profile if the user appears in the alumni-style student directory,
+     * or if they have submitted an application to any job posting this recruiter is assigned to.
+     */
+    private function ensureRecruiterCanViewUser(User $target, User $recruiter): void
+    {
+        if ($this->isDirectoryListedStudent($target)) {
+            return;
+        }
+
+        if ($this->hasApplicationOnRecruitersJob($target, $recruiter)) {
+            return;
+        }
+
+        abort(404);
+    }
+
+    /** Same eligibility rules as {@see index()} listing (browsable directory). */
+    private function isDirectoryListedStudent(User $user): bool
     {
         $roles = is_array($user->role) ? $user->role : [$user->role];
         if (! in_array('student', $roles, true)) {
-            abort(404);
+            return false;
         }
         $status = $user->status;
         $normalizedStatus = is_string($status) ? strtolower(trim($status)) : '';
         if ($normalizedStatus === 'studying') {
-            abort(404);
+            return false;
         }
         foreach (self::EXCLUDED_ROLES_FROM_DIRECTORY as $role) {
             if (in_array($role, $roles, true)) {
-                abort(404);
+                return false;
             }
         }
+
+        return true;
+    }
+
+    private function hasApplicationOnRecruitersJob(User $applicant, User $recruiter): bool
+    {
+        return JobApplication::query()
+            ->where('user_id', $applicant->id)
+            ->whereHas('job', fn ($q) => $q->whereHas('recruiters', fn ($q2) => $q2->where('users.id', $recruiter->id)))
+            ->exists();
     }
 }
