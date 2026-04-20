@@ -21,6 +21,19 @@ use ZipArchive;
 
 class FormationController extends Controller
 {
+    /**
+     * Only admins can change the global certificate template.
+     */
+    private function canManageGlobalCertificateTemplate(): bool
+    {
+        $user = Auth::user();
+        $roles = $user?->role;
+        if (! is_array($roles)) {
+            $roles = array_filter([$roles]);
+        }
+
+        return in_array('admin', $roles, true) || in_array('super_admin', $roles, true);
+    }
     public function index(Request $request)
     {
         $coachId = $request->query('coach');
@@ -103,8 +116,22 @@ class FormationController extends Controller
         // dd($request->all());
 
         if ($request->hasFile('certificate_template')) {
-            $path = $request->file('certificate_template')->store('certificate-templates', 'public');
-            $validated['certificate_template'] = $path;
+            if (! $this->canManageGlobalCertificateTemplate()) {
+                abort(403, 'Only admins can update the certificate template.');
+            }
+
+            $file = $request->file('certificate_template');
+            $targetDir = public_path('assets/images');
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            // Always overwrite the global default template
+            $targetPath = $targetDir . DIRECTORY_SEPARATOR . 'certif.jpg';
+            $file->move($targetDir, 'certif.jpg');
+
+            // Keep DB column aligned (optional; not used for rendering now)
+            $validated['certificate_template'] = 'assets/images/certif.jpg';
         }
 
         Formation::create($validated);
@@ -313,8 +340,20 @@ public function save(Request $request)
         $formation = Formation::findOrFail($id);
 
         if ($request->hasFile('certificate_template')) {
-            $path = $request->file('certificate_template')->store('certificate-templates', 'public');
-            $validated['certificate_template'] = $path;
+            if (! $this->canManageGlobalCertificateTemplate()) {
+                abort(403, 'Only admins can update the certificate template.');
+            }
+
+            $file = $request->file('certificate_template');
+            $targetDir = public_path('assets/images');
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            // Always overwrite the global default template
+            $file->move($targetDir, 'certif.jpg');
+
+            $validated['certificate_template'] = 'assets/images/certif.jpg';
         } else {
             unset($validated['certificate_template']);
         }
@@ -397,31 +436,10 @@ public function save(Request $request)
         }
 
         $readTemplateAsDataUri = function () use ($training): string {
-            $defaultPath = public_path('images/certificate-template.jpg');
-
-            // If a per-training template is configured, prefer it.
-            $configured = (string) ($training->certificate_template ?? '');
-            if ($configured !== '') {
-                $normalized = ltrim($configured, '/');
-                if (str_starts_with($normalized, 'storage/')) {
-                    $normalized = substr($normalized, strlen('storage/'));
-                }
-
-                if (Storage::disk('public')->exists($normalized)) {
-                    $bytes = Storage::disk('public')->get($normalized);
-                    // We accept jpg/png; dompdf will render either from a data URI.
-                    $mime = str_ends_with(strtolower($normalized), '.png') ? 'image/png' : 'image/jpeg';
-                    return 'data:' . $mime . ';base64,' . base64_encode($bytes);
-                }
-
-                Log::warning('Configured certificate template not found; falling back to default.', [
-                    'training_id' => $training->id,
-                    'certificate_template' => $configured,
-                ]);
-            }
+            $defaultPath = public_path('assets/images/certif.jpg');
 
             if (! is_file($defaultPath)) {
-                abort(500, 'Certificate template image is missing.');
+                abort(500, 'Default certificate template is missing at /public/assets/images/certif.jpg.');
             }
 
             return 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents($defaultPath));

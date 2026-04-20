@@ -124,7 +124,7 @@ export default function CreatTraining({ coaches }) {
 
                     {canManageCertificateTemplate && (
                         <div>
-                            <Label htmlFor="certificate_template">Certificate template (optional)</Label>
+                            <Label htmlFor="certificate_template">Certificate template (global default)</Label>
                             <Input
                                 id="certificate_template"
                                 type="file"
@@ -133,7 +133,7 @@ export default function CreatTraining({ coaches }) {
                             />
                             {errors.certificate_template && <p className="text-sm text-red-600">{errors.certificate_template}</p>}
                             <p className="mt-1 text-xs text-dark/60 dark:text-light/60">
-                                If empty, the default template in <code>/public/images/certificate-template.jpg</code> will be used.
+                                If empty, the global default template at <code>/public/assets/images/certif.jpg</code> will be used.
                             </p>
                         </div>
                     )}
