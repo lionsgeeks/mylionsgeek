@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->group(fu
     Route::post('/trainings/{training}/students', [FormationController::class, 'addStudent'])->name('trainings.students.add');
     Route::delete('/trainings/{training}/students/{user}', [FormationController::class, 'removeStudent'])->name('trainings.students.remove');
     Route::post('/trainings/{training}/bulk-update-users', [FormationController::class, 'bulkUpdateUsers'])->name('trainings.bulk-update-users');
+    Route::post('/trainings/{training}/certificates/zip', [FormationController::class, 'downloadCertificatesZip'])->name('trainings.certificates.zip');
     Route::delete('/trainings/{training}', [FormationController::class, 'destroy'])->name('trainings.destroy');
     Route::put('/trainings/{training}', [FormationController::class, 'update'])->name('trainings.update');
 });

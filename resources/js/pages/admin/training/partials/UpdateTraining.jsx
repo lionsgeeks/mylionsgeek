@@ -16,6 +16,7 @@ export default function UpdateTraining({ training, coaches }) {
         start_time: training.start_time || '',
         user_id: training.user_id || '',
         promo: training.promo || '',
+        certificate_template: null,
     });
 
     const handleOpenChange = (newOpen) => {
@@ -29,6 +30,7 @@ export default function UpdateTraining({ training, coaches }) {
         e.preventDefault();
 
         put(`/trainings/${training.id}`, {
+            forceFormData: true,
             onSuccess: () => {
                 setOpen(false);
                 router.reload({ only: ['trainings'], preserveState: false });
@@ -106,6 +108,17 @@ export default function UpdateTraining({ training, coaches }) {
                             placeholder="Enter promo name/number"
                         />
                         {errors.promo && <p className="text-sm text-red-600">{errors.promo}</p>}
+                    </div>
+
+                    <div>
+                        <Label htmlFor="certificate_template">Certificate template (optional)</Label>
+                        <Input
+                            id="certificate_template"
+                            type="file"
+                            accept="image/png,image/jpeg"
+                            onChange={(e) => setData('certificate_template', e.target.files?.[0] ?? null)}
+                        />
+                        {errors.certificate_template && <p className="text-sm text-red-600">{errors.certificate_template}</p>}
                     </div>
 
                     <div className="flex justify-end">

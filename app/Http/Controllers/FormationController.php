@@ -8,11 +8,15 @@ use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
 use App\Services\DisciplineService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 
 class FormationController extends Controller
@@ -89,6 +93,7 @@ class FormationController extends Controller
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'img'        => 'nullable|string|max:255',
+            'certificate_template' => 'nullable|image|max:5120',
             'category'   => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time'   => 'nullable|date',
@@ -96,6 +101,11 @@ class FormationController extends Controller
             'promo'      => 'nullable|string|max:50',
         ]);
         // dd($request->all());
+
+        if ($request->hasFile('certificate_template')) {
+            $path = $request->file('certificate_template')->store('certificate-templates', 'public');
+            $validated['certificate_template'] = $path;
+        }
 
         Formation::create($validated);
 
@@ -292,6 +302,7 @@ public function save(Request $request)
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'img'        => 'nullable|string|max:255',
+            'certificate_template' => 'nullable|image|max:5120',
             'category'   => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time'   => 'nullable|date',
@@ -300,6 +311,14 @@ public function save(Request $request)
         ]);
 
         $formation = Formation::findOrFail($id);
+
+        if ($request->hasFile('certificate_template')) {
+            $path = $request->file('certificate_template')->store('certificate-templates', 'public');
+            $validated['certificate_template'] = $path;
+        } else {
+            unset($validated['certificate_template']);
+        }
+
         $formation->update($validated);
 
         return back()->with('success', 'Formation deleted successfully!');
@@ -354,6 +373,138 @@ public function save(Request $request)
         }
 
         return back()->with('success', "Successfully updated {$updated} user(s).");
+    }
+
+    /**
+     * Generate certificates on the server, store them, and return a ZIP download.
+     * - Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     * - Optionally stores a PNG preview if Imagick is available:
+     *   storage/app/public/certificates/{trainingId}/{userId}.png
+     */
+    public function downloadCertificatesZip(Formation $training, Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'required|exists:users,id',
+        ]);
+
+        $users = User::whereIn('id', $validated['user_ids'])
+            ->where('formation_id', $training->id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return back()->with('error', 'No valid users found for this training.');
+        }
+
+        $readTemplateAsDataUri = function () use ($training): string {
+            $defaultPath = public_path('images/certificate-template.jpg');
+
+            // If a per-training template is configured, prefer it.
+            $configured = (string) ($training->certificate_template ?? '');
+            if ($configured !== '') {
+                $normalized = ltrim($configured, '/');
+                if (str_starts_with($normalized, 'storage/')) {
+                    $normalized = substr($normalized, strlen('storage/'));
+                }
+
+                if (Storage::disk('public')->exists($normalized)) {
+                    $bytes = Storage::disk('public')->get($normalized);
+                    // We accept jpg/png; dompdf will render either from a data URI.
+                    $mime = str_ends_with(strtolower($normalized), '.png') ? 'image/png' : 'image/jpeg';
+                    return 'data:' . $mime . ';base64,' . base64_encode($bytes);
+                }
+
+                Log::warning('Configured certificate template not found; falling back to default.', [
+                    'training_id' => $training->id,
+                    'certificate_template' => $configured,
+                ]);
+            }
+
+            if (! is_file($defaultPath)) {
+                abort(500, 'Certificate template image is missing.');
+            }
+
+            return 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents($defaultPath));
+        };
+
+        $templateDataUri = $readTemplateAsDataUri();
+
+        $tmpZipPath = storage_path('app/tmp/certificates-' . $training->id . '-' . now()->format('YmdHis') . '-' . Str::random(8) . '.zip');
+        if (! is_dir(dirname($tmpZipPath))) {
+            @mkdir(dirname($tmpZipPath), 0755, true);
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($tmpZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Failed to create ZIP archive.');
+        }
+
+        $savedCount = 0;
+        foreach ($users as $user) {
+            try {
+                $pdf = Pdf::loadView('certificates.certificate', [
+                    'studentName' => (string) ($user->name ?? ''),
+                    'field' => (string) ($user->field ?? ''),
+                    'trainingTitle' => (string) ($training->name ?? ''),
+                    'issuedDate' => now()->locale('fr_FR')->translatedFormat('d F Y'),
+                    'templateDataUri' => $templateDataUri,
+                ])->setPaper('a4', 'landscape');
+
+                $pdfBytes = $pdf->output();
+
+                $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
+                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+
+                $zip->addFromString('certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf', $pdfBytes);
+
+                // Mark Certified when a certificate is issued
+                if ($user->status !== 'Certified') {
+                    $user->update(['status' => 'Certified']);
+                }
+
+                // Optional: generate PNG preview using Imagick if available
+                if (class_exists(\Imagick::class)) {
+                    try {
+                        $imagick = new \Imagick();
+                        $imagick->setResolution(200, 200);
+                        $imagick->readImageBlob($pdfBytes);
+                        $imagick->setImageFormat('png');
+                        // First page only
+                        $imagick->setIteratorIndex(0);
+                        $pngBytes = $imagick->getImageBlob();
+                        $pngStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.png';
+                        Storage::disk('public')->put($pngStoragePath, $pngBytes);
+                        $imagick->clear();
+                        $imagick->destroy();
+                    } catch (\Throwable $e) {
+                        Log::warning('Failed to generate certificate PNG preview', [
+                            'training_id' => $training->id,
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                $savedCount++;
+            } catch (\Throwable $e) {
+                Log::error('Failed to generate certificate', [
+                    'training_id' => $training->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $zip->close();
+
+        if ($savedCount === 0) {
+            @unlink($tmpZipPath);
+            abort(500, 'Failed to generate certificates.');
+        }
+
+        return response()->download($tmpZipPath, 'certificats-' . $training->id . '.zip', [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
 

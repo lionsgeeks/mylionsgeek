@@ -2,10 +2,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { router } from '@inertiajs/react';
 import { saveAs } from 'file-saver';
-import { jsPDF } from 'jspdf';
-import JSZip from 'jszip';
 import { Award, Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -40,83 +37,6 @@ const resolveTitle = (field) => {
     return field || '';
 };
 
-/**
- * Loads an image from a URL and returns an HTMLImageElement via Promise.
- * Rejects cleanly if the image fails to load so downstream callers can surface the error.
- */
-const loadImage = (src) =>
-    new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed to load certificate template: ${src}`));
-        img.src = src;
-    });
-
-/**
- * Generates a single A4-landscape PDF containing the certificate for one student.
- * Returns the PDF as a Blob.
- */
-const generateCertificatePdf = async (student, trainingTitle, templateSrc) => {
-    const templateImg = await loadImage(templateSrc);
-
-    // A4 landscape in px at 96 dpi: 1122 × 794
-    const A4_W = 1122;
-    const A4_H = 794;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = A4_W;
-    canvas.height = A4_H;
-    const ctx = canvas.getContext('2d');
-
-    // Draw the template scaled to fill the entire canvas
-    ctx.drawImage(templateImg, 0, 0, A4_W, A4_H);
-
-    const centerX = A4_W / 2;
-
-    // Student name — large, centred, dark
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = 'bold 56px Georgia, serif';
-    ctx.fillStyle = '#2c2c2c';
-    ctx.fillText(student.name, centerX, 440);
-
-    // Resolved title (Full Stack Developer / Content Creator / raw field)
-    const displayTitle = resolveTitle(student.field ?? student.specialite ?? student.domain ?? '');
-    if (displayTitle) {
-        ctx.font = '36px Georgia, serif';
-        ctx.fillStyle = '#555555';
-        ctx.fillText(displayTitle, centerX, 510);
-    }
-
-    // Training title — smaller, muted
-    ctx.font = '28px Georgia, serif';
-    ctx.fillStyle = '#777777';
-    ctx.fillText(trainingTitle, centerX, 570);
-
-    // Today's date
-    const today = new Date().toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-    });
-    ctx.font = '24px Georgia, serif';
-    ctx.fillStyle = '#555555';
-    // Position date near the bottom-left DATE label area
-    ctx.textAlign = 'left';
-    ctx.fillText(today, 120, 690);
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: 'a4' });
-    // jsPDF px format: getWidth/getHeight returns px dimensions matching the canvas
-    const pdfW = pdf.internal.pageSize.getWidth();
-    const pdfH = pdf.internal.pageSize.getHeight();
-    pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfW, pdfH);
-
-    return pdf.output('blob');
-};
-
 export default function CertificateModal({ open, onOpenChange, training }) {
     const students = training?.users ?? training?.students ?? [];
 
@@ -138,32 +58,23 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
         setIsGenerating(true);
         try {
-            const templateSrc = '/images/certificate-template.jpg';
-            const zip = new JSZip();
+            const response = await fetch(`/trainings/${training.id}/certificates/zip`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ user_ids: selectedIds }),
+            });
 
-            const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
-
-            for (const student of selectedStudents) {
-                const pdfBlob = await generateCertificatePdf(student, training.name ?? training.title ?? '', templateSrc);
-                const safeName = student.name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
-                zip.file(`certificat-${safeName}.pdf`, pdfBlob);
+            if (!response.ok) {
+                const bodyText = await response.text().catch(() => '');
+                throw new Error(`Certificate ZIP request failed (${response.status}). ${bodyText}`);
             }
 
-            const zipBlob = await zip.generateAsync({ type: 'blob' });
-            saveAs(zipBlob, 'certificats.zip');
-
-            // Mark every printed student as "Certified" via the bulk-update route
-            router.post(
-                `/trainings/${training.id}/bulk-update-users`,
-                { user_ids: selectedIds, status: 'Certified' },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onError: (errors) => {
-                        console.error('Failed to mark students as Certified:', errors);
-                    },
-                },
-            );
+            const zipBlob = await response.blob();
+            saveAs(zipBlob, `certificats-${training.id}.zip`);
 
             // Close modal after successful generation + download trigger
             setSelectedIds([]);
