@@ -1,4 +1,5 @@
 import ShowSkippableModal from '@/components/ShowSkippableModal';
+import CertifiedLinkedInShareModal from '@/components/CertifiedLinkedInShareModal';
 import AppHeaderLayout from '@/layouts/app/app-header-layout';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -37,7 +38,7 @@ function isStudentPublicShellPath(pathname: string): boolean {
 }
 
 export default function AppLayout({ children, breadcrumbs, ...props }: AppLayoutProps) {
-    const page = usePage<{ auth: { user: { role: string[] | string } } }>();
+    const page = usePage<any>();
     const { auth } = page.props;
 
     // Always treat roles as an array
@@ -59,6 +60,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }: AppLayout
         <Layout breadcrumbs={breadcrumbs} {...props}>
             <div className={`bg-light dark:bg-dark ${needsStudentHeaderOffset ? 'pt-20' : ''} mx-auto my-6 h-full w-[96%] rounded-lg shadow-lg`}>
                 <ShowSkippableModal />
+                <CertifiedLinkedInShareModal />
                 {children}
             </div>
         </Layout>

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
 use App\Http\Controllers\API\SearchController as ApiSearchController;
+use App\Http\Controllers\CertificateShareController;
+use App\Http\Controllers\LinkedInController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReservationsController;
 use Illuminate\Http\Request;
@@ -31,6 +33,9 @@ Route::get('/', function () {
     return Inertia::render('Welcome/index');
 })->name('home');
 
+// Public certificate share page for social sharing (Open Graph preview)
+Route::get('/certificates/share/{token}', [CertificateShareController::class, 'show'])->name('certificates.share');
+
 // Protect admin dashboard
 Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -46,6 +51,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/access-requests', [ReservationsController::class, 'requestAccess'])->name('access-requests.create');
 
     Route::get('/api/search', [ApiSearchController::class, 'index']);
+
+    // LinkedIn connect + sharing
+    Route::get('/auth/linkedin/redirect', [LinkedInController::class, 'redirect'])->name('linkedin.redirect');
+    Route::get('/auth/linkedin/callback', [LinkedInController::class, 'callback'])->name('linkedin.callback');
+    Route::post('/linkedin/share-prompted', [LinkedInController::class, 'markSharePrompted'])->name('linkedin.share.prompted');
+    Route::post('/linkedin/share-dismiss', [LinkedInController::class, 'dismissSharePrompt'])->name('linkedin.share.dismiss');
+    Route::post('/linkedin/share-certificate', [LinkedInController::class, 'shareCertificate'])->name('linkedin.share.certificate');
 
     // Notifications API - Get all notifications
     // Route::get('/api/notifications', function (Request $request) {
@@ -237,6 +249,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+require __DIR__.'/admin/settings.php';
 require __DIR__.'/admin/users.php';
 require __DIR__.'/admin/computers.php';
 require __DIR__.'/admin/leaderboard.php';

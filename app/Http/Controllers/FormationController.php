@@ -7,6 +7,7 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
+use App\Services\CertificateImageGenerator;
 use App\Services\DisciplineService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -416,9 +417,8 @@ public function save(Request $request)
 
     /**
      * Generate certificates on the server, store them, and return a ZIP download.
-     * - Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
-     * - Optionally stores a PNG preview if Imagick is available:
-     *   storage/app/public/certificates/{trainingId}/{userId}.png
+     * - Stores PDF: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     * - Stores PNG screenshot: storage/app/public/images/certificationImages/{userId}.png
      */
     public function downloadCertificatesZip(Formation $training, Request $request)
     {
@@ -476,32 +476,24 @@ public function save(Request $request)
                 $zip->addFromString('certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf', $pdfBytes);
 
                 // Mark Certified when a certificate is issued
-                if ($user->status !== 'Certified') {
-                    $user->update(['status' => 'Certified']);
-                }
+                $user->forceFill([
+                    'status' => 'Certified',
+                    'certified_at' => $user->certified_at ?? now(),
+                    'certified_training_id' => (int) $training->id,
+                    'linkedin_share_prompted_at' => null,
+                    'linkedin_share_dismissed_at' => null,
+                    'linkedin_shared_at' => null,
+                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                ])->save();
 
-                // Optional: generate PNG preview using Imagick if available
-                if (class_exists(\Imagick::class)) {
-                    try {
-                        $imagick = new \Imagick();
-                        $imagick->setResolution(200, 200);
-                        $imagick->readImageBlob($pdfBytes);
-                        $imagick->setImageFormat('png');
-                        // First page only
-                        $imagick->setIteratorIndex(0);
-                        $pngBytes = $imagick->getImageBlob();
-                        $pngStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.png';
-                        Storage::disk('public')->put($pngStoragePath, $pngBytes);
-                        $imagick->clear();
-                        $imagick->destroy();
-                    } catch (\Throwable $e) {
-                        Log::warning('Failed to generate certificate PNG preview', [
-                            'training_id' => $training->id,
-                            'user_id' => $user->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
+                // Generate PNG using GD (no Ghostscript required)
+                app(CertificateImageGenerator::class)->generate(
+                    userId: $user->id,
+                    studentName: (string) ($user->name ?? ''),
+                    field: (string) ($user->field ?? ''),
+                    trainingTitle: (string) ($training->name ?? ''),
+                    issuedDate: now()->locale('fr_FR')->translatedFormat('d F Y'),
+                );
 
                 $savedCount++;
             } catch (\Throwable $e) {
