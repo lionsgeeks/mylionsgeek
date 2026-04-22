@@ -48,7 +48,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // account_state: 1 = active, 0 = suspended (matches admin Members table). Null treated as active for legacy rows.
-        $isSuspended = $user->account_state !== null && (int) $user->account_state === 0;
+        $isSuspended = $user->account_state !== null && (int) $user->account_state != 0;
         if ($isSuspended) {
             Auth::guard('web')->logout();
 
