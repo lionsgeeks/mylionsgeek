@@ -1,5 +1,5 @@
 import { Avatar } from '@/components/ui/avatar';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { CheckIcon, Paperclip, Pencil, ThumbsUp, Trash } from 'lucide-react';
 
 export default function PostCommentItem({
@@ -24,6 +24,7 @@ export default function PostCommentItem({
     onOpenCommentImage,
     onToggleLike,
 }) {
+    const { auth } = usePage().props;
     const isOwner = currentUserId === c.user_id;
     const isEditing = openUpdatedCommentId === c.id;
 
@@ -55,9 +56,7 @@ export default function PostCommentItem({
 
             <div
                 className={
-                    isFacebookEmbed
-                        ? 'w-[70%] flex-1 px-2 py-0.5'
-                        : 'w-[70%] flex-1 px-3 py-2.5 shadow-sm transition duration-200 hover:shadow-md'
+                    isFacebookEmbed ? 'w-[70%] flex-1 px-2 py-0.5' : 'w-[70%] flex-1 px-3 py-2.5 shadow-sm transition duration-200 hover:shadow-md'
                 }
             >
                 <div className="mb-1 flex justify-between">
@@ -181,20 +180,22 @@ export default function PostCommentItem({
                             </div>
                         )}
 
-                        <div className="mt-2 flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => onToggleLike(c.id)}
-                                className={
-                                    `inline-flex items-center gap-2 text-xs font-semibold ` +
-                                    (c.liked ? 'text-alpha' : 'text-neutral-500 dark:text-neutral-300')
-                                }
-                            >
-                                <ThumbsUp size={14} />
-                                Like
-                            </button>
-                            <span className="text-xs text-neutral-500 dark:text-neutral-400">{Number(c.likes_count || 0)}</span>
-                        </div>
+                        {!auth?.user?.role?.includes('recruiter') && (
+                            <div className="mt-2 flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleLike(c.id)}
+                                    className={
+                                        `inline-flex items-center gap-2 text-xs font-semibold ` +
+                                        (c.liked ? 'text-alpha' : 'text-neutral-500 dark:text-neutral-300')
+                                    }
+                                >
+                                    <ThumbsUp size={14} />
+                                    Like
+                                </button>
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400">{Number(c.likes_count || 0)}</span>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

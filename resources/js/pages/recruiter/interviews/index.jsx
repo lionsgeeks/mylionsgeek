@@ -15,35 +15,32 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
-import FullCalendar from '@fullcalendar/react';
-import timeGridPlugin from '@fullcalendar/timegrid';
+import InterviewCalendarExperience from '@/pages/recruiter/interviews/partials/InterviewCalendarExperience';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-function toDatetimeLocalValue(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return '';
+function toDatetimeLocalValue(isoOrDate) {
+    const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+    if (!isoOrDate || Number.isNaN(d.getTime())) return '';
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function addMinutesToDatetimeLocal(localStr, minutes) {
-    if (!localStr) return '';
-    const d = new Date(localStr);
+function pickerValueFromCalendarPick(dateInput) {
+    if (!dateInput) return '';
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        return `${dateInput}T09:00`;
+    }
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
     if (Number.isNaN(d.getTime())) return '';
-    d.setMinutes(d.getMinutes() + minutes);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return toDatetimeLocalValue(d);
 }
 
 const emptyForm = {
     title: '',
     group_label: '',
     starts_at: '',
-    ends_at: '',
+    location: '',
     notes: '',
     job_application_id: '',
 };
@@ -56,25 +53,11 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [processing, setProcessing] = useState(false);
 
-    const events = useMemo(
-        () =>
-            interviews.map((row) => ({
-                id: String(row.id),
-                title: row.group_label ? `${row.group_label} · ${row.title}` : row.title,
-                start: row.starts_at,
-                end: row.ends_at || row.starts_at,
-                extendedProps: row,
-            })),
-        [interviews],
-    );
-
-    const openCreate = useCallback((dateStr) => {
+    const openCreate = useCallback((dateInput) => {
         setEditingId(null);
-        const start = dateStr ? `${dateStr}T09:00` : '';
         setForm({
             ...emptyForm,
-            starts_at: start,
-            ends_at: start ? addMinutesToDatetimeLocal(start, 30) : '',
+            starts_at: pickerValueFromCalendarPick(dateInput),
         });
         setDialogOpen(true);
     }, []);
@@ -85,7 +68,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
             title: row.title ?? '',
             group_label: row.group_label ?? '',
             starts_at: toDatetimeLocalValue(row.starts_at),
-            ends_at: row.ends_at ? toDatetimeLocalValue(row.ends_at) : '',
+            location: row.location ?? '',
             notes: row.notes ?? '',
             job_application_id: row.job_application_id ? String(row.job_application_id) : '',
         });
@@ -98,7 +81,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
             title: form.title,
             group_label: form.group_label || null,
             starts_at: form.starts_at,
-            ends_at: form.ends_at || null,
+            location: form.location?.trim() ? form.location.trim() : null,
             notes: form.notes || null,
             job_application_id: form.job_application_id ? parseInt(form.job_application_id, 10) : null,
         };
@@ -120,6 +103,8 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
             });
         }
     };
+
+    const linkedApplication = Boolean(form.job_application_id);
 
     const confirmDelete = () => {
         if (!deleteTarget) return;
@@ -162,44 +147,25 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                     </div>
                 )}
 
-                <div className="rounded-lg border border-alpha/15 bg-white p-3 dark:border-light/10 dark:bg-dark_gray">
-                    <div className="min-h-[560px]">
-                        <FullCalendar
-                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                            initialView="timeGridWeek"
-                            headerToolbar={{
-                                left: 'prev,next today',
-                                center: 'title',
-                                right: 'dayGridMonth,timeGridWeek,timeGridDay',
-                            }}
-                            height="auto"
-                            slotDuration="00:30:00"
-                            allDaySlot={false}
-                            editable={false}
-                            selectable={false}
-                            events={events}
-                            dateClick={(info) => openCreate(info.dateStr)}
-                            eventClick={(info) => {
-                                const row = info.event.extendedProps;
-                                if (row?.id) openEdit(row);
-                            }}
-                        />
-                    </div>
-                </div>
+                <InterviewCalendarExperience interviews={interviews} onRequestCreate={openCreate} onEditInterview={openEdit} />
 
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light dark:border-light/10 dark:bg-dark sm:max-w-md">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto border-alpha/15 bg-light sm:max-w-md dark:border-light/10 dark:bg-dark">
                         <DialogHeader>
                             <DialogTitle>{editingId ? 'Edit interview' : 'Schedule interview'}</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="int-title">Title</Label>
+                                <Label htmlFor="int-title">
+                                    Title <span className="text-destructive">*</span>
+                                </Label>
                                 <Input
                                     id="int-title"
                                     value={form.title}
                                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                                     className="border-alpha/30 dark:border-light/15"
+                                    required
+                                    aria-required
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -213,23 +179,36 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="int-start">Starts</Label>
+                                <Label htmlFor="int-start">
+                                    Starts <span className="text-destructive">*</span>
+                                </Label>
                                 <Input
                                     id="int-start"
                                     type="datetime-local"
                                     value={form.starts_at}
                                     onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))}
                                     className="border-alpha/30 dark:border-light/15"
+                                    required
+                                    aria-required
                                 />
+                                <p className="text-xs text-muted-foreground">
+                                    Must be in the future, start between 7:00–19:00 (app timezone), and not overlap your calendar or another interview
+                                    for the same job.
+                                </p>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="int-end">Ends (optional, default +30 min)</Label>
+                                <Label htmlFor="int-location">
+                                    Location
+                                    {linkedApplication ? <span className="text-destructive"> *</span> : ' (optional)'}
+                                </Label>
                                 <Input
-                                    id="int-end"
-                                    type="datetime-local"
-                                    value={form.ends_at}
-                                    onChange={(e) => setForm((f) => ({ ...f, ends_at: e.target.value }))}
+                                    id="int-location"
+                                    value={form.location}
+                                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                                    placeholder="e.g. LionsGeek HQ, Room 2, or video link"
                                     className="border-alpha/30 dark:border-light/15"
+                                    required={linkedApplication}
+                                    aria-required={linkedApplication}
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -283,7 +262,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                                 </Button>
                                 <Button
                                     type="button"
-                                    disabled={processing || !form.title.trim() || !form.starts_at}
+                                    disabled={processing || !form.title.trim() || !form.starts_at || (linkedApplication && !form.location?.trim())}
                                     className="bg-alpha text-black hover:bg-alpha/90"
                                     onClick={submit}
                                 >
@@ -302,10 +281,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={confirmDelete}
-                            >
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>
                                 Delete
                             </AlertDialogAction>
                         </AlertDialogFooter>

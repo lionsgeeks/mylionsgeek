@@ -7,16 +7,34 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
+use App\Services\CertificateImageGenerator;
 use App\Services\DisciplineService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use ZipArchive;
 
 
 class FormationController extends Controller
 {
+    /**
+     * Only admins can change the global certificate template.
+     */
+    private function canManageGlobalCertificateTemplate(): bool
+    {
+        $user = Auth::user();
+        $roles = $user?->role;
+        if (! is_array($roles)) {
+            $roles = array_filter([$roles]);
+        }
+
+        return in_array('admin', $roles, true) || in_array('super_admin', $roles, true);
+    }
     public function index(Request $request)
     {
         $coachId = $request->query('coach');
@@ -61,17 +79,26 @@ class FormationController extends Controller
     public function show(Formation $training)
 {
    $usersNull = User::whereNull('formation_id')->get();
-   
+
    // Get courses that belong to this training through exercises
    $courses = \App\Models\Course::whereHas('exercices', function($query) use ($training) {
        $query->where('training_id', $training->id);
    })->with('exercices')->get();
-   
-    return inertia('admin/training/[id]', [
-        'training' => $training->load('coach', 'users'),
-        'usersNull'=>$usersNull,
-        'courses' => $courses
-    ]);
+
+   $training->load('coach', 'users');
+
+   // Attach the discipline score to every enrolled user so the frontend
+   // can display the attendance percentage without extra API calls.
+   $disciplineService = new \App\Services\DisciplineService();
+   $training->users->each(function (User $user) use ($disciplineService) {
+       $user->discipline = $disciplineService->calculateDisciplineScore($user);
+   });
+
+   return inertia('admin/training/[id]', [
+       'training'  => $training,
+       'usersNull' => $usersNull,
+       'courses'   => $courses,
+   ]);
 }
 
 
@@ -80,6 +107,7 @@ class FormationController extends Controller
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'img'        => 'nullable|string|max:255',
+            'certificate_template' => 'nullable|image|max:5120',
             'category'   => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time'   => 'nullable|date',
@@ -87,6 +115,25 @@ class FormationController extends Controller
             'promo'      => 'nullable|string|max:50',
         ]);
         // dd($request->all());
+
+        if ($request->hasFile('certificate_template')) {
+            if (! $this->canManageGlobalCertificateTemplate()) {
+                abort(403, 'Only admins can update the certificate template.');
+            }
+
+            $file = $request->file('certificate_template');
+            $targetDir = public_path('assets/images');
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            // Always overwrite the global default template
+            $targetPath = $targetDir . DIRECTORY_SEPARATOR . 'certif.jpg';
+            $file->move($targetDir, 'certif.jpg');
+
+            // Keep DB column aligned (optional; not used for rendering now)
+            $validated['certificate_template'] = 'assets/images/certif.jpg';
+        }
 
         Formation::create($validated);
 
@@ -283,6 +330,7 @@ public function save(Request $request)
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'img'        => 'nullable|string|max:255',
+            'certificate_template' => 'nullable|image|max:5120',
             'category'   => 'required|string|max:100',
             'start_time' => 'required|date',
             'end_time'   => 'nullable|date',
@@ -291,6 +339,26 @@ public function save(Request $request)
         ]);
 
         $formation = Formation::findOrFail($id);
+
+        if ($request->hasFile('certificate_template')) {
+            if (! $this->canManageGlobalCertificateTemplate()) {
+                abort(403, 'Only admins can update the certificate template.');
+            }
+
+            $file = $request->file('certificate_template');
+            $targetDir = public_path('assets/images');
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+
+            // Always overwrite the global default template
+            $file->move($targetDir, 'certif.jpg');
+
+            $validated['certificate_template'] = 'assets/images/certif.jpg';
+        } else {
+            unset($validated['certificate_template']);
+        }
+
         $formation->update($validated);
 
         return back()->with('success', 'Formation deleted successfully!');
@@ -313,7 +381,7 @@ public function save(Request $request)
             'user_ids.*' => 'required|exists:users,id',
             'roles' => 'nullable|array',
             'roles.*' => 'nullable|string',
-            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing',
+            'status' => 'nullable|string|in:Working,Studying,Internship,Unemployed,Freelancing,Certified',
         ]);
 
         $users = User::whereIn('id', $validated['user_ids'])
@@ -345,6 +413,108 @@ public function save(Request $request)
         }
 
         return back()->with('success', "Successfully updated {$updated} user(s).");
+    }
+
+    /**
+     * Generate certificates on the server, store them, and return a ZIP download.
+     * - Stores PDF: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     * - Stores PNG screenshot: storage/app/public/images/certificationImages/{userId}.png
+     */
+    public function downloadCertificatesZip(Formation $training, Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'required|exists:users,id',
+        ]);
+
+        $users = User::whereIn('id', $validated['user_ids'])
+            ->where('formation_id', $training->id)
+            ->get();
+
+        if ($users->isEmpty()) {
+            return back()->with('error', 'No valid users found for this training.');
+        }
+
+        $readTemplateAsDataUri = function () use ($training): string {
+            $defaultPath = public_path('assets/images/certif.jpg');
+
+            if (! is_file($defaultPath)) {
+                abort(500, 'Default certificate template is missing at /public/assets/images/certif.jpg.');
+            }
+
+            return 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents($defaultPath));
+        };
+
+        $templateDataUri = $readTemplateAsDataUri();
+
+        $tmpZipPath = storage_path('app/tmp/certificates-' . $training->id . '-' . now()->format('YmdHis') . '-' . Str::random(8) . '.zip');
+        if (! is_dir(dirname($tmpZipPath))) {
+            @mkdir(dirname($tmpZipPath), 0755, true);
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($tmpZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Failed to create ZIP archive.');
+        }
+
+        $savedCount = 0;
+        foreach ($users as $user) {
+            try {
+                $pdf = Pdf::loadView('certificates.certificate', [
+                    'studentName' => (string) ($user->name ?? ''),
+                    'field' => (string) ($user->field ?? ''),
+                    'trainingTitle' => (string) ($training->name ?? ''),
+                    'issuedDate' => now()->locale('fr_FR')->translatedFormat('d F Y'),
+                    'templateDataUri' => $templateDataUri,
+                ])->setPaper('a4', 'landscape');
+
+                $pdfBytes = $pdf->output();
+
+                $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
+                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+
+                $zip->addFromString('certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf', $pdfBytes);
+
+                // Mark Certified when a certificate is issued
+                $user->forceFill([
+                    'status' => 'Certified',
+                    'certified_at' => $user->certified_at ?? now(),
+                    'certified_training_id' => (int) $training->id,
+                    'linkedin_share_prompted_at' => null,
+                    'linkedin_share_dismissed_at' => null,
+                    'linkedin_shared_at' => null,
+                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                ])->save();
+
+                // Generate PNG using GD (no Ghostscript required)
+                app(CertificateImageGenerator::class)->generate(
+                    userId: $user->id,
+                    studentName: (string) ($user->name ?? ''),
+                    field: (string) ($user->field ?? ''),
+                    trainingTitle: (string) ($training->name ?? ''),
+                    issuedDate: now()->locale('fr_FR')->translatedFormat('d F Y'),
+                );
+
+                $savedCount++;
+            } catch (\Throwable $e) {
+                Log::error('Failed to generate certificate', [
+                    'training_id' => $training->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $zip->close();
+
+        if ($savedCount === 0) {
+            @unlink($tmpZipPath);
+            abort(500, 'Failed to generate certificates.');
+        }
+
+        return response()->download($tmpZipPath, 'certificats-' . $training->id . '.zip', [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
     }
 
 

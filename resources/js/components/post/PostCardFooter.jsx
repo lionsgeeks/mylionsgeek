@@ -1,9 +1,11 @@
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { subscribeToChannel } from '../../lib/ablyManager';
 import LikesModal from './LikesModal';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCommentPress, variant = 'default' }) => {
+    const { auth } = usePage().props;
     const isFacebook = variant === 'facebook';
     const [likesCountMap, setLikesCountMap] = useState({});
     const [commentsCountMap, setCommentsCountMap] = useState({});
@@ -119,64 +121,66 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             </div>
 
             {/* Buttons */}
-            <div
-                className={
-                    isFacebook
-                        ? 'flex items-stretch '
-                        : `flex items-center justify-around rounded-b-lg px-2 py-2 shadow-sm ${!PostModal ? 'bg-light dark:bg-dark' : ''}`
-                }
-            >
-                {/* Like Button */}
-                <button
-                    type="button"
-                    onClick={() => toggleLike(post?.id)}
+            {!auth?.user?.role?.includes('recruiter') && (
+                <div
                     className={
                         isFacebook
-                            ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${
-                                  isLiked ? 'text-alpha' : 'text-beta dark:text-light'
-                              }`
-                            : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${
-                                  isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
-                              }`
+                            ? 'flex items-stretch'
+                            : `flex items-center justify-around rounded-b-lg px-2 py-2 shadow-sm ${!PostModal ? 'bg-light dark:bg-dark' : ''}`
                     }
                 >
-                    <svg
-                        className={`h-5 w-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    {/* Like Button */}
+                    <button
+                        type="button"
+                        onClick={() => toggleLike(post?.id)}
+                        className={
+                            isFacebook
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${
+                                      isLiked ? 'text-alpha' : 'text-beta dark:text-light'
+                                  }`
+                                : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${
+                                      isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                  }`
+                        }
                     >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                        />
-                    </svg>
-                    <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>{isLiked ? 'Liked' : 'Like'}</span>
-                </button>
+                        <svg
+                            className={`h-5 w-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                            />
+                        </svg>
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>{isLiked ? 'Liked' : 'Like'}</span>
+                    </button>
 
-                {/* Comment Button */}
-                <button
-                    type="button"
-                    className={
-                        isFacebook
-                            ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-white/5'
-                            : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
-                    }
-                    onClick={() => onCommentPress?.()}
-                >
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                        />
-                    </svg>
-                    <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Comment</span>
-                </button>
-            </div>
+                    {/* Comment Button */}
+                    <button
+                        type="button"
+                        className={
+                            isFacebook
+                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-white/5'
+                                : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
+                        }
+                        onClick={() => onCommentPress?.()}
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                        </svg>
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Comment</span>
+                    </button>
+                </div>
+            )}
 
             {/* Likes modal */}
             <LikesModal postId={likesOpenFor} open={!!likesOpenFor} onClose={() => setLikesOpenFor(null)} takeToUserProfile={takeToUserProfile} />

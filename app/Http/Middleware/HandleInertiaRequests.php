@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Attendance;
 use App\Models\Formation;
+use App\Models\LinkedAccount;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -73,10 +74,27 @@ class HandleInertiaRequests extends Middleware
                     }
 
                     // Return user data merged with computed fields WITHOUT mutating/saving them on the model
+                    $linkedin = null;
+                    try {
+                        if (Schema::hasTable('linked_accounts')) {
+                            $linkedin = LinkedAccount::query()
+                                ->where('provider', 'linkedin')
+                                ->where('user_id', $user->id)
+                                ->first();
+                        }
+                    } catch (\Throwable) {
+                        $linkedin = null;
+                    }
+
                     return array_merge($user->toArray(), [
                         'avatarUrl' => $avatarUrl,
                         'isProfileImageMissing' => empty($avatarUrl),
                         'social_links' => $user->socialLinks,
+                        'linkedin_connected' => (bool) $linkedin,
+                        'certificate_share_token' => $user->certificate_share_token ?? null,
+                        'certificate_share_url' => $user->certificate_share_token
+                            ? url('/certificates/share/' . $user->certificate_share_token)
+                            : null,
                     ]);
                 })(),
             ],

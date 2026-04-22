@@ -4,12 +4,7 @@ export default function CommentImageLightbox({ openImageUrl, onClose }) {
     }
 
     return (
-        <div
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-            onClick={onClose}
-            role="button"
-            tabIndex={-1}
-        >
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={onClose} role="button" tabIndex={-1}>
             <div className="absolute inset-0 bg-black/80" />
             <div className="relative max-h-[90vh] max-w-[95vw]">
                 <img

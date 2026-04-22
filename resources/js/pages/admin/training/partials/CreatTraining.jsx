@@ -3,18 +3,22 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { Code, ImageIcon, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export default function CreatTraining({ coaches }) {
     const [open, setOpen] = useState(false);
+    const page = usePage();
+    const userRoles = Array.isArray(page.props?.auth?.user?.role) ? page.props.auth.user.role : [page.props?.auth?.user?.role].filter(Boolean);
+    const canManageCertificateTemplate = userRoles.includes('admin') || userRoles.includes('super_admin');
     const { data, setData, post, processing, reset, errors } = useForm({
         name: '',
         category: '',
         start_time: '',
         user_id: '',
         promo: '',
+        certificate_template: null,
     });
 
     const handleOpenChange = (newOpen) => {
@@ -28,6 +32,7 @@ export default function CreatTraining({ coaches }) {
         e.preventDefault();
 
         post('/admin/training', {
+            forceFormData: true,
             onSuccess: () => {
                 reset();
                 setOpen(false);
@@ -116,6 +121,22 @@ export default function CreatTraining({ coaches }) {
                         />
                         {errors.promo && <p className="text-sm text-red-600">{errors.promo}</p>}
                     </div>
+
+                    {canManageCertificateTemplate && (
+                        <div>
+                            <Label htmlFor="certificate_template">Certificate template (global default)</Label>
+                            <Input
+                                id="certificate_template"
+                                type="file"
+                                accept="image/png,image/jpeg"
+                                onChange={(e) => setData('certificate_template', e.target.files?.[0] ?? null)}
+                            />
+                            {errors.certificate_template && <p className="text-sm text-red-600">{errors.certificate_template}</p>}
+                            <p className="mt-1 text-xs text-dark/60 dark:text-light/60">
+                                If empty, the global default template at <code>/public/assets/images/certif.jpg</code> will be used.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="flex justify-end">
                         <Button type="submit" className="cursor-pointer bg-yellow-600 hover:bg-yellow-700" disabled={processing}>

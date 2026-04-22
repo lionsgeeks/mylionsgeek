@@ -57,6 +57,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         phone: editedUser?.phone ?? '',
         cin: editedUser?.cin ?? '',
         image: editedUser?.image || null,
+        resumeFile: null,
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
         access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
     });
@@ -93,6 +94,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 phone: editedUser.phone ?? '',
                 cin: editedUser.cin ?? '',
                 image: editedUser?.image || null,
+                resumeFile: null,
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
             });
@@ -184,6 +186,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             form.append('image', formData?.image);
         }
 
+        if (formData?.resumeFile instanceof File) {
+            form.append('resume', formData.resumeFile);
+        }
+
         router.post(`/students/update/${editedUser.id}`, form, {
             onSuccess: () => {
                 setErrors({});
@@ -256,7 +262,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     {/* Left Column - Phone */}
-                    <div className="col-span-1">
+                    <div className={editedUser?.status?.toLowerCase() == 'studying' ? 'col-span-2' : 'col-span-1'}>
                         <Label htmlFor="phone">Phone</Label>
                         <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
@@ -268,20 +274,51 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         </div>
                     )}
                     {/* Left Column - Status */}
+                    {editedUser?.status?.toLowerCase() == 'studying' ? null : (
+                        <div className="col-span-1">
+                            <Label>Status</Label>
+                            <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {status?.map((s, idx) => (
+                                        <SelectItem key={idx} value={s}>
+                                            {s}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="col-span-1">
-                        <Label>Status</Label>
-                        <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {status?.map((s, idx) => (
-                                    <SelectItem key={idx} value={s}>
-                                        {s}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="resume" className="mb-2 flex items-center gap-2">
+                            CV (PDF or Word)
+                        </Label>
+                        <Input
+                            id="resume"
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            className="h-fit border-beta/30 py-1 file:rounded-lg file:bg-beta/10 file:px-3 file:py-0.5 focus:border-alpha focus:ring-alpha dark:border-light/10 dark:file:bg-light/10"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                setFormData({ ...formData, resumeFile: file });
+                            }}
+                        />
+                        {errors.resume && (
+                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
+                        )}
+                        {!formData.resumeFile && editedUser?.resume && (
+                            <a
+                                href={`/storage/resumes/${editedUser.resume}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"
+                            >
+                                View current CV
+                            </a>
+                        )}
+                        {formData.resumeFile && <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>}
                     </div>
 
                     {/* Socials Section */}

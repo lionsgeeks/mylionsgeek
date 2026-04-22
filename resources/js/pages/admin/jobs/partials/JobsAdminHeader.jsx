@@ -1,7 +1,7 @@
 import StatsCard from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
 import { Link } from '@inertiajs/react';
-import { Briefcase, Eye, EyeOff, ExternalLink, Plus } from 'lucide-react';
+import { Briefcase, ExternalLink, Eye, EyeOff, Plus } from 'lucide-react';
 import { useMemo } from 'react';
 
 export default function JobsAdminHeader({ filteredJobs, onOpenCreateJob = () => {} }) {

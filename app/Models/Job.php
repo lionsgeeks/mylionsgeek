@@ -10,6 +10,8 @@ use Illuminate\Support\Str;
 
 class Job extends Model
 {
+    public const JOB_TYPES = ['full_time', 'part_time', 'internship', 'contract'];
+
     /** Laravel reserves the `jobs` table for the database queue driver. */
     protected $table = 'job_postings';
 

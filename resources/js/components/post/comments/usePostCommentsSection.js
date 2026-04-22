@@ -4,13 +4,7 @@ import imageCompression from 'browser-image-compression';
 import { useEffect, useRef, useState } from 'react';
 import { subscribeToChannel } from '../../../lib/ablyManager';
 
-export function usePostCommentsSection({
-    postId,
-    enabled,
-    embedded,
-    onCommentAdded,
-    onCommentRemoved,
-}) {
+export function usePostCommentsSection({ postId, enabled, embedded, onCommentAdded, onCommentRemoved }) {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [newCommentImage, setNewCommentImage] = useState(null);

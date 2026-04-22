@@ -45,7 +45,7 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
                                 <Link href={takeUserProfile(post)} className="text-sm font-semibold text-gray-900 dark:text-light">
                                     {post?.user_name}
                                 </Link>
-                                {user?.id != post?.user_id && (
+                                {user?.id != post?.user_id && !user?.role?.includes('recruiter') && (
                                     <span
                                         onClick={() => addOrRemoveFollow(post?.user_id, post?.is_following)}
                                         className="cursor-pointer text-xs text-gray-500 dark:text-alpha"

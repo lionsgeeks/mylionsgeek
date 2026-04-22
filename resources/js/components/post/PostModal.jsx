@@ -101,7 +101,10 @@ const PostModal = ({
     const header = (
         <div className="flex-shrink-0 border-b border-border/70 bg-light px-4 py-3 dark:border-white/10 dark:bg-dark_gray">
             <div className="flex items-start gap-3">
-                <Link href={profileHref} className="shrink-0 rounded-full ring-2 ring-transparent ring-offset-2 ring-offset-light transition hover:ring-alpha/40 dark:ring-offset-dark_gray">
+                <Link
+                    href={profileHref}
+                    className="shrink-0 rounded-full ring-2 ring-transparent ring-offset-2 ring-offset-light transition hover:ring-alpha/40 dark:ring-offset-dark_gray"
+                >
                     <Avatar
                         className="relative z-10 h-10 w-10 overflow-hidden"
                         image={post?.user_image}
@@ -140,9 +143,7 @@ const PostModal = ({
 
     const descriptionBlock = (
         <div className="px-4 py-2">
-            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground dark:text-light/95">
-                {displayText}
-            </p>
+            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground dark:text-light/95">{displayText}</p>
             {hasMore && (
                 <button
                     type="button"
@@ -173,7 +174,7 @@ const PostModal = ({
                     <button
                         type="button"
                         onClick={(e) => changeOpen(e)}
-                        className={`${closeBtnClass} ${hasImages ? 'left-3 top-3 sm:left-4 sm:top-4' : 'right-3 top-3'}`}
+                        className={`${closeBtnClass} ${hasImages ? 'top-3 left-3 sm:top-4 sm:left-4' : 'top-3 right-3'}`}
                         aria-label="Close"
                     >
                         <X className="h-6 w-6" strokeWidth={2.2} />
@@ -187,7 +188,7 @@ const PostModal = ({
                                 </div>
                             </div>
 
-                            <div className="flex h-full min-h-0 w-full flex-col border-t border-white/10 bg-light dark:border-white/10 dark:bg-dark_gray lg:w-[min(100%,380px)] lg:flex-shrink-0 lg:border-l lg:border-t-0 xl:w-[400px]">
+                            <div className="flex h-full min-h-0 w-full flex-col border-t border-white/10 bg-light lg:w-[min(100%,380px)] lg:flex-shrink-0 lg:border-t-0 lg:border-l xl:w-[400px] dark:border-white/10 dark:bg-dark_gray">
                                 {header}
                                 <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
                                     {descriptionBlock}
@@ -205,9 +206,7 @@ const PostModal = ({
                                 {descriptionBlock}
                                 {commentsSection}
                             </div>
-                            <div className="flex-shrink-0 border-t border-border/80 bg-muted/20 dark:border-white/10 dark:bg-dark/80">
-                                {footer}
-                            </div>
+                            <div className="flex-shrink-0 border-t border-border/80 bg-muted/20 dark:border-white/10 dark:bg-dark/80">{footer}</div>
                         </>
                     )}
                 </div>

@@ -212,7 +212,7 @@ const Header = ({ user, userFunctionality }) => {
                                     <span className="text-sm font-medium">Edit Profile</span>
                                 </button>
                             )}
-                            {auth.user?.id != user?.id && (
+                            {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
                                 <>
                                     <button
                                         onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
@@ -290,7 +290,7 @@ const Header = ({ user, userFunctionality }) => {
                                         <span className="text-sm font-medium">Edit Profile</span>
                                     </button>
                                 )}
-                                {auth.user?.id != user?.id && (
+                                {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
                                     <>
                                         <button
                                             onClick={() => addOrRemoveFollow(user?.id, user?.isFollowing)}
@@ -314,29 +314,31 @@ const Header = ({ user, userFunctionality }) => {
                                     </>
                                 )}
 
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <MoreHorizontal className="h-5 w-5 text-beta dark:text-light" />
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto rounded-lg border-none bg-light p-0 shadow-lg dark:bg-dark">
-                                        <div className="flex flex-col items-start gap-5 p-4 text-foreground">
-                                            {auth.user?.id == user?.id && (
-                                                <Rolegard authorized={['admin', 'student']}>
-                                                    <button onClick={() => setOpenEdit(true)} className="text-sm">
-                                                        Edit Profile
-                                                    </button>
+                                {auth.user?.id !== user?.id && !auth.user?.role?.includes('recruiter') && (
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <MoreHorizontal className="h-5 w-5 text-beta dark:text-light" />
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto rounded-lg border-none bg-light p-0 shadow-lg dark:bg-dark">
+                                            <div className="flex flex-col items-start gap-5 p-4 text-foreground">
+                                                {auth.user?.id == user?.id && (
+                                                    <Rolegard authorized={['admin', 'student']}>
+                                                        <button onClick={() => setOpenEdit(true)} className="text-sm">
+                                                            Edit Profile
+                                                        </button>
+                                                    </Rolegard>
+                                                )}
+                                                <Rolegard authorized={['admin']}>
+                                                    <Link href={'/admin/users/' + user.id} className="text-sm">
+                                                        View as Admin
+                                                    </Link>
                                                 </Rolegard>
-                                            )}
-                                            <Rolegard authorized={['admin']}>
-                                                <Link href={'/admin/users/' + user.id} className="text-sm">
-                                                    View as Admin
-                                                </Link>
-                                            </Rolegard>
-                                            <button className="text-sm text-error">Block User</button>
-                                            <button className="text-sm text-red-500 hover:text-red-700">Report User</button>
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                                                <button className="text-sm text-error">Block User</button>
+                                                <button className="text-sm text-red-500 hover:text-red-700">Report User</button>
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
                             </div>
                         </div>
                     </div>

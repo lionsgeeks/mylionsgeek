@@ -2,28 +2,47 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
-import { ExternalLink } from 'lucide-react';
+import AdminCreateJobDialog from '@/pages/admin/jobs/partials/AdminCreateJobDialog';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { Head, usePage } from '@inertiajs/react';
+import { ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 
-export default function RecruiterJobsIndex({ jobs }) {
+export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
+    const { auth } = usePage().props;
     const list = jobs ?? [];
+    const [createOpen, setCreateOpen] = useState(false);
 
     return (
         <AppLayout>
             <Head title="Assigned job postings" />
             <div className="flex flex-col gap-6 p-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-beta dark:text-light">Assigned job postings</h1>
-                    <p className="mt-1 text-sm text-beta/70 dark:text-light/70">
-                        Offers an admin assigned to you. Open applications from the Applications page.
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-beta dark:text-light">Job postings</h1>
+                        <p className="mt-1 text-sm text-beta/70 dark:text-light/70">
+                            Create job postings and review applications from the Applications page.
+                        </p>
+                    </div>
+                    <Button className="bg-alpha text-black hover:bg-alpha/90" size="sm" onClick={() => setCreateOpen(true)}>
+                        New job posting
+                    </Button>
                 </div>
+
+                <AdminCreateJobDialog
+                    open={createOpen}
+                    onOpenChange={setCreateOpen}
+                    recruiterOptions={[]}
+                    jobTypeOptions={jobTypeOptions}
+                    actionUrl="/recruiter/jobs"
+                    showRecruiterSelect={false}
+                    defaultRecruiterIds={auth?.user?.id ? [auth.user.id] : []}
+                />
 
                 {list.length === 0 ? (
                     <div className="rounded-lg border border-alpha/15 bg-white p-10 text-center dark:border-light/10 dark:bg-dark_gray">
-                        <p className="text-beta dark:text-light">You have no assigned postings yet.</p>
-                        <p className="mt-2 text-sm text-muted-foreground">An administrator will assign you when they publish a job.</p>
+                        <p className="text-beta dark:text-light">You have no jobs postings yet.</p>
+                        {/* <p className="mt-2 text-sm text-muted-foreground">An administrator will assign you when they publish a job.</p> */}
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-lg border border-alpha/15 bg-white shadow-sm dark:border-light/10 dark:bg-dark_gray">

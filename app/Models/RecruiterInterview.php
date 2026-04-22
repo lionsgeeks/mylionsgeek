@@ -13,15 +13,15 @@ class RecruiterInterview extends Model
         'group_label',
         'title',
         'starts_at',
-        'ends_at',
+        'location',
         'notes',
+        'outcome',
     ];
 
     protected function casts(): array
     {
         return [
             'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
         ];
     }
 

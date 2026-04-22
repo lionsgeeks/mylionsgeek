@@ -2,19 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\JobPostings\SaveJobPosting;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\JobPostingRequest;
 use App\Models\Job;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class JobPostingController extends Controller
 {
-    private const JOB_TYPES = ['full_time', 'part_time', 'internship', 'contract'];
-
     public function index(): Response
     {
         $jobs = Job::query()
@@ -29,7 +27,7 @@ class JobPostingController extends Controller
         return Inertia::render('admin/jobs/index', [
             'jobs' => $jobs,
             'recruiterOptions' => $this->recruiterOptions(),
-            'jobTypeOptions' => self::JOB_TYPES,
+            'jobTypeOptions' => Job::JOB_TYPES,
         ]);
     }
 
@@ -38,42 +36,20 @@ class JobPostingController extends Controller
         return redirect()->route('admin.jobs.index');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(JobPostingRequest $request, SaveJobPosting $saveJobPosting): RedirectResponse
     {
-        $validated = $this->validatedJobRequest($request);
+        $validated = $request->validated();
         $recruiterIds = $validated['recruiter_ids'] ?? [];
-
-        $job = Job::query()->create([
-            'reference' => Job::generateUniqueReference(),
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'location' => $validated['location'] ?? null,
-            'job_type' => $validated['job_type'],
-            'skills' => array_values(array_filter($validated['skills'] ?? [])),
-            'is_published' => (bool) ($validated['is_published'] ?? true),
-            'user_id' => $request->user()->id,
-        ]);
-
-        $job->recruiters()->sync($recruiterIds);
+        $saveJobPosting->create($validated, (int) $request->user()->id, $recruiterIds);
 
         return redirect()->route('admin.jobs.index')->with('success', 'Job posting created.');
     }
 
-    public function update(Request $request, Job $job): RedirectResponse
+    public function update(JobPostingRequest $request, Job $job, SaveJobPosting $saveJobPosting): RedirectResponse
     {
-        $validated = $this->validatedJobRequest($request);
+        $validated = $request->validated();
         $recruiterIds = $validated['recruiter_ids'] ?? [];
-
-        $job->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'location' => $validated['location'] ?? null,
-            'job_type' => $validated['job_type'],
-            'skills' => array_values(array_filter($validated['skills'] ?? [])),
-            'is_published' => (bool) ($validated['is_published'] ?? true),
-        ]);
-
-        $job->recruiters()->sync($recruiterIds);
+        $saveJobPosting->update($job, $validated, $recruiterIds);
 
         return redirect()->route('admin.jobs.index')->with('success', 'Job posting updated.');
     }
@@ -93,33 +69,6 @@ class JobPostingController extends Controller
                 'email' => $user->email,
             ])
             ->all();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validatedJobRequest(Request $request): array
-    {
-        $skillsInput = $request->input('skills');
-        if (is_string($skillsInput)) {
-            $parsed = array_values(array_unique(array_filter(array_map('trim', explode(',', $skillsInput)))));
-            $request->merge(['skills' => $parsed]);
-        }
-
-        return $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'job_type' => ['required', 'string', Rule::in(self::JOB_TYPES)],
-            'skills' => ['nullable', 'array'],
-            'skills.*' => ['string', 'max:80'],
-            'is_published' => ['sometimes', 'boolean'],
-            'recruiter_ids' => ['nullable', 'array'],
-            'recruiter_ids.*' => [
-                'integer',
-                Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('role', 'recruiter')),
-            ],
-        ]);
     }
 
     /**

@@ -1,12 +1,12 @@
+import JobDescriptionEditor from '@/components/JobDescriptionEditor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Link } from '@inertiajs/react';
 import RecruiterMultiSelect from '@/pages/admin/jobs/partials/RecruiterMultiSelect';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { Link } from '@inertiajs/react';
 
 export default function JobPostingForm({
     data,
@@ -16,13 +16,14 @@ export default function JobPostingForm({
     onSubmit,
     jobTypeOptions = [],
     recruiterOptions = [],
+    showRecruiterSelect = true,
     cancelHref,
     onCancel,
     reference = null,
     submitLabel = 'Save posting',
     embedInModal = false,
 }) {
-    const skillsValue = Array.isArray(data.skills) ? data.skills.join(', ') : data.skills ?? '';
+    const skillsValue = Array.isArray(data.skills) ? data.skills.join(', ') : (data.skills ?? '');
 
     return (
         <form onSubmit={onSubmit} className={embedInModal ? 'mt-4 space-y-4' : 'mt-6 space-y-4'}>
@@ -44,18 +45,13 @@ export default function JobPostingForm({
                 {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
             </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                    id="description"
-                    value={data.description}
-                    onChange={(e) => setData('description', e.target.value)}
-                    rows={8}
-                    className="border-alpha/30 dark:border-light/15"
-                    required
-                />
-                {errors.description && <p className="text-sm text-red-600">{errors.description}</p>}
-            </div>
+            <JobDescriptionEditor
+                id="description"
+                label="Description"
+                value={data.description}
+                onChange={(html) => setData('description', html)}
+                error={errors.description}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -98,19 +94,17 @@ export default function JobPostingForm({
                 {errors.skills && <p className="text-sm text-red-600">{errors.skills}</p>}
             </div>
 
-            <RecruiterMultiSelect
-                recruiterOptions={recruiterOptions}
-                selectedIds={data.recruiter_ids}
-                onChange={(ids) => setData('recruiter_ids', ids)}
-                error={errors.recruiter_ids}
-            />
+            {showRecruiterSelect && (
+                <RecruiterMultiSelect
+                    recruiterOptions={recruiterOptions}
+                    selectedIds={data.recruiter_ids}
+                    onChange={(ids) => setData('recruiter_ids', ids)}
+                    error={errors.recruiter_ids}
+                />
+            )}
 
             <div className="flex items-center space-x-2">
-                <Checkbox
-                    id="is_published"
-                    checked={data.is_published}
-                    onCheckedChange={(c) => setData('is_published', c === true)}
-                />
+                <Checkbox id="is_published" checked={data.is_published} onCheckedChange={(c) => setData('is_published', c === true)} />
                 <Label htmlFor="is_published" className="text-sm font-normal">
                     Publish on the student job board
                 </Label>

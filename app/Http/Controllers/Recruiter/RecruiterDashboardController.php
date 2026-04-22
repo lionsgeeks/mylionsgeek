@@ -44,7 +44,7 @@ class RecruiterDashboardController extends Controller
                 'id' => $row->id,
                 'title' => $row->title,
                 'starts_at' => $row->starts_at->toIso8601String(),
-                'ends_at' => $row->ends_at?->toIso8601String(),
+                'location' => $row->location,
                 'group_label' => $row->group_label,
             ]);
 

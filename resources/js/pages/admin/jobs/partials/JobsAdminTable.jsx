@@ -68,22 +68,14 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                             </TableCell>
                             <TableCell className="max-w-[200px] text-sm">
                                 {job.recruiters?.length ? (
-                                    <span className="line-clamp-3">
-                                        {job.recruiters.map((r) => r.name).join(', ')}
-                                    </span>
+                                    <span className="line-clamp-3">{job.recruiters.map((r) => r.name).join(', ')}</span>
                                 ) : (
                                     <span className="text-muted-foreground">—</span>
                                 )}
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 gap-1 text-alpha"
-                                        onClick={() => onEditJob(job)}
-                                    >
+                                    <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 text-alpha" onClick={() => onEditJob(job)}>
                                         <Pencil className="h-4 w-4" />
                                         Edit
                                     </Button>

@@ -1,6 +1,6 @@
 import StatsCard from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
-import { UserCheck, Users, UserPlus } from 'lucide-react';
+import { UserCheck, UserPlus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import InviteRecruiterDialog from './InviteRecruiterDialog';
 

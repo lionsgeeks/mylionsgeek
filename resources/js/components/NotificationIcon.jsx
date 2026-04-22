@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
-import { Bell, Briefcase, Calendar, CheckCircle, Clock, Lock, MessageSquare, User, Users, XCircle } from 'lucide-react';
+import { Bell, Briefcase, Calendar, CheckCircle, Clock, Lock, User, Users, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 export default function NotificationIcon() {

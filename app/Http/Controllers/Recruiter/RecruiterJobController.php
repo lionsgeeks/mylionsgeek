@@ -33,6 +33,7 @@ class RecruiterJobController extends Controller
 
         return Inertia::render('recruiter/jobs/index', [
             'jobs' => $jobs,
+            'jobTypeOptions' => Job::JOB_TYPES,
         ]);
     }
 }

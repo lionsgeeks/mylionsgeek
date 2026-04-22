@@ -68,12 +68,7 @@ export default function AdminJobsIndex({ jobs, recruiterOptions = [], jobTypeOpt
                     recruiterOptions={recruiterOptions}
                     jobTypeOptions={jobTypeOptions}
                 />
-                <JobsAdminFilter
-                    filters={filters}
-                    setFilters={setFilters}
-                    jobTypes={jobTypes}
-                    initialFilters={defaultFilters}
-                />
+                <JobsAdminFilter filters={filters} setFilters={setFilters} jobTypes={jobTypes} initialFilters={defaultFilters} />
                 <JobsAdminTable jobs={filteredJobs} onEditJob={setJobToEdit} />
             </div>
         </AppLayout>

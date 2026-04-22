@@ -1,10 +1,4 @@
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import JobPostingForm from '@/pages/admin/jobs/partials/JobPostingForm';
 import { useForm } from '@inertiajs/react';
 import { useEffect } from 'react';
@@ -21,7 +15,15 @@ function buildDefaults(jobTypeOptions) {
     };
 }
 
-export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOptions = [], jobTypeOptions = [] }) {
+export default function AdminCreateJobDialog({
+    open,
+    onOpenChange,
+    recruiterOptions = [],
+    jobTypeOptions = [],
+    actionUrl = '/admin/jobs',
+    showRecruiterSelect = true,
+    defaultRecruiterIds = [],
+}) {
     const { data, setData, post, processing, errors } = useForm(buildDefaults(jobTypeOptions));
 
     useEffect(() => {
@@ -29,12 +31,15 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
             return;
         }
         const d = buildDefaults(jobTypeOptions);
+        if (Array.isArray(defaultRecruiterIds) && defaultRecruiterIds.length > 0) {
+            d.recruiter_ids = defaultRecruiterIds;
+        }
         Object.keys(d).forEach((key) => setData(key, d[key]));
-    }, [open, jobTypeOptions, setData]);
+    }, [open, jobTypeOptions, setData, defaultRecruiterIds]);
 
     const submit = (e) => {
         e.preventDefault();
-        post('/admin/jobs', {
+        post(actionUrl, {
             preserveScroll: true,
             onSuccess: () => {
                 onOpenChange(false);
@@ -48,10 +53,7 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent
-                showCloseButton
-                className="max-h-[min(92vh,56rem)] w-[calc(100%-1.5rem)] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full"
-            >
+            <DialogContent showCloseButton className="max-h-[min(92vh,56rem)] w-[calc(100%-1.5rem)] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full">
                 <div className="max-h-[min(92vh,56rem)] overflow-y-auto p-6">
                     <DialogHeader className="text-left">
                         <DialogTitle className="text-xl">New job posting</DialogTitle>
@@ -67,6 +69,7 @@ export default function AdminCreateJobDialog({ open, onOpenChange, recruiterOpti
                         onSubmit={submit}
                         jobTypeOptions={jobTypeOptions}
                         recruiterOptions={recruiterOptions}
+                        showRecruiterSelect={showRecruiterSelect}
                         onCancel={handleCancel}
                         submitLabel="Create posting"
                         embedInModal

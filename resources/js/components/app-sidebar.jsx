@@ -30,9 +30,16 @@ const getRecruiterNavItems = () => [
     },
     {
         id: 'recruiter_jobs',
-        title: 'Assigned jobs',
+        title: 'Jobs',
         href: '/recruiter/jobs',
         icon: Briefcase,
+        authorizedRoles: ['recruiter'],
+    },
+    {
+        id: 'recruiter_students',
+        title: 'Students',
+        href: '/recruiter/students',
+        icon: GraduationCap,
         authorizedRoles: ['recruiter'],
     },
     {
@@ -44,7 +51,7 @@ const getRecruiterNavItems = () => [
     },
     {
         id: 'recruiter_interviews',
-        title: 'Interviews',
+        title: 'Interview calendar',
         href: '/recruiter/interviews',
         icon: Calendar,
         authorizedRoles: ['recruiter'],

@@ -15,6 +15,7 @@ class Formation extends Model
     protected $fillable = [
         "name",
         "img",
+        "certificate_template",
         "category",
         "start_time",
         "end_time",
