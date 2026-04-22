@@ -23,6 +23,17 @@ export default function CertifiedLinkedInShareModal() {
             !user.linkedin_shared_at,
     );
 
+    // Temporary debug — remove once the modal is confirmed working
+    console.log('[CertifiedModal]', {
+        status: user?.status,
+        isStudentLike,
+        linkedin_share_prompted_at: user?.linkedin_share_prompted_at,
+        linkedin_share_dismissed_at: user?.linkedin_share_dismissed_at,
+        linkedin_shared_at: user?.linkedin_shared_at,
+        certificate_share_token: user?.certificate_share_token,
+        shouldShow,
+    });
+
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState('ask'); // ask | preview
     const [isBusy, setIsBusy] = useState(false);

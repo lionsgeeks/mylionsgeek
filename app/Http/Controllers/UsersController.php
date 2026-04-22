@@ -637,7 +637,22 @@ class UsersController extends Controller
             unset($validated['roles']);
         }
 
+        $previousStatus = $user->status;
+
         $user->update($validated);
+
+        // When an admin manually certifies a user, reset the LinkedIn modal gate fields
+        // so the share prompt appears on their next login, and ensure a share token exists.
+        // Uses forceFill() because these fields are not in $fillable.
+        if (isset($validated['status']) && $validated['status'] === 'Certified' && $previousStatus !== 'Certified') {
+            $user->forceFill([
+                'linkedin_share_prompted_at' => null,
+                'linkedin_share_dismissed_at' => null,
+                'linkedin_shared_at' => null,
+                'certified_at' => $user->certified_at ?? now(),
+                'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+            ])->save();
+        }
 
         return redirect()->back()->with('success', 'User updated successfully');
     }
