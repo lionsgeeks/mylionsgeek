@@ -25,6 +25,7 @@ export default function PostCommentsThread({
     onToggleExpandComment,
     onOpenCommentImage,
     onToggleLike,
+    onOpenCommentLikes,
 }) {
     return (
         <div className={listWrapperClassName}>
@@ -75,6 +76,7 @@ export default function PostCommentsThread({
                         onToggleExpandComment={onToggleExpandComment}
                         onOpenCommentImage={onOpenCommentImage}
                         onToggleLike={onToggleLike}
+                        onOpenCommentLikes={onOpenCommentLikes}
                     />
                 ))
             )}

@@ -7,7 +7,16 @@ import PostCommentsHeader from './comments/PostCommentsHeader';
 import PostCommentsThread from './comments/PostCommentsThread';
 import { usePostCommentsSection } from './comments/usePostCommentsSection';
 
-function PostCommentsSection({ postId, enabled, embedded = false, variant = 'default', onCommentAdded, onCommentRemoved, takeToUserProfile }) {
+function PostCommentsSection({
+    postId,
+    enabled,
+    embedded = false,
+    variant = 'default',
+    onCommentAdded,
+    onCommentRemoved,
+    takeToUserProfile,
+    onOpenCommentLikes,
+}) {
     const isFacebookEmbed = embedded && variant === 'facebook';
     const listScrollClass = getListScrollBaseClass(isFacebookEmbed, embedded);
     const listWrapperClassName = getListWrapperClass(isFacebookEmbed, embedded, listScrollClass);
@@ -101,6 +110,7 @@ function PostCommentsSection({ postId, enabled, embedded = false, variant = 'def
                     onToggleExpandComment={toggleExpandComment}
                     onOpenCommentImage={setOpenImageUrl}
                     onToggleLike={toggleCommentLike}
+                    onOpenCommentLikes={onOpenCommentLikes}
                 />
             </div>
 

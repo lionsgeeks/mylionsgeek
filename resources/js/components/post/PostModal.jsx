@@ -2,6 +2,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { helpers } from '../utils/helpers';
 import PostCardFooter from './PostCardFooter';
 import PostCommentsSection from './PostCommentsSection';
@@ -26,6 +27,11 @@ const PostModal = ({
     const { stopScrolling } = helpers();
     const hasImages = Array.isArray(post?.images) && post.images.length > 0;
     const [commentCountDelta, setCommentCountDelta] = useState(0);
+    const [openCommentLikes, setOpenCommentLikes] = useState(false);
+    const [commentLikesLoading, setCommentLikesLoading] = useState(false);
+    const [commentLikesError, setCommentLikesError] = useState(null);
+    const [activeCommentForLikes, setActiveCommentForLikes] = useState(null);
+    const [commentLikes, setCommentLikes] = useState([]);
 
     const postForFooter = useMemo(
         () => ({
@@ -38,6 +44,16 @@ const PostModal = ({
     useEffect(() => {
         setCommentCountDelta(0);
     }, [post?.id]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setOpenCommentLikes(false);
+            setCommentLikesLoading(false);
+            setCommentLikesError(null);
+            setActiveCommentForLikes(null);
+            setCommentLikes([]);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         stopScrolling(true);
@@ -74,6 +90,27 @@ const PostModal = ({
         setCommentCountDelta((d) => Math.max(0, d - 1));
     };
 
+    const openCommentLikesModal = async (comment) => {
+        const commentId = Number(comment?.id);
+        if (!commentId) return;
+
+        setOpenCommentLikes(true);
+        setActiveCommentForLikes(comment);
+        setCommentLikes([]);
+        setCommentLikesError(null);
+        setCommentLikesLoading(true);
+
+        try {
+            const res = await axios.get(`/posts/comments/${commentId}/likes`);
+            const likes = Array.isArray(res?.data?.likes) ? res.data.likes : [];
+            setCommentLikes(likes);
+        } catch (error) {
+            setCommentLikesError(error);
+        } finally {
+            setCommentLikesLoading(false);
+        }
+    };
+
     const commentsSection = post?.id ? (
         <PostCommentsSection
             postId={post.id}
@@ -83,6 +120,7 @@ const PostModal = ({
             takeToUserProfile={takeToUserProfile}
             onCommentAdded={handleCommentAddedFromSection}
             onCommentRemoved={handleCommentRemovedFromSection}
+            onOpenCommentLikes={openCommentLikesModal}
         />
     ) : null;
 
@@ -214,6 +252,82 @@ const PostModal = ({
                     )}
                 </div>
             </div>
+
+            {openCommentLikes && (
+                <>
+                    <div
+                        className="fixed inset-0 z-[70] bg-black/80"
+                        onClick={() => setOpenCommentLikes(false)}
+                        role="presentation"
+                    />
+                    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                        <div className="w-full max-w-md overflow-hidden rounded-xl border border-border/70 bg-light shadow-2xl dark:border-white/10 dark:bg-dark_gray">
+                            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3 dark:border-white/10">
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-beta dark:text-light">Liked by</p>
+                                    <p className="truncate text-xs text-muted-foreground dark:text-light/60">
+                                        {activeCommentForLikes?.likes_count ? `${activeCommentForLikes.likes_count} likes` : '0 likes'}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenCommentLikes(false)}
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-beta dark:text-light/70 dark:hover:bg-white/10 dark:hover:text-light"
+                                    aria-label="Close"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-2">
+                                {commentLikesLoading ? (
+                                    <div className="p-6 text-center">
+                                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-alpha/30 border-t-alpha" />
+                                        <p className="mt-3 text-sm text-alpha">Loading likes...</p>
+                                    </div>
+                                ) : commentLikesError ? (
+                                    <div className="p-6 text-center">
+                                        <p className="text-sm font-semibold text-error">Failed to load likes.</p>
+                                        <p className="mt-1 text-xs text-muted-foreground dark:text-light/60">
+                                            Please try again.
+                                        </p>
+                                    </div>
+                                ) : commentLikes.length === 0 ? (
+                                    <div className="p-6 text-center">
+                                        <p className="text-sm text-muted-foreground dark:text-light/60">No likes yet.</p>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y divide-border/70 dark:divide-white/10">
+                                        {commentLikes.map((like) => {
+                                            const profileHref = like?.user_id != null ? `/students/${like.user_id}` : '#';
+                                            return (
+                                                <li key={like.id ?? `${like.user_id}-${like.created_at ?? ''}`} className="px-2 py-2">
+                                                    <Link
+                                                        href={profileHref}
+                                                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-muted/60 dark:hover:bg-white/10"
+                                                    >
+                                                        <Avatar
+                                                            className="h-10 w-10 overflow-hidden"
+                                                            image={like?.user_image}
+                                                            name={like?.user_name}
+                                                            onlineCircleClass="hidden"
+                                                        />
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate text-sm font-semibold text-beta dark:text-light">
+                                                                {like?.user_name || 'User'}
+                                                            </p>
+                                                        </div>
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </>
     );
 };

@@ -24,6 +24,7 @@ export default function PostCommentItem({
     onToggleExpandComment,
     onOpenCommentImage,
     onToggleLike,
+    onOpenCommentLikes,
 }) {
     const { auth } = usePage().props;
     const isOwner = currentUserId === c.user_id;
@@ -194,7 +195,14 @@ export default function PostCommentItem({
                                     <ThumbsUp size={14} />
                                     Like
                                 </button>
-                                <span className="text-xs text-neutral-500 dark:text-neutral-400">{Number(c.likes_count || 0)}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => onOpenCommentLikes?.(c)}
+                                    className="text-xs text-neutral-500 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha"
+                                    aria-label="Show users who liked this comment"
+                                >
+                                    {Number(c.likes_count || 0)}
+                                </button>
                             </div>
                         )}
                     </>
