@@ -17,6 +17,7 @@ export default function PostCommentItem({
     editedCommentImagePreview,
     editedRemoveImage,
     compressingEditedImage,
+    onEditedFileInputChange,
     onRemoveEditedPreview,
     onMarkRemoveExistingImage,
     expandedCommentIds,
