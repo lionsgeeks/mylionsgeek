@@ -6,6 +6,7 @@ import { helpers } from '../utils/helpers';
 import PostCardFooter from './PostCardFooter';
 import PostCommentsSection from './PostCommentsSection';
 import PostImageCarousel from './PostImageCarousel';
+import { renderPostText } from './utils/renderPostText';
 
 const PostModal = ({
     isOpen,
@@ -143,7 +144,9 @@ const PostModal = ({
 
     const descriptionBlock = (
         <div className="px-4 py-2">
-            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground dark:text-light/95">{displayText}</p>
+            <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap text-foreground dark:text-light/95">
+                {renderPostText({ text: displayText, post })}
+            </p>
             {hasMore && (
                 <button
                     type="button"

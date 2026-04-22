@@ -1,7 +1,7 @@
-import { Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { helpers } from '../utils/helpers';
 import PostModal from './PostModal';
+import { renderPostText } from './utils/renderPostText';
 
 const PostCardMainContent = ({
     post,
@@ -53,49 +53,13 @@ const PostCardMainContent = ({
         }
     };
 
-    const renderDescriptionWithMentions = (text) => {
-        if (!text) return null;
-
-        const mentionUserIds = post?.mention_user_ids ?? {};
-
-        const mentionRegex = /(@[A-Za-z0-9_]+)/g;
-        const parts = text.split(mentionRegex);
-
-        return parts.map((part, index) => {
-            if (!part) {
-                return null;
-            }
-
-            if (part.startsWith('@') && part.length > 1) {
-                // Stored text is @SanitizedName; server sends token (lowercase) -> user id for /students/{id}
-                const tokenKey = part.slice(1).toLowerCase();
-                const resolvedId = mentionUserIds[tokenKey];
-
-                if (resolvedId != null) {
-                    return (
-                        <Link key={`${part}-${index}`} href={`/students/${resolvedId}`} className="text-alpha hover:underline">
-                            {part}
-                        </Link>
-                    );
-                }
-
-                return (
-                    <span key={`${part}-${index}`} className="text-alpha">
-                        {part}
-                    </span>
-                );
-            }
-
-            return <span key={index}>{part}</span>;
-        });
-    };
     return (
         <>
             <div className="mt-3 px-4">
                 {post?.description && (
                     <>
                         <p className="w-full overflow-hidden text-sm break-words whitespace-pre-wrap text-gray-800 dark:text-light">
-                            {renderDescriptionWithMentions(displayText)}
+                            {renderPostText({ text: displayText, post })}
                         </p>
                         {hasMore && (
                             <button
