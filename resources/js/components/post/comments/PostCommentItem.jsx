@@ -41,12 +41,12 @@ export default function PostCommentItem({
             className={
                 isFacebookEmbed
                     ? 'group flex gap-2 rounded-lg bg-muted/40 px-2 py-1.5 animate-in fade-in dark:bg-white/[0.06]'
-                    : 'group flex gap-3 rounded-2xl border border-alpha/20 bg-neutral-50 px-4 py-2 animate-in fade-in slide-in-from-left-2 dark:bg-dark'
+                    : 'group flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md animate-in fade-in slide-in-from-left-2 dark:bg-beta'
             }
         >
             <Link href={takeToUserProfile(c)}>
                 <Avatar
-                    className="h-11 w-11 flex-shrink-0"
+                    className={isFacebookEmbed ? 'h-11 w-11 flex-shrink-0' : 'h-11 w-11 flex-shrink-0 ring-2 ring-alpha/30'}
                     image={c.user_image}
                     name={c.user_name}
                     width="w-11"
@@ -58,22 +58,26 @@ export default function PostCommentItem({
 
             <div
                 className={
-                    isFacebookEmbed ? 'w-[70%] flex-1 px-2 py-0.5' : 'w-[70%] flex-1 px-3 py-2.5 shadow-sm transition duration-200 hover:shadow-md'
+                    isFacebookEmbed ? 'w-[70%] flex-1 px-2 py-0.5' : 'w-[70%] flex-1'
                 }
             >
                 <div className="mb-1 flex justify-between">
-                    <div className="flex flex-col pb-2">
+                    <div className={isFacebookEmbed ? 'flex flex-col pb-2' : 'flex flex-1 items-start justify-between'}>
                         <Link
                             href={takeToUserProfile(c)}
                             className={
                                 isFacebookEmbed
                                     ? 'truncate text-[13px] font-semibold text-beta hover:underline dark:text-light'
-                                    : 'truncate text-sm font-bold text-white dark:text-yellow-300'
+                                    : 'max-w-[150px] truncate font-medium text-dark dark:text-light'
                             }
                         >
                             {c.user_name || 'User'}
                         </Link>
-                        <span className="text-[0.7rem] text-gray-500 dark:text-gray-400">{timeAgo(c.created_at)}</span>
+                        {isFacebookEmbed ? (
+                            <span className="text-[0.7rem] text-gray-500 dark:text-gray-400">{timeAgo(c.created_at)}</span>
+                        ) : (
+                            <span className="text-xs whitespace-nowrap text-gray-400">{timeAgo(c.created_at)}</span>
+                        )}
                     </div>
                     {isOwner && (
                         <>
@@ -198,7 +202,7 @@ export default function PostCommentItem({
                                 <button
                                     type="button"
                                     onClick={() => onOpenCommentLikes?.(c)}
-                                    className="text-xs text-neutral-500 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha"
+                                    className="text-xs text-neutral-500 hover:text-alpha dark:text-neutral-400 dark:hover:text-alpha cursor-pointer"
                                     aria-label="Show users who liked this comment"
                                 >
                                     {Number(c.likes_count || 0)}
