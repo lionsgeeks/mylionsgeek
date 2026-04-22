@@ -1,8 +1,8 @@
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import AppLayout from '@/layouts/app-layout';
+import { Head, useForm } from '@inertiajs/react';
 
 export default function LinkedInSettings({ linkedin, redirect_uri }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -19,18 +19,14 @@ export default function LinkedInSettings({ linkedin, redirect_uri }) {
         <div className="p-6">
             <Head title="LinkedIn Settings" />
             <h1 className="text-2xl font-bold text-dark dark:text-light">LinkedIn Settings</h1>
-            <p className="mt-1 text-sm text-dark/60 dark:text-light/60">
-                Configure LinkedIn OAuth once to enable “post certificate to LinkedIn”.
-            </p>
+            <p className="mt-1 text-sm text-dark/60 dark:text-light/60">Configure LinkedIn OAuth once to enable “post certificate to LinkedIn”.</p>
 
             <div className="mt-4 rounded-lg border border-alpha/20 bg-light p-4 dark:bg-dark">
                 <div className="text-sm font-semibold">Redirect URI</div>
-                <div className="mt-1 break-all rounded-md border border-alpha/15 bg-alpha/5 p-3 text-xs text-dark/70 dark:text-light/70">
+                <div className="mt-1 rounded-md border border-alpha/15 bg-alpha/5 p-3 text-xs break-all text-dark/70 dark:text-light/70">
                     {redirect_uri}
                 </div>
-                <p className="mt-2 text-xs text-dark/60 dark:text-light/60">
-                    Add this exact URL to your LinkedIn app’s Authorized Redirect URLs.
-                </p>
+                <p className="mt-2 text-xs text-dark/60 dark:text-light/60">Add this exact URL to your LinkedIn app’s Authorized Redirect URLs.</p>
             </div>
 
             <form onSubmit={submit} className="mt-6 space-y-4">
@@ -66,4 +62,3 @@ export default function LinkedInSettings({ linkedin, redirect_uri }) {
 }
 
 LinkedInSettings.layout = (page) => <AppLayout>{page}</AppLayout>;
-

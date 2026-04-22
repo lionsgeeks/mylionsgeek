@@ -43,11 +43,9 @@ function renderEventContent(eventInfo) {
 
     return (
         <div className="fc-event-main-frame flex flex-col gap-0.5 px-0.5 py-0.5 text-left leading-tight">
-            {eventInfo.timeText ? (
-                <span className="text-[0.65rem] font-semibold text-beta/80 dark:text-light/80">{eventInfo.timeText}</span>
-            ) : null}
+            {eventInfo.timeText ? <span className="text-[0.65rem] font-semibold text-beta/80 dark:text-light/80">{eventInfo.timeText}</span> : null}
             {row?.group_label ? (
-                <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-alpha dark:text-alpha">{row.group_label}</span>
+                <span className="text-[0.65rem] font-semibold tracking-wide text-alpha uppercase dark:text-alpha">{row.group_label}</span>
             ) : null}
             <span className="text-xs font-semibold text-beta dark:text-light">{row?.title ?? eventInfo.event.title}</span>
             {sub ? <span className="line-clamp-2 text-[0.65rem] opacity-90">{sub}</span> : null}
@@ -89,13 +87,7 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
         const q = query.trim().toLowerCase();
         const filtered = q
             ? upcoming.filter((row) => {
-                  const blob = [
-                      row.title,
-                      row.group_label,
-                      row.location,
-                      row.application?.applicant_name,
-                      row.application?.job_title,
-                  ]
+                  const blob = [row.title, row.group_label, row.location, row.application?.applicant_name, row.application?.job_title]
                       .filter(Boolean)
                       .join(' ')
                       .toLowerCase();
@@ -140,13 +132,31 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
                         Click an interview to edit.
                     </p> */}
                     <div className="flex flex-wrap gap-2 md:hidden">
-                        <Button type="button" size="sm" variant="outline" className="border-alpha/30 dark:border-light/15" onClick={() => changeView('timeGridDay')}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-alpha/30 dark:border-light/15"
+                            onClick={() => changeView('timeGridDay')}
+                        >
                             Day
                         </Button>
-                        <Button type="button" size="sm" variant="outline" className="border-alpha/30 dark:border-light/15" onClick={() => changeView('timeGridWeek')}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-alpha/30 dark:border-light/15"
+                            onClick={() => changeView('timeGridWeek')}
+                        >
                             Week
                         </Button>
-                        <Button type="button" size="sm" variant="outline" className="border-alpha/30 dark:border-light/15" onClick={() => changeView('dayGridMonth')}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-alpha/30 dark:border-light/15"
+                            onClick={() => changeView('dayGridMonth')}
+                        >
                             Month
                         </Button>
                     </div>
@@ -201,7 +211,7 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
                 </Card>
             </div>
 
-            <aside className="w-full shrink-0 space-y-4 lg:w-80 lg:sticky lg:top-20 lg:self-start">
+            <aside className="w-full shrink-0 space-y-4 lg:sticky lg:top-20 lg:w-80 lg:self-start">
                 <Card className="border-alpha/15 py-4 dark:border-light/10 dark:bg-dark_gray">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-base text-beta dark:text-light">Agenda</CardTitle>
@@ -220,7 +230,9 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
                         />
                         {upcomingSorted.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                                {query.trim() ? 'No matches in upcoming interviews.' : 'No upcoming interviews. Pick a time on the calendar to create one.'}
+                                {query.trim()
+                                    ? 'No matches in upcoming interviews.'
+                                    : 'No upcoming interviews. Pick a time on the calendar to create one.'}
                             </p>
                         ) : (
                             <ul className="custom-scrollbar max-h-[min(420px,50vh)] space-y-2 overflow-y-auto pr-1">
@@ -235,7 +247,9 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
                                             className="w-full rounded-lg border border-alpha/15 bg-light/80 p-3 text-left transition hover:border-alpha/40 hover:bg-light dark:border-light/10 dark:bg-dark/40 dark:hover:border-alpha/50 dark:hover:bg-dark/80"
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-xs font-medium text-beta dark:text-light">{formatAgendaTime(row.starts_at)}</span>
+                                                <span className="text-xs font-medium text-beta dark:text-light">
+                                                    {formatAgendaTime(row.starts_at)}
+                                                </span>
                                                 {row.job_application_id ? (
                                                     <Badge
                                                         variant="secondary"
@@ -246,9 +260,7 @@ export default function InterviewCalendarExperience({ interviews = [], onRequest
                                                 ) : null}
                                             </div>
                                             <p className="mt-1 line-clamp-2 text-sm font-semibold text-beta dark:text-light">{row.title}</p>
-                                            {row.group_label ? (
-                                                <p className="mt-0.5 text-xs text-alpha dark:text-alpha">{row.group_label}</p>
-                                            ) : null}
+                                            {row.group_label ? <p className="mt-0.5 text-xs text-alpha dark:text-alpha">{row.group_label}</p> : null}
                                             {row.application?.applicant_name ? (
                                                 <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                                                     {row.application.applicant_name}

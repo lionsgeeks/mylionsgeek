@@ -41,14 +41,15 @@ export default function CertifiedLinkedInShareModal() {
     const [imageFailed, setImageFailed] = useState(false);
 
     const certificateImageUrl = user?.id ? `/storage/images/certificationImages/${user.id}.png` : null;
-    const certificatePdfUrl =
-        user?.certified_training_id && user?.id
-            ? `/storage/certificates/${user.certified_training_id}/${user.id}.pdf`
-            : null;
+    const certificatePdfUrl = user?.certified_training_id && user?.id ? `/storage/certificates/${user.certified_training_id}/${user.id}.pdf` : null;
 
     const defaultText = useMemo(() => {
         const field = String(user?.field ?? '').toLowerCase();
-        const track = field.includes('media') ? 'Media' : field.includes('coding') || field.includes('dev') || field.includes('code') ? 'Coding' : 'program';
+        const track = field.includes('media')
+            ? 'Media'
+            : field.includes('coding') || field.includes('dev') || field.includes('code')
+              ? 'Coding'
+              : 'program';
         return `I'm honored to share that I completed LionsGeek (${track}).`;
     }, [user?.field]);
 
@@ -150,8 +151,8 @@ export default function CertifiedLinkedInShareModal() {
                 {step === 'preview' && (
                     <div className="space-y-4">
                         <div className="rounded-lg border border-alpha/15 bg-light p-4 dark:bg-dark">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-dark/50 dark:text-light/50">Post preview</div>
-                            <div className="mt-2 whitespace-pre-wrap text-sm">{defaultText}</div>
+                            <div className="text-xs font-semibold tracking-wide text-dark/50 uppercase dark:text-light/50">Post preview</div>
+                            <div className="mt-2 text-sm whitespace-pre-wrap">{defaultText}</div>
                             {certificateImageUrl && !imageFailed && (
                                 <div className="mt-3 overflow-hidden rounded-lg border border-alpha/15">
                                     <img
@@ -204,4 +205,3 @@ export default function CertifiedLinkedInShareModal() {
         </Dialog>
     );
 }
-
