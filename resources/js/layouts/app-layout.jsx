@@ -62,7 +62,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }) {
         <Layout breadcrumbs={breadcrumbs} {...props}>
             <div className={`bg-light dark:bg-dark ${needsStudentHeaderOffset ? 'pt-20' : ''} mx-auto my-6 h-full w-[96%] rounded-lg shadow-lg`}>
                 <ShowSkippableModal />
-                <CertifiedLinkedInShareModal />
+                {/* <CertifiedLinkedInShareModal /> */}
                 {children}
             </div>
         </Layout>

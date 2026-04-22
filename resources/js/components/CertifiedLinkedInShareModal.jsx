@@ -8,6 +8,9 @@ function normalizeRoles(role) {
 }
 
 export default function CertifiedLinkedInShareModal() {
+    // Temporarily disabled — uncomment the block below when ready to re-enable
+    return null;
+
     const page = usePage();
     const user = page.props?.auth?.user;
 
