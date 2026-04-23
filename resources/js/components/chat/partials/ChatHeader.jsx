@@ -1,5 +1,6 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { useOnlineUsers } from '@/components/presence/OnlineUsersProvider.jsx';
 import { timeAgo } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
 import { Info, X } from 'lucide-react';
@@ -22,10 +23,13 @@ const getOnlineMeta = (dateString) => {
 // Header dial chatbox m3a 3amaliyet toolbox
 export default function ChatHeader({ conversation, onClose, onBack, onToolboxToggle }) {
     const { auth } = usePage().props;
+    const { onlineUserIds } = useOnlineUsers();
     const roles = Array.isArray(auth?.user?.role) ? auth.user.role : auth?.user?.role ? [auth.user.role] : [];
     const isRecruiter = roles.includes('recruiter');
     const peer = conversation?.other_user ?? {};
     const lastActivityRaw = peer.last_login ?? peer.last_online ?? peer.last_activity ?? null;
+    const peerId = peer?.id != null ? String(peer.id) : null;
+    const isPeerOnline = peerId ? onlineUserIds.has(peerId) : false;
     const onlineMeta = getOnlineMeta(lastActivityRaw);
 
     const openPeerProfile = () => {
@@ -54,10 +58,11 @@ export default function ChatHeader({ conversation, onClose, onBack, onToolboxTog
                     image={peer.image}
                     name={peer.name}
                     lastActivity={lastActivityRaw}
+                    isOnline={isPeerOnline ? true : undefined}
                 />
                 <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-base font-semibold">{peer.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{onlineMeta.label}</p>
+                    <p className="truncate text-xs text-muted-foreground">{isPeerOnline ? 'Active now' : onlineMeta.label}</p>
                 </div>
             </button>
             <Button variant="ghost" size="icon" onClick={onToolboxToggle} className="h-10 w-10 hover:bg-alpha/10" title="Toolbox">

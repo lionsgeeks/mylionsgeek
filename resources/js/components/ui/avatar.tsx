@@ -8,6 +8,7 @@ interface AvatarProps extends React.ComponentProps<typeof AvatarPrimitive.Root> 
   edit?: boolean;
   name: string;
   lastActivity?: string | null;
+  isOnline?: boolean;
   onlineCircleClass?: string;
 }
 
@@ -23,12 +24,14 @@ function Avatar({
   edit = false,
   name,
   lastActivity,
+  isOnline,
   onlineCircleClass = "w-4 h-4",
   className,
   ...props
 }: AvatarProps) {
   const getInitials = useInitials();
-  const online = isUserOnline(lastActivity);
+  const online = typeof isOnline === "boolean" ? isOnline : isUserOnline(lastActivity);
+  const shouldShowIndicator = typeof isOnline === "boolean" || Boolean(lastActivity);
 
   return (
     <div className="relative group w-fit z-0">
@@ -56,7 +59,7 @@ function Avatar({
       </AvatarPrimitive.Root>
 
       {/* Online indicator */}
-      {lastActivity && (
+      {shouldShowIndicator && (
         <span
           className={cn(
             "absolute -bottom-1 -right-1 rounded-full border-2 border-white",

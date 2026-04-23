@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useOnlineUsers } from '@/components/presence/OnlineUsersProvider.jsx';
 import { subscribeToChannel, unsubscribeFromChannel } from '@/lib/ablyManager';
 import { subscribeToConversationForNotifications } from '@/lib/globalChatListener';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ import ConversationDeletePopover from './partials/ConversationDeletePopover';
 const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, onUnreadCountChange }, ref) {
     const { auth } = usePage().props;
     const currentUser = auth.user;
+    const { onlineUserIds } = useOnlineUsers();
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -421,6 +423,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
                                     conversation={conversation}
                                     currentUserId={currentUser.id}
                                     otherUserName={conversation.other_user.name}
+                                    isOnline={onlineUserIds.has(String(conversation.other_user.id)) ? true : undefined}
                                     isSelected={selectedConversation?.id === conversation.id}
                                     onClick={() => handleConversationClick(conversation.id, conversation.other_user.id)}
                                     onDeleted={() => {
@@ -482,7 +485,7 @@ const ConversationsList = forwardRef(function ConversationsList({ onCloseChat, o
 
 export default ConversationsList;
 
-function ConversationItem({ conversation, currentUserId, otherUserName, isSelected, onClick, onDeleted }) {
+function ConversationItem({ conversation, currentUserId, otherUserName, isOnline, isSelected, onClick, onDeleted }) {
     // Format last message preview
     const getLastMessagePreview = () => {
         if (!conversation.last_message) return 'No messages yet';
@@ -524,6 +527,8 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isSelect
                         )}
                         image={conversation.other_user.image}
                         name={conversation.other_user.name}
+                        lastActivity={conversation.other_user.last_online ?? conversation.other_user.last_login ?? null}
+                        isOnline={isOnline}
                     />
                     {conversation.unread_count > 0 && (
                         <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] font-bold text-black shadow-sm ring-2 ring-background">
