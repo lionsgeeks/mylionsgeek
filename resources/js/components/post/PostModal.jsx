@@ -255,73 +255,85 @@ const PostModal = ({
 
             {openCommentLikes && (
                 <>
-                    <div
-                        className="fixed inset-0 z-[70] bg-black/80"
-                        onClick={() => setOpenCommentLikes(false)}
-                        role="presentation"
-                    />
                     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-                        <div className="w-full max-w-md overflow-hidden rounded-xl border border-border/70 bg-light shadow-2xl dark:border-white/10 dark:bg-dark_gray">
-                            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3 dark:border-white/10">
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-beta dark:text-light">Liked by</p>
-                                    <p className="truncate text-xs text-muted-foreground dark:text-light/60">
-                                        {activeCommentForLikes?.likes_count ? `${activeCommentForLikes.likes_count} likes` : '0 likes'}
-                                    </p>
+                        {/* Overlay */}
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                            onClick={() => setOpenCommentLikes(false)}
+                            role="presentation"
+                        />
+
+                        {/* Modal */}
+                        <div className="relative z-10 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-light shadow-2xl transition-all duration-300 dark:bg-dark_gray">
+                            {/* Header */}
+                            <div className="relative border-b border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4">
+                                <div className="flex items-center justify-center gap-2">
+                                    <h2 className="text-lg font-semibold text-beta dark:text-alpha">Liked by</h2>
                                 </div>
+                                <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {commentLikesLoading ? 'Loading...' : `${commentLikes.length} people`}
+                                </p>
                                 <button
                                     type="button"
                                     onClick={() => setOpenCommentLikes(false)}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-beta dark:text-light/70 dark:hover:bg-white/10 dark:hover:text-light"
-                                    aria-label="Close"
+                                    className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-alpha/10 hover:text-dark dark:text-gray-400"
+                                    aria-label="Close likes"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
                                 </button>
                             </div>
 
-                            <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-2">
+                            {/* Likes List */}
+                            <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto px-6 py-4">
                                 {commentLikesLoading ? (
-                                    <div className="p-6 text-center">
-                                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-alpha/30 border-t-alpha" />
-                                        <p className="mt-3 text-sm text-alpha">Loading likes...</p>
-                                    </div>
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">Loading likes...</p>
                                 ) : commentLikesError ? (
-                                    <div className="p-6 text-center">
-                                        <p className="text-sm font-semibold text-error">Failed to load likes.</p>
-                                        <p className="mt-1 text-xs text-muted-foreground dark:text-light/60">
-                                            Please try again.
-                                        </p>
-                                    </div>
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">Error loading likes</p>
                                 ) : commentLikes.length === 0 ? (
-                                    <div className="p-6 text-center">
-                                        <p className="text-sm text-muted-foreground dark:text-light/60">No likes yet.</p>
-                                    </div>
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">No likes yet</p>
                                 ) : (
-                                    <ul className="divide-y divide-border/70 dark:divide-white/10">
-                                        {commentLikes.map((like) => {
-                                            const profileHref = like?.user_id != null ? `/students/${like.user_id}` : '#';
-                                            return (
-                                                <li key={like.id ?? `${like.user_id}-${like.created_at ?? ''}`} className="px-2 py-2">
-                                                    <Link
-                                                        href={profileHref}
-                                                        className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-muted/60 dark:hover:bg-white/10"
-                                                    >
-                                                        <Avatar
-                                                            className="h-10 w-10 overflow-hidden"
-                                                            image={like?.user_image}
-                                                            name={like?.user_name}
-                                                            onlineCircleClass="hidden"
-                                                        />
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="truncate text-sm font-semibold text-beta dark:text-light">
+                                    commentLikes.map((like) => {
+                                        const profileHref =
+                                            typeof takeToUserProfile === 'function'
+                                                ? takeToUserProfile(like)
+                                                : like?.user_id != null
+                                                  ? `/students/${like.user_id}`
+                                                  : '#';
+
+                                        return (
+                                            <div
+                                                key={like.id ?? `${like.user_id}-${like.created_at ?? ''}`}
+                                                className="flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md dark:bg-beta"
+                                            >
+                                                <Link
+                                                    href={profileHref}
+                                                    className="hover:bg-light_gray flex w-full items-center gap-3 rounded-lg p-2 transition-colors"
+                                                >
+                                                    <Avatar
+                                                        className="h-11 w-11 flex-shrink-0 ring-2 ring-alpha/30"
+                                                        image={like?.user_image}
+                                                        name={like?.user_name}
+                                                        width="w-11"
+                                                        height="h-11"
+                                                    />
+
+                                                    <div className="flex flex-1 items-start justify-between">
+                                                        <div className="flex flex-col">
+                                                            <span className="max-w-[150px] truncate font-medium text-dark dark:text-light">
                                                                 {like?.user_name || 'User'}
-                                                            </p>
+                                                            </span>
                                                         </div>
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
+
+                                                        <span className="text-xs whitespace-nowrap text-gray-400">
+                                                            {like?.created_at ? timeAgo(like.created_at) : ''}
+                                                        </span>
+                                                    </div>
+                                                </Link>
+                                            </div>
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>
