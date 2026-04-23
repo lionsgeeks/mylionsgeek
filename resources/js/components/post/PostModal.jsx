@@ -209,8 +209,17 @@ const PostModal = ({
     return (
         <>
             <div className="fixed inset-0 z-40 bg-black/80" onClick={(e) => changeOpen(e)} role="presentation" />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
-                <div className={shellClass}>
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
+                onMouseDown={(e) => {
+                    // shadcn-like: clicking the overlay area closes; clicking inside doesn't.
+                    if (e.target === e.currentTarget) {
+                        onOpenChange(false);
+                    }
+                }}
+                role="presentation"
+            >
+                <div className={shellClass} onMouseDown={(e) => e.stopPropagation()} role="presentation">
                     {/* Close — top-left over media (FB-style), top-right on text-only */}
                     <button
                         type="button"
