@@ -231,7 +231,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <Avatar
                                 image={formData?.image instanceof File ? URL.createObjectURL(formData?.image) : formData?.image || editedUser?.image}
                                 name={formData?.name}
-                                lastActivity={editedUser?.last_online || null}
+                                lastActivity={editedUser?.last_login ?? editedUser?.last_online ?? editedUser?.last_activity ?? null}
                                 className="h-24 w-24 overflow-hidden rounded-full"
                                 onlineCircleClass="hidden"
                             />

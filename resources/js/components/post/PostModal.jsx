@@ -2,6 +2,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Link } from '@inertiajs/react';
 import { X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { helpers } from '../utils/helpers';
 import PostCardFooter from './PostCardFooter';
 import PostCommentsSection from './PostCommentsSection';
@@ -26,6 +27,11 @@ const PostModal = ({
     const { stopScrolling } = helpers();
     const hasImages = Array.isArray(post?.images) && post.images.length > 0;
     const [commentCountDelta, setCommentCountDelta] = useState(0);
+    const [openCommentLikes, setOpenCommentLikes] = useState(false);
+    const [commentLikesLoading, setCommentLikesLoading] = useState(false);
+    const [commentLikesError, setCommentLikesError] = useState(null);
+    const [activeCommentForLikes, setActiveCommentForLikes] = useState(null);
+    const [commentLikes, setCommentLikes] = useState([]);
 
     const postForFooter = useMemo(
         () => ({
@@ -38,6 +44,16 @@ const PostModal = ({
     useEffect(() => {
         setCommentCountDelta(0);
     }, [post?.id]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setOpenCommentLikes(false);
+            setCommentLikesLoading(false);
+            setCommentLikesError(null);
+            setActiveCommentForLikes(null);
+            setCommentLikes([]);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         stopScrolling(true);
@@ -74,6 +90,27 @@ const PostModal = ({
         setCommentCountDelta((d) => Math.max(0, d - 1));
     };
 
+    const openCommentLikesModal = async (comment) => {
+        const commentId = Number(comment?.id);
+        if (!commentId) return;
+
+        setOpenCommentLikes(true);
+        setActiveCommentForLikes(comment);
+        setCommentLikes([]);
+        setCommentLikesError(null);
+        setCommentLikesLoading(true);
+
+        try {
+            const res = await axios.get(`/posts/comments/${commentId}/likes`);
+            const likes = Array.isArray(res?.data?.likes) ? res.data.likes : [];
+            setCommentLikes(likes);
+        } catch (error) {
+            setCommentLikesError(error);
+        } finally {
+            setCommentLikesLoading(false);
+        }
+    };
+
     const commentsSection = post?.id ? (
         <PostCommentsSection
             postId={post.id}
@@ -83,6 +120,7 @@ const PostModal = ({
             takeToUserProfile={takeToUserProfile}
             onCommentAdded={handleCommentAddedFromSection}
             onCommentRemoved={handleCommentRemovedFromSection}
+            onOpenCommentLikes={openCommentLikesModal}
         />
     ) : null;
 
@@ -110,7 +148,7 @@ const PostModal = ({
                         className="relative z-10 h-10 w-10 overflow-hidden"
                         image={post?.user_image}
                         name={post?.user_name}
-                        lastActivity={post?.user_last_online || null}
+                        lastActivity={post?.user_last_login ?? post?.user_last_online ?? post?.user_last_activity ?? null}
                         onlineCircleClass="hidden"
                     />
                 </Link>
@@ -171,8 +209,17 @@ const PostModal = ({
     return (
         <>
             <div className="fixed inset-0 z-40 bg-black/80" onClick={(e) => changeOpen(e)} role="presentation" />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
-                <div className={shellClass}>
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
+                onMouseDown={(e) => {
+                    // shadcn-like: clicking the overlay area closes; clicking inside doesn't.
+                    if (e.target === e.currentTarget) {
+                        onOpenChange(false);
+                    }
+                }}
+                role="presentation"
+            >
+                <div className={shellClass} onMouseDown={(e) => e.stopPropagation()} role="presentation">
                     {/* Close — top-left over media (FB-style), top-right on text-only */}
                     <button
                         type="button"
@@ -214,6 +261,94 @@ const PostModal = ({
                     )}
                 </div>
             </div>
+
+            {openCommentLikes && (
+                <>
+                    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+                        {/* Overlay */}
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+                            onClick={() => setOpenCommentLikes(false)}
+                            role="presentation"
+                        />
+
+                        {/* Modal */}
+                        <div className="relative z-10 mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-alpha/30 bg-light shadow-2xl transition-all duration-300 dark:bg-dark_gray">
+                            {/* Header */}
+                            <div className="relative border-b border-alpha/30 bg-gradient-to-r from-alpha/10 to-alpha/5 px-6 py-4">
+                                <div className="flex items-center justify-center gap-2">
+                                    <h2 className="text-lg font-semibold text-beta dark:text-alpha">Liked by</h2>
+                                </div>
+                                <p className="mt-1 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {commentLikesLoading ? 'Loading...' : `${commentLikes.length} people`}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenCommentLikes(false)}
+                                    className="absolute top-1/2 right-4 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 transition hover:bg-alpha/10 hover:text-dark dark:text-gray-400"
+                                    aria-label="Close likes"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Likes List */}
+                            <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto px-6 py-4">
+                                {commentLikesLoading ? (
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">Loading likes...</p>
+                                ) : commentLikesError ? (
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">Error loading likes</p>
+                                ) : commentLikes.length === 0 ? (
+                                    <p className="py-6 text-center text-gray-500 dark:text-gray-400">No likes yet</p>
+                                ) : (
+                                    commentLikes.map((like) => {
+                                        const profileHref =
+                                            typeof takeToUserProfile === 'function'
+                                                ? takeToUserProfile(like)
+                                                : like?.user_id != null
+                                                  ? `/students/${like.user_id}`
+                                                  : '#';
+
+                                        return (
+                                            <div
+                                                key={like.id ?? `${like.user_id}-${like.created_at ?? ''}`}
+                                                className="flex items-center gap-3 rounded-2xl border border-alpha/10 bg-gray-50 p-3 transition duration-200 hover:border-alpha/30 hover:shadow-md dark:bg-beta"
+                                            >
+                                                <Link
+                                                    href={profileHref}
+                                                    className="hover:bg-light_gray flex w-full items-center gap-3 rounded-lg p-2 transition-colors"
+                                                >
+                                                    <Avatar
+                                                        className="h-11 w-11 flex-shrink-0 ring-2 ring-alpha/30"
+                                                        image={like?.user_image}
+                                                        name={like?.user_name}
+                                                        width="w-11"
+                                                        height="h-11"
+                                                    />
+
+                                                    <div className="flex flex-1 items-start justify-between">
+                                                        <div className="flex flex-col">
+                                                            <span className="max-w-[150px] truncate font-medium text-dark dark:text-light">
+                                                                {like?.user_name || 'User'}
+                                                            </span>
+                                                        </div>
+
+                                                        <span className="text-xs whitespace-nowrap text-gray-400">
+                                                            {like?.created_at ? timeAgo(like.created_at) : ''}
+                                                        </span>
+                                                    </div>
+                                                </Link>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </>
     );
 };

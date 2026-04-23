@@ -233,7 +233,7 @@ const User = ({ user, trainings, close, open }) => {
                                             className="h-28 w-28 overflow-hidden rounded-full ring-4 ring-alpha/20"
                                             image={user.image}
                                             name={user.name}
-                                            lastActivity={user.last_online || null}
+                                            lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                                             onlineCircleClass="w-7 h-7"
                                         />
                                         <div

@@ -40,6 +40,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const fileInputRef = useRef(null);
     const recordingTimerRef = useRef(null);
     const pendingTempIdsRef = useRef(new Set());
+    const draftsByConversationRef = useRef(new Map());
+    const previousConversationIdRef = useRef(conversation.id);
 
     const channelName = `chat:conversation:${conversation.id}`;
 
@@ -266,9 +268,52 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             return prev.filter((m) => m.pending && pendingTempIdsRef.current.has(m.tempId));
         });
 
+        // Instagram-like drafts: keep draft for this conversation only
+        const previousConversationId = previousConversationIdRef.current;
+        if (previousConversationId && previousConversationId !== conversation.id) {
+            draftsByConversationRef.current.set(previousConversationId, {
+                message: newMessage,
+                attachment,
+                audioBlob,
+                audioURL,
+            });
+        }
+
+        const nextDraft = draftsByConversationRef.current.get(conversation.id);
+        setNewMessage(nextDraft?.message ?? '');
+        setAttachment(nextDraft?.attachment ?? null);
+        setAudioBlob(nextDraft?.audioBlob ?? null);
+        setAudioURL(nextDraft?.audioURL ?? null);
+
+        // reset recording UI state on switch (drafts are for typed/attached content only)
+        setIsRecording(false);
+        setIsPaused(false);
+        setRecordingTime(0);
+        chunksRef.current = [];
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        setAudioDuration((prev) => {
+            const next = { ...prev };
+            delete next['preview'];
+            return next;
+        });
+
+        previousConversationIdRef.current = conversation.id;
+
         // Fetch messages for the new conversation
         fetchMessages();
     }, [conversation.id]);
+
+    // Keep the current conversation draft up to date while typing/selecting attachments.
+    useEffect(() => {
+        draftsByConversationRef.current.set(conversation.id, {
+            message: newMessage,
+            attachment,
+            audioBlob,
+            audioURL,
+        });
+    }, [conversation.id, newMessage, attachment, audioBlob, audioURL]);
 
     useEffect(() => {
         scrollToBottom();
@@ -645,6 +690,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+        // Draft is sent (or attempting to send) → remove draft for this conversation
+        draftsByConversationRef.current.delete(conversation.id);
 
         // Prepare FormData for sending
         setSending(true);

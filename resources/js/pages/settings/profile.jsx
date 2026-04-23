@@ -100,7 +100,7 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                 className="h-24 w-24 overflow-hidden rounded-full"
                                                 image={auth.user.image}
                                                 name={auth.user.name}
-                                                lastActivity={auth.user.last_activity || null}
+                                                lastActivity={auth.user.last_login ?? auth.user.last_online ?? auth.user.last_activity ?? null}
                                                 onlineCircleClass="w-6 h-6"
                                             />
 

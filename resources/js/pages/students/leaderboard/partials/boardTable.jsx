@@ -100,7 +100,7 @@ const BoardTable = ({
                                                             className="h-14 w-14"
                                                             image={user?.image}
                                                             name={user?.name}
-                                                            lastActivity={user?.last_online || null}
+                                                            lastActivity={user?.last_login ?? user?.last_online ?? user?.last_activity ?? null}
                                                             onlineCircleClass="hidden"
                                                             edit={false}
                                                         />
@@ -218,7 +218,7 @@ const BoardTable = ({
                                             className="h-full w-full"
                                             image={selectedUser?.image}
                                             name={selectedUser?.name}
-                                            lastActivity={selectedUser?.last_online || null}
+                                            lastActivity={selectedUser?.last_login ?? selectedUser?.last_online ?? selectedUser?.last_activity ?? null}
                                             onlineCircleClass="hidden"
                                             edit={false}
                                         />

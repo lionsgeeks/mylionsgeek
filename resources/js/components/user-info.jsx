@@ -21,7 +21,7 @@ export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
                 className="h-8 w-8 overflow-hidden rounded-full"
                 image={user.image}
                 name={user.name}
-                lastActivity={user.last_activity || null}
+                lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                 onlineCircleClass="hidden"
             />
         );
@@ -38,7 +38,7 @@ export function UserInfo({ user, showEmail = false, avatarOnly = false }) {
                 className="h-8 w-8 overflow-hidden rounded-full"
                 image={user.image}
                 name={user.name}
-                lastActivity={user.last_activity || null}
+                lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                 onlineCircleClass="hidden"
             />
         </>

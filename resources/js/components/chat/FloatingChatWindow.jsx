@@ -23,6 +23,8 @@ export default function FloatingChatWindow({ conversation, onClose, onMinimize, 
     const messagesEndRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const fileInputRef = useRef(null);
+    const draftsByConversationRef = useRef(new Map());
+    const previousConversationIdRef = useRef(conversation.id);
 
     useEffect(() => {
         if (!isMinimized && !isExpanded) {
@@ -35,6 +37,40 @@ export default function FloatingChatWindow({ conversation, onClose, onMinimize, 
             return () => clearInterval(interval);
         }
     }, [conversation.id, isMinimized, isExpanded]);
+
+    useEffect(() => {
+        const previousConversationId = previousConversationIdRef.current;
+        if (previousConversationId && previousConversationId !== conversation.id) {
+            draftsByConversationRef.current.set(previousConversationId, {
+                message: newMessage,
+                attachment,
+                audioBlob,
+                audioURL,
+            });
+        }
+
+        const nextDraft = draftsByConversationRef.current.get(conversation.id);
+        setNewMessage(nextDraft?.message ?? '');
+        setAttachment(nextDraft?.attachment ?? null);
+        setAudioBlob(nextDraft?.audioBlob ?? null);
+        setAudioURL(nextDraft?.audioURL ?? null);
+
+        setIsRecording(false);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+
+        previousConversationIdRef.current = conversation.id;
+    }, [conversation.id]);
+
+    useEffect(() => {
+        draftsByConversationRef.current.set(conversation.id, {
+            message: newMessage,
+            attachment,
+            audioBlob,
+            audioURL,
+        });
+    }, [conversation.id, newMessage, attachment, audioBlob, audioURL]);
 
     useEffect(() => {
         if (!isMinimized) {
@@ -165,6 +201,7 @@ export default function FloatingChatWindow({ conversation, onClose, onMinimize, 
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+        draftsByConversationRef.current.delete(conversation.id);
 
         try {
             const response = await fetch(`/chat/conversation/${conversation.id}/send`, {

@@ -292,7 +292,7 @@ const Files = ({ projectAttachments = [], taskAttachments = [], projectId }) => 
                                                 className="h-16 w-16"
                                                 image={file.uploader?.image}
                                                 name={file.uploader?.name}
-                                                lastActivity={file.uploader?.last_online || null}
+                                                lastActivity={file.uploader?.last_login ?? file.uploader?.last_online ?? file.uploader?.last_activity ?? null}
                                                 onlineCircleClass="hidden"
                                                 edit={false}
                                             />

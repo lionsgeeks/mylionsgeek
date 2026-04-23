@@ -447,7 +447,7 @@ export default function Training({ trainings, coaches, filters = {}, tracks = []
                                                 className="h-24 w-24"
                                                 image={filteredCoach?.image}
                                                 name={filteredCoach?.name}
-                                                lastActivity={filteredCoach?.last_online || null}
+                                                lastActivity={filteredCoach?.last_login ?? filteredCoach?.last_online ?? filteredCoach?.last_activity ?? null}
                                                 onlineCircleClass="hidden"
                                                 edit={true}
                                             />

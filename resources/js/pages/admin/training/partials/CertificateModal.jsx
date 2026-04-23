@@ -155,7 +155,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                         <Avatar
                                             name={student.name}
                                             image={student.image ?? null}
-                                            lastActivity={student.last_activity ?? null}
+                                                lastActivity={student.last_login ?? student.last_online ?? student.last_activity ?? null}
                                             className="h-12 w-12 flex-shrink-0 text-base"
                                             onlineCircleClass="w-3.5 h-3.5"
                                         />

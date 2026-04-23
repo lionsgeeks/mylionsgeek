@@ -88,7 +88,7 @@ const FollowModal = ({ openChange, onOpenChange, student }) => {
                                         className="h-14 w-14 overflow-hidden ring-2 ring-light dark:ring-dark_gray"
                                         image={user.image}
                                         name={user.name}
-                                        lastActivity={user.last_online || null}
+                                        lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                                         onlineCircleClass="hidden"
                                     />
                                     <div className="min-w-0 flex-1">

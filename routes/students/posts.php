@@ -12,6 +12,7 @@ Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
     Route::get('/likes/{id}', [PostController::class, 'getPostLikes']);
     Route::get('/comments/{id}', [PostController::class, 'getPostComments']);
     Route::post('/comments/{id}/like', [PostController::class, 'toggleCommentLike']);
+    Route::get('/comments/{id}/likes', [PostController::class, 'getCommentLikes']);
     Route::get('/comments/{id}/stats', [PostController::class, 'getPostCommentStats']);
     Route::get('/stats/{id}', [PostController::class, 'getPostStats']);
     Route::delete('/comments/{id}', [PostController::class, 'deleteComment']);

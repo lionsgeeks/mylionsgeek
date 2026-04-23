@@ -20,7 +20,7 @@ const PostModalShell = ({ user, title, onClose, children, footer = null, showLoa
                                     className="h-14 w-14 overflow-hidden ring-2 ring-[var(--color-light)] dark:ring-[var(--color-dark_gray)]"
                                     image={user?.image}
                                     name={user?.name}
-                                    lastActivity={user?.last_online || null}
+                                    lastActivity={user?.last_login ?? user?.last_online ?? user?.last_activity ?? null}
                                     onlineCircleClass="hidden"
                                 />
                                 <div className="absolute -right-1 -bottom-1 h-5 w-5 rounded-full border-2 border-[var(--color-light)] bg-[var(--color-good)] dark:border-[var(--color-dark)]" />

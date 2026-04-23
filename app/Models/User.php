@@ -72,6 +72,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_online' => 'datetime',
             'password' => 'hashed',
             'role' => 'array',
             'socials' => 'array',

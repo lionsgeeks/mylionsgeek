@@ -10,6 +10,7 @@ use App\Http\Controllers\ReservationsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -45,6 +46,24 @@ Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_respo
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/presence/ping', function (Request $request) {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['ok' => false], 401);
+        }
+
+        // Throttle DB writes: update at most once per minute.
+        $shouldUpdate =
+            ! $user->last_online
+            || Carbon::parse($user->last_online)->lt(now()->subSeconds(55));
+
+        if ($shouldUpdate) {
+            $user->forceFill(['last_online' => now()])->save();
+        }
+
+        return response()->json(['ok' => true]);
+    })->name('presence.ping');
+
     Route::post('/reservations/check-availability', [ReservationsController::class, 'checkStudioAvailability'])->name('reservations.check-availability');
     Route::post('/reservations/available-equipment', [ReservationsController::class, 'availableEquipment'])->name('reservations.available-equipment');
     Route::post('/appointments/book', [ReservationsController::class, 'bookAppointment'])->name('appointments.book');

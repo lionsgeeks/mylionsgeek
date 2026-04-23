@@ -11,6 +11,7 @@ use App\Support\PostMentionResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
@@ -32,7 +33,7 @@ class PostController extends Controller
             $channel = $ably->channels->get($channelName);
             $channel->publish($eventName, $data);
         } catch (Throwable $e) {
-            \Log::error('Failed to broadcast feed event via Ably: ' . $e->getMessage());
+            Log::error('Failed to broadcast feed event via Ably: ' . $e->getMessage());
         }
     }
 
@@ -71,7 +72,7 @@ class PostController extends Controller
                 'interaction_type' => $type,
             ]);
         } catch (Throwable $e) {
-            \Log::error('Failed to broadcast notification via Ably: ' . $e->getMessage());
+            Log::error('Failed to broadcast notification via Ably: ' . $e->getMessage());
         }
     }
 
@@ -146,6 +147,36 @@ class PostController extends Controller
         return response()->json(['likes' => $Likes]);
     }
 
+    public function getCommentLikes($commentId)
+    {
+        if (!Schema::hasTable('comment_likes')) {
+            return response()->json(['likes' => []]);
+        }
+
+        $comment = Comment::findOrFail($commentId);
+
+        $likes = CommentLike::query()
+            ->where('comment_id', $comment->id)
+            ->with(['user:id,name,image'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($l) {
+                return [
+                    'id' => (int) $l->id,
+                    'user_id' => (int) $l->user_id,
+                    'user_name' => $l->user?->name,
+                    'user_image' => $l->user?->image ?? null,
+                    'created_at' => $l->created_at?->toDateTimeString(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'comment_id' => (int) $comment->id,
+            'likes' => $likes,
+        ]);
+    }
+
     public function addPostComment(Request $request, $postId)
     {
         $request->validate([
@@ -166,7 +197,7 @@ class PostController extends Controller
                 $path = $request->file('image')->store(self::COMMENT_IMAGES_DIR, $disk);
                 $storedImage = $path ? basename($path) : null;
             } catch (Throwable $e) {
-                \Log::error("Failed to store comment image: " . $e->getMessage());
+                Log::error("Failed to store comment image: " . $e->getMessage());
                 report($e);
             }
         }
@@ -179,7 +210,7 @@ class PostController extends Controller
         if (Schema::hasColumn('comments', 'image')) {
             $payload['image'] = $storedImage;
         } elseif ($storedImage) {
-            \Log::warning('Comment image uploaded but comments.image column is missing. Did you run migrations?');
+            Log::warning('Comment image uploaded but comments.image column is missing. Did you run migrations?');
         }
 
         $comment = $post->comments()->create($payload);
@@ -342,7 +373,7 @@ class PostController extends Controller
                     $comment->image = $newImageName;
                 }
             } catch (Throwable $e) {
-                \Log::error("Failed to update comment image: " . $e->getMessage());
+                Log::error("Failed to update comment image: " . $e->getMessage());
                 report($e);
             }
         }
@@ -684,7 +715,7 @@ class PostController extends Controller
                 $path = $image->store('img/posts', $disk);
                 if ($path) $stored[] = basename($path);
             } catch (Throwable $e) {
-                \Log::error("Failed to store image: " . $e->getMessage());
+                Log::error("Failed to store image: " . $e->getMessage());
                 report($e);
             }
         }
