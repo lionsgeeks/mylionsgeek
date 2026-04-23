@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -77,6 +78,8 @@ class ChatController extends Controller
                         'name' => $otherUser->name,
                         'image' => $otherUser->image,
                         'email' => $otherUser->email,
+                        'last_login' => $otherUser->last_login ? Carbon::parse($otherUser->last_login)->toISOString() : null,
+                        'last_online' => $otherUser->last_online ? Carbon::parse($otherUser->last_online)->toISOString() : null,
                     ],
                     'last_message' => $lastMessage ? [
                         'id' => $lastMessage->id,
@@ -172,6 +175,8 @@ class ChatController extends Controller
                 'name' => $otherUser->name,
                 'image' => $otherUser->image,
                 'email' => $otherUser->email,
+                'last_login' => $otherUser->last_login ? Carbon::parse($otherUser->last_login)->toISOString() : null,
+                'last_online' => $otherUser->last_online ? Carbon::parse($otherUser->last_online)->toISOString() : null,
             ],
             'messages' => $conversation->messages->map(function ($message) {
                 return [
