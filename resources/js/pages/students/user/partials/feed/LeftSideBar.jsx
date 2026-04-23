@@ -26,7 +26,7 @@ const LeftSideBar = ({ user }) => {
                                     className="h-20 w-20 overflow-hidden rounded-full"
                                     image={user?.image}
                                     name={user?.name}
-                                    lastActivity={user?.last_online || null}
+                                    lastActivity={user?.last_login ?? user?.last_online ?? user?.last_activity ?? null}
                                     onlineCircleClass="hidden"
                                 />
                             </Link>

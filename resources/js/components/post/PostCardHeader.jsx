@@ -36,7 +36,7 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
                                 className="relative z-50 h-12 w-12 overflow-hidden"
                                 image={post?.user_image}
                                 name={post?.user_name}
-                                lastActivity={post?.user_last_online || null}
+                                lastActivity={post?.user_last_login ?? post?.user_last_online ?? post?.user_last_activity ?? null}
                                 onlineCircleClass="hidden"
                             />
                         </Link>

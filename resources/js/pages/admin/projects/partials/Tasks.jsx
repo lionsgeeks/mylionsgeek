@@ -478,7 +478,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                 className="relative z-50 h-10 w-10 overflow-hidden"
                                                 image={task.assigned_to.image || task.assigned_to.user?.image}
                                                 name={task.assigned_to.name || task.assigned_to.user?.name || 'Unknown'}
-                                                lastActivity={task.assigned_to.last_online || task.assigned_to.user?.last_online || null}
+                                                lastActivity={
+                                                    task.assigned_to.last_login ??
+                                                    task.assigned_to.user?.last_login ??
+                                                    task.assigned_to.last_online ??
+                                                    task.assigned_to.user?.last_online ??
+                                                    task.assigned_to.last_activity ??
+                                                    task.assigned_to.user?.last_activity ??
+                                                    null
+                                                }
                                                 onlineCircleClass="hidden"
                                             />
                                         ) : (

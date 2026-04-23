@@ -100,7 +100,7 @@ const BoardPodium = ({ topWinners, isRefreshing, fetchLeaderboardData, getRankBa
                                                         className="h-full w-full rounded-full object-cover"
                                                         image={winner.user?.image}
                                                         name={winner.user?.name}
-                                                        lastActivity={winner.user?.last_online || null}
+                                                        lastActivity={winner.user?.last_login ?? winner.user?.last_online ?? winner.user?.last_activity ?? null}
                                                         onlineCircleClass="hidden"
                                                     />
                                                 </div>

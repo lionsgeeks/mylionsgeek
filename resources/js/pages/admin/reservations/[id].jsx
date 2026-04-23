@@ -589,7 +589,7 @@ export default function AdminReservationDetails({ reservation }) {
                                                     className="h-10 w-10"
                                                     image={member?.avatar?.split('/').pop()}
                                                     name={member?.name}
-                                                    lastActivity={member?.last_online || null}
+                                                    lastActivity={member?.last_login ?? member?.last_online ?? member?.last_activity ?? null}
                                                     onlineCircleClass="hidden"
                                                     edit={false}
                                                 />

@@ -269,7 +269,7 @@ const CreatePostModal = ({ onOpenChange, user }) => {
                                     <Avatar
                                         name={u.name || ''}
                                         image={u.image || undefined}
-                                        lastActivity={u.last_online || null}
+                                        lastActivity={u.last_login ?? u.last_online ?? u.last_activity ?? null}
                                         className="h-8 w-8"
                                         onlineCircleClass="w-2.5 h-2.5"
                                     />

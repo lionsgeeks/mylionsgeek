@@ -71,7 +71,7 @@ const TaskSidebar = ({ task, teamMembers = [] }) => {
                             className="relative z-50 h-8 w-8 overflow-hidden"
                             image={task.assignee?.image}
                             name={task.assignee?.name}
-                            lastActivity={task.assignee?.last_online || null}
+                            lastActivity={task.assignee?.last_login ?? task.assignee?.last_online ?? task.assignee?.last_activity ?? null}
                             onlineCircleClass="hidden"
                         />
                         <div>

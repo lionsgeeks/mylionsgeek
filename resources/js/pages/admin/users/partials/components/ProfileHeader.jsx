@@ -7,7 +7,8 @@ import EditUserModal from '../EditModal';
 const ProfileHeader = ({ user, trainings, roles, stats }) => {
     const [open, setOpen] = useState(false);
     const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
-    const lastOnline = user?.last_online ? new Date(user.last_online).toLocaleString() : 'No last activity available';
+    const lastLoginRaw = user?.last_login ?? user?.last_online ?? user?.last_activity ?? null;
+    const lastLogin = lastLoginRaw ? new Date(lastLoginRaw).toLocaleString() : 'No last login available';
     const socials = user?.socials || {};
 
     const changeCover = (event, userId) => {
@@ -66,7 +67,7 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
                                         className="h-36 w-36 overflow-hidden rounded-full ring-4 ring-alpha/20 md:h-44 md:w-44"
                                         image={user.image}
                                         name={user?.name}
-                                        lastActivity={user?.last_online || null}
+                                        lastActivity={lastLoginRaw}
                                         onlineCircleClass="hidden" // hide the built-in circle since we’re using a custom one
                                     />
 
@@ -104,7 +105,7 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
                                         {/* Last online */}
                                         <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
                                             <Calendar className="h-4 w-4" />
-                                            <span>Last online: {lastOnline}</span>
+                                            <span>Last login: {lastLogin}</span>
                                         </div>
 
                                         {/* Social links & Edit button */}

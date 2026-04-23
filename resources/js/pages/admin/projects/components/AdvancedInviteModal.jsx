@@ -402,7 +402,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                                     className="relative z-50 h-12 w-12 overflow-hidden"
                                                     image={item.user.image}
                                                     name={item.user.name}
-                                                    lastActivity={item.user.last_online || null}
+                                                    lastActivity={item.user.last_login ?? item.user.last_online ?? item.user.last_activity ?? null}
                                                     onlineCircleClass="hidden"
                                                 />
                                             )}
@@ -457,7 +457,7 @@ const AdvancedInviteModal = ({ isOpen, onClose, projectId, projectName, users = 
                                                 className="relative z-50 h-8 w-8 overflow-hidden"
                                                 image={user.image}
                                                 name={user.name}
-                                                lastActivity={user.last_online || null}
+                                                lastActivity={user.last_login ?? user.last_online ?? user.last_activity ?? null}
                                                 onlineCircleClass="hidden"
                                             />
                                             <div className="flex-1">

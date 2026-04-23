@@ -89,7 +89,7 @@ const TaskComments = ({ comments = [], teamMembers = [], onUpdateComments }) => 
                                 className="relative z-50 h-8 w-8 overflow-hidden"
                                 image={comment.user.image}
                                 name={comment.user.name}
-                                lastActivity={comment.user.last_online || null}
+                                lastActivity={comment.user.last_login ?? comment.user.last_online ?? comment.user.last_activity ?? null}
                                 onlineCircleClass="hidden"
                             />
                             <div className="flex-1">

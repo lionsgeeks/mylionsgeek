@@ -50,7 +50,7 @@ const InfoModalContent = ({ reservationId, initial }) => {
                                     className="h-10 w-10"
                                     image={m?.image?.split('/').pop()}
                                     name={m?.name}
-                                    lastActivity={m?.last_online || null}
+                                    lastActivity={m?.last_login ?? m?.last_online ?? m?.last_activity ?? null}
                                     onlineCircleClass="hidden"
                                     edit={false}
                                 />

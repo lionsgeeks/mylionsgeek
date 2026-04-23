@@ -148,7 +148,7 @@ const PostModal = ({
                         className="relative z-10 h-10 w-10 overflow-hidden"
                         image={post?.user_image}
                         name={post?.user_name}
-                        lastActivity={post?.user_last_online || null}
+                        lastActivity={post?.user_last_login ?? post?.user_last_online ?? post?.user_last_activity ?? null}
                         onlineCircleClass="hidden"
                     />
                 </Link>

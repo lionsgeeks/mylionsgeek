@@ -251,7 +251,7 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
                                                 className="h-7 w-7"
                                                 image={member.image}
                                                 name={member.name}
-                                                lastActivity={member.last_online || null}
+                                                lastActivity={member.last_login ?? member.last_online ?? member.last_activity ?? null}
                                                 onlineCircleClass="hidden"
                                             />
                                         </div>
@@ -1323,7 +1323,7 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                             className="h-8 w-8"
                                             image={selectedTask.assigned_to.image}
                                             name={selectedTask.assigned_to.name}
-                                            lastActivity={selectedTask.assigned_to.last_online || null}
+                                            lastActivity={selectedTask.assigned_to.last_login ?? selectedTask.assigned_to.last_online ?? selectedTask.assigned_to.last_activity ?? null}
                                             onlineCircleClass="hidden"
                                         />
                                     )}
@@ -1392,7 +1392,7 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                                     className="h-7 w-7 flex-shrink-0 cursor-pointer"
                                                     image={comment.user?.image}
                                                     name={comment.user?.name}
-                                                    lastActivity={comment.user?.last_online || null}
+                                                    lastActivity={comment.user?.last_login ?? comment.user?.last_online ?? comment.user?.last_activity ?? null}
                                                     onlineCircleClass="hidden"
                                                     onClick={() => handleUserClick(comment.user)}
                                                 />
@@ -1464,7 +1464,7 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                     className="relative z-50 h-16 w-16 overflow-hidden"
                                     image={selectedUser.image}
                                     name={selectedUser.name}
-                                    lastActivity={selectedUser.last_online || null}
+                                    lastActivity={selectedUser.last_login ?? selectedUser.last_online ?? selectedUser.last_activity ?? null}
                                     onlineCircleClass="hidden"
                                 />
                                 <div>
