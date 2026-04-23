@@ -33,24 +33,26 @@ export default function ConversationDeletePopover({ conversationId, onDeleted })
     };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className={cn('w-48 border-border bg-background p-1', 'dark:border-border dark:bg-dark_gray')} align="end">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className={cn('w-full justify-start text-error hover:bg-error/10', 'dark:text-error dark:hover:bg-error/20')}
-                >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    {deleting ? 'Deleting...' : 'Delete Conversation'}
-                </Button>
-            </PopoverContent>
-        </Popover>
+        <>
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                </PopoverTrigger>
+                <PopoverContent className={cn('w-48 border-border bg-background p-1', 'dark:border-border dark:bg-dark_gray')} align="end">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className={cn('w-full justify-start text-error hover:bg-error/10', 'dark:text-error dark:hover:bg-error/20')}
+                    >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        {deleting ? 'Deleting...' : 'Delete Conversation'}
+                    </Button>
+                </PopoverContent>
+            </Popover>
+        </>
     );
 }

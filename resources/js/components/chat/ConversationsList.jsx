@@ -573,7 +573,7 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isSelect
                     {!conversation.last_message && <p className="text-xs text-muted-foreground italic">Start a conversation</p>}
                 </div>
             </button>
-            <div className="absolute top-3 right-3 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute bottom-3 right-3 z-10 opacity-0 transition-opacity group-hover:opacity-100">
                 <ConversationDeletePopover conversationId={conversation.id} onDeleted={onDeleted} />
             </div>
         </div>
