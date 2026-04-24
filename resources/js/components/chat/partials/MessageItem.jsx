@@ -118,7 +118,7 @@ export default function MessageItem({
                                         src={
                                             String(postShare.image).startsWith('/storage/') || String(postShare.image).startsWith('http')
                                                 ? postShare.image
-                                                : `/storage/${postShare.image}`
+                                                : `/storage/img/posts/${postShare.image}`
                                         }
                                         alt=""
                                         className="h-44 w-full rounded-lg object-cover"
