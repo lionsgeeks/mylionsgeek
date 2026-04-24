@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { CheckCircle } from 'lucide-react';
 import HeroImg from '../../../../../public/assets/images/landing-page.svg';
 
-const Hero = () => {
+const Hero = ({ users, staf }) => {
     return (
         <>
             <section id="home" className="relative scroll-mt-16 overflow-hidden">
@@ -46,11 +46,11 @@ const Hero = () => {
                         </div>
                         <div className="grid grid-cols-3 gap-6 border-t border-neutral-200 pt-8 dark:border-neutral-800">
                             <div>
-                                <div className="text-3xl font-bold text-neutral-900 dark:text-white">2.5k+</div>
+                                <div className="text-3xl font-bold text-neutral-900 dark:text-white">{users}</div>
                                 <div className="text-sm text-neutral-600 dark:text-neutral-400">Active Students</div>
                             </div>
                             <div>
-                                <div className="text-3xl font-bold text-neutral-900 dark:text-white">150+</div>
+                                <div className="text-3xl font-bold text-neutral-900 dark:text-white">{staf}</div>
                                 <div className="text-sm text-neutral-600 dark:text-neutral-400">Staff Members</div>
                             </div>
                             <div>

@@ -7,10 +7,11 @@ use App\Http\Controllers\CertificateShareController;
 use App\Http\Controllers\LinkedInController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReservationsController;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -30,8 +31,16 @@ Route::get('/', function () {
 
         return redirect()->route('profile.edit');
     }
+    $users = User::count();
+    $staf = User::where(function ($query) {
+        $query->whereJsonDoesntContain('role', 'student')
+            ->orWhereJsonLength('role', '>', 1);
+    })->count();
 
-    return Inertia::render('Welcome/index');
+    return Inertia::render('Welcome/index', [
+        'users' => $users,
+        'staf' => $staf,
+    ]);
 })->name('home');
 
 // Public certificate share page for social sharing (Open Graph preview)
