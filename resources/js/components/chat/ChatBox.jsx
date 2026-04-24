@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import ChatHeader from './partials/ChatHeader';
 import ChatToolbox from './partials/ChatToolbox';
 import MessageInput from './partials/MessageInput';
@@ -950,95 +951,96 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const hasMultipleAttachments = allAttachments.length > 1;
 
     return (
-        <div className="relative flex h-full overflow-hidden bg-background">
-            {/* Main Chat Area */}
-            <div className={cn('flex h-full w-full flex-col transition-all duration-300', previewAttachment && 'pointer-events-none opacity-0')}>
-                <ChatHeader
-                    conversation={conversation}
-                    onClose={showToolbox ? () => setShowToolbox(false) : onClose}
-                    onBack={onBack}
-                    onToolboxToggle={() => setShowToolbox(!showToolbox)}
-                />
-
-                <div className="flex min-h-0 flex-1 overflow-hidden">
-                    <MessageList
-                        messages={messages}
-                        loading={loading}
-                        currentUser={currentUser}
+        <Sheet open={showToolbox} onOpenChange={setShowToolbox}>
+            <div className="relative flex h-full overflow-hidden bg-background">
+                {/* Main Chat Area */}
+                <div className={cn('flex h-full w-full flex-col transition-all duration-300', previewAttachment && 'pointer-events-none opacity-0')}>
+                    <ChatHeader
                         conversation={conversation}
-                        isPlayingAudio={isPlayingAudio}
-                        audioProgress={audioProgress}
-                        audioDuration={audioDuration}
-                        showMenuForMessage={showMenuForMessage}
-                        onPlayAudio={handlePlayAudio}
-                        onDeleteMessage={handleDeleteMessage}
-                        onMenuToggle={setShowMenuForMessage}
-                        onPreviewAttachment={handlePreviewAttachment}
-                        onDownloadAttachment={handleDownloadAttachment}
-                        formatMessageTime={formatMessageTime}
-                        formatSeenTime={formatSeenTime}
-                        messagesEndRef={messagesEndRef}
-                        showToolbox={showToolbox}
-                        previewAttachment={previewAttachment}
-                        typingUsers={typingUsers}
-                        recordingUsers={recordingUsers}
+                        onClose={showToolbox ? () => setShowToolbox(false) : onClose}
+                        onBack={onBack}
+                        onToolboxToggle={() => setShowToolbox(!showToolbox)}
                     />
 
-                    {/* Toolbox f right side dial messages */}
-                    {showToolbox && !previewAttachment && (
-                        <div className="w-full flex-shrink-0 border-l">
-                            <ChatToolbox
-                                conversationId={conversation.id}
-                                otherUserId={conversation.other_user.id}
-                                onPreviewAttachment={handlePreviewAttachment}
-                                messages={messages}
-                            />
-                        </div>
-                    )}
+                    <div className="flex min-h-0 flex-1 overflow-hidden">
+                        <MessageList
+                            messages={messages}
+                            loading={loading}
+                            currentUser={currentUser}
+                            conversation={conversation}
+                            isPlayingAudio={isPlayingAudio}
+                            audioProgress={audioProgress}
+                            audioDuration={audioDuration}
+                            showMenuForMessage={showMenuForMessage}
+                            onPlayAudio={handlePlayAudio}
+                            onDeleteMessage={handleDeleteMessage}
+                            onMenuToggle={setShowMenuForMessage}
+                            onPreviewAttachment={handlePreviewAttachment}
+                            onDownloadAttachment={handleDownloadAttachment}
+                            formatMessageTime={formatMessageTime}
+                            formatSeenTime={formatSeenTime}
+                            messagesEndRef={messagesEndRef}
+                            previewAttachment={previewAttachment}
+                            typingUsers={typingUsers}
+                            recordingUsers={recordingUsers}
+                        />
+                    </div>
+
+                    <MessageInput
+                        newMessage={newMessage}
+                        setNewMessage={setNewMessage}
+                        sending={sending}
+                        isRecording={isRecording}
+                        recordingTime={recordingTime}
+                        attachment={attachment}
+                        setAttachment={setAttachment}
+                        audioBlob={audioBlob}
+                        audioURL={audioURL}
+                        setAudioBlob={setAudioBlob}
+                        setAudioURL={setAudioURL}
+                        mediaRecorderRef={mediaRecorderRef}
+                        fileInputRef={fileInputRef}
+                        handleFileSelect={handleFileSelect}
+                        startRecording={startRecording}
+                        stopRecording={stopRecording}
+                        cancelRecording={cancelRecording}
+                        handleSendMessage={handleSendMessage}
+                        isExpanded={isExpanded}
+                        audioDuration={audioDuration['preview']}
+                        onTypingStart={startTyping}
+                        onTypingStop={stopTyping}
+                        onPause={pauseRecording}
+                        onResume={resumeRecording}
+                    />
                 </div>
 
-                <MessageInput
-                    newMessage={newMessage}
-                    setNewMessage={setNewMessage}
-                    sending={sending}
-                    isRecording={isRecording}
-                    recordingTime={recordingTime}
-                    attachment={attachment}
-                    setAttachment={setAttachment}
-                    audioBlob={audioBlob}
-                    audioURL={audioURL}
-                    setAudioBlob={setAudioBlob}
-                    setAudioURL={setAudioURL}
-                    mediaRecorderRef={mediaRecorderRef}
-                    fileInputRef={fileInputRef}
-                    handleFileSelect={handleFileSelect}
-                    startRecording={startRecording}
-                    stopRecording={stopRecording}
-                    cancelRecording={cancelRecording}
-                    handleSendMessage={handleSendMessage}
-                    isExpanded={isExpanded}
-                    audioDuration={audioDuration['preview']}
-                    onTypingStart={startTyping}
-                    onTypingStop={stopTyping}
-                    onPause={pauseRecording}
-                    onResume={resumeRecording}
-                />
+                {/* Preview Panel - Full Width */}
+                {previewAttachment && (
+                    <div className="absolute inset-0 z-50 flex flex-col bg-background">
+                        <PreviewPanel
+                            attachment={previewAttachment}
+                            onClose={() => setPreviewAttachment(null)}
+                            onPrevious={handlePreviousPreview}
+                            onNext={handleNextPreview}
+                            hasMultiple={hasMultipleAttachments}
+                            currentIndex={previewIndex}
+                            totalCount={allAttachments.length}
+                        />
+                    </div>
+                )}
             </div>
 
-            {/* Preview Panel - Full Width */}
-            {previewAttachment && (
-                <div className="absolute inset-0 z-50 flex flex-col bg-background">
-                    <PreviewPanel
-                        attachment={previewAttachment}
-                        onClose={() => setPreviewAttachment(null)}
-                        onPrevious={handlePreviousPreview}
-                        onNext={handleNextPreview}
-                        hasMultiple={hasMultipleAttachments}
-                        currentIndex={previewIndex}
-                        totalCount={allAttachments.length}
+            {/* Toolbox rendered OUTSIDE chat container via portal */}
+            {!previewAttachment && (
+                <SheetContent side="right" className="p-0">
+                    <ChatToolbox
+                        conversationId={conversation.id}
+                        otherUserId={conversation.other_user.id}
+                        onPreviewAttachment={handlePreviewAttachment}
+                        messages={messages}
                     />
-                </div>
+                </SheetContent>
             )}
-        </div>
+        </Sheet>
     );
 }

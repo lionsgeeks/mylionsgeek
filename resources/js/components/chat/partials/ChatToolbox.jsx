@@ -82,7 +82,7 @@ export default function ChatToolbox({ conversationId, otherUserId, onPreviewAtta
     };
 
     return (
-        <div className="flex h-full w-full flex-col border-l bg-background">
+        <div className="flex h-full w-full flex-col bg-background">
             <Tabs defaultValue="attachments" className="flex h-full flex-col">
                 <div className="shrink-0 border-b p-4">
                     <TabsList className="grid w-full grid-cols-2">

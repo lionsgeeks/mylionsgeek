@@ -9,7 +9,6 @@ import Footer from './partials/layouts/Footer';
 import Navbar from './partials/layouts/Navbar';
 
 export default function LionsGeekLanding({ users, staf }) {
-    console.log(users, staf);
     const [darkMode, setDarkMode] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

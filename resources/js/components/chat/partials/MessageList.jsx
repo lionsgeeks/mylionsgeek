@@ -24,7 +24,6 @@ export default function MessageList({
     formatMessageTime,
     formatSeenTime,
     messagesEndRef,
-    showToolbox,
     previewAttachment,
     typingUsers = [],
     recordingUsers = [],
@@ -50,7 +49,7 @@ export default function MessageList({
     );
 
     return (
-        <ScrollArea className={cn('min-h-0 flex-1 p-4', showToolbox && !previewAttachment && 'w-2/3')}>
+        <ScrollArea className={cn('min-h-0 flex-1 p-4', previewAttachment && 'pointer-events-none opacity-0')}>
             {loading && messages.length === 0 ? (
                 <MessageSkeleton />
             ) : messages.length === 0 ? (
