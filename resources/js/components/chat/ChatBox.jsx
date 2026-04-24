@@ -999,11 +999,14 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                     />
 
                     <div className="flex min-h-0 flex-1 overflow-hidden">
-                        <MessageList
-                            messages={messages}
-                            loading={loading}
-                            currentUser={currentUser}
-                            conversation={conversation}
+                        <div className="relative min-h-0 flex-1">
+                            {/* Subtle chat wallpaper */}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-alpha/5 via-transparent to-transparent opacity-60" />
+                            <MessageList
+                                messages={messages}
+                                loading={loading}
+                                currentUser={currentUser}
+                                conversation={conversation}
                             isPlayingAudio={isPlayingAudio}
                             audioProgress={audioProgress}
                             audioDuration={audioDuration}
@@ -1019,7 +1022,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                             previewAttachment={previewAttachment}
                             typingUsers={typingUsers}
                             recordingUsers={recordingUsers}
-                        />
+                            />
+                        </div>
                     </div>
 
                     <MessageInput

@@ -32,6 +32,27 @@ export default function MessageList({
         return String(senderId) === String(currentUser.id);
     };
 
+    const isSameSender = (a, b) => {
+        if (!a || !b) return false;
+        return String(a.sender_id) === String(b.sender_id);
+    };
+
+    const minutesBetween = (a, b) => {
+        if (!a || !b) return Infinity;
+        const ta = new Date(a.created_at).getTime();
+        const tb = new Date(b.created_at).getTime();
+        if (Number.isNaN(ta) || Number.isNaN(tb)) return Infinity;
+        return Math.abs(ta - tb) / (1000 * 60);
+    };
+
+    const shouldGroupWithPrevious = (message, previousMessage) => {
+        return isSameSender(message, previousMessage) && minutesBetween(message, previousMessage) <= 2;
+    };
+
+    const shouldGroupWithNext = (message, nextMessage) => {
+        return isSameSender(message, nextMessage) && minutesBetween(message, nextMessage) <= 2;
+    };
+
     // Skeleton loader dial messages
     const MessageSkeleton = () => (
         <div className="mx-auto max-w-3xl space-y-4">
@@ -59,11 +80,16 @@ export default function MessageList({
                     <p className="mt-1 text-sm opacity-70">Start the conversation!</p>
                 </div>
             ) : (
-                <div className="mx-auto max-w-3xl space-y-4">
+                <div className="mx-auto max-w-3xl space-y-3">
                     {messages.map((message, index) => {
                         const isCurrentUser = isCurrentUserMessage(message.sender_id);
                         const showDateSeparator =
                             index === 0 || new Date(message.created_at).toDateString() !== new Date(messages[index - 1].created_at).toDateString();
+
+                        const prev = index > 0 ? messages[index - 1] : null;
+                        const next = index < messages.length - 1 ? messages[index + 1] : null;
+                        const groupWithPrev = shouldGroupWithPrevious(message, prev);
+                        const groupWithNext = shouldGroupWithNext(message, next);
 
                         return (
                             <MessageItem
@@ -73,6 +99,8 @@ export default function MessageList({
                                 currentUser={currentUser}
                                 otherUser={conversation.other_user}
                                 showDateSeparator={showDateSeparator}
+                                groupWithPrev={groupWithPrev}
+                                groupWithNext={groupWithNext}
                                 isPlayingAudio={isPlayingAudio}
                                 audioProgress={audioProgress}
                                 audioDuration={audioDuration}
