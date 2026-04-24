@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Mic, Paperclip, Send, X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AudioRecorder from './AudioRecorder';
 
 // Component dial input dial message
@@ -12,8 +13,8 @@ export default function MessageInput({
     sending,
     isRecording,
     recordingTime,
-    attachment,
-    setAttachment,
+    attachments = [],
+    setAttachments,
     audioBlob,
     audioURL,
     setAudioBlob,
@@ -103,20 +104,109 @@ export default function MessageInput({
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
+
+    const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+    const imageAttachments = useMemo(() => attachments.filter((file) => file?.type?.startsWith('image/')), [attachments]);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const activeImage = imageAttachments[activeImageIndex] ?? null;
+    const activeImagePreviewUrl = useMemo(() => {
+        if (!activeImage) return null;
+        return URL.createObjectURL(activeImage);
+    }, [activeImage]);
+
+    useEffect(() => {
+        return () => {
+            if (activeImagePreviewUrl) {
+                URL.revokeObjectURL(activeImagePreviewUrl);
+            }
+        };
+    }, [activeImagePreviewUrl]);
+
+    useEffect(() => {
+        if (imageAttachments.length === 0) {
+            setIsImagePreviewOpen(false);
+        }
+        if (activeImageIndex >= imageAttachments.length) {
+            setActiveImageIndex(Math.max(0, imageAttachments.length - 1));
+        }
+    }, [imageAttachments.length, activeImageIndex]);
+
+    // Open preview automatically right after selecting images
+    const previousImageCountRef = useRef(imageAttachments.length);
+    useEffect(() => {
+        if (imageAttachments.length > previousImageCountRef.current) {
+            setActiveImageIndex(imageAttachments.length - 1);
+            setIsImagePreviewOpen(true);
+        }
+        previousImageCountRef.current = imageAttachments.length;
+    }, [imageAttachments.length]);
+
+    const removeAttachmentAtIndex = (index) => {
+        setAttachments((prev) => prev.filter((_, i) => i !== index));
+    };
     return (
         <form onSubmit={handleSendMessage} className="shrink-0 border-t bg-alpha/5 p-4">
             {/* Attachment Preview */}
-            {attachment && (
-                <div className="mb-2 flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
-                    {attachment.type.startsWith('image/') ? (
-                        <span className="text-xs">📷 Image selected</span>
-                    ) : (
-                        <span className="text-xs">📎 {attachment.name}</span>
+            {attachments.length > 0 && (
+                <>
+                    <div className="mb-2 space-y-2">
+                        {attachments.map((file, index) => {
+                            const isImage = Boolean(file?.type?.startsWith('image/'));
+                            return (
+                                <div key={`${file.name}-${file.size}-${index}`} className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+                                    <span className="text-xs">{isImage ? '📷' : '📎'} {isImage ? 'Image selected' : file.name}</span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeAttachmentAtIndex(index)}
+                                        className="ml-auto h-6 w-6"
+                                        title="Remove attachment"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {activeImage && activeImagePreviewUrl && (
+                        <Dialog open={isImagePreviewOpen} onOpenChange={setIsImagePreviewOpen}>
+                            <DialogContent className="max-w-4xl">
+                                <DialogHeader>
+                                    <DialogTitle className="truncate text-base">{activeImage.name}</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-3 md:grid-cols-[1fr,220px]">
+                                    <div className="max-h-[70vh] overflow-auto rounded-md border bg-background p-2">
+                                        <img
+                                            src={activeImagePreviewUrl}
+                                            alt={activeImage.name}
+                                            className="h-auto w-full rounded-md object-contain"
+                                        />
+                                    </div>
+                                    <div className="max-h-[70vh] overflow-auto rounded-md border bg-background p-2">
+                                        <div className="grid grid-cols-3 gap-2 md:grid-cols-2">
+                                            {imageAttachments.map((file, idx) => (
+                                                <button
+                                                    key={`${file.name}-${file.size}-${idx}`}
+                                                    type="button"
+                                                    onClick={() => setActiveImageIndex(idx)}
+                                                    className={cn(
+                                                        'rounded-md border p-1 text-left text-xs hover:bg-accent/40',
+                                                        idx === activeImageIndex && 'border-alpha',
+                                                    )}
+                                                    title={file.name}
+                                                >
+                                                    <div className="truncate">{file.name}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     )}
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setAttachment(null)} className="ml-auto h-6 w-6">
-                        <X className="h-3 w-3" />
-                    </Button>
-                </div>
+                </>
             )}
 
             {/* Audio Preview */}
@@ -169,6 +259,7 @@ export default function MessageInput({
                     type="file"
                     onChange={handleFileSelect}
                     className="hidden"
+                    multiple
                     accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt"
                 />
                 <Button
@@ -210,7 +301,7 @@ export default function MessageInput({
                         <Button
                             type="submit"
                             size="icon"
-                            disabled={sending || (!newMessage.trim() && !attachment && !audioBlob)}
+                            disabled={sending || (!newMessage.trim() && attachments.length === 0 && !audioBlob)}
                             className="h-9 w-9 shrink-0 bg-alpha text-black hover:bg-alpha/90 disabled:opacity-50"
                         >
                             <Send className="h-4 w-4" />

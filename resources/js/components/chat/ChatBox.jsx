@@ -21,7 +21,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [attachment, setAttachment] = useState(null);
+    const [attachments, setAttachments] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -275,7 +275,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         if (previousConversationId && previousConversationId !== conversation.id) {
             draftsByConversationRef.current.set(previousConversationId, {
                 message: newMessage,
-                attachment,
+                attachments,
                 audioBlob,
                 audioURL,
             });
@@ -283,7 +283,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
         const nextDraft = draftsByConversationRef.current.get(conversation.id);
         setNewMessage(nextDraft?.message ?? '');
-        setAttachment(nextDraft?.attachment ?? null);
+        setAttachments(Array.isArray(nextDraft?.attachments) ? nextDraft.attachments : nextDraft?.attachment ? [nextDraft.attachment] : []);
         setAudioBlob(nextDraft?.audioBlob ?? null);
         setAudioURL(nextDraft?.audioURL ?? null);
 
@@ -311,11 +311,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     useEffect(() => {
         draftsByConversationRef.current.set(conversation.id, {
             message: newMessage,
-            attachment,
+            attachments,
             audioBlob,
             audioURL,
         });
-    }, [conversation.id, newMessage, attachment, audioBlob, audioURL]);
+    }, [conversation.id, newMessage, attachments, audioBlob, audioURL]);
 
     useEffect(() => {
         scrollToBottom();
@@ -428,9 +428,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     };
 
     const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setAttachment(file);
+        const selected = Array.from(e.target.files || []);
+        if (selected.length === 0) return;
+        setAttachments((prev) => [...prev, ...selected]);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
     };
 
@@ -634,139 +636,120 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if ((!newMessage.trim() && !attachment && !audioBlob) || sending) return;
+        if ((!newMessage.trim() && attachments.length === 0 && !audioBlob) || sending) return;
 
         const messageBody = newMessage.trim();
-        const tempId = Date.now();
-        pendingTempIdsRef.current.add(tempId);
-
-        // Create optimistic message bach yban b7al b9a send (pending status)
-        const optimisticMessage = {
-            id: tempId,
-            tempId: tempId,
-            pending: true,
-            body: messageBody,
-            sender_id: currentUser.id,
-            sender: {
-                id: currentUser.id,
-                name: currentUser.name,
-                image: currentUser.image,
-            },
-            attachment_path: null,
-            attachment_type: null,
-            attachment_name: null,
-            attachment_size: null,
-            is_read: false,
-            read_at: null,
-            created_at: new Date().toISOString(),
-        };
-
-        // Add attachment preview if exists
-        if (attachment) {
-            const attachmentURL = URL.createObjectURL(attachment);
-            optimisticMessage.attachment_path = attachmentURL;
-            optimisticMessage.attachment_name = attachment.name;
-            optimisticMessage.attachment_size = attachment.size;
-
-            if (attachment.type.startsWith('image/')) {
-                optimisticMessage.attachment_type = 'image';
-            } else if (attachment.type.startsWith('video/')) {
-                optimisticMessage.attachment_type = 'video';
-            } else {
-                optimisticMessage.attachment_type = 'file';
-            }
-        }
-
-        if (audioBlob) {
-            optimisticMessage.attachment_path = audioURL;
-            optimisticMessage.attachment_type = 'audio';
-            optimisticMessage.attachment_name = 'voice-message.webm';
-            optimisticMessage.attachment_size = audioBlob.size;
-            // Use preview duration if available
-            if (audioDuration['preview']) {
-                optimisticMessage.audio_duration = audioDuration['preview'];
-            }
-        }
-
-        // Zwid message m9bl ma yban b7al send (optimistic)
-        setMessages((prev) => [...prev, optimisticMessage]);
-        scrollToBottom();
-
-        // Save form data before clearing
         const formMessageBody = messageBody;
-        const formAttachment = attachment;
+        const formAttachments = attachments;
         const formAudioBlob = audioBlob;
         const prevAudioURL = audioURL;
 
-        // Clear form
+        // Clear form (UI should feel instant)
         setNewMessage('');
-        setAttachment(null);
+        setAttachments([]);
         setAudioBlob(null);
         setAudioURL(null);
         setRecordingTime(0);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-        // Draft is sent (or attempting to send) → remove draft for this conversation
         draftsByConversationRef.current.delete(conversation.id);
 
-        // Prepare FormData for sending
-        setSending(true);
-        const formData = new FormData();
-        formData.append('body', formMessageBody);
-        formData.append('_token', getCsrfToken());
+        const sendSingle = async ({ body, file, audio }) => {
+            const tempId = Date.now() + Math.floor(Math.random() * 10000);
+            pendingTempIdsRef.current.add(tempId);
 
-        if (formAttachment) {
-            formData.append('attachment', formAttachment);
-            const attachmentType = formAttachment.type.startsWith('image/') ? 'image' : formAttachment.type.startsWith('video/') ? 'video' : 'file';
-            formData.append('attachment_type', attachmentType);
-        }
-
-        if (formAudioBlob) {
-            formData.append('attachment', formAudioBlob, 'audio.webm');
-            formData.append('attachment_type', 'audio');
-        }
-
-        try {
-            const response = await fetch(`/chat/conversation/${conversation.id}/send`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
+            const optimisticMessage = {
+                id: tempId,
+                tempId,
+                pending: true,
+                body: body || '',
+                sender_id: currentUser.id,
+                sender: {
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    image: currentUser.image,
                 },
-                body: formData,
-            });
+                attachment_path: null,
+                attachment_type: null,
+                attachment_name: null,
+                attachment_size: null,
+                is_read: false,
+                read_at: null,
+                created_at: new Date().toISOString(),
+            };
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Failed to send message' }));
-                throw new Error(errorData.error || 'Failed to send message');
+            if (file) {
+                const attachmentURL = URL.createObjectURL(file);
+                optimisticMessage.attachment_path = attachmentURL;
+                optimisticMessage.attachment_name = file.name;
+                optimisticMessage.attachment_size = file.size;
+                optimisticMessage.attachment_type = file.type.startsWith('image/')
+                    ? 'image'
+                    : file.type.startsWith('video/')
+                      ? 'video'
+                      : 'file';
             }
 
-            const data = await response.json();
-            const newMessageData = data.message;
+            if (audio) {
+                optimisticMessage.attachment_path = prevAudioURL;
+                optimisticMessage.attachment_type = 'audio';
+                optimisticMessage.attachment_name = 'voice-message.webm';
+                optimisticMessage.attachment_size = audio.size;
+                if (audioDuration['preview']) {
+                    optimisticMessage.audio_duration = audioDuration['preview'];
+                }
+            }
 
-            // When you send a message, mark all previous messages from the other user as read
-            // This happens on the backend, but we also update the UI immediately
-            setMessages((prev) => {
-                // Remove optimistic message
-                const filtered = prev.filter((msg) => msg.tempId !== tempId);
+            setMessages((prev) => [...prev, optimisticMessage]);
+            scrollToBottom();
 
-                // Mark all messages from other user as read (since you replied, you've seen them)
-                const updated = filtered.map((msg) => {
-                    if (msg.sender_id !== currentUser.id && !msg.is_read) {
-                        return {
-                            ...msg,
-                            is_read: true,
-                            read_at: new Date().toISOString(),
-                        };
-                    }
-                    return msg;
+            const formData = new FormData();
+            formData.append('body', body || '');
+            formData.append('_token', getCsrfToken());
+
+            if (file) {
+                formData.append('attachment', file);
+                const attachmentType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
+                formData.append('attachment_type', attachmentType);
+            }
+
+            if (audio) {
+                formData.append('attachment', audio, 'audio.webm');
+                formData.append('attachment_type', 'audio');
+            }
+
+            try {
+                const response = await fetch(`/chat/conversation/${conversation.id}/send`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                    body: formData,
                 });
 
-                // Add real message (avoid duplicates)
-                const exists = updated.some((msg) => msg.id === newMessageData.id);
-                if (!exists) {
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to send message' }));
+                    throw new Error(errorData.error || 'Failed to send message');
+                }
+
+                const data = await response.json();
+                const newMessageData = data.message;
+
+                setMessages((prev) => {
+                    const filtered = prev.filter((msg) => msg.tempId !== tempId);
+                    const updated = filtered.map((msg) => {
+                        if (msg.sender_id !== currentUser.id && !msg.is_read) {
+                            return { ...msg, is_read: true, read_at: new Date().toISOString() };
+                        }
+                        return msg;
+                    });
+
+                    const exists = updated.some((msg) => msg.id === newMessageData.id);
+                    if (exists) return updated;
+
                     return [
                         ...updated,
                         {
@@ -778,27 +761,37 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                             },
                         },
                     ];
-                }
-                return updated;
-            });
+                });
 
-            // Clean up temp ID
-            pendingTempIdsRef.current.delete(tempId);
-
-            // Clean up audio URL if it was a blob
-            if (prevAudioURL && prevAudioURL.startsWith('blob:')) {
-                URL.revokeObjectURL(prevAudioURL);
+                pendingTempIdsRef.current.delete(tempId);
+                scrollToBottom();
+            } catch (error) {
+                setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
+                pendingTempIdsRef.current.delete(tempId);
+                throw error;
             }
+        };
 
-            scrollToBottom();
+        setSending(true);
+        try {
+            if (formAudioBlob) {
+                await sendSingle({ body: formMessageBody, audio: formAudioBlob });
+                if (prevAudioURL && prevAudioURL.startsWith('blob:')) {
+                    URL.revokeObjectURL(prevAudioURL);
+                }
+            } else if (formAttachments.length > 0) {
+                // Send each attachment as its own message (backend currently supports one file per request)
+                for (let i = 0; i < formAttachments.length; i++) {
+                    const file = formAttachments[i];
+                    await sendSingle({ body: i === 0 ? formMessageBody : '', file });
+                }
+            } else {
+                await sendSingle({ body: formMessageBody });
+            }
         } catch (error) {
-            // 7yed failed optimistic message
-            setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
-            pendingTempIdsRef.current.delete(tempId);
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
             setSending(false);
-            // Clean up preview duration
             setAudioDuration((prev) => {
                 const newState = { ...prev };
                 delete newState['preview'];
@@ -1008,8 +1001,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         sending={sending}
                         isRecording={isRecording}
                         recordingTime={recordingTime}
-                        attachment={attachment}
-                        setAttachment={setAttachment}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
                         audioBlob={audioBlob}
                         audioURL={audioURL}
                         setAudioBlob={setAudioBlob}
