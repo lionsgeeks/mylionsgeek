@@ -115,23 +115,27 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                 >
                     {likeCount} {isFacebook ? 'likes' : 'Likes'}
                 </div>
-                <div
-                    onClick={() => onCommentPress?.()}
-                    className="cursor-pointer text-xs text-gray-600 hover:underline dark:text-gray-400"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            onCommentPress?.();
-                        }
-                    }}
-                >
-                    {commentCount} {isFacebook ? 'comments' : 'Comments'}
+                <div className="flex items-center gap-2">
+                    <div
+                        onClick={() => onCommentPress?.()}
+                        className="cursor-pointer text-xs text-gray-600 hover:underline dark:text-gray-400"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onCommentPress?.();
+                            }
+                        }}
+                    >
+                        {commentCount} {isFacebook ? 'comments' : 'Comments'}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">•</span> {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
+                    </div>
+
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                    {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
-                </div>
+
             </div>
 
             {/* Buttons */}
@@ -149,12 +153,10 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
-                                ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${
-                                      isLiked ? 'text-alpha' : 'text-beta dark:text-light'
-                                  }`
-                                : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${
-                                      isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
-                                  }`
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
+                                }`
+                                : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                }`
                         }
                     >
                         <svg
