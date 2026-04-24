@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { subscribeToChannel } from '../../lib/ablyManager';
 import LikesModal from './LikesModal';
 import RepostModal from './RepostModal';
+import SendPostModal from './SendPostModal';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCommentPress, variant = 'default' }) => {
     const { auth } = usePage().props;
@@ -14,6 +15,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
     const [likedInteractionPostIds, setLikedInteractionPostIds] = useState([]);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
     const [repostOpenFor, setRepostOpenFor] = useState(null);
+    const [sendOpenFor, setSendOpenFor] = useState(null);
 
     // Initialize counts and liked state on mount
     useEffect(() => {
@@ -131,7 +133,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         {commentCount} {isFacebook ? 'comments' : 'Comments'}
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
-                        <span className="text-xs text-gray-600 dark:text-gray-400">•</span> {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
+                        <span className="text-xs text-gray-600 dark:text-gray-400">  • </span> {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
                     </div>
 
                 </div>
@@ -216,6 +218,23 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         </svg>
                         <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Repost</span>
                     </button>
+
+                    {/* Send Button */}
+                    <button
+                        type="button"
+                        className={
+                            isFacebook
+                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-white/5'
+                                : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
+                        }
+                        onClick={() => setSendOpenFor(post?.id)}
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 2L11 13" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 2l-7 20-4-9-9-4 20-7z" />
+                        </svg>
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Send</span>
+                    </button>
                 </div>
             )}
 
@@ -223,6 +242,8 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             <LikesModal postId={likesOpenFor} open={!!likesOpenFor} onClose={() => setLikesOpenFor(null)} takeToUserProfile={takeToUserProfile} />
 
             <RepostModal open={!!repostOpenFor} onOpenChange={(open) => setRepostOpenFor(open ? post?.id : null)} user={user} post={post} />
+
+            <SendPostModal open={!!sendOpenFor} onOpenChange={(open) => setSendOpenFor(open ? post?.id : null)} post={post} />
         </>
     );
 };
