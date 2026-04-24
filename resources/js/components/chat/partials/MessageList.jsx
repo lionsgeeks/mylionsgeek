@@ -70,7 +70,7 @@ export default function MessageList({
     );
 
     return (
-        <ScrollArea className={cn('min-h-0 flex-1 p-4', previewAttachment && 'pointer-events-none opacity-0')}>
+        <ScrollArea className={cn('h-full p-4', previewAttachment && 'pointer-events-none opacity-0')}>
             {loading && messages.length === 0 ? (
                 <MessageSkeleton />
             ) : messages.length === 0 ? (
