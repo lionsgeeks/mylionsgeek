@@ -333,7 +333,9 @@ class ChatController extends Controller
     public function sendMessage(Request $request, $conversationId)
     {
         $request->validate([
-            'body' => 'nullable|string|max:5000',
+            // Some message bodies are JSON payloads (e.g. post shares) and can be longer than typical text.
+            // DB column is TEXT, so keep a reasonable ceiling to prevent abuse but avoid false 422s.
+            'body' => 'nullable|string|max:20000',
             'attachment' => 'nullable|file|max:10240', // 10MB max
             'attachment_type' => 'nullable|in:file,audio,image,video',
         ]);
@@ -409,12 +411,15 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
+        $isPostShareMessage = false;
+
         // If this message is a "shared post", create a real notification for the receiver
         try {
             $rawBody = (string) ($request->body ?? '');
             $decoded = $rawBody !== '' ? json_decode($rawBody, true) : null;
 
             if (is_array($decoded) && ($decoded['type'] ?? null) === 'post_share') {
+                $isPostShareMessage = true;
                 $sharedPostId = isset($decoded['post_id']) ? (int) $decoded['post_id'] : null;
 
                 if ($sharedPostId) {
@@ -466,7 +471,9 @@ class ChatController extends Controller
         }
 
         // Send Expo push notification
-        if ($message) {
+        // For post shares we already notify via PostNotification (with its own Expo push + Ably notification),
+        // so skip the generic chat push to avoid duplicate pushes.
+        if ($message && !$isPostShareMessage) {
             try {
                 \Illuminate\Support\Facades\Log::info('Attempting to send push notification for chat message', [
                     'message_id' => $message->id,
@@ -480,6 +487,7 @@ class ChatController extends Controller
                 $recipientId = $conversation->user_one_id == $user->id ? $conversation->user_two_id : $conversation->user_one_id;
                 \Illuminate\Support\Facades\Log::info('Calculated recipient ID', ['recipient_id' => $recipientId]);
                 
+                /** @var \App\Models\User|null $recipient */
                 $recipient = \App\Models\User::find($recipientId);
                 
                 if ($recipient && $user) {
@@ -489,8 +497,16 @@ class ChatController extends Controller
                         'sender_id' => $user->id,
                     ]);
                     
-                    // Refresh recipient to get latest expo_push_token
-                    $recipient->refresh();
+                    // Reload recipient to get latest expo_push_token (Intelephense-friendly)
+                    $recipient = $recipient->fresh();
+                    if (!$recipient) {
+                        \Illuminate\Support\Facades\Log::warning('Recipient disappeared after reload', [
+                            'recipient_id' => $recipientId,
+                            'conversation_id' => $conversation->id,
+                        ]);
+                        // Bail out gracefully (do not break message send)
+                        return response()->json(['message' => 'Message sent'], 201);
+                    }
                     
                     \Illuminate\Support\Facades\Log::info('Recipient refreshed', [
                         'recipient_id' => $recipient->id,

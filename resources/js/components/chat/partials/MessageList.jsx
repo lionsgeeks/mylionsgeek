@@ -37,6 +37,14 @@ export default function MessageList({
         return String(a.sender_id) === String(b.sender_id);
     };
 
+    const isSameCalendarDay = (a, b) => {
+        if (!a || !b) return false;
+        const da = new Date(a.created_at);
+        const db = new Date(b.created_at);
+        if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return false;
+        return da.toDateString() === db.toDateString();
+    };
+
     const minutesBetween = (a, b) => {
         if (!a || !b) return Infinity;
         const ta = new Date(a.created_at).getTime();
@@ -46,11 +54,11 @@ export default function MessageList({
     };
 
     const shouldGroupWithPrevious = (message, previousMessage) => {
-        return isSameSender(message, previousMessage) && minutesBetween(message, previousMessage) <= 2;
+        return isSameSender(message, previousMessage) && isSameCalendarDay(message, previousMessage) && minutesBetween(message, previousMessage) <= 2;
     };
 
     const shouldGroupWithNext = (message, nextMessage) => {
-        return isSameSender(message, nextMessage) && minutesBetween(message, nextMessage) <= 2;
+        return isSameSender(message, nextMessage) && isSameCalendarDay(message, nextMessage) && minutesBetween(message, nextMessage) <= 2;
     };
 
     // Skeleton loader dial messages

@@ -137,7 +137,7 @@ export default function MessageItem({
                                                 ? postShare.image
                                                 : `/storage/img/posts/${postShare.image}`
                                         }
-                                        alt=""
+                                        alt={postShare.author_name ? `Post by ${postShare.author_name}` : 'Shared post'}
                                         className="h-44 w-full rounded-lg object-cover"
                                     />
                                 </div>

@@ -5,6 +5,53 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 
+function clampText(value, maxLen) {
+    const str = value == null ? '' : String(value);
+    if (maxLen <= 0) return '';
+    return str.length > maxLen ? str.slice(0, maxLen) : str;
+}
+
+function buildShareBodyString(post, caption = '') {
+    const interactionPost = post?.repost_of ?? null;
+    const source = interactionPost ?? post;
+    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+
+    const payload = {
+        type: 'post_share',
+        post_id: interactionPostId,
+        // Keep caption small to avoid server rejection (ChatController validates body length)
+        caption: clampText(caption || '', 300),
+        // Include minimal author/meta for preview without hydration
+        author_name: clampText(source?.user_name ?? '', 80) || null,
+        author_image: source?.user_image ?? null,
+        // Include a short snippet only (full post can be opened from feed)
+        description: clampText(source?.description ?? '', 400),
+        image: Array.isArray(source?.images) && source.images.length > 0 ? source.images[0] : null,
+    };
+
+    // Extra safety: ensure JSON stays under a conservative limit.
+    // If it grows too much, progressively drop description then image.
+    let body = JSON.stringify(payload);
+    if (body.length > 4500) {
+        payload.description = clampText(payload.description, 120);
+        body = JSON.stringify(payload);
+    }
+    if (body.length > 4500) {
+        payload.description = '';
+        body = JSON.stringify(payload);
+    }
+    if (body.length > 4500) {
+        payload.image = null;
+        body = JSON.stringify(payload);
+    }
+    if (body.length > 4500) {
+        payload.author_image = null;
+        body = JSON.stringify(payload);
+    }
+
+    return body;
+}
+
 function buildSharePayload(post, caption = '') {
     const interactionPost = post?.repost_of ?? null;
     const source = interactionPost ?? post;
@@ -83,8 +130,7 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
         setSending(true);
         setError(null);
 
-        const payload = buildSharePayload(post, (message || '').trim());
-        const body = JSON.stringify(payload);
+        const body = buildShareBodyString(post, (message || '').trim());
 
         try {
             const conversationRes = await fetch(`/chat/conversation/${selectedUserId}`, {
