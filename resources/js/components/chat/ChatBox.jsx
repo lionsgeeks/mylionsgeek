@@ -643,22 +643,22 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const formAttachments = attachments;
         const formAudioBlob = audioBlob;
         const prevAudioURL = audioURL;
+        let hasSentAnything = false;
 
         // Clear form (UI should feel instant)
         setNewMessage('');
-        setAttachments([]);
         setAudioBlob(null);
         setAudioURL(null);
         setRecordingTime(0);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-        draftsByConversationRef.current.delete(conversation.id);
 
         const sendSingle = async ({ body, file, audio }) => {
             const tempId = Date.now() + Math.floor(Math.random() * 10000);
             pendingTempIdsRef.current.add(tempId);
 
+            let attachmentPreviewUrl = null;
             const optimisticMessage = {
                 id: tempId,
                 tempId,
@@ -680,8 +680,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             };
 
             if (file) {
-                const attachmentURL = URL.createObjectURL(file);
-                optimisticMessage.attachment_path = attachmentURL;
+                attachmentPreviewUrl = URL.createObjectURL(file);
+                optimisticMessage.attachment_path = attachmentPreviewUrl;
                 optimisticMessage.attachment_name = file.name;
                 optimisticMessage.attachment_size = file.size;
                 optimisticMessage.attachment_type = file.type.startsWith('image/')
@@ -739,6 +739,9 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 const newMessageData = data.message;
 
                 setMessages((prev) => {
+                    if (attachmentPreviewUrl && attachmentPreviewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(attachmentPreviewUrl);
+                    }
                     const filtered = prev.filter((msg) => msg.tempId !== tempId);
                     const updated = filtered.map((msg) => {
                         if (msg.sender_id !== currentUser.id && !msg.is_read) {
@@ -765,9 +768,13 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
                 pendingTempIdsRef.current.delete(tempId);
                 scrollToBottom();
+                hasSentAnything = true;
             } catch (error) {
                 setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
                 pendingTempIdsRef.current.delete(tempId);
+                if (attachmentPreviewUrl && attachmentPreviewUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(attachmentPreviewUrl);
+                }
                 throw error;
             }
         };
@@ -781,14 +788,24 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                 }
             } else if (formAttachments.length > 0) {
                 // Send each attachment as its own message (backend currently supports one file per request)
+                const remaining = [...formAttachments];
                 for (let i = 0; i < formAttachments.length; i++) {
-                    const file = formAttachments[i];
+                    const file = remaining[0];
                     await sendSingle({ body: i === 0 ? formMessageBody : '', file });
+                    remaining.shift();
+                    setAttachments([...remaining]);
                 }
+                setAttachments([]);
             } else {
                 await sendSingle({ body: formMessageBody });
             }
+
+            draftsByConversationRef.current.delete(conversation.id);
         } catch (error) {
+            // If sending attachments failed mid-loop, preserve whatever is still in state for retry.
+            if (!hasSentAnything && formMessageBody) {
+                setNewMessage(formMessageBody);
+            }
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
             setSending(false);
