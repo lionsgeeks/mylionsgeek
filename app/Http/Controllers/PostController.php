@@ -164,7 +164,12 @@ class PostController extends Controller
 
         $this->broadcastPostStats($original);
 
-        return $this->respondWithMessage($request, 'Reposted successfully');
+        $posts = Post::withCount(['likes', 'comments', 'reposts'])->latest()->get();
+
+        return back()->with([
+            'success' => 'Reposted successfully',
+            'posts' => $posts,
+        ]);
     }
 
     public function getPostComments($postId)

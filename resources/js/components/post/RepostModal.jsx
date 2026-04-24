@@ -1,5 +1,5 @@
 import InputError from '@/components/input-error';
-import { router, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import PostModalShell from './composer/PostModalShell';
 import PostTextarea from './composer/PostTextarea';
@@ -29,7 +29,6 @@ const RepostModal = ({ open, onOpenChange, user, post }) => {
             preserveState: true,
             onSuccess: () => {
                 close();
-                router.reload({ preserveScroll: true, preserveState: true });
             },
         });
     };

@@ -84,13 +84,17 @@ const PostCardMainContent = ({
                         <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground dark:text-light/60">
                             <span>Reposted</span>
                             <span>•</span>
-                            <Link href={takeToUserProfile(originalPost)} className="font-medium text-alpha hover:underline">
+                            <button
+                                type="button"
+                                onClick={() => setOpenPostModal(true)}
+                                className="font-medium text-alpha hover:underline"
+                            >
                                 View original
-                            </Link>
+                            </button>
                         </div>
 
                         <div className="flex items-start gap-3">
-                            <Link href={takeToUserProfile(originalPost)} className="shrink-0">
+                            <button type="button" onClick={() => setOpenPostModal(true)} className="shrink-0">
                                 <Avatar
                                     className="h-9 w-9 overflow-hidden"
                                     image={originalPost?.user_image}
@@ -98,11 +102,15 @@ const PostCardMainContent = ({
                                     lastActivity={originalPost?.user_last_login ?? originalPost?.user_last_online ?? originalPost?.user_last_activity ?? null}
                                     onlineCircleClass="hidden"
                                 />
-                            </Link>
+                            </button>
                             <div className="min-w-0 flex-1">
-                                <Link href={takeToUserProfile(originalPost)} className="text-sm font-semibold text-beta hover:underline dark:text-light">
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenPostModal(true)}
+                                    className="text-left text-sm font-semibold text-beta hover:underline dark:text-light"
+                                >
                                     {originalPost?.user_name}
-                                </Link>
+                                </button>
                                 {originalPost?.description && (
                                     <p className="mt-1 line-clamp-4 text-sm break-words whitespace-pre-wrap text-foreground/90 dark:text-light/90">
                                         {renderPostText({ text: originalPost.description, post: originalPost })}
