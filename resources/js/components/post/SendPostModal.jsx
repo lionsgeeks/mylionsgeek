@@ -5,39 +5,48 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 
-function buildPostShareLink(post) {
+function buildSharePayload(post, caption = '') {
+    const interactionPost = post?.repost_of ?? null;
+    const source = interactionPost ?? post;
     const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
-    return interactionPostId ? `/students/feed#post-${interactionPostId}` : '/students/feed';
+
+    return {
+        type: 'post_share',
+        post_id: interactionPostId,
+        caption: caption || '',
+        author_name: source?.user_name ?? null,
+        author_image: source?.user_image ?? null,
+        description: source?.description ?? '',
+        image: Array.isArray(source?.images) && source.images.length > 0 ? source.images[0] : null,
+    };
 }
 
 export default function SendPostModal({ open, onOpenChange, post, defaultMessage = '' }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [conversations, setConversations] = useState([]);
+    const [users, setUsers] = useState([]);
     const [query, setQuery] = useState('');
-    const [selectedConversationId, setSelectedConversationId] = useState(null);
+    const [selectedUserId, setSelectedUserId] = useState(null);
     const [sending, setSending] = useState(false);
     const [message, setMessage] = useState(defaultMessage);
-
-    const shareLink = useMemo(() => buildPostShareLink(post), [post]);
 
     useEffect(() => {
         if (!open) {
             setLoading(false);
             setError(null);
-            setConversations([]);
+            setUsers([]);
             setQuery('');
-            setSelectedConversationId(null);
+            setSelectedUserId(null);
             setSending(false);
             setMessage(defaultMessage);
             return;
         }
 
-        const fetchConversations = async () => {
+        const fetchUsers = async () => {
             setLoading(true);
             setError(null);
             try {
-                const response = await fetch('/chat', {
+                const response = await fetch('/chat/following-users', {
                     method: 'GET',
                     headers: {
                         Accept: 'application/json',
@@ -46,38 +55,58 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to load conversations');
+                    throw new Error('Failed to load followers');
                 }
 
                 const data = await response.json();
-                setConversations(Array.isArray(data?.conversations) ? data.conversations : []);
+                setUsers(Array.isArray(data?.users) ? data.users : []);
             } catch (err) {
-                setError(err?.message || 'Failed to load conversations');
+                setError(err?.message || 'Failed to load followers');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchConversations();
+        fetchUsers();
     }, [open, defaultMessage]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return conversations;
-        return conversations.filter((c) => (c?.other_user?.name || '').toLowerCase().includes(q) || (c?.other_user?.email || '').toLowerCase().includes(q));
-    }, [conversations, query]);
+        if (!q) return users;
+        return users.filter((u) => (u?.name || '').toLowerCase().includes(q) || (u?.email || '').toLowerCase().includes(q));
+    }, [users, query]);
 
     const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     const handleSend = async () => {
-        if (!selectedConversationId || sending) return;
+        if (!selectedUserId || sending) return;
         setSending(true);
         setError(null);
 
-        const body = `${(message || '').trim()}\n\n${shareLink}`.trim();
+        const payload = buildSharePayload(post, (message || '').trim());
+        const body = JSON.stringify(payload);
 
         try {
-            const response = await fetch(`/chat/conversation/${selectedConversationId}/send`, {
+            const conversationRes = await fetch(`/chat/conversation/${selectedUserId}`, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!conversationRes.ok) {
+                const data = await conversationRes.json().catch(() => ({}));
+                throw new Error(data?.error || data?.message || 'Failed to open conversation');
+            }
+
+            const conversationData = await conversationRes.json();
+            const conversationId = conversationData?.conversation?.id;
+            if (!conversationId) {
+                throw new Error('Conversation not available');
+            }
+
+            const response = await fetch(`/chat/conversation/${conversationId}/send`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -113,34 +142,28 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
 
                     <div className="max-h-64 overflow-auto rounded-lg border border-border/70 dark:border-white/10">
                         {loading ? (
-                            <div className="p-4 text-sm text-muted-foreground">Loading conversations...</div>
+                            <div className="p-4 text-sm text-muted-foreground">Loading followers...</div>
                         ) : filtered.length === 0 ? (
-                            <div className="p-4 text-sm text-muted-foreground">No conversations found.</div>
+                            <div className="p-4 text-sm text-muted-foreground">No users found.</div>
                         ) : (
                             <div className="divide-y divide-border/60 dark:divide-white/10">
-                                {filtered.map((c) => {
-                                    const selected = Number(selectedConversationId) === Number(c.id);
-                                    const other = c.other_user;
+                                {filtered.map((u) => {
+                                    const selected = Number(selectedUserId) === Number(u.id);
                                     return (
                                         <button
-                                            key={c.id}
+                                            key={u.id}
                                             type="button"
-                                            onClick={() => setSelectedConversationId(c.id)}
+                                            onClick={() => setSelectedUserId(u.id)}
                                             className={cn(
                                                 'flex w-full items-center gap-3 p-3 text-left transition hover:bg-muted/40 dark:hover:bg-white/5',
                                                 selected && 'bg-muted/50 dark:bg-white/10',
                                             )}
                                         >
-                                            <Avatar className="h-9 w-9" image={other?.image} name={other?.name} />
+                                            <Avatar className="h-9 w-9" image={u?.image} name={u?.name} />
                                             <div className="min-w-0 flex-1">
-                                                <div className="truncate text-sm font-semibold text-beta dark:text-light">{other?.name}</div>
-                                                <div className="truncate text-xs text-muted-foreground">{other?.email}</div>
+                                                <div className="truncate text-sm font-semibold text-beta dark:text-light">{u?.name}</div>
+                                                <div className="truncate text-xs text-muted-foreground">{u?.email}</div>
                                             </div>
-                                            {c.unread_count > 0 && (
-                                                <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
-                                                    {c.unread_count > 99 ? '99+' : c.unread_count}
-                                                </span>
-                                            )}
                                         </button>
                                     );
                                 })}
@@ -157,9 +180,6 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
                             placeholder="Add a message..."
                             maxLength={1000}
                         />
-                        <div className="text-xs text-muted-foreground">
-                            Link to post will be appended: <span className="font-mono">{shareLink}</span>
-                        </div>
                     </div>
 
                     {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
@@ -168,7 +188,7 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
                         <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={sending}>
                             Cancel
                         </Button>
-                        <Button type="button" onClick={handleSend} disabled={!selectedConversationId || sending}>
+                        <Button type="button" onClick={handleSend} disabled={!selectedUserId || sending}>
                             {sending ? 'Sending...' : 'Send'}
                         </Button>
                     </div>

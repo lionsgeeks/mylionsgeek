@@ -602,6 +602,48 @@ class ChatController extends Controller
     }
 
     /**
+     * Get users that the authenticated user follows (for "Send to" picker).
+     */
+    public function getFollowingUsers()
+    {
+        try {
+            $user = Auth::user();
+
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
+
+            if (empty($followingIds)) {
+                return response()->json(['users' => []]);
+            }
+
+            $users = User::query()
+                ->whereIn('id', $followingIds)
+                ->select(['id', 'name', 'email', 'image', 'last_login', 'last_online'])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($u) {
+                    return [
+                        'id' => (int) $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'image' => $u->image,
+                        'last_login' => $u->last_login ? Carbon::parse($u->last_login)->toISOString() : null,
+                        'last_online' => $u->last_online ? Carbon::parse($u->last_online)->toISOString() : null,
+                    ];
+                })
+                ->values();
+
+            return response()->json(['users' => $users]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch following users',
+                'users' => [],
+            ], 500);
+        }
+    }
+
+    /**
      * Get unread messages count
      */
     public function getUnreadCount()
