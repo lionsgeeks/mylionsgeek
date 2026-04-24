@@ -43,6 +43,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const pendingTempIdsRef = useRef(new Set());
     const draftsByConversationRef = useRef(new Map());
     const previousConversationIdRef = useRef(conversation.id);
+    const shouldDiscardRecordingRef = useRef(false);
 
     const channelName = `chat:conversation:${conversation.id}`;
 
@@ -480,6 +481,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             };
 
             mediaRecorder.onstop = () => {
+                if (shouldDiscardRecordingRef.current) {
+                    shouldDiscardRecordingRef.current = false;
+                    chunksRef.current = [];
+                    return;
+                }
                 if (chunksRef.current.length > 0) {
                     const blobType = mimeType || (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4');
                     const blob = new Blob(chunksRef.current, { type: blobType });
@@ -568,20 +574,26 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     };
 
     const pauseRecording = () => {
-        if (mediaRecorderRef.current && isRecording && !isPaused) {
+        if (!mediaRecorderRef.current || !isRecording || isPaused) return;
+        try {
             if (mediaRecorderRef.current.state === 'recording') {
                 mediaRecorderRef.current.pause();
                 setIsPaused(true);
             }
+        } catch (error) {
+            console.error('Failed to pause recording:', error);
         }
     };
 
     const resumeRecording = () => {
-        if (mediaRecorderRef.current && isRecording && isPaused) {
+        if (!mediaRecorderRef.current || !isRecording || !isPaused) return;
+        try {
             if (mediaRecorderRef.current.state === 'paused') {
                 mediaRecorderRef.current.resume();
                 setIsPaused(false);
             }
+        } catch (error) {
+            console.error('Failed to resume recording:', error);
         }
     };
 
@@ -596,6 +608,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
+            shouldDiscardRecordingRef.current = true;
             mediaRecorderRef.current.stop();
             if (audioStreamRef.current) {
                 audioStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -604,6 +617,9 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             setIsRecording(false);
             setIsPaused(false);
             setAudioBlob(null);
+            if (audioURL && audioURL.startsWith('blob:')) {
+                URL.revokeObjectURL(audioURL);
+            }
             setAudioURL(null);
             setRecordingTime(0);
             chunksRef.current = [];
@@ -1009,6 +1025,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                         audioDuration={audioDuration['preview']}
                         onTypingStart={startTyping}
                         onTypingStop={stopTyping}
+                    isPaused={isPaused}
                         onPause={pauseRecording}
                         onResume={resumeRecording}
                     />
