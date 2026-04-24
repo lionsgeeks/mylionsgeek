@@ -644,6 +644,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         const formAudioBlob = audioBlob;
         const prevAudioURL = audioURL;
         let hasSentAnything = false;
+        let shouldRevokePrevAudioUrl = Boolean(prevAudioURL && typeof prevAudioURL === 'string' && prevAudioURL.startsWith('blob:'));
 
         // Clear form (UI should feel instant)
         setNewMessage('');
@@ -783,9 +784,8 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         try {
             if (formAudioBlob) {
                 await sendSingle({ body: formMessageBody, audio: formAudioBlob });
-                if (prevAudioURL && prevAudioURL.startsWith('blob:')) {
-                    URL.revokeObjectURL(prevAudioURL);
-                }
+                // Audio was successfully uploaded; we can revoke the preview URL.
+                shouldRevokePrevAudioUrl = true;
             } else if (formAttachments.length > 0) {
                 // Send each attachment as its own message (backend currently supports one file per request)
                 const remaining = [...formAttachments];
@@ -806,8 +806,18 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             if (!hasSentAnything && formMessageBody) {
                 setNewMessage(formMessageBody);
             }
+            if (!hasSentAnything && formAudioBlob) {
+                // Restore audio preview so user can retry without re-recording.
+                setAudioBlob(formAudioBlob);
+                setAudioURL(prevAudioURL);
+                // Don't revoke the preview URL if we're restoring it back into state.
+                shouldRevokePrevAudioUrl = false;
+            }
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
+            if (shouldRevokePrevAudioUrl && prevAudioURL && prevAudioURL.startsWith('blob:')) {
+                URL.revokeObjectURL(prevAudioURL);
+            }
             setSending(false);
             setAudioDuration((prev) => {
                 const newState = { ...prev };
