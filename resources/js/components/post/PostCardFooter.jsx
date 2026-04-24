@@ -113,7 +113,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             >
                 <div
                     className={`cursor-pointer hover:underline ${isFacebook ? '' : 'text-xs text-gray-600 dark:text-gray-400'}`}
-                    onClick={() => setLikesOpenFor(post?.id)}
+                    onClick={() => setLikesOpenFor(interactionPostId)}
                 >
                     {likeCount} {isFacebook ? 'likes' : 'Likes'}
                 </div>

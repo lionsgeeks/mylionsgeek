@@ -217,8 +217,10 @@ class PostController extends Controller
 
     public function getPostLikes($postId)
     {
-        $post = Post::findOrFail($postId);
-        $Likes = $post->likes()
+        $post = Post::with('repostOf')->findOrFail($postId);
+        $interactionPost = $this->resolveInteractionPost($post);
+
+        $Likes = $interactionPost->likes()
             ->with(['user:id,name,image'])
             ->orderBy('created_at', 'desc')->get()
             ->map(function ($l) {
