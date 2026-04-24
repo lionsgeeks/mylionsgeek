@@ -57,6 +57,9 @@ class PostController extends Controller
                 'comment_like' => "{$sender->name} liked your comment",
                 'mention' => "{$sender->name} mentioned you in a post",
                 'repost' => "{$sender->name} reposted your post",
+                'share' => "{$sender->name} shared a post with you",
+                'repost_like' => "{$sender->name} liked the post you reposted",
+                'repost_comment' => "{$sender->name} commented on the post you reposted",
                 default => "{$sender->name} interacted with your post"
             };
             
@@ -314,7 +317,7 @@ class PostController extends Controller
             $this->broadcastNotification($notification, $user, $interactionPost, 'comment');
         }
 
-        $this->notifyRepostersForInteraction($interactionPost, $user, 'comment');
+        $this->notifyRepostersForInteraction($interactionPost, $user, \App\Models\PostNotification::TYPE_REPOST_COMMENT);
 
         $commentPayload = [
             'id' => $comment->id,
@@ -394,7 +397,7 @@ class PostController extends Controller
                 $this->broadcastNotification($notification, $user, $interactionPost, 'like');
             }
 
-            $this->notifyRepostersForInteraction($interactionPost, $user, 'like');
+            $this->notifyRepostersForInteraction($interactionPost, $user, \App\Models\PostNotification::TYPE_REPOST_LIKE);
         }
 
         // Use cached counts to avoid redundant query

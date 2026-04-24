@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use Ably\AblyRest;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\PostNotification;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -405,6 +408,62 @@ class ChatController extends Controller
             'attachment_name' => $attachmentName,
             'is_read' => false,
         ]);
+
+        // If this message is a "shared post", create a real notification for the receiver
+        try {
+            $rawBody = (string) ($request->body ?? '');
+            $decoded = $rawBody !== '' ? json_decode($rawBody, true) : null;
+
+            if (is_array($decoded) && ($decoded['type'] ?? null) === 'post_share') {
+                $sharedPostId = isset($decoded['post_id']) ? (int) $decoded['post_id'] : null;
+
+                if ($sharedPostId) {
+                    $sharedPost = Post::find($sharedPostId);
+
+                    if ($sharedPost) {
+                        $notification = PostNotification::createNotification(
+                            $otherUserId,
+                            $user->id,
+                            $sharedPostId,
+                            PostNotification::TYPE_SHARE
+                        );
+
+                        // Broadcast notification in real-time via Ably (same schema as PostController)
+                        if ($notification) {
+                            $ablyKey = config('services.ably.key');
+                            if ($ablyKey) {
+                                $ably = new AblyRest($ablyKey);
+                                $channel = $ably->channels->get("notifications:{$otherUserId}");
+                                $channel->publish('new_notification', [
+                                    'id' => 'post-' . $notification->id,
+                                    'type' => 'post_interaction',
+                                    'sender_name' => $user->name,
+                                    'sender_image' => $user->image,
+                                    'message' => "{$user->name} shared a post with you",
+                                    'link' => '/students/feed#post-' . $sharedPostId,
+                                    'icon_type' => 'user',
+                                    'created_at' => $notification->created_at->toISOString(),
+                                    'post_id' => $sharedPostId,
+                                    'interaction_type' => PostNotification::TYPE_SHARE,
+                                ]);
+                            }
+                        }
+                    } else {
+                        Log::warning('Post share message received but post not found', [
+                            'post_id' => $sharedPostId,
+                            'conversation_id' => (int) $conversationId,
+                            'sender_id' => (int) $user->id,
+                            'receiver_id' => (int) $otherUserId,
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to create/broadcast share notification', [
+                'error' => $e->getMessage(),
+                'conversation_id' => (int) $conversationId,
+            ]);
+        }
 
         // Send Expo push notification
         if ($message) {

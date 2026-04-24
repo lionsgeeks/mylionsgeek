@@ -366,6 +366,12 @@ class NotificationController extends Controller
                     $message = "{$senderName} mentioned you in a post";
                 } elseif ($notif->type === 'repost') {
                     $message = "{$senderName} reposted your post";
+                } elseif ($notif->type === 'share') {
+                    $message = "{$senderName} shared a post with you";
+                } elseif ($notif->type === 'repost_like') {
+                    $message = "{$senderName} liked the post you reposted";
+                } elseif ($notif->type === 'repost_comment') {
+                    $message = "{$senderName} commented on the post you reposted";
                 } else {
                     $message = "{$senderName} interacted with your post";
                 }

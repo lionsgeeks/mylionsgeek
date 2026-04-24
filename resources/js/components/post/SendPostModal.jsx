@@ -171,7 +171,7 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
                         )}
                     </div>
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
                         <div className="text-xs text-muted-foreground">Message (optional)</div>
                         <textarea
                             value={message}
@@ -180,7 +180,7 @@ export default function SendPostModal({ open, onOpenChange, post, defaultMessage
                             placeholder="Add a message..."
                             maxLength={1000}
                         />
-                    </div>
+                    </div> */}
 
                     {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
 
