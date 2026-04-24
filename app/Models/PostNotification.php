@@ -44,7 +44,7 @@ class PostNotification extends Model
         }
 
         // Validate notification type
-        if (!in_array($type, ['like', 'comment', 'comment_like', 'mention'])) {
+        if (!in_array($type, ['like', 'comment', 'comment_like', 'mention', 'repost'])) {
             return null;
         }
 
@@ -85,6 +85,9 @@ class PostNotification extends Model
                                 break;
                             case 'mention':
                                 $message = "{$sender->name} mentioned you in a post";
+                                break;
+                            case 'repost':
+                                $message = "{$sender->name} reposted your post";
                                 break;
                         }
                         

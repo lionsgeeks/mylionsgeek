@@ -364,6 +364,8 @@ class NotificationController extends Controller
                     $message = "{$senderName} liked your comment";
                 } elseif ($notif->type === 'mention') {
                     $message = "{$senderName} mentioned you in a post";
+                } elseif ($notif->type === 'repost') {
+                    $message = "{$senderName} reposted your post";
                 } else {
                     $message = "{$senderName} interacted with your post";
                 }

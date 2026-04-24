@@ -10,6 +10,7 @@ class Post extends Model
 
     protected $fillable = [
         'user_id',
+        'repost_of_post_id',
         'description',
         'images',
         'hashTags',
@@ -23,6 +24,17 @@ class Post extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function repostOf()
+    {
+        return $this->belongsTo(self::class, 'repost_of_post_id');
+    }
+
+    public function reposts()
+    {
+        return $this->hasMany(self::class, 'repost_of_post_id');
+    }
+
     public function likes()
     {
         return $this->hasMany(Like::class);

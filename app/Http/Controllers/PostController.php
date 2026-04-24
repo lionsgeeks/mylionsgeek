@@ -56,6 +56,7 @@ class PostController extends Controller
                 'comment' => "{$sender->name} commented on your post",
                 'comment_like' => "{$sender->name} liked your comment",
                 'mention' => "{$sender->name} mentioned you in a post",
+                'repost' => "{$sender->name} reposted your post",
                 default => "{$sender->name} interacted with your post"
             };
             
@@ -79,13 +80,91 @@ class PostController extends Controller
     private function broadcastPostStats(Post $post): void
     {
         // Use cached counts to avoid redundant queries
-        $post->loadCount(['likes', 'comments']);
+        $post->loadCount(['likes', 'comments', 'reposts']);
         
         $this->publishFeedEvent('feed:global', 'post-stats-updated', [
             'post_id' => (int) $post->id,
             'likes_count' => (int) $post->likes_count,
             'comments_count' => (int) $post->comments_count,
+            'reposts_count' => (int) $post->reposts_count,
         ]);
+    }
+
+    private function resolveInteractionPost(Post $post): Post
+    {
+        return $post->repost_of_post_id ? ($post->repostOf ?? $post) : $post;
+    }
+
+    private function notifyRepostersForInteraction(Post $originalPost, User $actor, string $type): void
+    {
+        $reposterIds = Post::query()
+            ->where('repost_of_post_id', $originalPost->id)
+            ->pluck('user_id')
+            ->unique()
+            ->values();
+
+        if ($reposterIds->isEmpty()) {
+            return;
+        }
+
+        foreach ($reposterIds as $reposterId) {
+            $reposterId = (int) $reposterId;
+
+            if ($reposterId === (int) $actor->id) {
+                continue;
+            }
+
+            if ($reposterId === (int) $originalPost->user_id) {
+                continue;
+            }
+
+            $notification = \App\Models\PostNotification::createNotification(
+                $reposterId,
+                $actor->id,
+                $originalPost->id,
+                $type
+            );
+
+            if ($notification) {
+                $this->broadcastNotification($notification, $actor, $originalPost, $type);
+            }
+        }
+    }
+
+    public function repost(Request $request, $postId)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return $this->respondWithMessage($request, 'Unauthorized', false, 401);
+        }
+
+        $request->validate([
+            'description' => 'nullable|string|max:5000',
+        ]);
+
+        $original = Post::with('user')->findOrFail((int) $postId);
+
+        $repost = Post::create([
+            'user_id' => $user->id,
+            'repost_of_post_id' => $original->id,
+            'description' => (string) ($request->input('description') ?? ''),
+            'images' => null,
+        ]);
+
+        $notification = \App\Models\PostNotification::createNotification(
+            $original->user_id,
+            $user->id,
+            $original->id,
+            'repost'
+        );
+
+        if ($notification) {
+            $this->broadcastNotification($notification, $user, $original, 'repost');
+        }
+
+        $this->broadcastPostStats($original);
+
+        return $this->respondWithMessage($request, 'Reposted successfully');
     }
 
     public function getPostComments($postId)
@@ -183,7 +262,8 @@ class PostController extends Controller
             'comment' => 'required|string|max:2000',
             'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
-        $post = Post::findOrFail($postId);
+        $post = Post::with('repostOf')->findOrFail($postId);
+        $interactionPost = $this->resolveInteractionPost($post);
         $user = Auth::user();
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
@@ -213,21 +293,23 @@ class PostController extends Controller
             Log::warning('Comment image uploaded but comments.image column is missing. Did you run migrations?');
         }
 
-        $comment = $post->comments()->create($payload);
+        $comment = $interactionPost->comments()->create($payload);
         $comment->load('user:id,name,image');
 
         // Create notification for post owner
         $notification = \App\Models\PostNotification::createNotification(
-            $post->user_id,  // Post owner
+            $interactionPost->user_id,  // Post owner
             $user->id,        // User who commented
-            $post->id,        // Post ID
+            $interactionPost->id,        // Post ID
             'comment'         // Type
         );
 
         // Broadcast notification via Ably for real-time updates
         if ($notification) {
-            $this->broadcastNotification($notification, $user, $post, 'comment');
+            $this->broadcastNotification($notification, $user, $interactionPost, 'comment');
         }
+
+        $this->notifyRepostersForInteraction($interactionPost, $user, 'comment');
 
         $commentPayload = [
             'id' => $comment->id,
@@ -241,8 +323,8 @@ class PostController extends Controller
             'created_at' => $comment->created_at->toDateTimeString(),
         ];
 
-        $this->publishFeedEvent("feed:post:{$post->id}", 'comment-created', $commentPayload);
-        $this->broadcastPostStats($post);
+        $this->publishFeedEvent("feed:post:{$interactionPost->id}", 'comment-created', $commentPayload);
+        $this->broadcastPostStats($interactionPost);
 
         return response()->json([
             ...$commentPayload,
@@ -276,42 +358,45 @@ class PostController extends Controller
     public function AddLike($id)
     {
         $user = Auth::user();
-        $post = Post::findOrFail($id);
+        $post = Post::with('repostOf')->findOrFail($id);
+        $interactionPost = $this->resolveInteractionPost($post);
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
         // Use firstOrCreate to check and create in single operation
-        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+        $existingLike = $interactionPost->likes()->where('user_id', $user->id)->first();
         
         if ($existingLike) {
             $existingLike->delete();
             $liked = false;
             $countChange = -1;
         } else {
-            $post->likes()->create(['user_id' => $user->id]);
+            $interactionPost->likes()->create(['user_id' => $user->id]);
             $liked = true;
             $countChange = 1;
             
             // Create notification for post owner
             $notification = \App\Models\PostNotification::createNotification(
-                $post->user_id,  // Post owner
+                $interactionPost->user_id,  // Post owner
                 $user->id,        // User who liked
-                $post->id,        // Post ID
+                $interactionPost->id,        // Post ID
                 'like'            // Type
             );
 
             // Broadcast notification via Ably for real-time updates
             if ($notification) {
-                $this->broadcastNotification($notification, $user, $post, 'like');
+                $this->broadcastNotification($notification, $user, $interactionPost, 'like');
             }
+
+            $this->notifyRepostersForInteraction($interactionPost, $user, 'like');
         }
 
         // Use cached counts to avoid redundant query
-        $post->loadCount('likes');
-        $currentCount = $post->likes_count;
+        $interactionPost->loadCount('likes');
+        $currentCount = $interactionPost->likes_count;
 
-        $this->broadcastPostStats($post);
+        $this->broadcastPostStats($interactionPost);
 
         return response()->json([
             'liked' => $liked,

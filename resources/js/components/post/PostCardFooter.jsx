@@ -3,24 +3,29 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { subscribeToChannel } from '../../lib/ablyManager';
 import LikesModal from './LikesModal';
+import RepostModal from './RepostModal';
 
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCommentPress, variant = 'default' }) => {
     const { auth } = usePage().props;
     const isFacebook = variant === 'facebook';
     const [likesCountMap, setLikesCountMap] = useState({});
     const [commentsCountMap, setCommentsCountMap] = useState({});
-    const [likedPostIds, setLikedPostIds] = useState([]);
+    const [repostsCountMap, setRepostsCountMap] = useState({});
+    const [likedInteractionPostIds, setLikedInteractionPostIds] = useState([]);
     const [likesOpenFor, setLikesOpenFor] = useState(null);
+    const [repostOpenFor, setRepostOpenFor] = useState(null);
 
     // Initialize counts and liked state on mount
     useEffect(() => {
         setLikesCountMap((prev) => ({ ...prev, [post.id]: post.likes_count }));
         setCommentsCountMap((prev) => ({ ...prev, [post.id]: post.comments_count }));
+        setRepostsCountMap((prev) => ({ ...prev, [post.id]: post.reposts_count }));
 
         if (post.is_liked_by_current_user) {
-            setLikedPostIds((prev) => [...new Set([...prev, post.id])]);
+            const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+            setLikedInteractionPostIds((prev) => [...new Set([...prev, interactionPostId])]);
         }
-    }, [post.id, post.likes_count, post.comments_count, post.is_liked_by_current_user]);
+    }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user]);
 
     useEffect(() => {
         if (!post?.id) return;
@@ -32,13 +37,17 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             // Only use Ably real-time updates, no polling
             unsubscribe = await subscribeToChannel('feed:global', 'post-stats-updated', (data) => {
                 if (!mounted) return;
-                if (!data || Number(data.post_id) !== Number(post.id)) return;
+                const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+                if (!data || Number(data.post_id) !== Number(interactionPostId)) return;
 
                 if (typeof data.likes_count === 'number') {
                     setLikesCountMap((prev) => ({ ...prev, [post.id]: data.likes_count }));
                 }
                 if (typeof data.comments_count === 'number') {
                     setCommentsCountMap((prev) => ({ ...prev, [post.id]: data.comments_count }));
+                }
+                if (typeof data.reposts_count === 'number') {
+                    setRepostsCountMap((prev) => ({ ...prev, [post.id]: data.reposts_count }));
                 }
             });
         };
@@ -59,7 +68,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             const { liked, likes_count } = response.data;
 
             // Update likedPostIds based on backend response
-            setLikedPostIds((prev) => (liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)));
+            setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)));
 
             setLikesCountMap((prev) => ({
                 ...prev,
@@ -84,9 +93,11 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
         }));
     };
 
-    const isLiked = likedPostIds.includes(post?.id);
+    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+    const isLiked = likedInteractionPostIds.includes(interactionPostId);
     const likeCount = likesCountMap[post?.id] ?? 0;
     const commentCount = commentsCountMap[post?.id] ?? 0;
+    const repostCount = repostsCountMap[post?.id] ?? 0;
 
     return (
         <>
@@ -118,6 +129,9 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                 >
                     {commentCount} {isFacebook ? 'comments' : 'Comments'}
                 </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                    {repostCount} {isFacebook ? 'reposts' : 'Reposts'}
+                </div>
             </div>
 
             {/* Buttons */}
@@ -132,7 +146,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                     {/* Like Button */}
                     <button
                         type="button"
-                        onClick={() => toggleLike(post?.id)}
+                        onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
                                 ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${
@@ -179,11 +193,34 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         </svg>
                         <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Comment</span>
                     </button>
+
+                    {/* Repost Button */}
+                    <button
+                        type="button"
+                        className={
+                            isFacebook
+                                ? 'flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold text-beta transition-colors hover:bg-muted/50 dark:text-light dark:hover:bg-white/5'
+                                : 'flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-beta transition-colors duration-200 hover:bg-dark_gray/10 hover:text-beta dark:text-light dark:hover:bg-light/10'
+                        }
+                        onClick={() => setRepostOpenFor(post?.id)}
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4m14-2v2a4 4 0 01-4 4H3"
+                            />
+                        </svg>
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>Repost</span>
+                    </button>
                 </div>
             )}
 
             {/* Likes modal */}
             <LikesModal postId={likesOpenFor} open={!!likesOpenFor} onClose={() => setLikesOpenFor(null)} takeToUserProfile={takeToUserProfile} />
+
+            <RepostModal open={!!repostOpenFor} onOpenChange={(open) => setRepostOpenFor(open ? post?.id : null)} user={user} post={post} />
         </>
     );
 };

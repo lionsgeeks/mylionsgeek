@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { helpers } from '../utils/helpers';
 import PostModal from './PostModal';
 import { renderPostText } from './utils/renderPostText';
+import { Link } from '@inertiajs/react';
+import { Avatar } from '@/components/ui/avatar';
 
 const PostCardMainContent = ({
     post,
@@ -18,6 +20,9 @@ const PostCardMainContent = ({
     const [scrollToCommentsAfterOpen, setScrollToCommentsAfterOpen] = useState(false);
     const { resolvePostImageUrl } = helpers();
     const [expandedDescriptions, setExpandedDescriptions] = useState({});
+
+    const originalPost = post?.repost_of ?? null;
+    const modalPost = originalPost ?? post;
 
     const toggleDescription = (id) => {
         setExpandedDescriptions((prev) => ({
@@ -72,6 +77,52 @@ const PostCardMainContent = ({
                     </>
                 )}
             </div>
+
+            {originalPost && (
+                <div className="mt-3 px-4">
+                    <div className="rounded-xl border border-border/70 bg-muted/20 p-3 dark:border-white/10 dark:bg-dark/60">
+                        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground dark:text-light/60">
+                            <span>Reposted</span>
+                            <span>•</span>
+                            <Link href={takeToUserProfile(originalPost)} className="font-medium text-alpha hover:underline">
+                                View original
+                            </Link>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <Link href={takeToUserProfile(originalPost)} className="shrink-0">
+                                <Avatar
+                                    className="h-9 w-9 overflow-hidden"
+                                    image={originalPost?.user_image}
+                                    name={originalPost?.user_name}
+                                    lastActivity={originalPost?.user_last_login ?? originalPost?.user_last_online ?? originalPost?.user_last_activity ?? null}
+                                    onlineCircleClass="hidden"
+                                />
+                            </Link>
+                            <div className="min-w-0 flex-1">
+                                <Link href={takeToUserProfile(originalPost)} className="text-sm font-semibold text-beta hover:underline dark:text-light">
+                                    {originalPost?.user_name}
+                                </Link>
+                                {originalPost?.description && (
+                                    <p className="mt-1 line-clamp-4 text-sm break-words whitespace-pre-wrap text-foreground/90 dark:text-light/90">
+                                        {renderPostText({ text: originalPost.description, post: originalPost })}
+                                    </p>
+                                )}
+                                {Array.isArray(originalPost?.images) && originalPost.images.length > 0 && (
+                                    <div className="mt-2">
+                                        <img
+                                            src={resolvePostImageUrl(originalPost.images[0]) ?? ''}
+                                            alt=""
+                                            className="h-44 w-full rounded-lg object-cover"
+                                            onClick={() => setOpenPostModal(true)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {post?.images?.length > 0 && (
                 <div
                     onClick={() => setOpenPostModal(true)}
@@ -113,7 +164,7 @@ const PostCardMainContent = ({
                 <PostModal
                     isOpen={openPostModal}
                     onOpenChange={handlePostModalOpenChange}
-                    post={post}
+                    post={modalPost}
                     displayText={displayText}
                     hasMore={hasMore}
                     isExpanded={isExpanded}
