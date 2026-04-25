@@ -139,4 +139,33 @@ class ProfileController extends Controller
 
         return response()->json($userData);
     }
+
+    /**
+     * Follow a user (mobile). If already followed, this is a no-op.
+     */
+    public function follow(Request $request, int $userId)
+    {
+        $currentUser = Auth::guard('sanctum')->user();
+
+        if (! $currentUser) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        if ((int) $currentUser->id === (int) $userId) {
+            return response()->json(['message' => 'You cannot follow yourself'], 400);
+        }
+
+        $target = User::findOrFail($userId);
+
+        $already = $currentUser->following()->where('followed_id', $target->id)->exists();
+
+        if (! $already) {
+            $currentUser->following()->syncWithoutDetaching([$target->id]);
+        }
+
+        return response()->json([
+            'followed' => true,
+            'user_id' => (int) $target->id,
+        ]);
+    }
 }

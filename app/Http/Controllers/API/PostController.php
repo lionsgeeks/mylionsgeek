@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
 use App\Models\CommentLike;
+use App\Models\Like;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\Post;
@@ -420,6 +421,54 @@ class PostController extends Controller
             'liked'       => $liked,
             'likes_count' => $post->likes_count,
         ]);
+    }
+
+    /**
+     * Return all users who liked a post, newest first, including whether the
+     * authenticated user already follows each liker.
+     */
+    public function getLikes(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+
+        $followingIds = $user->following()->pluck('users.id')->toArray();
+
+        $likes = Like::query()
+            ->where('post_id', $post->id)
+            ->with('user:id,name,image')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($like) use ($user, $followingIds) {
+                $likedUser = $like->user;
+                $imageValue = $likedUser?->image;
+                $avatar = null;
+
+                if ($imageValue) {
+                    $imagePath = ltrim((string) $imageValue, '/');
+                    $avatar = str_contains($imagePath, 'img/profile/')
+                        ? url('storage/' . $imagePath)
+                        : url('storage/img/profile/' . $imagePath);
+                }
+
+                $likedUserId = (int) ($likedUser?->id ?? 0);
+
+                return [
+                    'id' => (int) $likedUserId,
+                    'name' => $likedUser?->name ?? 'User',
+                    'avatar' => $avatar,
+                    'is_me' => $likedUserId === (int) $user->id,
+                    'is_following' => $likedUserId ? in_array($likedUserId, $followingIds, true) : false,
+                ];
+            })
+            ->values();
+
+        return response()->json(['likes' => $likes]);
     }
 
     public function repost(Request $request)
