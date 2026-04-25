@@ -10,5 +10,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/like/{id}', [PostController::class, 'toggleLike']);
     Route::get('/posts/{id}/comments', [PostController::class, 'getComments']);
     Route::post('/posts/{id}/comments', [PostController::class, 'addComment']);
+    Route::post('/comments/{id}/like', [PostController::class, 'toggleCommentLike']);
 });
 

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Comment;
+use App\Models\CommentLike;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\Post;
@@ -179,7 +181,8 @@ class PostController extends Controller
     }
 
     /**
-     * Return all comments for a post, oldest first.
+     * Return all top-level comments for a post (oldest first),
+     * each with its replies nested, like count, and whether the auth user liked it.
      */
     public function getComments(int $id)
     {
@@ -191,60 +194,25 @@ class PostController extends Controller
 
         $post = Post::findOrFail($id);
 
+        // Load top-level comments only; replies are nested via eager loading
         $comments = $post->comments()
-            ->with('user:id,name,image')
+            ->with([
+                'user:id,name,image',
+                'likes',
+                'replies.user:id,name,image',
+                'replies.likes',
+            ])
+            ->whereNull('parent_id')
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(function ($comment) {
-                $avatarValue = $comment->user?->image;
-                $avatar = null;
-
-                if ($avatarValue) {
-                    $imagePath = ltrim((string) $avatarValue, '/');
-                    $avatar = str_contains($imagePath, 'img/profile/')
-                        ? url('storage/' . $imagePath)
-                        : url('storage/img/profile/' . $imagePath);
-                }
-
-                return [
-                    'id'         => $comment->id,
-                    'body'       => $comment->comment,
-                    'created_at' => $comment->created_at?->toDateTimeString(),
-                    'user'       => [
-                        'id'     => $comment->user?->id,
-                        'name'   => $comment->user?->name ?? 'User',
-                        'avatar' => $avatar,
-                    ],
-                ];
-            });
+            ->map(fn ($c) => $this->formatComment($c, $user->id));
 
         return response()->json(['comments' => $comments]);
     }
 
-    /**
-     * Add a comment to a post on behalf of the authenticated mobile user.
-     */
-    public function addComment(Request $request, int $id)
+    /** Formats a single comment (or reply) into the mobile API shape. */
+    private function formatComment(Comment $comment, int $authUserId): array
     {
-        $user = Auth::guard('sanctum')->user();
-
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
-        $request->validate([
-            'comment' => 'required|string|max:2000',
-        ]);
-
-        $post = Post::findOrFail($id);
-
-        $comment = $post->comments()->create([
-            'user_id' => $user->id,
-            'comment' => $request->comment,
-        ]);
-
-        $comment->load('user:id,name,image');
-
         $avatarValue = $comment->user?->image;
         $avatar = null;
 
@@ -255,18 +223,96 @@ class PostController extends Controller
                 : url('storage/img/profile/' . $imagePath);
         }
 
-        return response()->json([
-            'comment' => [
-                'id'         => $comment->id,
-                'body'       => $comment->comment,
-                'created_at' => $comment->created_at?->toDateTimeString(),
-                'user'       => [
-                    'id'     => $user->id,
-                    'name'   => $user->name,
-                    'avatar' => $avatar,
-                ],
+        $likeCount     = $comment->likes?->count() ?? 0;
+        $isLiked       = $comment->likes?->contains('user_id', $authUserId) ?? false;
+
+        $replies = $comment->replies
+            ? $comment->replies
+                ->sortBy('created_at')
+                ->map(fn ($r) => $this->formatComment($r, $authUserId))
+                ->values()
+                ->toArray()
+            : [];
+
+        return [
+            'id'         => $comment->id,
+            'parent_id'  => $comment->parent_id,
+            'body'       => $comment->comment,
+            'created_at' => $comment->created_at?->toDateTimeString(),
+            'likes_count'       => $likeCount,
+            'is_liked_by_user'  => $isLiked,
+            'replies'    => $replies,
+            'user'       => [
+                'id'     => $comment->user?->id,
+                'name'   => $comment->user?->name ?? 'User',
+                'avatar' => $avatar,
             ],
+        ];
+    }
+
+    /**
+     * Add a comment (or reply) to a post.
+     * Pass `parent_id` to make it a reply to an existing comment.
+     */
+    public function addComment(Request $request, int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $request->validate([
+            'comment'   => 'required|string|max:2000',
+            'parent_id' => 'nullable|integer|exists:comments,id',
+        ]);
+
+        $post = Post::findOrFail($id);
+
+        $comment = $post->comments()->create([
+            'user_id'   => $user->id,
+            'comment'   => $request->comment,
+            'parent_id' => $request->parent_id ?? null,
+        ]);
+
+        $comment->load(['user:id,name,image', 'likes']);
+
+        return response()->json([
+            'comment' => $this->formatComment($comment, $user->id),
         ], 201);
+    }
+
+    /**
+     * Toggle a like on a comment for the authenticated mobile user.
+     */
+    public function toggleCommentLike(int $commentId)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $comment = Comment::findOrFail($commentId);
+
+        $existing = CommentLike::where('comment_id', $commentId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+            $liked = false;
+        } else {
+            CommentLike::create(['comment_id' => $commentId, 'user_id' => $user->id]);
+            $liked = true;
+        }
+
+        $count = CommentLike::where('comment_id', $commentId)->count();
+
+        return response()->json([
+            'liked'       => $liked,
+            'likes_count' => $count,
+        ]);
     }
 
     /**
