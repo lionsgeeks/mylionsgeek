@@ -210,6 +210,26 @@ class PostController extends Controller
         return response()->json(['comments' => $comments]);
     }
 
+    /**
+     * Return the real total comments count for a post (includes replies).
+     */
+    public function getCommentsCount(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+
+        $count = Comment::query()
+            ->where('post_id', $post->id)
+            ->count();
+
+        return response()->json(['comments_count' => $count]);
+    }
+
     /** Formats a single comment (or reply) into the mobile API shape. */
     private function formatComment(Comment $comment, int $authUserId): array
     {
