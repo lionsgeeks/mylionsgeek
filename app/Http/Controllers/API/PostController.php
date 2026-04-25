@@ -12,9 +12,12 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class PostController extends Controller
 {
+    private const POST_IMAGES_DIR = 'img/posts';
     public function index(Request $request)
     {
         try {
@@ -149,36 +152,236 @@ class PostController extends Controller
         }
 
         $request->validate([
-            'content' => 'required|string|max:5000',
-            'type' => 'nullable|in:post,photo,video,article',
+            'description' => 'nullable|string|max:5000',
+            'images' => 'array|max:' . Post::MAX_IMAGES,
+            'images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240',
         ]);
 
-        // TODO: Create post in database
-        // For now, return success
+        $uploadedFiles = $request->file('images', []);
+        if (count($uploadedFiles) > Post::MAX_IMAGES) {
+            return response()->json(['message' => 'Too many images'], 422);
+        }
+
+        $imagesArray = $this->persistUploadedImages($uploadedFiles);
+
+        $post = Post::create([
+            'user_id' => $user->id,
+            'description' => (string) ($request->input('description') ?? ''),
+            'images' => $imagesArray,
+        ]);
+
         return response()->json([
-            'message' => 'Post created successfully',
-            'post' => [
-                'id' => uniqid(),
-                'content' => $request->content,
-                'type' => $request->type ?? 'post',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'avatar' => $user->image ? (function() use ($user) {
-                        $imagePath = ltrim((string)$user->image, '/');
-                        // Check if image path already includes img/profile
-                        if (strpos($imagePath, 'img/profile/') !== false) {
-                            return url('storage/' . $imagePath);
-                        } else {
-                            // If it's just a filename, use /storage/img/profile/
-                            return url('storage/img/profile/' . $imagePath);
-                        }
-                    })() : null,
-                    'image' => $user->image ?? null,
-                ],
-                'created_at' => now()->toDateTimeString(),
-            ],
+            'post' => $this->formatPostForFeed($post, $user),
         ], 201);
+    }
+
+    /** Show a single post for editing (owner-only). */
+    public function showPost(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        return response()->json([
+            'post' => [
+                'id' => $post->id,
+                'description' => $post->description ?? '',
+                'images' => $post->images ?? [],
+            ],
+        ]);
+    }
+
+    /** Update a post (owner-only). Supports multipart with new_images[]. */
+    public function updatePost(Request $request, int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $request->validate([
+            'description' => 'nullable|string|max:5000',
+            'keep_images' => 'array',
+            'keep_images.*' => 'string',
+            'removed_images' => 'array',
+            'removed_images.*' => 'string',
+            'new_images' => 'array',
+            'new_images.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:10240',
+        ]);
+
+        $ownedImages = collect($post->images ?? []);
+
+        $removedImages = collect($request->input('removed_images', []))
+            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->unique()
+            ->values();
+
+        $keepImages = collect($request->input('keep_images', []))
+            ->filter(fn ($image) => $ownedImages->contains($image))
+            ->unique()
+            ->values();
+
+        if ($keepImages->isEmpty()) {
+            $keepImages = $ownedImages->diff($removedImages)->values();
+        }
+
+        $incomingFiles = $request->file('new_images', []);
+        if ($keepImages->count() + count($incomingFiles) > Post::MAX_IMAGES) {
+            return response()->json(['message' => 'Too many images'], 422);
+        }
+
+        $newImages = $this->persistUploadedImages($incomingFiles);
+        $nextImages = $keepImages->concat($newImages)->values()->toArray();
+
+        $this->deleteStoredImages($removedImages->toArray());
+
+        $post->description = (string) ($request->input('description') ?? '');
+        $post->images = $nextImages;
+        $post->save();
+
+        return response()->json([
+            'post' => $this->formatPostForFeed($post->fresh(), $user),
+        ]);
+    }
+
+    /** Delete a post (owner-only). */
+    public function deletePost(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+        if ((int) $post->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $this->deleteStoredImages($post->images ?? []);
+        $post->delete();
+
+        return response()->json(['deleted' => true]);
+    }
+
+    private function formatPostForFeed(Post $post, $authUser): array
+    {
+        $post->loadMissing(['user', 'likes', 'comments']);
+        $postUser = $post->user ?? null;
+
+        $imageUrls = [];
+        $images = $post->images ?? [];
+        if (is_array($images) && count($images) > 0) {
+            foreach ($images as $image) {
+                if (!$image) {
+                    continue;
+                }
+                if (strpos($image, 'http') === 0) {
+                    $imageUrls[] = $image;
+                } else {
+                    $imagePath = ltrim((string) $image, '/');
+                    if (strpos($imagePath, 'img/posts/') !== false) {
+                        $imageUrls[] = url('storage/' . $imagePath);
+                    } else {
+                        $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                    }
+                }
+            }
+        }
+
+        return [
+            'id' => $post->id,
+            'type' => 'post',
+            'content' => $post->description ?? '',
+            'description' => $post->description ?? '',
+            'images' => $imageUrls,
+            'image' => count($imageUrls) > 0 ? $imageUrls[0] : null,
+            'created_at' => $post->created_at ? (is_string($post->created_at) ? $post->created_at : $post->created_at->toDateTimeString()) : null,
+            'user' => [
+                'id' => $postUser?->id,
+                'name' => $postUser?->name ?? 'User',
+                'avatar' => ($postUser && $postUser->image) ? (function () use ($postUser) {
+                    $imagePath = ltrim((string) $postUser->image, '/');
+                    if (strpos($imagePath, 'img/profile/') !== false) {
+                        return url('storage/' . $imagePath);
+                    }
+                    return url('storage/img/profile/' . $imagePath);
+                })() : null,
+                'image' => $postUser?->image ?? null,
+            ],
+            'likes' => $post->likes ? $post->likes->count() : 0,
+            'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $authUser->id) : false,
+            'comments' => $post->comments ? $post->comments->count() : 0,
+            'reposts' => 0,
+        ];
+    }
+
+    private function persistUploadedImages(array $files): array
+    {
+        $stored = [];
+        $disk = 'public';
+
+        try {
+            $storage = Storage::disk($disk);
+            if (!$storage->exists(self::POST_IMAGES_DIR)) {
+                $storage->makeDirectory(self::POST_IMAGES_DIR, 0755, true);
+            }
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        foreach ($files as $image) {
+            if (!$image || !$image->isValid()) {
+                continue;
+            }
+
+            try {
+                $path = $image->store(self::POST_IMAGES_DIR, $disk);
+                if ($path) {
+                    $stored[] = basename($path);
+                }
+            } catch (Throwable $e) {
+                Log::error('Failed to store post image: ' . $e->getMessage());
+                report($e);
+            }
+        }
+
+        return $stored;
+    }
+
+    private function deleteStoredImages(iterable $filenames = []): void
+    {
+        $disk = 'public';
+        $storage = Storage::disk($disk);
+
+        foreach ($filenames as $fileName) {
+            if (!$fileName) {
+                continue;
+            }
+
+            $value = ltrim((string) $fileName, '/');
+            if (!str_contains($value, self::POST_IMAGES_DIR . '/')) {
+                $value = self::POST_IMAGES_DIR . '/' . basename($value);
+            }
+
+            try {
+                if ($storage->exists($value)) {
+                    $storage->delete($value);
+                }
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
     }
 
     /**
