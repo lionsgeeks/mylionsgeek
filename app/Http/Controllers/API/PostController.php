@@ -316,6 +316,61 @@ class PostController extends Controller
     }
 
     /**
+     * Update a comment/reply (owner-only).
+     */
+    public function updateComment(Request $request, int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        $comment = Comment::with(['user:id,name,image', 'likes', 'replies.user:id,name,image', 'replies.likes'])
+            ->findOrFail($id);
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $comment->comment = $request->comment;
+        $comment->save();
+
+        $comment->refresh();
+
+        return response()->json([
+            'comment' => $this->formatComment($comment, $user->id),
+        ]);
+    }
+
+    /**
+     * Delete a comment/reply (owner-only).
+     * Replies are deleted automatically via the comments.parent_id cascade FK.
+     */
+    public function deleteComment(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $comment = Comment::findOrFail($id);
+
+        if ((int) $comment->user_id !== (int) $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $comment->delete();
+
+        return response()->json(['deleted' => true]);
+    }
+
+    /**
      * Toggle a like on a post for the authenticated mobile user.
      * Returns the new liked state and updated like count.
      */
