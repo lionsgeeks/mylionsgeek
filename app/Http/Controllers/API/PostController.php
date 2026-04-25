@@ -8,6 +8,7 @@ use App\Models\Reservation;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller
 {
@@ -33,7 +34,7 @@ class PostController extends Controller
                     ->filter(function ($post) {
                         return $post !== null;
                     })
-                    ->map(function ($post) {
+                    ->map(function ($post) use ($user) {
                         try {
                             $postUser = $post->user ?? null;
                             $images = $post->images ?? [];
@@ -90,11 +91,12 @@ class PostController extends Controller
                                     'image' => $postUser->image ?? null,
                                 ],
                                 'likes' => $post->likes ? $post->likes->count() : 0,
+                                'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $user->id) : false,
                                 'comments' => $post->comments ? $post->comments->count() : 0,
                                 'reposts' => 0,
                             ];
                         } catch (\Exception $e) {
-                            \Log::error('Error mapping post: ' . $e->getMessage());
+                            Log::error('Error mapping post: ' . $e->getMessage());
                             return null;
                         }
                     })
@@ -102,8 +104,8 @@ class PostController extends Controller
                         return $item !== null;
                     });
             } catch (\Exception $e) {
-                \Log::error('Error fetching posts for feed: ' . $e->getMessage());
-                \Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('Error fetching posts for feed: ' . $e->getMessage());
+                Log::error('Stack trace: ' . $e->getTraceAsString());
                 $recentPosts = collect([]);
             }
 
@@ -118,10 +120,10 @@ class PostController extends Controller
 
             return response()->json(['feed' => $feed]);
         } catch (\Throwable $e) {
-            \Log::error('Error in feed endpoint: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            \Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
-            \Log::error('Exception class: ' . get_class($e));
+            Log::error('Error in feed endpoint: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            Log::error('Exception class: ' . get_class($e));
             
             // Return empty feed instead of error to prevent app crash
             return response()->json([
@@ -174,6 +176,38 @@ class PostController extends Controller
                 'created_at' => now()->toDateTimeString(),
             ],
         ], 201);
+    }
+
+    /**
+     * Toggle a like on a post for the authenticated mobile user.
+     * Returns the new liked state and updated like count.
+     */
+    public function toggleLike(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+
+        $existingLike = $post->likes()->where('user_id', $user->id)->first();
+
+        if ($existingLike) {
+            $existingLike->delete();
+            $liked = false;
+        } else {
+            $post->likes()->create(['user_id' => $user->id]);
+            $liked = true;
+        }
+
+        $post->loadCount('likes');
+
+        return response()->json([
+            'liked'       => $liked,
+            'likes_count' => $post->likes_count,
+        ]);
     }
 
     public function repost(Request $request)

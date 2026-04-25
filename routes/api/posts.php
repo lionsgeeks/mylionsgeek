@@ -7,5 +7,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/feed', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::post('/posts/repost', [PostController::class, 'repost']);
+    Route::post('/posts/like/{id}', [PostController::class, 'toggleLike']);
 });
 
