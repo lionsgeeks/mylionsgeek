@@ -179,6 +179,97 @@ class PostController extends Controller
     }
 
     /**
+     * Return all comments for a post, oldest first.
+     */
+    public function getComments(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::findOrFail($id);
+
+        $comments = $post->comments()
+            ->with('user:id,name,image')
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($comment) {
+                $avatarValue = $comment->user?->image;
+                $avatar = null;
+
+                if ($avatarValue) {
+                    $imagePath = ltrim((string) $avatarValue, '/');
+                    $avatar = str_contains($imagePath, 'img/profile/')
+                        ? url('storage/' . $imagePath)
+                        : url('storage/img/profile/' . $imagePath);
+                }
+
+                return [
+                    'id'         => $comment->id,
+                    'body'       => $comment->comment,
+                    'created_at' => $comment->created_at?->toDateTimeString(),
+                    'user'       => [
+                        'id'     => $comment->user?->id,
+                        'name'   => $comment->user?->name ?? 'User',
+                        'avatar' => $avatar,
+                    ],
+                ];
+            });
+
+        return response()->json(['comments' => $comments]);
+    }
+
+    /**
+     * Add a comment to a post on behalf of the authenticated mobile user.
+     */
+    public function addComment(Request $request, int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        $post = Post::findOrFail($id);
+
+        $comment = $post->comments()->create([
+            'user_id' => $user->id,
+            'comment' => $request->comment,
+        ]);
+
+        $comment->load('user:id,name,image');
+
+        $avatarValue = $comment->user?->image;
+        $avatar = null;
+
+        if ($avatarValue) {
+            $imagePath = ltrim((string) $avatarValue, '/');
+            $avatar = str_contains($imagePath, 'img/profile/')
+                ? url('storage/' . $imagePath)
+                : url('storage/img/profile/' . $imagePath);
+        }
+
+        return response()->json([
+            'comment' => [
+                'id'         => $comment->id,
+                'body'       => $comment->comment,
+                'created_at' => $comment->created_at?->toDateTimeString(),
+                'user'       => [
+                    'id'     => $user->id,
+                    'name'   => $user->name,
+                    'avatar' => $avatar,
+                ],
+            ],
+        ], 201);
+    }
+
+    /**
      * Toggle a like on a post for the authenticated mobile user.
      * Returns the new liked state and updated like count.
      */
