@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use Ably\AblyRest;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\PostNotification;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -330,7 +333,9 @@ class ChatController extends Controller
     public function sendMessage(Request $request, $conversationId)
     {
         $request->validate([
-            'body' => 'nullable|string|max:5000',
+            // Some message bodies are JSON payloads (e.g. post shares) and can be longer than typical text.
+            // DB column is TEXT, so keep a reasonable ceiling to prevent abuse but avoid false 422s.
+            'body' => 'nullable|string|max:20000',
             'attachment' => 'nullable|file|max:10240', // 10MB max
             'attachment_type' => 'nullable|in:file,audio,image,video',
         ]);
@@ -406,8 +411,69 @@ class ChatController extends Controller
             'is_read' => false,
         ]);
 
+        $isPostShareMessage = false;
+
+        // If this message is a "shared post", create a real notification for the receiver
+        try {
+            $rawBody = (string) ($request->body ?? '');
+            $decoded = $rawBody !== '' ? json_decode($rawBody, true) : null;
+
+            if (is_array($decoded) && ($decoded['type'] ?? null) === 'post_share') {
+                $isPostShareMessage = true;
+                $sharedPostId = isset($decoded['post_id']) ? (int) $decoded['post_id'] : null;
+
+                if ($sharedPostId) {
+                    $sharedPost = Post::find($sharedPostId);
+
+                    if ($sharedPost) {
+                        $notification = PostNotification::createNotification(
+                            $otherUserId,
+                            $user->id,
+                            $sharedPostId,
+                            PostNotification::TYPE_SHARE
+                        );
+
+                        // Broadcast notification in real-time via Ably (same schema as PostController)
+                        if ($notification) {
+                            $ablyKey = config('services.ably.key');
+                            if ($ablyKey) {
+                                $ably = new AblyRest($ablyKey);
+                                $channel = $ably->channels->get("notifications:{$otherUserId}");
+                                $channel->publish('new_notification', [
+                                    'id' => 'post-' . $notification->id,
+                                    'type' => 'post_interaction',
+                                    'sender_name' => $user->name,
+                                    'sender_image' => $user->image,
+                                    'message' => "{$user->name} shared a post with you",
+                                    'link' => '/students/feed#post-' . $sharedPostId,
+                                    'icon_type' => 'user',
+                                    'created_at' => $notification->created_at->toISOString(),
+                                    'post_id' => $sharedPostId,
+                                    'interaction_type' => PostNotification::TYPE_SHARE,
+                                ]);
+                            }
+                        }
+                    } else {
+                        Log::warning('Post share message received but post not found', [
+                            'post_id' => $sharedPostId,
+                            'conversation_id' => (int) $conversationId,
+                            'sender_id' => (int) $user->id,
+                            'receiver_id' => (int) $otherUserId,
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to create/broadcast share notification', [
+                'error' => $e->getMessage(),
+                'conversation_id' => (int) $conversationId,
+            ]);
+        }
+
         // Send Expo push notification
-        if ($message) {
+        // For post shares we already notify via PostNotification (with its own Expo push + Ably notification),
+        // so skip the generic chat push to avoid duplicate pushes.
+        if ($message && !$isPostShareMessage) {
             try {
                 \Illuminate\Support\Facades\Log::info('Attempting to send push notification for chat message', [
                     'message_id' => $message->id,
@@ -421,6 +487,7 @@ class ChatController extends Controller
                 $recipientId = $conversation->user_one_id == $user->id ? $conversation->user_two_id : $conversation->user_one_id;
                 \Illuminate\Support\Facades\Log::info('Calculated recipient ID', ['recipient_id' => $recipientId]);
                 
+                /** @var \App\Models\User|null $recipient */
                 $recipient = \App\Models\User::find($recipientId);
                 
                 if ($recipient && $user) {
@@ -430,8 +497,16 @@ class ChatController extends Controller
                         'sender_id' => $user->id,
                     ]);
                     
-                    // Refresh recipient to get latest expo_push_token
-                    $recipient->refresh();
+                    // Reload recipient to get latest expo_push_token (Intelephense-friendly)
+                    $recipient = $recipient->fresh();
+                    if (!$recipient) {
+                        \Illuminate\Support\Facades\Log::warning('Recipient disappeared after reload', [
+                            'recipient_id' => $recipientId,
+                            'conversation_id' => $conversation->id,
+                        ]);
+                        // Bail out gracefully (do not break message send)
+                        return response()->json(['message' => 'Message sent'], 201);
+                    }
                     
                     \Illuminate\Support\Facades\Log::info('Recipient refreshed', [
                         'recipient_id' => $recipient->id,
@@ -597,6 +672,48 @@ class ChatController extends Controller
             return response()->json([
                 'error' => 'Failed to fetch following IDs',
                 'following_ids' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Get users that the authenticated user follows (for "Send to" picker).
+     */
+    public function getFollowingUsers()
+    {
+        try {
+            $user = Auth::user();
+
+            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
+                ->pluck('followed_id')
+                ->toArray();
+
+            if (empty($followingIds)) {
+                return response()->json(['users' => []]);
+            }
+
+            $users = User::query()
+                ->whereIn('id', $followingIds)
+                ->select(['id', 'name', 'email', 'image', 'last_login', 'last_online'])
+                ->orderBy('name')
+                ->get()
+                ->map(function ($u) {
+                    return [
+                        'id' => (int) $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'image' => $u->image,
+                        'last_login' => $u->last_login ? Carbon::parse($u->last_login)->toISOString() : null,
+                        'last_online' => $u->last_online ? Carbon::parse($u->last_online)->toISOString() : null,
+                    ];
+                })
+                ->values();
+
+            return response()->json(['users' => $users]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch following users',
+                'users' => [],
             ], 500);
         }
     }

@@ -2,37 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Education;
-use App\Models\Experience;
-use App\Models\Follower;
-use App\Models\FollowNotification;
-use App\Models\Like;
-use App\Models\Post;
-use App\Models\UserSocialLink;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
-use function PHPSTORM_META\map;
-
 class StudentController extends Controller
 {
     public function index()
     {
-        $userController = new UsersController();
+        $userController = new UsersController;
         $posts = $userController->getPosts();
         $userId = Auth::user()->id;
         $user = $this->getUserInfo($userId);
+
         return Inertia::render('students/user/index', [
             'posts' => $posts,
-            'user' => $user
+            'user' => $user,
         ]);
     }
+
     public function userProfile($id)
     {
         $user = $this->getUserInfo($id);
-        $usersController = new UsersController();
+        $usersController = new UsersController;
         $profilePosts = $usersController->getPostsForProfileUser((int) $id, 1);
 
         return Inertia::render('students/user/partials/StudentProfile', [
@@ -45,7 +38,7 @@ class StudentController extends Controller
     public function userPosts($id)
     {
         $user = $this->getUserInfo($id);
-        $usersController = new UsersController();
+        $usersController = new UsersController;
         $profilePosts = $usersController->getPostsForProfileUser((int) $id, null);
 
         return Inertia::render('students/user/UserPosts', [
@@ -54,6 +47,7 @@ class StudentController extends Controller
             'postsTotal' => $profilePosts['total'],
         ]);
     }
+
     public function getUserInfo($id)
     {
         $user = User::find($id);
@@ -63,7 +57,7 @@ class StudentController extends Controller
         $userEducation = User::with([
             'educations' => function ($query) {
                 $query->orderBy('start_year', 'desc')->orderBy('start_month', 'desc');
-            }
+            },
         ])->findOrFail($id);
         $userSocialLinks = User::with(['socialLinks' => function ($query) {
             $query->ordered();
@@ -82,7 +76,7 @@ class StudentController extends Controller
             ->select('users.id', 'users.name', 'users.image')
             ->get();
 
-        return  [
+        return [
             'user' => [
                 'id' => $user->id,
                 'email' => $user->email,
@@ -101,7 +95,7 @@ class StudentController extends Controller
                 'field' => $user->field,
                 'phone' => $user->phone,
                 'created_at' => $user->created_at->format('Y-m-d'),
-                'formation' => $user->formation_id != Null ? $user->formation->name : '',
+                'formation' => $user->formation_id != null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,
                 'cin' => $user->cin,
                 'access_studio' => $user->access_studio,
@@ -116,11 +110,12 @@ class StudentController extends Controller
             ],
         ];
     }
+
     public function changeProfileImage(Request $request, $id)
     {
         $user = User::find($id);
         if (Auth::user()->id == $user->id) {
-            # code...
+            // code...
             $request->validate([
                 'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             ]);
@@ -136,8 +131,9 @@ class StudentController extends Controller
             }
 
             return redirect()->back()->with('error', 'There was an error changing the image.');
-        };
+        }
     }
+
     public function changeCover(Request $request, $id)
     {
         $user = User::find($id);
@@ -155,8 +151,9 @@ class StudentController extends Controller
             }
 
             return redirect()->back()->with('error', 'There was an error changing the cover.');
-        };
+        }
     }
+
     public function updateAbout(Request $request, $id)
     {
         if (Auth::id() !== (int) $id) {

@@ -499,6 +499,18 @@ function ConversationItem({ conversation, currentUserId, otherUserName, isOnline
         if (attachment_type === 'audio') return prefix + '🎤 Voice message';
         if (attachment_type === 'file') return prefix + '📎 File';
         if (body) {
+            // Handle JSON body used for rich message types (e.g. post share)
+            const trimmed = String(body).trim();
+            if (trimmed.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (parsed?.type === 'post_share') {
+                        return prefix + '📌 Post';
+                    }
+                } catch {
+                    // Fall back to plain preview
+                }
+            }
             // Show more of the message (up to 80 characters for better visibility)
             const preview = body.length > 80 ? body.substring(0, 80) + '...' : body;
             return prefix + preview;

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import ChatHeader from './partials/ChatHeader';
 import ChatToolbox from './partials/ChatToolbox';
 import MessageInput from './partials/MessageInput';
@@ -20,7 +21,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [attachment, setAttachment] = useState(null);
+    const [attachments, setAttachments] = useState([]);
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -42,6 +43,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const pendingTempIdsRef = useRef(new Set());
     const draftsByConversationRef = useRef(new Map());
     const previousConversationIdRef = useRef(conversation.id);
+    const shouldDiscardRecordingRef = useRef(false);
 
     const channelName = `chat:conversation:${conversation.id}`;
 
@@ -273,7 +275,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
         if (previousConversationId && previousConversationId !== conversation.id) {
             draftsByConversationRef.current.set(previousConversationId, {
                 message: newMessage,
-                attachment,
+                attachments,
                 audioBlob,
                 audioURL,
             });
@@ -281,7 +283,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
         const nextDraft = draftsByConversationRef.current.get(conversation.id);
         setNewMessage(nextDraft?.message ?? '');
-        setAttachment(nextDraft?.attachment ?? null);
+        setAttachments(Array.isArray(nextDraft?.attachments) ? nextDraft.attachments : nextDraft?.attachment ? [nextDraft.attachment] : []);
         setAudioBlob(nextDraft?.audioBlob ?? null);
         setAudioURL(nextDraft?.audioURL ?? null);
 
@@ -309,11 +311,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     useEffect(() => {
         draftsByConversationRef.current.set(conversation.id, {
             message: newMessage,
-            attachment,
+            attachments,
             audioBlob,
             audioURL,
         });
-    }, [conversation.id, newMessage, attachment, audioBlob, audioURL]);
+    }, [conversation.id, newMessage, attachments, audioBlob, audioURL]);
 
     useEffect(() => {
         scrollToBottom();
@@ -426,9 +428,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     };
 
     const handleFileSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setAttachment(file);
+        const selected = Array.from(e.target.files || []);
+        if (selected.length === 0) return;
+        setAttachments((prev) => [...prev, ...selected]);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
         }
     };
 
@@ -479,6 +483,11 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             };
 
             mediaRecorder.onstop = () => {
+                if (shouldDiscardRecordingRef.current) {
+                    shouldDiscardRecordingRef.current = false;
+                    chunksRef.current = [];
+                    return;
+                }
                 if (chunksRef.current.length > 0) {
                     const blobType = mimeType || (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4');
                     const blob = new Blob(chunksRef.current, { type: blobType });
@@ -567,20 +576,26 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     };
 
     const pauseRecording = () => {
-        if (mediaRecorderRef.current && isRecording && !isPaused) {
+        if (!mediaRecorderRef.current || !isRecording || isPaused) return;
+        try {
             if (mediaRecorderRef.current.state === 'recording') {
                 mediaRecorderRef.current.pause();
                 setIsPaused(true);
             }
+        } catch (error) {
+            console.error('Failed to pause recording:', error);
         }
     };
 
     const resumeRecording = () => {
-        if (mediaRecorderRef.current && isRecording && isPaused) {
+        if (!mediaRecorderRef.current || !isRecording || !isPaused) return;
+        try {
             if (mediaRecorderRef.current.state === 'paused') {
                 mediaRecorderRef.current.resume();
                 setIsPaused(false);
             }
+        } catch (error) {
+            console.error('Failed to resume recording:', error);
         }
     };
 
@@ -595,6 +610,7 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
+            shouldDiscardRecordingRef.current = true;
             mediaRecorderRef.current.stop();
             if (audioStreamRef.current) {
                 audioStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -603,6 +619,9 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
             setIsRecording(false);
             setIsPaused(false);
             setAudioBlob(null);
+            if (audioURL && audioURL.startsWith('blob:')) {
+                URL.revokeObjectURL(audioURL);
+            }
             setAudioURL(null);
             setRecordingTime(0);
             chunksRef.current = [];
@@ -617,139 +636,124 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if ((!newMessage.trim() && !attachment && !audioBlob) || sending) return;
+        if ((!newMessage.trim() && attachments.length === 0 && !audioBlob) || sending) return;
 
         const messageBody = newMessage.trim();
-        const tempId = Date.now();
-        pendingTempIdsRef.current.add(tempId);
-
-        // Create optimistic message bach yban b7al b9a send (pending status)
-        const optimisticMessage = {
-            id: tempId,
-            tempId: tempId,
-            pending: true,
-            body: messageBody,
-            sender_id: currentUser.id,
-            sender: {
-                id: currentUser.id,
-                name: currentUser.name,
-                image: currentUser.image,
-            },
-            attachment_path: null,
-            attachment_type: null,
-            attachment_name: null,
-            attachment_size: null,
-            is_read: false,
-            read_at: null,
-            created_at: new Date().toISOString(),
-        };
-
-        // Add attachment preview if exists
-        if (attachment) {
-            const attachmentURL = URL.createObjectURL(attachment);
-            optimisticMessage.attachment_path = attachmentURL;
-            optimisticMessage.attachment_name = attachment.name;
-            optimisticMessage.attachment_size = attachment.size;
-
-            if (attachment.type.startsWith('image/')) {
-                optimisticMessage.attachment_type = 'image';
-            } else if (attachment.type.startsWith('video/')) {
-                optimisticMessage.attachment_type = 'video';
-            } else {
-                optimisticMessage.attachment_type = 'file';
-            }
-        }
-
-        if (audioBlob) {
-            optimisticMessage.attachment_path = audioURL;
-            optimisticMessage.attachment_type = 'audio';
-            optimisticMessage.attachment_name = 'voice-message.webm';
-            optimisticMessage.attachment_size = audioBlob.size;
-            // Use preview duration if available
-            if (audioDuration['preview']) {
-                optimisticMessage.audio_duration = audioDuration['preview'];
-            }
-        }
-
-        // Zwid message m9bl ma yban b7al send (optimistic)
-        setMessages((prev) => [...prev, optimisticMessage]);
-        scrollToBottom();
-
-        // Save form data before clearing
         const formMessageBody = messageBody;
-        const formAttachment = attachment;
+        const formAttachments = attachments;
         const formAudioBlob = audioBlob;
         const prevAudioURL = audioURL;
+        let hasSentAnything = false;
+        let shouldRevokePrevAudioUrl = Boolean(prevAudioURL && typeof prevAudioURL === 'string' && prevAudioURL.startsWith('blob:'));
 
-        // Clear form
+        // Clear form (UI should feel instant)
         setNewMessage('');
-        setAttachment(null);
         setAudioBlob(null);
         setAudioURL(null);
         setRecordingTime(0);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-        // Draft is sent (or attempting to send) → remove draft for this conversation
-        draftsByConversationRef.current.delete(conversation.id);
 
-        // Prepare FormData for sending
-        setSending(true);
-        const formData = new FormData();
-        formData.append('body', formMessageBody);
-        formData.append('_token', getCsrfToken());
+        const sendSingle = async ({ body, file, audio }) => {
+            const tempId = Date.now() + Math.floor(Math.random() * 10000);
+            pendingTempIdsRef.current.add(tempId);
 
-        if (formAttachment) {
-            formData.append('attachment', formAttachment);
-            const attachmentType = formAttachment.type.startsWith('image/') ? 'image' : formAttachment.type.startsWith('video/') ? 'video' : 'file';
-            formData.append('attachment_type', attachmentType);
-        }
-
-        if (formAudioBlob) {
-            formData.append('attachment', formAudioBlob, 'audio.webm');
-            formData.append('attachment_type', 'audio');
-        }
-
-        try {
-            const response = await fetch(`/chat/conversation/${conversation.id}/send`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
+            let attachmentPreviewUrl = null;
+            const optimisticMessage = {
+                id: tempId,
+                tempId,
+                pending: true,
+                body: body || '',
+                sender_id: currentUser.id,
+                sender: {
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    image: currentUser.image,
                 },
-                body: formData,
-            });
+                attachment_path: null,
+                attachment_type: null,
+                attachment_name: null,
+                attachment_size: null,
+                is_read: false,
+                read_at: null,
+                created_at: new Date().toISOString(),
+            };
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Failed to send message' }));
-                throw new Error(errorData.error || 'Failed to send message');
+            if (file) {
+                attachmentPreviewUrl = URL.createObjectURL(file);
+                optimisticMessage.attachment_path = attachmentPreviewUrl;
+                optimisticMessage.attachment_name = file.name;
+                optimisticMessage.attachment_size = file.size;
+                optimisticMessage.attachment_type = file.type.startsWith('image/')
+                    ? 'image'
+                    : file.type.startsWith('video/')
+                      ? 'video'
+                      : 'file';
             }
 
-            const data = await response.json();
-            const newMessageData = data.message;
+            if (audio) {
+                optimisticMessage.attachment_path = prevAudioURL;
+                optimisticMessage.attachment_type = 'audio';
+                optimisticMessage.attachment_name = 'voice-message.webm';
+                optimisticMessage.attachment_size = audio.size;
+                if (audioDuration['preview']) {
+                    optimisticMessage.audio_duration = audioDuration['preview'];
+                }
+            }
 
-            // When you send a message, mark all previous messages from the other user as read
-            // This happens on the backend, but we also update the UI immediately
-            setMessages((prev) => {
-                // Remove optimistic message
-                const filtered = prev.filter((msg) => msg.tempId !== tempId);
+            setMessages((prev) => [...prev, optimisticMessage]);
+            scrollToBottom();
 
-                // Mark all messages from other user as read (since you replied, you've seen them)
-                const updated = filtered.map((msg) => {
-                    if (msg.sender_id !== currentUser.id && !msg.is_read) {
-                        return {
-                            ...msg,
-                            is_read: true,
-                            read_at: new Date().toISOString(),
-                        };
-                    }
-                    return msg;
+            const formData = new FormData();
+            formData.append('body', body || '');
+            formData.append('_token', getCsrfToken());
+
+            if (file) {
+                formData.append('attachment', file);
+                const attachmentType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file';
+                formData.append('attachment_type', attachmentType);
+            }
+
+            if (audio) {
+                formData.append('attachment', audio, 'audio.webm');
+                formData.append('attachment_type', 'audio');
+            }
+
+            try {
+                const response = await fetch(`/chat/conversation/${conversation.id}/send`, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                    body: formData,
                 });
 
-                // Add real message (avoid duplicates)
-                const exists = updated.some((msg) => msg.id === newMessageData.id);
-                if (!exists) {
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to send message' }));
+                    throw new Error(errorData.error || 'Failed to send message');
+                }
+
+                const data = await response.json();
+                const newMessageData = data.message;
+
+                setMessages((prev) => {
+                    if (attachmentPreviewUrl && attachmentPreviewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(attachmentPreviewUrl);
+                    }
+                    const filtered = prev.filter((msg) => msg.tempId !== tempId);
+                    const updated = filtered.map((msg) => {
+                        if (msg.sender_id !== currentUser.id && !msg.is_read) {
+                            return { ...msg, is_read: true, read_at: new Date().toISOString() };
+                        }
+                        return msg;
+                    });
+
+                    const exists = updated.some((msg) => msg.id === newMessageData.id);
+                    if (exists) return updated;
+
                     return [
                         ...updated,
                         {
@@ -761,27 +765,60 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
                             },
                         },
                     ];
+                });
+
+                pendingTempIdsRef.current.delete(tempId);
+                scrollToBottom();
+                hasSentAnything = true;
+            } catch (error) {
+                setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
+                pendingTempIdsRef.current.delete(tempId);
+                if (attachmentPreviewUrl && attachmentPreviewUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(attachmentPreviewUrl);
                 }
-                return updated;
-            });
+                throw error;
+            }
+        };
 
-            // Clean up temp ID
-            pendingTempIdsRef.current.delete(tempId);
-
-            // Clean up audio URL if it was a blob
-            if (prevAudioURL && prevAudioURL.startsWith('blob:')) {
-                URL.revokeObjectURL(prevAudioURL);
+        setSending(true);
+        try {
+            if (formAudioBlob) {
+                await sendSingle({ body: formMessageBody, audio: formAudioBlob });
+                // Audio was successfully uploaded; we can revoke the preview URL.
+                shouldRevokePrevAudioUrl = true;
+            } else if (formAttachments.length > 0) {
+                // Send each attachment as its own message (backend currently supports one file per request)
+                const remaining = [...formAttachments];
+                for (let i = 0; i < formAttachments.length; i++) {
+                    const file = remaining[0];
+                    await sendSingle({ body: i === 0 ? formMessageBody : '', file });
+                    remaining.shift();
+                    setAttachments([...remaining]);
+                }
+                setAttachments([]);
+            } else {
+                await sendSingle({ body: formMessageBody });
             }
 
-            scrollToBottom();
+            draftsByConversationRef.current.delete(conversation.id);
         } catch (error) {
-            // 7yed failed optimistic message
-            setMessages((prev) => prev.filter((msg) => msg.tempId !== tempId));
-            pendingTempIdsRef.current.delete(tempId);
+            // If sending attachments failed mid-loop, preserve whatever is still in state for retry.
+            if (!hasSentAnything && formMessageBody) {
+                setNewMessage(formMessageBody);
+            }
+            if (!hasSentAnything && formAudioBlob) {
+                // Restore audio preview so user can retry without re-recording.
+                setAudioBlob(formAudioBlob);
+                setAudioURL(prevAudioURL);
+                // Don't revoke the preview URL if we're restoring it back into state.
+                shouldRevokePrevAudioUrl = false;
+            }
             alert(error.message || 'Failed to send message. Please try again.');
         } finally {
+            if (shouldRevokePrevAudioUrl && prevAudioURL && prevAudioURL.startsWith('blob:')) {
+                URL.revokeObjectURL(prevAudioURL);
+            }
             setSending(false);
-            // Clean up preview duration
             setAudioDuration((prev) => {
                 const newState = { ...prev };
                 delete newState['preview'];
@@ -950,95 +987,101 @@ export default function ChatBox({ conversation, onClose, onBack, isExpanded, onE
     const hasMultipleAttachments = allAttachments.length > 1;
 
     return (
-        <div className="relative flex h-full overflow-hidden bg-background">
-            {/* Main Chat Area */}
-            <div className={cn('flex h-full w-full flex-col transition-all duration-300', previewAttachment && 'pointer-events-none opacity-0')}>
-                <ChatHeader
-                    conversation={conversation}
-                    onClose={showToolbox ? () => setShowToolbox(false) : onClose}
-                    onBack={onBack}
-                    onToolboxToggle={() => setShowToolbox(!showToolbox)}
-                />
-
-                <div className="flex min-h-0 flex-1 overflow-hidden">
-                    <MessageList
-                        messages={messages}
-                        loading={loading}
-                        currentUser={currentUser}
+        <Sheet open={showToolbox} onOpenChange={setShowToolbox}>
+            <div className="relative flex h-full overflow-hidden bg-background">
+                {/* Main Chat Area */}
+                <div className={cn('flex h-full w-full flex-col transition-all duration-300', previewAttachment && 'pointer-events-none opacity-0')}>
+                    <ChatHeader
                         conversation={conversation}
-                        isPlayingAudio={isPlayingAudio}
-                        audioProgress={audioProgress}
-                        audioDuration={audioDuration}
-                        showMenuForMessage={showMenuForMessage}
-                        onPlayAudio={handlePlayAudio}
-                        onDeleteMessage={handleDeleteMessage}
-                        onMenuToggle={setShowMenuForMessage}
-                        onPreviewAttachment={handlePreviewAttachment}
-                        onDownloadAttachment={handleDownloadAttachment}
-                        formatMessageTime={formatMessageTime}
-                        formatSeenTime={formatSeenTime}
-                        messagesEndRef={messagesEndRef}
-                        showToolbox={showToolbox}
-                        previewAttachment={previewAttachment}
-                        typingUsers={typingUsers}
-                        recordingUsers={recordingUsers}
+                        onClose={showToolbox ? () => setShowToolbox(false) : onClose}
+                        onBack={onBack}
+                        onToolboxToggle={() => setShowToolbox(!showToolbox)}
                     />
 
-                    {/* Toolbox f right side dial messages */}
-                    {showToolbox && !previewAttachment && (
-                        <div className="w-full flex-shrink-0 border-l">
-                            <ChatToolbox
-                                conversationId={conversation.id}
-                                otherUserId={conversation.other_user.id}
-                                onPreviewAttachment={handlePreviewAttachment}
+                    <div className="flex min-h-0 flex-1 overflow-hidden">
+                        <div className="relative min-h-0 flex-1">
+                            {/* Subtle chat wallpaper */}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-alpha/5 via-transparent to-transparent opacity-60" />
+                            <MessageList
                                 messages={messages}
+                                loading={loading}
+                                currentUser={currentUser}
+                                conversation={conversation}
+                            isPlayingAudio={isPlayingAudio}
+                            audioProgress={audioProgress}
+                            audioDuration={audioDuration}
+                            showMenuForMessage={showMenuForMessage}
+                            onPlayAudio={handlePlayAudio}
+                            onDeleteMessage={handleDeleteMessage}
+                            onMenuToggle={setShowMenuForMessage}
+                            onPreviewAttachment={handlePreviewAttachment}
+                            onDownloadAttachment={handleDownloadAttachment}
+                            formatMessageTime={formatMessageTime}
+                            formatSeenTime={formatSeenTime}
+                            messagesEndRef={messagesEndRef}
+                            previewAttachment={previewAttachment}
+                            typingUsers={typingUsers}
+                            recordingUsers={recordingUsers}
                             />
                         </div>
-                    )}
-                </div>
+                    </div>
 
-                <MessageInput
-                    newMessage={newMessage}
-                    setNewMessage={setNewMessage}
-                    sending={sending}
-                    isRecording={isRecording}
-                    recordingTime={recordingTime}
-                    attachment={attachment}
-                    setAttachment={setAttachment}
-                    audioBlob={audioBlob}
-                    audioURL={audioURL}
-                    setAudioBlob={setAudioBlob}
-                    setAudioURL={setAudioURL}
-                    mediaRecorderRef={mediaRecorderRef}
-                    fileInputRef={fileInputRef}
-                    handleFileSelect={handleFileSelect}
-                    startRecording={startRecording}
-                    stopRecording={stopRecording}
-                    cancelRecording={cancelRecording}
-                    handleSendMessage={handleSendMessage}
-                    isExpanded={isExpanded}
-                    audioDuration={audioDuration['preview']}
-                    onTypingStart={startTyping}
-                    onTypingStop={stopTyping}
-                    onPause={pauseRecording}
-                    onResume={resumeRecording}
-                />
-            </div>
-
-            {/* Preview Panel - Full Width */}
-            {previewAttachment && (
-                <div className="absolute inset-0 z-50 flex flex-col bg-background">
-                    <PreviewPanel
-                        attachment={previewAttachment}
-                        onClose={() => setPreviewAttachment(null)}
-                        onPrevious={handlePreviousPreview}
-                        onNext={handleNextPreview}
-                        hasMultiple={hasMultipleAttachments}
-                        currentIndex={previewIndex}
-                        totalCount={allAttachments.length}
+                    <MessageInput
+                        newMessage={newMessage}
+                        setNewMessage={setNewMessage}
+                        sending={sending}
+                        isRecording={isRecording}
+                        recordingTime={recordingTime}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                        audioBlob={audioBlob}
+                        audioURL={audioURL}
+                        setAudioBlob={setAudioBlob}
+                        setAudioURL={setAudioURL}
+                        mediaRecorderRef={mediaRecorderRef}
+                        fileInputRef={fileInputRef}
+                        handleFileSelect={handleFileSelect}
+                        startRecording={startRecording}
+                        stopRecording={stopRecording}
+                        cancelRecording={cancelRecording}
+                        handleSendMessage={handleSendMessage}
+                        isExpanded={isExpanded}
+                        audioDuration={audioDuration['preview']}
+                        onTypingStart={startTyping}
+                        onTypingStop={stopTyping}
+                    isPaused={isPaused}
+                        onPause={pauseRecording}
+                        onResume={resumeRecording}
                     />
                 </div>
+
+                {/* Preview Panel - Full Width */}
+                {previewAttachment && (
+                    <div className="absolute inset-0 z-50 flex flex-col bg-background">
+                        <PreviewPanel
+                            attachment={previewAttachment}
+                            onClose={() => setPreviewAttachment(null)}
+                            onPrevious={handlePreviousPreview}
+                            onNext={handleNextPreview}
+                            hasMultiple={hasMultipleAttachments}
+                            currentIndex={previewIndex}
+                            totalCount={allAttachments.length}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Toolbox rendered OUTSIDE chat container via portal */}
+            {!previewAttachment && (
+                <SheetContent side="right" className="p-0">
+                    <ChatToolbox
+                        conversationId={conversation.id}
+                        otherUserId={conversation.other_user.id}
+                        onPreviewAttachment={handlePreviewAttachment}
+                        messages={messages}
+                    />
+                </SheetContent>
             )}
-        </div>
+        </Sheet>
     );
 }

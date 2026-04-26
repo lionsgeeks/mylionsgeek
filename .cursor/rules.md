@@ -461,6 +461,110 @@ Before finalizing any Inertia + Laravel + React output, verify every item:
 - ❌ Use arbitrary Tailwind color classes when a CSS variable class exists
 - ❌ Build a custom UI primitive for something shadcn already covers
 
+
+## LionsGeek Web (Laravel + Inertia) + Mobile API — Do Not Break Rules
+
+This file defines **API + auth contracts** relied on by the React Native app (`mobile/lionsgeek-mobile`).
+If you change any item here, you must update the mobile app in the same PR/release.
+
+---
+
+## 1) Mobile authentication (Sanctum)
+
+- **Mobile uses Sanctum personal access tokens**.
+- **Login endpoint must stay public**:
+  - `POST /api/mobile/login`
+  - Response shape must remain:
+    - `{ token: string, user: object }`
+- **Forgot password endpoint must stay public**:
+  - `POST /api/mobile/forgot-password`
+- **Token verification endpoint must remain valid**:
+  - `GET /api/mobile/profile`
+  - Used by mobile `app/loading.jsx` to decide whether to enter the app or redirect to login.
+
+---
+
+## 2) Protected mobile API routing structure
+
+The mobile app depends on these backend routing invariants:
+
+- Protected endpoints are under:
+  - `Route::middleware('auth:sanctum')->prefix('mobile')->group(...)`
+- Chat, calls, training, reservations, etc. must remain accessible under `/api/mobile/*`.
+
+---
+
+## 3) Endpoint path stability (mobile currently calls these)
+
+### Mobile-prefixed endpoints (must stay under `/api/mobile/*`)
+- Feed/posts:
+  - `GET /api/mobile/feed`
+  - `POST /api/mobile/posts`
+  - `POST /api/mobile/posts/repost`
+- Training:
+  - `GET /api/mobile/trainings`
+  - `GET /api/mobile/trainings/{id}`
+  - `POST /api/mobile/attendances`
+  - `POST /api/mobile/attendance/save`
+- Leaderboard:
+  - `GET /api/mobile/leaderboard`
+- Search:
+  - `GET /api/mobile/search`
+- Chat:
+  - `GET /api/mobile/chat`
+  - `GET /api/mobile/chat/following-ids`
+  - `GET /api/mobile/chat/unread-count`
+  - `GET /api/mobile/chat/conversation/{userId}`
+  - `GET /api/mobile/chat/conversation/{conversationId}/messages`
+  - `POST /api/mobile/chat/conversation/{conversationId}/send` (multipart/form-data)
+  - `POST /api/mobile/chat/conversation/{conversationId}/read`
+  - `DELETE /api/mobile/chat/message/{messageId}`
+  - `DELETE /api/mobile/chat/conversation/{conversationId}`
+- Push:
+  - `POST /api/mobile/push-token` with body `{ expo_push_token: string }`
+
+### Non-mobile-prefixed endpoints (mobile still uses them today)
+These are called by the mobile app without the `mobile/` prefix; keep them stable unless you update mobile too:
+
+- Places:
+  - `GET /api/places`
+- Users:
+  - `GET /api/users`
+- Equipment:
+  - `GET /api/equipment`
+- Reservations creation:
+  - `POST /api/reservations/store`
+  - `POST /api/cowork/reserve`
+
+---
+
+## 4) Request auth header contract
+
+Mobile sends:
+
+- `Authorization: Bearer <sanctum_token>`
+- `Accept: application/json`
+
+Protected endpoints must accept that (and should not require cookie/session auth).
+
+---
+
+## 5) User payload contract (returned to mobile)
+
+Mobile expects the login/profile payload to include at least:
+- `id`, `name`, `email`
+- `image` and/or `avatar` (filename or full URL)
+- `roles` (array-like; mobile checks roles to decide admin/coach UI)
+
+---
+
+## 6) Change management rule
+
+If you must break an invariant:
+- Update backend + mobile together.
+- Provide a short migration note and test plan in the PR.
+
+
 ---
 
 *You are not just an autocomplete tool. You are a thoughtful engineering partner. Write code you'd be proud to put your name on.*

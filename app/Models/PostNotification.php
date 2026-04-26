@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class PostNotification extends Model
 {
+    public const TYPE_LIKE = 'like';
+    public const TYPE_COMMENT = 'comment';
+    public const TYPE_COMMENT_LIKE = 'comment_like';
+    public const TYPE_MENTION = 'mention';
+    public const TYPE_REPOST = 'repost';
+    public const TYPE_SHARE = 'share';
+    public const TYPE_REPOST_LIKE = 'repost_like';
+    public const TYPE_REPOST_COMMENT = 'repost_comment';
+
     protected $fillable = [
         'user_id',           // Post owner who receives notification
         'sender_id',         // User who liked/commented
@@ -44,7 +53,16 @@ class PostNotification extends Model
         }
 
         // Validate notification type
-        if (!in_array($type, ['like', 'comment', 'comment_like', 'mention'])) {
+        if (!in_array($type, [
+            self::TYPE_LIKE,
+            self::TYPE_COMMENT,
+            self::TYPE_COMMENT_LIKE,
+            self::TYPE_MENTION,
+            self::TYPE_REPOST,
+            self::TYPE_SHARE,
+            self::TYPE_REPOST_LIKE,
+            self::TYPE_REPOST_COMMENT,
+        ], true)) {
             return null;
         }
 
@@ -74,17 +92,29 @@ class PostNotification extends Model
                         $message = '';
                         
                         switch ($type) {
-                            case 'like':
+                            case self::TYPE_LIKE:
                                 $message = "{$sender->name} liked your post";
                                 break;
-                            case 'comment':
+                            case self::TYPE_COMMENT:
                                 $message = "{$sender->name} commented on your post";
                                 break;
-                            case 'comment_like':
+                            case self::TYPE_COMMENT_LIKE:
                                 $message = "{$sender->name} liked your comment";
                                 break;
-                            case 'mention':
+                            case self::TYPE_MENTION:
                                 $message = "{$sender->name} mentioned you in a post";
+                                break;
+                            case self::TYPE_REPOST:
+                                $message = "{$sender->name} reposted your post";
+                                break;
+                            case self::TYPE_SHARE:
+                                $message = "{$sender->name} shared a post with you";
+                                break;
+                            case self::TYPE_REPOST_LIKE:
+                                $message = "{$sender->name} liked the post you reposted";
+                                break;
+                            case self::TYPE_REPOST_COMMENT:
+                                $message = "{$sender->name} commented on the post you reposted";
                                 break;
                         }
                         

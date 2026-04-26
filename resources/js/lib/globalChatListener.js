@@ -30,6 +30,20 @@ export const subscribeToConversationForNotifications = async (conversationId, co
             return;
         }
 
+        // Avoid duplicate toast/desktop notifications for post_share messages.
+        // Post shares already generate a dedicated in-app notification via notifications:{userId}.
+        try {
+            const raw = typeof messageData?.body === 'string' ? messageData.body.trim() : '';
+            if (raw.startsWith('{')) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.type === 'post_share') {
+                    return;
+                }
+            }
+        } catch {
+            // ignore parsing errors
+        }
+
         // Show toast notification unconditionally
         if (window.showChatToast) {
             window.showChatToast({

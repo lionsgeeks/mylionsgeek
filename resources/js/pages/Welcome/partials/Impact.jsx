@@ -1,9 +1,8 @@
 import { Award, Calendar, Clock, Users } from 'lucide-react';
 
-const Impact = () => {
+const Impact = ({ users }) => {
     const items = [
-        { icon: Users, value: '2,500+', label: 'Active Users' },
-        { icon: Calendar, value: '15k+', label: 'Sessions Scheduled' },
+        { icon: Users, value: users, label: 'Active Users' },
         { icon: Award, value: '98%', label: 'Satisfaction Rate' },
         { icon: Clock, value: '24/7', label: 'Platform Uptime' },
     ];
@@ -17,7 +16,7 @@ const Impact = () => {
                             Numbers that speak to our commitment to excellence in digital education.
                         </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-8 md:grid-cols-3">
                         {items.map((stat, idx) => (
                             <div
                                 key={idx}

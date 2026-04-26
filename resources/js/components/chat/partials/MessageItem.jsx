@@ -12,6 +12,8 @@ export default function MessageItem({
     currentUser,
     otherUser,
     showDateSeparator,
+    groupWithPrev = false,
+    groupWithNext = false,
     isPlayingAudio,
     audioProgress,
     audioDuration,
@@ -24,6 +26,19 @@ export default function MessageItem({
     formatMessageTime,
     formatSeenTime,
 }) {
+    const postShare = (() => {
+        const raw = message?.body;
+        if (!raw || typeof raw !== 'string') return null;
+        if (!raw.trim().startsWith('{')) return null;
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed?.type !== 'post_share' || !parsed?.post_id) return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    })();
+
     // Format file size
     const formatFileSize = (bytes) => {
         if (!bytes) return '';
@@ -46,6 +61,14 @@ export default function MessageItem({
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
+
+    const showLeftAvatar = !isCurrentUser && !groupWithPrev;
+    const showRightAvatar = isCurrentUser && !groupWithPrev;
+
+    const bubbleRadius = isCurrentUser
+        ? cn('rounded-2xl', groupWithPrev && 'rounded-tr-md', groupWithNext && 'rounded-br-md')
+        : cn('rounded-2xl', groupWithPrev && 'rounded-tl-md', groupWithNext && 'rounded-bl-md');
+
     return (
         <>
             {showDateSeparator && (
@@ -59,23 +82,73 @@ export default function MessageItem({
                     </span>
                 </div>
             )}
-            <div className={cn('group relative mb-4 flex', isCurrentUser ? 'justify-end' : 'justify-start')}>
+            <div className={cn('group relative flex', groupWithNext ? 'mb-1' : 'mb-3', isCurrentUser ? 'justify-end' : 'justify-start')}>
                 {!isCurrentUser && (
-                    <button
-                        onClick={() => router.visit(`/students/${otherUser.id}`)}
-                        className="mr-2 flex-shrink-0 transition-opacity hover:opacity-80"
-                    >
-                        <Avatar className="h-8 w-8 cursor-pointer" image={otherUser.image} name={otherUser.name} />
-                    </button>
+                    <div className="mr-2 w-8 flex-shrink-0">
+                        {showLeftAvatar ? (
+                            <button
+                                type="button"
+                                onClick={() => router.visit(`/students/${otherUser.id}`)}
+                                className="flex-shrink-0 transition-opacity hover:opacity-80"
+                                title={otherUser?.name}
+                            >
+                                <Avatar className="h-8 w-8 cursor-pointer" image={otherUser.image} name={otherUser.name} />
+                            </button>
+                        ) : null}
+                    </div>
                 )}
                 <div
                     className={cn(
-                        'group/message relative max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm',
-                        isCurrentUser ? 'rounded-br-md bg-alpha text-black' : 'rounded-bl-md bg-muted',
+                        'group/message relative max-w-[78%] px-4 py-2.5 text-sm shadow-sm',
+                        bubbleRadius,
+                        isCurrentUser ? 'bg-alpha text-beta' : 'bg-muted text-foreground',
                     )}
                 >
-                    {message.body && (
-                        <p className={cn('leading-relaxed break-words whitespace-pre-wrap', isCurrentUser ? 'text-beta' : '')}>{message.body}</p>
+                    {!postShare && message.body && (
+                        <p className={cn('leading-relaxed break-words whitespace-pre-wrap')}>{message.body}</p>
+                    )}
+
+                    {postShare && (
+                        <button
+                            type="button"
+                            onClick={() => router.visit(`/students/feed#post-${postShare.post_id}`)}
+                            className={cn(
+                                'mt-1 w-full overflow-hidden rounded-xl border text-left transition hover:opacity-95',
+                                isCurrentUser ? 'border-beta/20 bg-beta/10' : 'border-border bg-background',
+                            )}
+                        >
+                            <div className="flex items-center gap-3 p-3">
+                                <Avatar className="h-9 w-9" image={postShare.author_image} name={postShare.author_name} />
+                                <div className="min-w-0 flex-1">
+                                    <div className={cn('truncate text-sm font-semibold', isCurrentUser ? 'text-beta' : 'text-foreground')}>
+                                        {postShare.author_name || 'Post'}
+                                    </div>
+                                    {postShare.caption ? (
+                                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{postShare.caption}</div>
+                                    ) : null}
+                                </div>
+                            </div>
+
+                            {postShare.image ? (
+                                <div className="px-3 pb-3">
+                                    <img
+                                        src={
+                                            String(postShare.image).startsWith('/storage/') || String(postShare.image).startsWith('http')
+                                                ? postShare.image
+                                                : `/storage/img/posts/${postShare.image}`
+                                        }
+                                        alt={postShare.author_name ? `Post by ${postShare.author_name}` : 'Shared post'}
+                                        className="h-44 w-full rounded-lg object-cover"
+                                    />
+                                </div>
+                            ) : null}
+
+                            {postShare.description ? (
+                                <div className="px-3 pb-3">
+                                    <div className="line-clamp-3 text-sm text-foreground/90 dark:text-light/90">{postShare.description}</div>
+                                </div>
+                            ) : null}
+                        </button>
                     )}
 
                     {message.attachment_type === 'image' && message.attachment_path && (
@@ -184,8 +257,8 @@ export default function MessageItem({
 
                     <div
                         className={cn(
-                            'mt-1.5 flex items-center justify-end gap-1.5 text-xs',
-                            isCurrentUser ? 'text-beta/70' : 'text-muted-foreground',
+                            'mt-1.5 flex items-center justify-end gap-1.5 text-[11px] opacity-70 transition-opacity group-hover/message:opacity-100',
+                            isCurrentUser ? 'text-beta' : 'text-muted-foreground',
                         )}
                     >
                         <span>{formatMessageTime(message.created_at)}</span>
@@ -235,12 +308,18 @@ export default function MessageItem({
                     )}
                 </div>
                 {isCurrentUser && (
-                    <button
-                        onClick={() => router.visit(`/students/${currentUser.id}`)}
-                        className="ml-2 flex-shrink-0 transition-opacity hover:opacity-80"
-                    >
-                        <Avatar className="h-8 w-8 cursor-pointer" image={currentUser.image} name={currentUser.name} />
-                    </button>
+                    <div className="ml-2 w-8 flex-shrink-0">
+                        {showRightAvatar ? (
+                            <button
+                                type="button"
+                                onClick={() => router.visit(`/students/${currentUser.id}`)}
+                                className="flex-shrink-0 transition-opacity hover:opacity-80"
+                                title="Your profile"
+                            >
+                                <Avatar className="h-8 w-8 cursor-pointer" image={currentUser.image} name={currentUser.name} />
+                            </button>
+                        ) : null}
+                    </div>
                 )}
             </div>
         </>
