@@ -36,7 +36,7 @@ class ProfileController extends Controller
             'email' => $user->email,
             'avatar' => $user->image ? url('storage/'.$user->image) : null,
             'image' => $user->image ?? null,
-            'image' => $user->cover ?? null,
+            'cover' => $user->cover ?? null,
             'roles' => $roles,
             'role' => $roles,
             'promo' => $user->promo ?? null,
