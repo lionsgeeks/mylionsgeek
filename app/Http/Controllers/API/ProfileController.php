@@ -11,7 +11,7 @@ class ProfileController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::guard('sanctum')->user();
+        $user = Auth::user();
 
         if (! $user) {
             return response()->json(['message' => 'Unauthenticated'], 401);

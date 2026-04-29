@@ -404,7 +404,7 @@ class ChatController extends Controller
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $user->id,
-            'body' => $request->body ?? '',
+            'body' => (string) ($request->body ?? ''),
             'attachment_path' => $attachmentPath,
             'attachment_type' => $attachmentType,
             'attachment_name' => $attachmentName,
