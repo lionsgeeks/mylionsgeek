@@ -6,6 +6,25 @@ import LikesModal from './LikesModal';
 import RepostModal from './RepostModal';
 import SendPostModal from './SendPostModal';
 
+const LionsGeekLogoIcon = ({ className, size = 20 }) => {
+    return (
+        <svg
+            className={className}
+            version="1.0"
+            xmlns="http://www.w3.org/2000/svg"
+            width={size}
+            height={size}
+            viewBox="0 0 301.000000 302.000000"
+            preserveAspectRatio="xMidYMid meet"
+        >
+            <g transform="translate(0.000000,302.000000) scale(0.100000,-0.100000)" fill="currentColor" stroke="none">
+                <path d="M705 3008 c-41 -120 -475 -1467 -475 -1474 1 -9 1238 -910 1257 -916 6 -2 294 203 640 454 l631 458 -84 257 c-46 142 -154 477 -241 745 l-158 488 -783 0 c-617 0 -784 -3 -787 -12z m1265 -412 c0 -3 65 -205 145 -451 80 -245 145 -448 145 -450 0 -2 -173 -130 -384 -283 l-384 -280 -384 279 c-283 207 -382 284 -380 297 5 22 283 875 289 885 4 7 953 10 953 3z" />
+                <path d="M1176 1661 c21 -15 101 -74 178 -130 l139 -101 31 23 c17 13 92 68 166 122 74 54 139 102 144 106 6 5 -145 9 -344 9 l-354 0 40 -29z" />
+            </g>
+        </svg>
+    );
+};
+
 const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCommentPress, variant = 'default' }) => {
     const { auth } = usePage().props;
     const isFacebook = variant === 'facebook';
@@ -155,26 +174,17 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
-                                ? `flex flex-1 cursor-pointer items-center justify-center gap-2 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
+                                ? `flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
                                 }`
-                                : `flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                : `flex cursor-pointer flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
                                 }`
                         }
+                        aria-pressed={isLiked}
                     >
-                        <svg
-                            className={`h-5 w-5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                            />
-                        </svg>
-                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>{isLiked ? 'Liked' : 'Like'}</span>
+                        <LionsGeekLogoIcon className="h-5 w-5" />
+                        <span className={isFacebook ? 'text-[12px] font-semibold leading-none' : 'text-[12px] font-semibold leading-none'}>
+                            {isLiked ? 'Geeked' : 'Geek'}
+                        </span>
                     </button>
 
                     {/* Comment Button */}
