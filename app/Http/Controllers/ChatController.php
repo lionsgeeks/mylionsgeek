@@ -26,24 +26,13 @@ class ChatController extends Controller
         try {
             $user = Auth::user();
 
-            // Get IDs of users that the current user follows
-            $followingIds = \App\Models\Follower::where('follower_id', $user->id)
-                ->pluck('followed_id')
-                ->toArray();
-
-            // If no following IDs, return empty array
-            if (empty($followingIds)) {
-                return response()->json([
-                    'conversations' => [],
-                ]);
-            }
-
-            $conversations = Conversation::where(function ($query) use ($user, $followingIds) {
+            // IMPORTANT:
+            // The inbox must include conversations where the user is the receiver,
+            // even if they don't follow the sender back.
+            // We keep "start/send messages only to users you follow" enforced elsewhere.
+            $conversations = Conversation::where(function ($query) use ($user) {
                 $query->where('user_one_id', $user->id)
-                    ->whereIn('user_two_id', $followingIds);
-            })->orWhere(function ($query) use ($user, $followingIds) {
-                $query->where('user_two_id', $user->id)
-                    ->whereIn('user_one_id', $followingIds);
+                    ->orWhere('user_two_id', $user->id);
             })
             ->with(['userOne', 'userTwo'])
             ->orderBy('last_message_at', 'desc')
@@ -136,18 +125,6 @@ class ChatController extends Controller
             return response()->json(['error' => 'Cannot create conversation with yourself'], 400);
         }
 
-        // Check if current user is following the target user
-        $isFollowing = \App\Models\Follower::where('follower_id', $currentUser->id)
-            ->where('followed_id', $userId)
-            ->exists();
-
-        if (!$isFollowing) {
-            if (request()->header('X-Inertia')) {
-                return redirect()->back()->withErrors(['error' => 'You can only message users you follow']);
-            }
-            return response()->json(['error' => 'You can only message users you follow'], 403);
-        }
-
         // Check if conversation exists
         $conversation = Conversation::where(function ($query) use ($currentUser, $userId) {
             $query->where('user_one_id', $currentUser->id)
@@ -157,8 +134,19 @@ class ChatController extends Controller
                 ->where('user_two_id', $currentUser->id);
         })->first();
 
-        // Create if doesn't exist
+        // If no existing conversation, only allow creating one when the current user follows the target user.
         if (!$conversation) {
+            $isFollowing = \App\Models\Follower::where('follower_id', $currentUser->id)
+                ->where('followed_id', $userId)
+                ->exists();
+
+            if (!$isFollowing) {
+                if (request()->header('X-Inertia')) {
+                    return redirect()->back()->withErrors(['error' => 'You can only message users you follow']);
+                }
+                return response()->json(['error' => 'You can only message users you follow'], 403);
+            }
+
             $conversation = Conversation::create([
                 'user_one_id' => min($currentUser->id, $userId),
                 'user_two_id' => max($currentUser->id, $userId),
