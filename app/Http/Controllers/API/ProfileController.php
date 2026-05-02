@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserSocialLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -59,6 +60,12 @@ class ProfileController extends Controller
 
         // Always include last_online for profile display
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
+
+        // Always expose own editable fields
+        $userData['phone']  = $user->phone ?? null;
+        $userData['status'] = $user->status ?? null;
+        $userData['resume'] = $user->resume ?? null;
+        $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
@@ -145,6 +152,123 @@ class ProfileController extends Controller
         }
 
         return response()->json($userData);
+    }
+
+    /**
+     * Update the authenticated user's own profile (name, email, phone, status, avatar, resume).
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $data = $request->validate([
+            'name'   => 'sometimes|string|max:255',
+            'email'  => 'sometimes|email|max:255',
+            'phone'  => 'sometimes|nullable|string|max:30',
+            'status' => 'sometimes|nullable|string|max:255',
+            'image'  => 'sometimes|file|image|max:4096',
+            'resume' => 'sometimes|file|mimes:pdf,doc,docx|max:10240',
+        ]);
+
+        if ($request->hasFile('image')) {
+            $file     = $request->file('image');
+            $filename = $file->hashName();
+            $file->move(public_path('/storage/img/profile'), $filename);
+            $data['image'] = $filename;
+        }
+
+        if ($request->hasFile('resume')) {
+            $file     = $request->file('resume');
+            $filename = $file->hashName();
+            $file->move(public_path('/storage/resume'), $filename);
+            $data['resume'] = $filename;
+        }
+
+        $allowed = ['name', 'email', 'phone', 'status', 'image', 'resume'];
+        User::where('id', $user->id)->update(array_intersect_key($data, array_flip($allowed)));
+
+        $fresh = User::find($user->id);
+
+        return response()->json([
+            'message' => 'Profile updated',
+            'data'    => [
+                'id'     => $fresh->id,
+                'name'   => $fresh->name,
+                'email'  => $fresh->email,
+                'phone'  => $fresh->phone,
+                'status' => $fresh->status,
+                'image'  => $fresh->image,
+                'resume' => $fresh->resume,
+            ],
+        ]);
+    }
+
+    /**
+     * List the authenticated user's social links.
+     */
+    public function listSocialLinks(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $links = $user->socialLinks()->ordered()->get(['id', 'title', 'url']);
+
+        return response()->json(['data' => $links]);
+    }
+
+    /**
+     * Add a social link for the authenticated user.
+     */
+    public function addSocialLink(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $data = $request->validate([
+            'title' => 'required|string|max:80',
+            'url'   => 'required|string|max:2048',
+        ]);
+
+        $link = UserSocialLink::create([
+            'user_id'    => $user->id,
+            'title'      => $data['title'],
+            'url'        => $data['url'],
+            'sort_order' => UserSocialLink::where('user_id', $user->id)->max('sort_order') + 1,
+        ]);
+
+        return response()->json(['data' => $link], 201);
+    }
+
+    /**
+     * Delete a social link belonging to the authenticated user.
+     */
+    public function deleteSocialLink(Request $request, int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $link = UserSocialLink::where('id', $id)->where('user_id', $user->id)->first();
+
+        if (! $link) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        $link->delete();
+
+        return response()->json(['message' => 'Deleted']);
     }
 
     /**
