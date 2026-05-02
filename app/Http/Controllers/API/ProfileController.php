@@ -143,6 +143,69 @@ class ProfileController extends Controller
     }
 
     /**
+     * Return the list of users who follow the given user.
+     * Each entry includes `is_following` — whether the authenticated viewer already follows that user.
+     */
+    public function listFollowers(Request $request, int $userId)
+    {
+        $currentUser = Auth::guard('sanctum')->user();
+
+        if (! $currentUser) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $user = User::findOrFail($userId);
+
+        // Pre-fetch the IDs the current viewer already follows to avoid N+1 queries.
+        $viewerFollowingIds = $currentUser->following()->pluck('users.id')->toArray();
+
+        $followers = $user->followers()
+            ->select('users.id', 'users.name', 'users.image', 'users.promo', 'users.status')
+            ->get()
+            ->map(fn ($u) => [
+                'id'           => $u->id,
+                'name'         => $u->name,
+                'image'        => $u->image,
+                'promo'        => $u->promo,
+                'status'       => $u->status,
+                'is_following' => in_array($u->id, $viewerFollowingIds),
+            ]);
+
+        return response()->json(['data' => $followers]);
+    }
+
+    /**
+     * Return the list of users the given user is following.
+     * Each entry includes `is_following` — whether the authenticated viewer already follows that user.
+     */
+    public function listFollowing(Request $request, int $userId)
+    {
+        $currentUser = Auth::guard('sanctum')->user();
+
+        if (! $currentUser) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $user = User::findOrFail($userId);
+
+        $viewerFollowingIds = $currentUser->following()->pluck('users.id')->toArray();
+
+        $following = $user->following()
+            ->select('users.id', 'users.name', 'users.image', 'users.promo', 'users.status')
+            ->get()
+            ->map(fn ($u) => [
+                'id'           => $u->id,
+                'name'         => $u->name,
+                'image'        => $u->image,
+                'promo'        => $u->promo,
+                'status'       => $u->status,
+                'is_following' => in_array($u->id, $viewerFollowingIds),
+            ]);
+
+        return response()->json(['data' => $following]);
+    }
+
+    /**
      * Follow a user (mobile). If already followed, this is a no-op.
      */
     public function follow(Request $request, int $userId)
@@ -161,13 +224,15 @@ class ProfileController extends Controller
 
         $already = $currentUser->following()->where('followed_id', $target->id)->exists();
 
-        if (! $already) {
+        if ($already) {
+            $currentUser->following()->detach($target->id);
+        } else {
             $currentUser->following()->syncWithoutDetaching([$target->id]);
         }
 
         return response()->json([
-            'followed' => true,
-            'user_id' => (int) $target->id,
+            'followed' => ! $already,
+            'user_id'  => (int) $target->id,
         ]);
     }
 }
