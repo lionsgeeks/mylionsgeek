@@ -128,6 +128,11 @@ class ProfileController extends Controller
         // Add posts count
         $userData['posts_count'] = $user->posts()->count();
 
+        // Whether the current authenticated viewer follows this user
+        $userData['is_following'] = $currentUser
+            ? $currentUser->following()->where('followed_id', $user->id)->exists()
+            : false;
+
         // Sensitive fields - only for admins
         if ($isAdmin) {
             $userData['phone'] = $user->phone ?? null;
