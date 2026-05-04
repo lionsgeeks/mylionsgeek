@@ -6,18 +6,11 @@ import RightColumn from './profile/RightColumn';
 const StudentProfile = ({ user, profilePostsPreview = [], profilePostsTotal = 0, nested = false }) => {
     const currentUser = user.user;
 
-    const userFunctionality = (user) => {
-        if (user?.field == 'coding') {
-            return 'Full Stack Developer';
-        }
-        return 'Content Creator';
-    };
-
     const inner = (
         <div className="min-h-screen bg-light dark:bg-dark">
             <div className="max-w-full px-4 py-6">
                 {/* Profile Header Card */}
-                <Header user={currentUser} userFunctionality={userFunctionality} />
+                <Header user={currentUser} />
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

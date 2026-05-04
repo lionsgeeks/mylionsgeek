@@ -64,6 +64,7 @@ class ProfileController extends Controller
         // Always expose own editable fields
         $userData['phone']  = $user->phone ?? null;
         $userData['status'] = $user->status ?? null;
+        $userData['speciality'] = $user->speciality ?? null;
         $userData['resume'] = $user->resume ?? null;
         $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
@@ -127,6 +128,7 @@ class ProfileController extends Controller
 
         // Always include last_online
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
+        $userData['speciality'] = $user->speciality ?? null;
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
@@ -170,6 +172,7 @@ class ProfileController extends Controller
             'email'  => 'sometimes|email|max:255',
             'phone'  => 'sometimes|nullable|string|max:30',
             'status' => 'sometimes|nullable|string|max:255',
+            'speciality' => 'sometimes|nullable|string|max:255',
             'image'  => 'sometimes|file|image|max:4096',
             'resume' => 'sometimes|file|mimes:pdf,doc,docx|max:10240',
         ]);
@@ -188,7 +191,7 @@ class ProfileController extends Controller
             $data['resume'] = $filename;
         }
 
-        $allowed = ['name', 'email', 'phone', 'status', 'image', 'resume'];
+        $allowed = ['name', 'email', 'phone', 'status', 'speciality', 'image', 'resume'];
         User::where('id', $user->id)->update(array_intersect_key($data, array_flip($allowed)));
 
         $fresh = User::find($user->id);
@@ -201,6 +204,7 @@ class ProfileController extends Controller
                 'email'  => $fresh->email,
                 'phone'  => $fresh->phone,
                 'status' => $fresh->status,
+                'speciality' => $fresh->speciality,
                 'image'  => $fresh->image,
                 'resume' => $fresh->resume,
             ],

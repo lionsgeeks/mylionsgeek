@@ -9,7 +9,7 @@ import Rolegard from '../../../../../components/rolegard';
 import { helpers } from '../../../../../components/utils/helpers';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 
-const Header = ({ user, userFunctionality }) => {
+const Header = ({ user }) => {
     //console.log(user);
 
     const [openEdit, setOpenEdit] = useState(false);
@@ -187,7 +187,7 @@ const Header = ({ user, userFunctionality }) => {
                     {/* Name and Title - Facebook Style */}
                     <div className="text-center sm:text-left lg:hidden">
                         <h1 className="text-2xl font-bold text-beta sm:text-2xl lg:text-2xl dark:text-light">{user?.name}</h1>
-                        <p className="mt-1 text-base text-beta/80 dark:text-light/80">{userFunctionality(user)}</p>
+                        <p className="mt-1 text-base text-beta/80 dark:text-light/80">{user?.speciality}</p>
 
                         {/* Mobile Stats - Facebook Style */}
                         <div className="mt-4 flex justify-center gap-6 text-sm sm:justify-start">
@@ -244,7 +244,10 @@ const Header = ({ user, userFunctionality }) => {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                             <div className="flex-1">
                                 <h1 className="text-2xl font-bold text-beta dark:text-light">{user?.name}</h1>
-                                <p className="mt-1 text-base text-beta/80 dark:text-light/80">{userFunctionality(user)}</p>
+                                {/* {user?.speciality ? (
+                                    <p className="mt-0.5 text-sm font-medium text-beta/90 dark:text-light/90">{user.speciality}</p>
+                                ) : null} */}
+                                <p className="mt-1 text-base text-beta/80 dark:text-light/80">{user?.speciality}</p>
 
                                 {/* Location and Details */}
                                 <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-beta/70 dark:text-light/70">

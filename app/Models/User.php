@@ -37,6 +37,7 @@ class User extends Authenticatable
         'resume',
         'cover', // add cover here
         'about', // short bio
+        'speciality',
         'socials', // social links JSON
         'access_cowork',
         'access_studio',
