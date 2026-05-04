@@ -51,7 +51,7 @@ class ProfileController extends Controller
         }
 
         // Only update the fields that are actually in the database
-        $allowedFields = ['name', 'email', 'phone', 'cin', 'wakatime_api_key', 'image'];
+        $allowedFields = ['name', 'email', 'phone', 'cin', 'wakatime_api_key', 'speciality', 'image'];
         $updateData = array_intersect_key($data, array_flip($allowedFields));
 
         // Use a fresh user instance to avoid virtual attributes

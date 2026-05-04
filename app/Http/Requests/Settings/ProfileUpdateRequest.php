@@ -30,6 +30,7 @@ class ProfileUpdateRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:20'],
             'cin' => ['nullable', 'string', 'max:100'],
             'wakatime_api_key' => ['nullable', 'string', 'max:255'],
+            'speciality' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:2048'],
         ];
     }

@@ -159,6 +159,18 @@ export default function Profile({ mustVerifyEmail, status }) {
                                                 <InputError className="mt-2" message={errors.cin} />
                                             </div>
                                         </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="speciality">Speciality</Label>
+                                            <Input
+                                                id="speciality"
+                                                name="speciality"
+                                                defaultValue={auth.user.speciality || ''}
+                                                placeholder="e.g. Full stack developer, Mobile developer"
+                                            />
+                                            <InputError className="mt-2" message={errors.speciality} />
+                                            <p className="text-xs text-neutral-500">Shown on your public profile when set.</p>
+                                        </div>
                                     </div>
                                 </div>
 

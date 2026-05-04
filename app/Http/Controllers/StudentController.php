@@ -85,6 +85,7 @@ class StudentController extends Controller
                 'Gp' => $user->GP,
                 'Xp' => $user->XP,
                 'about' => $user->about,
+                'speciality' => $user->speciality,
                 'socials' => $user->socials,
                 'level' => $user->level,
                 'promo' => $user->promo,

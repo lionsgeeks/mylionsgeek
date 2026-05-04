@@ -380,6 +380,7 @@ class UsersController extends Controller
             'image' => $user->image,
             'cover' => $user->cover,
             'about' => $user->about,
+            'speciality' => $user->speciality,
             'socials' => $user->socials,
             'last_online' => $user->last_online,
             'is_online' => $isOnline,
@@ -616,6 +617,7 @@ class UsersController extends Controller
             'formation_id' => 'nullable|integer|exists:formations,id',
             'phone' => 'nullable|string',
             'cin' => 'nullable|string',
+            'speciality' => 'nullable|string|max:255',
             'image' => 'nullable|image',
             'cover' => 'nullable|image', // <-- allow cover image
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',

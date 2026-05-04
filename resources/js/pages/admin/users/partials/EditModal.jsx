@@ -56,6 +56,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         formation_id: editedUser?.formation_id || '',
         phone: editedUser?.phone ?? '',
         cin: editedUser?.cin ?? '',
+        speciality: editedUser?.speciality ?? '',
         image: editedUser?.image || null,
         resumeFile: null,
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
@@ -93,6 +94,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 formation_id: editedUser.formation_id || '',
                 phone: editedUser.phone ?? '',
                 cin: editedUser.cin ?? '',
+                speciality: editedUser.speciality ?? '',
                 image: editedUser?.image || null,
                 resumeFile: null,
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
@@ -177,6 +179,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         form.append('status', formData.status);
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
+        form.append('speciality', formData.speciality ?? '');
         form.append('formation_id', formData.formation_id || '');
 
         form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
@@ -273,6 +276,18 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <Input id="cin" value={formData.cin || ''} onChange={(e) => setFormData({ ...formData, cin: e.target.value })} />
                         </div>
                     )}
+                    <div className="lg:col-span-1 md:col-span-2">
+                        <Label htmlFor="speciality">Speciality</Label>
+                        <Input
+                            id="speciality"
+                            value={formData.speciality}
+                            onChange={(e) => setFormData({ ...formData, speciality: e.target.value })}
+                            placeholder="e.g. Full stack developer, Mobile developer"
+                        />
+                        {errors.speciality && (
+                            <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.speciality) ? errors.speciality[0] : errors.speciality}</p>
+                        )}
+                    </div>
                     {/* Left Column - Status */}
                     {editedUser?.status?.toLowerCase() == 'studying' ? null : (
                         <div className="col-span-1">
