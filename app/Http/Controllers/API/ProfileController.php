@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserSocialLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 
 class ProfileController extends Controller
 {
@@ -68,6 +69,24 @@ class ProfileController extends Controller
         $userData['resume'] = $user->resume ?? null;
         $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
+        // Experiences (ordered: latest first)
+        $experiences = $user->experiences()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'experiences.id',
+                'experiences.title',
+                'experiences.company',
+                'experiences.location',
+                'experiences.start_month',
+                'experiences.start_year',
+                'experiences.end_month',
+                'experiences.end_year',
+            ]);
+
+        $userData['experiences'] = $experiences->toArray();
+        $userData['last_experience_location'] = optional($experiences->first())->location;
+
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
         $userData['following_count'] = $user->following()->count();
@@ -96,7 +115,7 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $user = User::where('id', $userId)->where('account_state', 0)->first();
+        $user = User::where('id', '=', $userId, 'and')->where('account_state', '=', 0, 'and')->first();
 
         if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -129,6 +148,24 @@ class ProfileController extends Controller
         // Always include last_online
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
         $userData['speciality'] = $user->speciality ?? null;
+
+        // Experiences (ordered: latest first)
+        $experiences = $user->experiences()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'experiences.id',
+                'experiences.title',
+                'experiences.company',
+                'experiences.location',
+                'experiences.start_month',
+                'experiences.start_year',
+                'experiences.end_month',
+                'experiences.end_year',
+            ]);
+
+        $userData['experiences'] = $experiences->toArray();
+        $userData['last_experience_location'] = optional($experiences->first())->location;
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
@@ -192,9 +229,9 @@ class ProfileController extends Controller
         }
 
         $allowed = ['name', 'email', 'phone', 'status', 'speciality', 'image', 'resume'];
-        User::where('id', $user->id)->update(array_intersect_key($data, array_flip($allowed)));
+        User::where('id', '=', $user->id, 'and')->update(array_intersect_key($data, array_flip($allowed)));
 
-        $fresh = User::find($user->id);
+        $fresh = User::find($user->id, ['*']);
 
         return response()->json([
             'message' => 'Profile updated',
@@ -207,6 +244,55 @@ class ProfileController extends Controller
                 'speciality' => $fresh->speciality,
                 'image'  => $fresh->image,
                 'resume' => $fresh->resume,
+            ],
+        ]);
+    }
+
+    /**
+     * Update the authenticated user's cover image.
+     */
+    public function updateCover(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $data = $request->validate([
+            'cover' => 'required|file|image|max:6144',
+        ]);
+
+        $file = $request->file('cover');
+        $filename = $file->hashName();
+
+        $coversDir = public_path('/storage/img/cover');
+        if (! File::isDirectory($coversDir)) {
+            File::makeDirectory($coversDir, 0755, true);
+        }
+
+        // Best-effort delete old cover file (if it looks like a stored filename).
+        if (
+            is_string($user->cover)
+            && $user->cover !== ''
+            && strpos($user->cover, '/') === false
+            && strpos($user->cover, '\\') === false
+        ) {
+            $oldPath = $coversDir . DIRECTORY_SEPARATOR . $user->cover;
+            if (File::isFile($oldPath)) {
+                File::delete($oldPath);
+            }
+        }
+
+        $file->move($coversDir, $filename);
+
+        $user->cover = $filename;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Cover updated',
+            'data' => [
+                'cover' => $user->cover,
             ],
         ]);
     }
@@ -247,7 +333,7 @@ class ProfileController extends Controller
             'user_id'    => $user->id,
             'title'      => $data['title'],
             'url'        => $data['url'],
-            'sort_order' => UserSocialLink::where('user_id', $user->id)->max('sort_order') + 1,
+            'sort_order' => UserSocialLink::where('user_id', '=', $user->id, 'and')->max('sort_order') + 1,
         ]);
 
         return response()->json(['data' => $link], 201);
@@ -264,13 +350,13 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $link = UserSocialLink::where('id', $id)->where('user_id', $user->id)->first();
+        $link = UserSocialLink::where('id', '=', $id, 'and')->where('user_id', '=', $user->id, 'and')->first();
 
         if (! $link) {
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $link->delete();
+        UserSocialLink::destroy($link->id);
 
         return response()->json(['message' => 'Deleted']);
     }
