@@ -68,6 +68,24 @@ class ProfileController extends Controller
         $userData['resume'] = $user->resume ?? null;
         $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
+        // Experiences (ordered: latest first)
+        $experiences = $user->experiences()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'experiences.id',
+                'experiences.title',
+                'experiences.company',
+                'experiences.location',
+                'experiences.start_month',
+                'experiences.start_year',
+                'experiences.end_month',
+                'experiences.end_year',
+            ]);
+
+        $userData['experiences'] = $experiences->toArray();
+        $userData['last_experience_location'] = optional($experiences->first())->location;
+
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
         $userData['following_count'] = $user->following()->count();
@@ -129,6 +147,24 @@ class ProfileController extends Controller
         // Always include last_online
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
         $userData['speciality'] = $user->speciality ?? null;
+
+        // Experiences (ordered: latest first)
+        $experiences = $user->experiences()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'experiences.id',
+                'experiences.title',
+                'experiences.company',
+                'experiences.location',
+                'experiences.start_month',
+                'experiences.start_year',
+                'experiences.end_month',
+                'experiences.end_year',
+            ]);
+
+        $userData['experiences'] = $experiences->toArray();
+        $userData['last_experience_location'] = optional($experiences->first())->location;
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
