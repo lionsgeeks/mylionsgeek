@@ -665,7 +665,9 @@ class ChatController extends Controller
     }
 
     /**
-     * Get users that the authenticated user follows (for "Send to" picker).
+     * Get users that the authenticated user follows OR is followed by (for "Send to" picker).
+     *
+     * Mobile + web both use this list for the "Send to" modal.
      */
     public function getFollowingUsers()
     {
@@ -676,12 +678,21 @@ class ChatController extends Controller
                 ->pluck('followed_id')
                 ->toArray();
 
-            if (empty($followingIds)) {
-                return response()->json(['users' => []]);
-            }
+            $followerIds = \App\Models\Follower::where('followed_id', $user->id)
+                ->pluck('follower_id')
+                ->toArray();
+
+            $contactIds = collect($followingIds)
+                ->merge($followerIds)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (empty($contactIds)) return response()->json(['users' => []]);
 
             $users = User::query()
-                ->whereIn('id', $followingIds)
+                ->whereIn('id', $contactIds)
                 ->select(['id', 'name', 'email', 'image', 'last_login', 'last_online'])
                 ->orderBy('name')
                 ->get()
