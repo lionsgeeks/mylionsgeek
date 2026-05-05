@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [ChatController::class, 'index'])->name('index');
         Route::get('/following-ids', [ChatController::class, 'getFollowingIds'])->name('following-ids');
+        Route::get('/following-users', [ChatController::class, 'getFollowingUsers'])->name('following-users');
         Route::get('/unread-count', [ChatController::class, 'getUnreadCount'])->name('unread-count');
         Route::get('/conversation/{userId}', [ChatController::class, 'getOrCreateConversation'])->name('conversation');
         Route::get('/conversation/{conversationId}/messages', [ChatController::class, 'getMessages'])->name('messages');
