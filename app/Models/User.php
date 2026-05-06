@@ -201,10 +201,12 @@ class User extends Authenticatable
     /**
      * Get all conversations for this user
      */
-    public function conversations()
+    public function conversations(): \Illuminate\Database\Eloquent\Builder
     {
-        return Conversation::where('user_one_id', $this->id)
-            ->orWhere('user_two_id', $this->id);
+        // Use explicit operator/value signature to satisfy analyzers and avoid ambiguity.
+        return Conversation::query()
+            ->where('user_one_id', '=', $this->id)
+            ->orWhere('user_two_id', '=', $this->id);
     }
 
     /**
