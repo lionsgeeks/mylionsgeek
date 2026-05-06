@@ -7,9 +7,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/feed', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{id}', [PostController::class, 'showPost']);
-    Route::post('/posts/{id}', [PostController::class, 'updatePost']); // multipart compatible
-    Route::delete('/posts/{id}', [PostController::class, 'deletePost']);
     Route::post('/posts/repost', [PostController::class, 'repost']);
+    Route::post('/posts/{id}', [PostController::class, 'updatePost'])->whereNumber('id'); // multipart compatible
+    Route::delete('/posts/{id}', [PostController::class, 'deletePost'])->whereNumber('id');
     Route::post('/posts/like/{id}', [PostController::class, 'toggleLike']);
     Route::get('/posts/{id}/likes', [PostController::class, 'getLikes']);
     Route::get('/posts/{id}/comments', [PostController::class, 'getComments']);
