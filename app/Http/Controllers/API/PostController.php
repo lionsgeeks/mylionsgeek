@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -18,6 +19,13 @@ use Throwable;
 class PostController extends Controller
 {
     private const POST_IMAGES_DIR = 'img/posts';
+
+    private function resolveInteractionPost(Post $post): Post
+    {
+        $post->loadMissing('repostOf');
+        return $post->repost_of_post_id ? ($post->repostOf ?? $post) : $post;
+    }
+
     public function index(Request $request)
     {
         try {
@@ -33,6 +41,8 @@ class PostController extends Controller
             // Get recent posts
             try {
                 $recentPosts = Post::with(['user', 'likes', 'comments'])
+                    ->with(['repostOf.user', 'repostOf.likes', 'repostOf.comments'])
+                    ->withCount(['reposts'])
                     ->whereNotNull('created_at')
                     ->orderBy('created_at', 'desc')
                     ->limit(20)
@@ -43,6 +53,8 @@ class PostController extends Controller
                     ->map(function ($post) use ($user) {
                         try {
                             $postUser = $post->user ?? null;
+                            $interactionPost = $this->resolveInteractionPost($post);
+                            $interactionPost->loadMissing(['user', 'likes', 'comments']);
                             $images = $post->images ?? [];
                             $imageUrls = [];
                             
@@ -74,13 +86,59 @@ class PostController extends Controller
                             
                             return [
                                 'id' => $post->id ?? null,
-                                'type' => 'post',
+                                'type' => $post->repost_of_post_id ? 'repost' : 'post',
                                 'content' => $post->description ?? '',
                                 'description' => $post->description ?? '',
                                 'images' => $imageUrls,
                                 'image' => count($imageUrls) > 0 ? $imageUrls[0] : null,
                                 'hashtags' => $post->hashTags ?? [],
                                 'created_at' => $createdAt,
+                                'repost_of_post_id' => $post->repost_of_post_id,
+                                'interaction_post_id' => $interactionPost->id,
+                                'repost_of' => $post->repost_of_post_id ? [
+                                    'id' => $interactionPost->id,
+                                    'description' => $interactionPost->description ?? '',
+                                    'content' => $interactionPost->description ?? '',
+                                    'images' => (function () use ($interactionPost) {
+                                        $images = $interactionPost->images ?? [];
+                                        $imageUrls = [];
+                                        if (!is_array($images) || count($images) === 0) return $imageUrls;
+                                        foreach ($images as $image) {
+                                            if (!$image) continue;
+                                            if (strpos($image, 'http') === 0) {
+                                                $imageUrls[] = $image;
+                                                continue;
+                                            }
+                                            $imagePath = ltrim((string) $image, '/');
+                                            if (strpos($imagePath, 'img/posts/') !== false) {
+                                                $imageUrls[] = url('storage/' . $imagePath);
+                                            } else {
+                                                $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                                            }
+                                        }
+                                        return $imageUrls;
+                                    })(),
+                                    'user' => [
+                                        'id' => $interactionPost->user?->id,
+                                        'name' => $interactionPost->user?->name ?? 'User',
+                                        'avatar' => ($interactionPost->user && $interactionPost->user->image) ? (function () use ($interactionPost) {
+                                            $imagePath = ltrim((string) $interactionPost->user->image, '/');
+                                            if (strpos($imagePath, 'img/profile/') !== false) {
+                                                return url('storage/' . $imagePath);
+                                            }
+                                            return url('storage/img/profile/' . $imagePath);
+                                        })() : null,
+                                        'image' => $interactionPost->user?->image,
+                                    ],
+                                    'likes' => $interactionPost->likes ? $interactionPost->likes->count() : 0,
+                                    'comments' => $interactionPost->comments ? $interactionPost->comments->count() : 0,
+                                    'reposts' => (int) ($interactionPost->reposts()->count()),
+                                    'created_at' => $interactionPost->created_at
+                                        ? (is_string($interactionPost->created_at)
+                                            ? $interactionPost->created_at
+                                            : $interactionPost->created_at->toDateTimeString())
+                                        : null,
+                                ] : null,
                                 'user' => [
                                     'id' => $postUser->id ?? null,
                                     'name' => $postUser->name ?? 'User',
@@ -99,7 +157,11 @@ class PostController extends Controller
                                 'likes' => $post->likes ? $post->likes->count() : 0,
                                 'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $user->id) : false,
                                 'comments' => $post->comments ? $post->comments->count() : 0,
-                                'reposts' => 0,
+                                'reposts' => (int) ($interactionPost->reposts()->count()),
+                                'is_reposted_by_user' => Post::query()
+                                    ->where('user_id', $user->id)
+                                    ->where('repost_of_post_id', $interactionPost->id)
+                                    ->exists(),
                             ];
                         } catch (\Exception $e) {
                             Log::error('Error mapping post: ' . $e->getMessage());
@@ -276,7 +338,8 @@ class PostController extends Controller
 
     private function formatPostForFeed(Post $post, $authUser): array
     {
-        $post->loadMissing(['user', 'likes', 'comments']);
+        $post->loadMissing(['user', 'likes', 'comments', 'repostOf']);
+        $interactionPost = $this->resolveInteractionPost($post);
         $postUser = $post->user ?? null;
 
         $imageUrls = [];
@@ -322,7 +385,11 @@ class PostController extends Controller
             'likes' => $post->likes ? $post->likes->count() : 0,
             'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $authUser->id) : false,
             'comments' => $post->comments ? $post->comments->count() : 0,
-            'reposts' => 0,
+            'reposts' => (int) ($interactionPost->reposts()->count()),
+            'is_reposted_by_user' => Post::query()
+                ->where('user_id', $authUser->id)
+                ->where('repost_of_post_id', $interactionPost->id)
+                ->exists(),
         ];
     }
 
@@ -429,7 +496,7 @@ class PostController extends Controller
 
         $count = Comment::query()
             ->where('post_id', $post->id)
-            ->count();
+            ->count('*');
 
         return response()->json(['comments_count' => $count]);
     }
@@ -519,19 +586,20 @@ class PostController extends Controller
 
         $comment = Comment::findOrFail($commentId);
 
-        $existing = CommentLike::where('comment_id', $commentId)
+        $existing = CommentLike::query()
+            ->where('comment_id', $commentId)
             ->where('user_id', $user->id)
             ->first();
 
         if ($existing) {
-            $existing->delete();
+            CommentLike::query()->whereKey($existing->getKey())->delete();
             $liked = false;
         } else {
             CommentLike::create(['comment_id' => $commentId, 'user_id' => $user->id]);
             $liked = true;
         }
 
-        $count = CommentLike::where('comment_id', $commentId)->count();
+        $count = CommentLike::query()->where('comment_id', $commentId)->count('*');
 
         return response()->json([
             'liked'       => $liked,
@@ -682,19 +750,45 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $request->validate([
-            'post_id' => 'required|string',
+        $validated = $request->validate([
+            'post_id' => 'required|integer|exists:posts,id',
+            'description' => 'nullable|string|max:5000',
         ]);
 
-        // TODO: Create repost in database
-        // For now, return success
+        $post = Post::with(['user', 'repostOf'])->findOrFail((int) $validated['post_id']);
+        $interactionPost = $this->resolveInteractionPost($post);
+
+        $alreadyReposted = Post::query()
+            ->where('user_id', $user->id)
+            ->where('repost_of_post_id', $interactionPost->id)
+            ->exists();
+
+        if ($alreadyReposted) {
+            $repostsCount = (int) $interactionPost->reposts()->count();
+            return response()->json([
+                'message' => 'Already reposted',
+                'reposted' => true,
+                'reposts_count' => $repostsCount,
+            ], 200);
+        }
+
+        $repost = DB::transaction(function () use ($user, $interactionPost, $validated) {
+            return Post::create([
+                'user_id' => $user->id,
+                'repost_of_post_id' => $interactionPost->id,
+                'description' => (string) ($validated['description'] ?? ''),
+                'images' => null,
+            ]);
+        });
+
+        $interactionPost->refresh();
+        $repostsCount = (int) $interactionPost->reposts()->count();
+
         return response()->json([
             'message' => 'Post reposted successfully',
-            'repost' => [
-                'post_id' => $request->post_id,
-                'user_id' => $user->id,
-                'created_at' => now()->toDateTimeString(),
-            ],
+            'reposted' => true,
+            'reposts_count' => $repostsCount,
+            'post' => $this->formatPostForFeed($repost->fresh(), $user),
         ], 201);
     }
 }
