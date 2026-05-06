@@ -66,6 +66,7 @@ class ProfileController extends Controller
         $userData['phone']  = $user->phone ?? null;
         $userData['status'] = $user->status ?? null;
         $userData['speciality'] = $user->speciality ?? null;
+        $userData['about'] = $user->about ?? null;
         $userData['resume'] = $user->resume ?? null;
         $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
@@ -86,6 +87,24 @@ class ProfileController extends Controller
 
         $userData['experiences'] = $experiences->toArray();
         $userData['last_experience_location'] = optional($experiences->first())->location;
+
+        // Educations (ordered: latest first)
+        $educations = $user->educations()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'education.id',
+                'education.school',
+                'education.degree',
+                'education.field_of_study',
+                'education.start_month',
+                'education.start_year',
+                'education.end_month',
+                'education.end_year',
+                'education.description',
+            ]);
+
+        $userData['educations'] = $educations->toArray();
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
@@ -148,6 +167,7 @@ class ProfileController extends Controller
         // Always include last_online
         $userData['last_online'] = $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null;
         $userData['speciality'] = $user->speciality ?? null;
+        $userData['about'] = $user->about ?? null;
 
         // Experiences (ordered: latest first)
         $experiences = $user->experiences()
@@ -166,6 +186,24 @@ class ProfileController extends Controller
 
         $userData['experiences'] = $experiences->toArray();
         $userData['last_experience_location'] = optional($experiences->first())->location;
+
+        // Educations (ordered: latest first)
+        $educations = $user->educations()
+            ->orderBy('start_year', 'desc')
+            ->orderBy('start_month', 'desc')
+            ->get([
+                'education.id',
+                'education.school',
+                'education.degree',
+                'education.field_of_study',
+                'education.start_month',
+                'education.start_year',
+                'education.end_month',
+                'education.end_year',
+                'education.description',
+            ]);
+
+        $userData['educations'] = $educations->toArray();
 
         // Add followers and following counts
         $userData['followers_count'] = $user->followers()->count();
