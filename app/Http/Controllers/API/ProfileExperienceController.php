@@ -18,13 +18,13 @@ class ProfileExperienceController extends Controller
 
         $data = $request->validate([
             'title' => 'required|string|max:255',
-            'company' => 'nullable|string|max:255',
-            'location' => 'nullable|string|max:255',
+            'company' => 'required|string|max:255',
+            'location' => 'required|string|max:255',
             'description' => 'nullable|string',
             // Keep DB column name spelling: employement_type
-            'employment_type' => 'nullable|string|max:255',
-            'start_month' => 'nullable|integer|min:1|max:12',
-            'start_year' => 'nullable|integer|min:1900|max:2100',
+            'employment_type' => 'required|string|max:255',
+            'start_month' => 'required|integer|min:1|max:12',
+            'start_year' => 'required|integer|min:1900|max:2100',
             'end_month' => 'nullable|integer|min:1|max:12',
             'end_year' => 'nullable|integer|min:1900|max:2100',
             'is_current' => 'nullable|boolean',
@@ -72,12 +72,12 @@ class ProfileExperienceController extends Controller
 
         $data = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'company' => 'sometimes|nullable|string|max:255',
-            'location' => 'sometimes|nullable|string|max:255',
+            'company' => 'sometimes|required|string|max:255',
+            'location' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|nullable|string',
-            'employment_type' => 'sometimes|nullable|string|max:255',
-            'start_month' => 'sometimes|nullable|integer|min:1|max:12',
-            'start_year' => 'sometimes|nullable|integer|min:1900|max:2100',
+            'employment_type' => 'sometimes|required|string|max:255',
+            'start_month' => 'sometimes|required|integer|min:1|max:12',
+            'start_year' => 'sometimes|required|integer|min:1900|max:2100',
             'end_month' => 'sometimes|nullable|integer|min:1|max:12',
             'end_year' => 'sometimes|nullable|integer|min:1900|max:2100',
             'is_current' => 'sometimes|nullable|boolean',
