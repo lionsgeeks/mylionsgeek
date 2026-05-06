@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Auth;
 
 class ProfileExperienceController extends Controller
 {
+    private const EMPLOYMENT_TYPES = [
+        'full_time',
+        'part_time',
+        'contract',
+        'freelance',
+        'internship',
+    ];
+
     public function store(Request $request)
     {
         $user = Auth::guard('sanctum')->user();
@@ -22,7 +30,7 @@ class ProfileExperienceController extends Controller
             'location' => 'required|string|max:255',
             'description' => 'nullable|string',
             // Keep DB column name spelling: employement_type
-            'employment_type' => 'required|string|max:255',
+            'employment_type' => 'required|string|in:full_time,part_time,contract,freelance,internship',
             'start_month' => 'required|integer|min:1|max:12',
             'start_year' => 'required|integer|min:1900|max:2100',
             'end_month' => 'nullable|integer|min:1|max:12',
@@ -75,7 +83,7 @@ class ProfileExperienceController extends Controller
             'company' => 'sometimes|required|string|max:255',
             'location' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|nullable|string',
-            'employment_type' => 'sometimes|required|string|max:255',
+            'employment_type' => 'sometimes|required|string|in:full_time,part_time,contract,freelance,internship',
             'start_month' => 'sometimes|required|integer|min:1|max:12',
             'start_year' => 'sometimes|required|integer|min:1900|max:2100',
             'end_month' => 'sometimes|nullable|integer|min:1|max:12',
