@@ -177,6 +177,11 @@ class User extends Authenticatable
         return $this->hasMany(Comment::class);
     }
 
+    public function savedPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'post_saves', 'user_id', 'post_id')->withTimestamps();
+    }
+
     /**
      * Get conversations where this user is user_one
      */

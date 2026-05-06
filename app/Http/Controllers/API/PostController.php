@@ -20,6 +20,121 @@ class PostController extends Controller
 {
     private const POST_IMAGES_DIR = 'img/posts';
 
+    private function mapPostForMobileFeed(Post $post, $authUser, array $savedInteractionPostIds = []): array
+    {
+        $postUser = $post->user ?? null;
+        $interactionPost = $this->resolveInteractionPost($post);
+        $interactionPost->loadMissing(['user', 'likes', 'comments']);
+
+        $images = $post->images ?? [];
+        $imageUrls = [];
+
+        if (is_array($images) && count($images) > 0) {
+            foreach ($images as $image) {
+                if (!$image) {
+                    continue;
+                }
+                if (strpos($image, 'http') === 0) {
+                    $imageUrls[] = $image;
+                    continue;
+                }
+                $imagePath = ltrim((string) $image, '/');
+                if (strpos($imagePath, 'img/posts/') !== false) {
+                    $imageUrls[] = url('storage/' . $imagePath);
+                } else {
+                    $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                }
+            }
+        }
+
+        $createdAt = null;
+        if ($post->created_at) {
+            $createdAt = is_string($post->created_at)
+                ? $post->created_at
+                : $post->created_at->toDateTimeString();
+        }
+
+        $interactionId = (int) $interactionPost->id;
+
+        return [
+            'id' => $post->id ?? null,
+            'type' => $post->repost_of_post_id ? 'repost' : 'post',
+            'content' => $post->description ?? '',
+            'description' => $post->description ?? '',
+            'images' => $imageUrls,
+            'image' => count($imageUrls) > 0 ? $imageUrls[0] : null,
+            'hashtags' => $post->hashTags ?? [],
+            'created_at' => $createdAt,
+            'repost_of_post_id' => $post->repost_of_post_id,
+            'interaction_post_id' => $interactionId,
+            'is_saved_by_user' => in_array($interactionId, $savedInteractionPostIds, true),
+            'repost_of' => $post->repost_of_post_id ? [
+                'id' => $interactionPost->id,
+                'description' => $interactionPost->description ?? '',
+                'content' => $interactionPost->description ?? '',
+                'images' => (function () use ($interactionPost) {
+                    $images = $interactionPost->images ?? [];
+                    $imageUrls = [];
+                    if (!is_array($images) || count($images) === 0) return $imageUrls;
+                    foreach ($images as $image) {
+                        if (!$image) continue;
+                        if (strpos($image, 'http') === 0) {
+                            $imageUrls[] = $image;
+                            continue;
+                        }
+                        $imagePath = ltrim((string) $image, '/');
+                        if (strpos($imagePath, 'img/posts/') !== false) {
+                            $imageUrls[] = url('storage/' . $imagePath);
+                        } else {
+                            $imageUrls[] = url('storage/img/posts/' . $imagePath);
+                        }
+                    }
+                    return $imageUrls;
+                })(),
+                'user' => [
+                    'id' => $interactionPost->user?->id,
+                    'name' => $interactionPost->user?->name ?? 'User',
+                    'avatar' => ($interactionPost->user && $interactionPost->user->image) ? (function () use ($interactionPost) {
+                        $imagePath = ltrim((string) $interactionPost->user->image, '/');
+                        if (strpos($imagePath, 'img/profile/') !== false) {
+                            return url('storage/' . $imagePath);
+                        }
+                        return url('storage/img/profile/' . $imagePath);
+                    })() : null,
+                    'image' => $interactionPost->user?->image,
+                ],
+                'likes' => $interactionPost->likes ? $interactionPost->likes->count() : 0,
+                'comments' => $interactionPost->comments ? $interactionPost->comments->count() : 0,
+                'reposts' => (int) ($interactionPost->reposts()->count()),
+                'created_at' => $interactionPost->created_at
+                    ? (is_string($interactionPost->created_at)
+                        ? $interactionPost->created_at
+                        : $interactionPost->created_at->toDateTimeString())
+                    : null,
+            ] : null,
+            'user' => [
+                'id' => $postUser->id ?? null,
+                'name' => $postUser->name ?? 'User',
+                'avatar' => ($postUser && $postUser->image) ? (function() use ($postUser) {
+                    $imagePath = ltrim((string)$postUser->image, '/');
+                    if (strpos($imagePath, 'img/profile/') !== false) {
+                        return url('storage/' . $imagePath);
+                    }
+                    return url('storage/img/profile/' . $imagePath);
+                })() : null,
+                'image' => $postUser->image ?? null,
+            ],
+            'likes' => $post->likes ? $post->likes->count() : 0,
+            'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $authUser->id) : false,
+            'comments' => $post->comments ? $post->comments->count() : 0,
+            'reposts' => (int) ($interactionPost->reposts()->count()),
+            'is_reposted_by_user' => Post::query()
+                ->where('user_id', $authUser->id)
+                ->where('repost_of_post_id', $interactionPost->id)
+                ->exists(),
+        ];
+    }
+
     private function resolveInteractionPost(Post $post): Post
     {
         $post->loadMissing('repostOf');
@@ -47,130 +162,36 @@ class PostController extends Controller
                     ->orderBy('created_at', 'desc')
                     ->limit(20)
                     ->get()
-                    ->filter(function ($post) {
-                        return $post !== null;
-                    })
-                    ->map(function ($post) use ($user) {
+                    ->filter(fn ($post) => $post !== null);
+
+                $interactionIds = $recentPosts
+                    ->map(fn ($p) => (int) $this->resolveInteractionPost($p)->id)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $savedInteractionIds = [];
+                if (!empty($interactionIds)) {
+                    $savedInteractionIds = DB::table('post_saves')
+                        ->where('user_id', $user->id)
+                        ->whereIn('post_id', $interactionIds)
+                        ->pluck('post_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->values()
+                        ->all();
+                }
+
+                $recentPosts = $recentPosts
+                    ->map(function ($post) use ($user, $savedInteractionIds) {
                         try {
-                            $postUser = $post->user ?? null;
-                            $interactionPost = $this->resolveInteractionPost($post);
-                            $interactionPost->loadMissing(['user', 'likes', 'comments']);
-                            $images = $post->images ?? [];
-                            $imageUrls = [];
-                            
-                            if (is_array($images) && count($images) > 0) {
-                                foreach ($images as $image) {
-                                    if ($image) {
-                                        if (strpos($image, 'http') === 0) {
-                                            $imageUrls[] = $image;
-                                        } else {
-                                            // Check if image path already includes img/posts
-                                            $imagePath = ltrim((string)$image, '/');
-                                            if (strpos($imagePath, 'img/posts/') !== false) {
-                                                $imageUrls[] = url('storage/' . $imagePath);
-                                            } else {
-                                                // If it's just a filename, use /storage/img/posts/
-                                                $imageUrls[] = url('storage/img/posts/' . $imagePath);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            $createdAt = null;
-                            if ($post->created_at) {
-                                $createdAt = is_string($post->created_at) 
-                                    ? $post->created_at 
-                                    : $post->created_at->toDateTimeString();
-                            }
-                            
-                            return [
-                                'id' => $post->id ?? null,
-                                'type' => $post->repost_of_post_id ? 'repost' : 'post',
-                                'content' => $post->description ?? '',
-                                'description' => $post->description ?? '',
-                                'images' => $imageUrls,
-                                'image' => count($imageUrls) > 0 ? $imageUrls[0] : null,
-                                'hashtags' => $post->hashTags ?? [],
-                                'created_at' => $createdAt,
-                                'repost_of_post_id' => $post->repost_of_post_id,
-                                'interaction_post_id' => $interactionPost->id,
-                                'repost_of' => $post->repost_of_post_id ? [
-                                    'id' => $interactionPost->id,
-                                    'description' => $interactionPost->description ?? '',
-                                    'content' => $interactionPost->description ?? '',
-                                    'images' => (function () use ($interactionPost) {
-                                        $images = $interactionPost->images ?? [];
-                                        $imageUrls = [];
-                                        if (!is_array($images) || count($images) === 0) return $imageUrls;
-                                        foreach ($images as $image) {
-                                            if (!$image) continue;
-                                            if (strpos($image, 'http') === 0) {
-                                                $imageUrls[] = $image;
-                                                continue;
-                                            }
-                                            $imagePath = ltrim((string) $image, '/');
-                                            if (strpos($imagePath, 'img/posts/') !== false) {
-                                                $imageUrls[] = url('storage/' . $imagePath);
-                                            } else {
-                                                $imageUrls[] = url('storage/img/posts/' . $imagePath);
-                                            }
-                                        }
-                                        return $imageUrls;
-                                    })(),
-                                    'user' => [
-                                        'id' => $interactionPost->user?->id,
-                                        'name' => $interactionPost->user?->name ?? 'User',
-                                        'avatar' => ($interactionPost->user && $interactionPost->user->image) ? (function () use ($interactionPost) {
-                                            $imagePath = ltrim((string) $interactionPost->user->image, '/');
-                                            if (strpos($imagePath, 'img/profile/') !== false) {
-                                                return url('storage/' . $imagePath);
-                                            }
-                                            return url('storage/img/profile/' . $imagePath);
-                                        })() : null,
-                                        'image' => $interactionPost->user?->image,
-                                    ],
-                                    'likes' => $interactionPost->likes ? $interactionPost->likes->count() : 0,
-                                    'comments' => $interactionPost->comments ? $interactionPost->comments->count() : 0,
-                                    'reposts' => (int) ($interactionPost->reposts()->count()),
-                                    'created_at' => $interactionPost->created_at
-                                        ? (is_string($interactionPost->created_at)
-                                            ? $interactionPost->created_at
-                                            : $interactionPost->created_at->toDateTimeString())
-                                        : null,
-                                ] : null,
-                                'user' => [
-                                    'id' => $postUser->id ?? null,
-                                    'name' => $postUser->name ?? 'User',
-                                    'avatar' => ($postUser && $postUser->image) ? (function() use ($postUser) {
-                                        $imagePath = ltrim((string)$postUser->image, '/');
-                                        // Check if image path already includes img/profile
-                                        if (strpos($imagePath, 'img/profile/') !== false) {
-                                            return url('storage/' . $imagePath);
-                                        } else {
-                                            // If it's just a filename, use /storage/img/profile/
-                                            return url('storage/img/profile/' . $imagePath);
-                                        }
-                                    })() : null,
-                                    'image' => $postUser->image ?? null,
-                                ],
-                                'likes' => $post->likes ? $post->likes->count() : 0,
-                                'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $user->id) : false,
-                                'comments' => $post->comments ? $post->comments->count() : 0,
-                                'reposts' => (int) ($interactionPost->reposts()->count()),
-                                'is_reposted_by_user' => Post::query()
-                                    ->where('user_id', $user->id)
-                                    ->where('repost_of_post_id', $interactionPost->id)
-                                    ->exists(),
-                            ];
+                            return $this->mapPostForMobileFeed($post, $user, $savedInteractionIds);
                         } catch (\Exception $e) {
                             Log::error('Error mapping post: ' . $e->getMessage());
                             return null;
                         }
                     })
-                    ->filter(function ($item) {
-                        return $item !== null;
-                    });
+                    ->filter(fn ($item) => $item !== null);
             } catch (\Exception $e) {
                 Log::error('Error fetching posts for feed: ' . $e->getMessage());
                 Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -691,6 +712,78 @@ class PostController extends Controller
         return response()->json([
             'liked'       => $liked,
             'likes_count' => $post->likes_count,
+        ]);
+    }
+
+    public function toggleSave(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $post = Post::with(['repostOf'])->findOrFail($id);
+        $interactionPost = $this->resolveInteractionPost($post);
+        $interactionId = (int) $interactionPost->id;
+
+        $existing = DB::table('post_saves')
+            ->where('user_id', $user->id)
+            ->where('post_id', $interactionId)
+            ->first();
+
+        if ($existing) {
+            DB::table('post_saves')
+                ->where('user_id', $user->id)
+                ->where('post_id', $interactionId)
+                ->delete();
+            $saved = false;
+        } else {
+            DB::table('post_saves')->insert([
+                'user_id' => $user->id,
+                'post_id' => $interactionId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $saved = true;
+        }
+
+        return response()->json([
+            'saved' => $saved,
+            'post_id' => $interactionId,
+        ]);
+    }
+
+    public function getSavedPosts(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $saved = $user->savedPosts()
+            ->with(['user', 'likes', 'comments'])
+            ->with(['repostOf.user', 'repostOf.likes', 'repostOf.comments'])
+            ->withCount(['reposts'])
+            ->orderByPivot('created_at', 'desc')
+            ->limit(60)
+            ->get();
+
+        $savedInteractionIds = $saved
+            ->map(fn ($p) => (int) $this->resolveInteractionPost($p)->id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $feed = $saved
+            ->map(fn ($post) => $this->mapPostForMobileFeed($post, $user, $savedInteractionIds))
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            'posts' => $feed,
         ]);
     }
 
