@@ -43,7 +43,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
         setRepostsCountMap((prev) => ({ ...prev, [post.id]: post.reposts_count }));
 
         if (post.is_liked_by_current_user) {
-            const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+            const interactionPostId = post?.interaction_post_id ?? post?.id;
             setLikedInteractionPostIds((prev) => [...new Set([...prev, interactionPostId])]);
         }
     }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user]);
@@ -58,7 +58,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             // Only use Ably real-time updates, no polling
             unsubscribe = await subscribeToChannel('feed:global', 'post-stats-updated', (data) => {
                 if (!mounted) return;
-                const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+                const interactionPostId = post?.interaction_post_id ?? post?.id;
                 if (!data || Number(data.post_id) !== Number(interactionPostId)) return;
 
                 if (typeof data.likes_count === 'number') {
@@ -114,7 +114,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
         }));
     };
 
-    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+    const interactionPostId = post?.interaction_post_id ?? post?.id;
     const isLiked = likedInteractionPostIds.includes(interactionPostId);
     const likeCount = likesCountMap[post?.id] ?? 0;
     const commentCount = commentsCountMap[post?.id] ?? 0;

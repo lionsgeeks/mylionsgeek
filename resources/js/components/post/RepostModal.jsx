@@ -7,7 +7,7 @@ import PostTextarea from './composer/PostTextarea';
 const RepostModal = ({ open, onOpenChange, user, post }) => {
     const [mode, setMode] = useState('choice'); // 'choice' | 'thoughts'
 
-    const interactionPostId = useMemo(() => post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id, [post]);
+    const interactionPostId = useMemo(() => post?.interaction_post_id ?? post?.id, [post]);
 
     const form = useForm({
         description: '',

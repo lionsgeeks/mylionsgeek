@@ -14,7 +14,7 @@ function clampText(value, maxLen) {
 function buildShareBodyString(post, caption = '') {
     const interactionPost = post?.repost_of ?? null;
     const source = interactionPost ?? post;
-    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+    const interactionPostId = post?.interaction_post_id ?? post?.id;
 
     const payload = {
         type: 'post_share',
@@ -55,7 +55,7 @@ function buildShareBodyString(post, caption = '') {
 function buildSharePayload(post, caption = '') {
     const interactionPost = post?.repost_of ?? null;
     const source = interactionPost ?? post;
-    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+    const interactionPostId = post?.interaction_post_id ?? post?.id;
 
     return {
         type: 'post_share',
