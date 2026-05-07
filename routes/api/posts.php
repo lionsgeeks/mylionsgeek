@@ -9,6 +9,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // IMPORTANT: static routes must be defined before /posts/{id}
     Route::get('/posts/saved', [PostController::class, 'getSavedPosts']);
     Route::post('/posts/repost', [PostController::class, 'repost']);
+    Route::post('/posts/unrepost', [PostController::class, 'unrepost']);
     Route::post('/posts/{id}', [PostController::class, 'updatePost'])->whereNumber('id'); // multipart compatible
     Route::delete('/posts/{id}', [PostController::class, 'deletePost'])->whereNumber('id');
     Route::post('/posts/like/{id}', [PostController::class, 'toggleLike']);

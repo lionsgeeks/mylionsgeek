@@ -884,5 +884,48 @@ class PostController extends Controller
             'post' => $this->formatPostForFeed($repost->fresh(), $user),
         ], 201);
     }
+
+    public function unrepost(Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $validated = $request->validate([
+            'post_id' => 'required|integer|exists:posts,id',
+        ]);
+
+        $post = Post::with(['repostOf'])->findOrFail((int) $validated['post_id']);
+        $interactionPost = $this->resolveInteractionPost($post);
+
+        $repostRow = Post::query()
+            ->where('user_id', $user->id)
+            ->where('repost_of_post_id', $interactionPost->id)
+            ->first();
+
+        if (!$repostRow) {
+            $repostsCount = (int) $interactionPost->reposts()->count();
+            return response()->json([
+                'message' => 'Not reposted',
+                'reposted' => false,
+                'reposts_count' => $repostsCount,
+            ], 200);
+        }
+
+        DB::transaction(function () use ($repostRow) {
+            $repostRow->delete();
+        });
+
+        $interactionPost->refresh();
+        $repostsCount = (int) $interactionPost->reposts()->count();
+
+        return response()->json([
+            'message' => 'Repost removed',
+            'reposted' => false,
+            'reposts_count' => $repostsCount,
+        ], 200);
+    }
 }
 
