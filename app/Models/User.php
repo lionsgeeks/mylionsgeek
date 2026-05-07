@@ -177,6 +177,18 @@ class User extends Authenticatable
         return $this->hasMany(Comment::class);
     }
 
+    public function savedPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'post_saves', 'user_id', 'post_id')->withTimestamps();
+    }
+
+    public function repostedPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'reposts_posts', 'user_id', 'post_id')
+            ->withPivot(['description'])
+            ->withTimestamps();
+    }
+
     /**
      * Get conversations where this user is user_one
      */
@@ -196,10 +208,12 @@ class User extends Authenticatable
     /**
      * Get all conversations for this user
      */
-    public function conversations()
+    public function conversations(): \Illuminate\Database\Eloquent\Builder
     {
-        return Conversation::where('user_one_id', $this->id)
-            ->orWhere('user_two_id', $this->id);
+        // Use explicit operator/value signature to satisfy analyzers and avoid ambiguity.
+        return Conversation::query()
+            ->where('user_one_id', '=', $this->id)
+            ->orWhere('user_two_id', '=', $this->id);
     }
 
     /**

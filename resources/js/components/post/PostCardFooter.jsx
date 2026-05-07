@@ -6,6 +6,8 @@ import LikesModal from './LikesModal';
 import RepostModal from './RepostModal';
 import SendPostModal from './SendPostModal';
 
+const POST_LIKE_TOGGLED_EVENT = 'post-like-toggled';
+
 const LionsGeekLogoIcon = ({ className, size = 20 }) => {
     return (
         <svg
@@ -43,10 +45,28 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
         setRepostsCountMap((prev) => ({ ...prev, [post.id]: post.reposts_count }));
 
         if (post.is_liked_by_current_user) {
-            const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+            const interactionPostId = post?.interaction_post_id ?? post?.id;
             setLikedInteractionPostIds((prev) => [...new Set([...prev, interactionPostId])]);
         }
     }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user]);
+
+    // Keep liked state in sync across multiple cards that reference the same interaction post
+    // (e.g. a repost card + the original card).
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail || {};
+            const interactionId = Number(detail?.interaction_post_id);
+            const liked = Boolean(detail?.liked);
+            const myInteractionId = Number(post?.interaction_post_id ?? post?.id);
+
+            if (!interactionId || interactionId !== myInteractionId) return;
+
+            setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, interactionId])] : prev.filter((id) => Number(id) !== interactionId)));
+        };
+
+        window.addEventListener(POST_LIKE_TOGGLED_EVENT, handler);
+        return () => window.removeEventListener(POST_LIKE_TOGGLED_EVENT, handler);
+    }, [post?.interaction_post_id, post?.id]);
 
     useEffect(() => {
         if (!post?.id) return;
@@ -58,7 +78,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             // Only use Ably real-time updates, no polling
             unsubscribe = await subscribeToChannel('feed:global', 'post-stats-updated', (data) => {
                 if (!mounted) return;
-                const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+                const interactionPostId = post?.interaction_post_id ?? post?.id;
                 if (!data || Number(data.post_id) !== Number(interactionPostId)) return;
 
                 if (typeof data.likes_count === 'number') {
@@ -90,6 +110,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
 
             // Update likedPostIds based on backend response
             setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)));
+            window.dispatchEvent(new CustomEvent(POST_LIKE_TOGGLED_EVENT, { detail: { interaction_post_id: postId, liked } }));
 
             setLikesCountMap((prev) => ({
                 ...prev,
@@ -114,7 +135,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
         }));
     };
 
-    const interactionPostId = post?.interaction_post_id ?? post?.repost_of_post_id ?? post?.id;
+    const interactionPostId = post?.interaction_post_id ?? post?.id;
     const isLiked = likedInteractionPostIds.includes(interactionPostId);
     const likeCount = likesCountMap[post?.id] ?? 0;
     const commentCount = commentsCountMap[post?.id] ?? 0;
@@ -174,15 +195,15 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
-                                ? `flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
                                 }`
-                                : `flex cursor-pointer flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                : `flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
                                 }`
                         }
                         aria-pressed={isLiked}
                     >
-                        <LionsGeekLogoIcon className="h-5 w-5" />
-                        <span className={isFacebook ? 'text-[12px] font-semibold leading-none' : 'text-[12px] font-semibold leading-none'}>
+                        <LionsGeekLogoIcon className="h-5 w-5 mt-1" />
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>
                             {isLiked ? 'Geeked' : 'Geek'}
                         </span>
                     </button>

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -195,7 +196,7 @@ class UsersController extends Controller
      */
     protected function mapPostForFeed(Post $post, User $authUser): array
     {
-        $interactionPost = $post->repostOf ?? $post;
+        $interactionPost = $post;
         $isLikedByCurrentUser = $interactionPost->relationLoaded('likes')
             ? $interactionPost->likes->isNotEmpty()
             : false;
@@ -209,26 +210,11 @@ class UsersController extends Controller
             'user_formation' => $post->user->formation?->name,
 
             'id' => $post->id,
+            'type' => 'post',
             'description' => $post->description,
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds($post->description),
             'images' => $post->images,
-            'repost_of_post_id' => $post->repost_of_post_id,
             'interaction_post_id' => $interactionPost->id,
-            'repost_of' => $post->repostOf ? [
-                'id' => $interactionPost->id,
-                'user_id' => $interactionPost->user_id,
-                'user_name' => $interactionPost->user?->name,
-                'user_image' => $interactionPost->user?->image,
-                'user_last_online' => $interactionPost->user?->last_online,
-                'user_status' => $interactionPost->user?->status,
-                'user_formation' => $interactionPost->user?->formation?->name,
-                'description' => $interactionPost->description,
-                'images' => $interactionPost->images,
-                'likes_count' => $interactionPost->likes_count ?? 0,
-                'comments_count' => $interactionPost->comments_count ?? 0,
-                'reposts_count' => $interactionPost->reposts_count ?? 0,
-                'created_at' => $interactionPost->created_at,
-            ] : null,
 
             'likes_count' => $interactionPost->likes_count ?? 0,
             'comments_count' => $interactionPost->comments_count ?? 0,
@@ -242,22 +228,65 @@ class UsersController extends Controller
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function mapRepostForFeed(object $repostRow, Post $originalPost, User $reposter, User $authUser): array
+    {
+        $repostCreatedAt = null;
+        try {
+            if (!empty($repostRow->created_at)) {
+                $repostCreatedAt = Carbon::parse((string) $repostRow->created_at)->toDateTimeString();
+            }
+        } catch (\Throwable $e) {
+            $repostCreatedAt = (string) ($repostRow->created_at ?? null);
+        }
+
+        // Likes live on the original post; repost items should reflect that state too.
+        $isLikedByCurrentUser = $originalPost->relationLoaded('likes')
+            ? $originalPost->likes->isNotEmpty()
+            : false;
+
+        return [
+            'user_id' => (int) $reposter->id,
+            'user_name' => $reposter->name,
+            'user_image' => $reposter->image,
+            'user_last_online' => $reposter->last_online,
+            'user_status' => $reposter->status,
+            'user_formation' => $reposter->formation?->name,
+
+            // Use a string id to avoid collisions with posts.id
+            'id' => 'repost-' . (int) ($repostRow->id ?? 0),
+            'type' => 'repost',
+            'description' => (string) ($repostRow->description ?? ''),
+            'mention_user_ids' => PostMentionResolver::mapTokensToUserIds((string) ($repostRow->description ?? '')),
+            'images' => [],
+            'interaction_post_id' => (int) $originalPost->id,
+            'repost_of' => $this->mapPostForFeed($originalPost, $authUser),
+
+            // Always show original stats for a repost item
+            'likes_count' => (int) ($originalPost->likes_count ?? 0),
+            'comments_count' => (int) ($originalPost->comments_count ?? 0),
+            'reposts_count' => (int) ($originalPost->reposts_count ?? 0),
+
+            'is_liked_by_current_user' => $isLikedByCurrentUser,
+            'created_at' => $repostCreatedAt,
+            'is_following' => $authUser->following()->where('followed_id', $reposter->id)->exists(),
+        ];
+    }
+
     public function getPosts($user = null)
     {
         $authUser = Auth::user();
+
+        if (!$authUser) {
+            return ['posts' => collect()];
+        }
 
         $dataPosts = Post::with([
             'user',
             'likes',
             'comments',
-            'repostOf' => function ($query) use ($authUser) {
-                $query->with([
-                    'user',
-                    'likes' => function ($q) use ($authUser) {
-                        $q->where('user_id', $authUser->id);
-                    },
-                ])->withCount(['likes', 'comments', 'reposts']);
-            },
             'likes' => function ($query) use ($authUser) {
                 $query->where('user_id', $authUser->id);
             },
@@ -269,11 +298,59 @@ class UsersController extends Controller
             $dataPosts = $dataPosts->where('user_id', $user->id);
         }
 
-        $dataPosts = $dataPosts->get();
+        /** @var Collection<int, Post> $postModels */
+        $postModels = $dataPosts->get();
 
-        $posts = $dataPosts->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser));
+        $postItems = $postModels->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser));
 
-        return ['posts' => $posts];
+        // For the main feed, merge repost rows so reposts appear as feed items.
+        if (!$user) {
+            $repostRows = DB::table('reposts_posts')
+                ->orderByDesc('created_at')
+                ->limit(60)
+                ->get();
+
+            if ($repostRows->isNotEmpty()) {
+                $originalIds = $repostRows->pluck('post_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+                $reposterIds = $repostRows->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+                $originalPosts = Post::with(['user', 'comments'])
+                    ->with(['likes' => function ($q) use ($authUser) {
+                        $q->where('user_id', $authUser->id);
+                    }])
+                    ->withCount(['likes', 'comments', 'reposts'])
+                    ->whereIn('id', $originalIds)
+                    ->get()
+                    ->keyBy('id');
+
+                $reposters = User::with('formation')
+                    ->whereIn('id', $reposterIds)
+                    ->get()
+                    ->keyBy('id');
+
+                $repostItems = $repostRows
+                    ->map(function ($row) use ($originalPosts, $reposters, $authUser) {
+                        $original = $originalPosts[(int) $row->post_id] ?? null;
+                        $reposter = $reposters[(int) $row->user_id] ?? null;
+                        if (!$original || !$reposter) {
+                            return null;
+                        }
+
+                        return $this->mapRepostForFeed($row, $original, $reposter, $authUser);
+                    })
+                    ->filter()
+                    ->values();
+
+                $postItems = $postItems->concat($repostItems)->values();
+            }
+        }
+
+        $sorted = $postItems
+            ->filter(fn ($item) => $item && isset($item['created_at']) && $item['created_at'])
+            ->sortByDesc('created_at')
+            ->values();
+
+        return ['posts' => $sorted];
     }
 
     /**
@@ -289,14 +366,6 @@ class UsersController extends Controller
             'user',
             'likes',
             'comments',
-            'repostOf' => function ($query) use ($authUser) {
-                $query->with([
-                    'user',
-                    'likes' => function ($q) use ($authUser) {
-                        $q->where('user_id', $authUser->id);
-                    },
-                ])->withCount(['likes', 'comments', 'reposts']);
-            },
             'likes' => function ($q) use ($authUser) {
                 $q->where('user_id', $authUser->id);
             },
