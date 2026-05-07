@@ -6,6 +6,8 @@ import LikesModal from './LikesModal';
 import RepostModal from './RepostModal';
 import SendPostModal from './SendPostModal';
 
+const POST_LIKE_TOGGLED_EVENT = 'post-like-toggled';
+
 const LionsGeekLogoIcon = ({ className, size = 20 }) => {
     return (
         <svg
@@ -47,6 +49,24 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
             setLikedInteractionPostIds((prev) => [...new Set([...prev, interactionPostId])]);
         }
     }, [post.id, post.likes_count, post.comments_count, post.reposts_count, post.is_liked_by_current_user]);
+
+    // Keep liked state in sync across multiple cards that reference the same interaction post
+    // (e.g. a repost card + the original card).
+    useEffect(() => {
+        const handler = (event) => {
+            const detail = event?.detail || {};
+            const interactionId = Number(detail?.interaction_post_id);
+            const liked = Boolean(detail?.liked);
+            const myInteractionId = Number(post?.interaction_post_id ?? post?.id);
+
+            if (!interactionId || interactionId !== myInteractionId) return;
+
+            setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, interactionId])] : prev.filter((id) => Number(id) !== interactionId)));
+        };
+
+        window.addEventListener(POST_LIKE_TOGGLED_EVENT, handler);
+        return () => window.removeEventListener(POST_LIKE_TOGGLED_EVENT, handler);
+    }, [post?.interaction_post_id, post?.id]);
 
     useEffect(() => {
         if (!post?.id) return;
@@ -90,6 +110,7 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
 
             // Update likedPostIds based on backend response
             setLikedInteractionPostIds((prev) => (liked ? [...new Set([...prev, postId])] : prev.filter((id) => id !== postId)));
+            window.dispatchEvent(new CustomEvent(POST_LIKE_TOGGLED_EVENT, { detail: { interaction_post_id: postId, liked } }));
 
             setLikesCountMap((prev) => ({
                 ...prev,

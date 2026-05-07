@@ -242,6 +242,11 @@ class UsersController extends Controller
             $repostCreatedAt = (string) ($repostRow->created_at ?? null);
         }
 
+        // Likes live on the original post; repost items should reflect that state too.
+        $isLikedByCurrentUser = $originalPost->relationLoaded('likes')
+            ? $originalPost->likes->isNotEmpty()
+            : false;
+
         return [
             'user_id' => (int) $reposter->id,
             'user_name' => $reposter->name,
@@ -264,7 +269,7 @@ class UsersController extends Controller
             'comments_count' => (int) ($originalPost->comments_count ?? 0),
             'reposts_count' => (int) ($originalPost->reposts_count ?? 0),
 
-            'is_liked_by_current_user' => false,
+            'is_liked_by_current_user' => $isLikedByCurrentUser,
             'created_at' => $repostCreatedAt,
             'is_following' => $authUser->following()->where('followed_id', $reposter->id)->exists(),
         ];
