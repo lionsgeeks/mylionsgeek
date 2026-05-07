@@ -195,7 +195,7 @@ class UsersController extends Controller
      */
     protected function mapPostForFeed(Post $post, User $authUser): array
     {
-        $interactionPost = $post->repostOf ?? $post;
+        $interactionPost = $post;
         $isLikedByCurrentUser = $interactionPost->relationLoaded('likes')
             ? $interactionPost->likes->isNotEmpty()
             : false;
@@ -212,23 +212,7 @@ class UsersController extends Controller
             'description' => $post->description,
             'mention_user_ids' => PostMentionResolver::mapTokensToUserIds($post->description),
             'images' => $post->images,
-            'repost_of_post_id' => $post->repost_of_post_id,
             'interaction_post_id' => $interactionPost->id,
-            'repost_of' => $post->repostOf ? [
-                'id' => $interactionPost->id,
-                'user_id' => $interactionPost->user_id,
-                'user_name' => $interactionPost->user?->name,
-                'user_image' => $interactionPost->user?->image,
-                'user_last_online' => $interactionPost->user?->last_online,
-                'user_status' => $interactionPost->user?->status,
-                'user_formation' => $interactionPost->user?->formation?->name,
-                'description' => $interactionPost->description,
-                'images' => $interactionPost->images,
-                'likes_count' => $interactionPost->likes_count ?? 0,
-                'comments_count' => $interactionPost->comments_count ?? 0,
-                'reposts_count' => $interactionPost->reposts_count ?? 0,
-                'created_at' => $interactionPost->created_at,
-            ] : null,
 
             'likes_count' => $interactionPost->likes_count ?? 0,
             'comments_count' => $interactionPost->comments_count ?? 0,
@@ -250,14 +234,6 @@ class UsersController extends Controller
             'user',
             'likes',
             'comments',
-            'repostOf' => function ($query) use ($authUser) {
-                $query->with([
-                    'user',
-                    'likes' => function ($q) use ($authUser) {
-                        $q->where('user_id', $authUser->id);
-                    },
-                ])->withCount(['likes', 'comments', 'reposts']);
-            },
             'likes' => function ($query) use ($authUser) {
                 $query->where('user_id', $authUser->id);
             },
@@ -289,14 +265,6 @@ class UsersController extends Controller
             'user',
             'likes',
             'comments',
-            'repostOf' => function ($query) use ($authUser) {
-                $query->with([
-                    'user',
-                    'likes' => function ($q) use ($authUser) {
-                        $q->where('user_id', $authUser->id);
-                    },
-                ])->withCount(['likes', 'comments', 'reposts']);
-            },
             'likes' => function ($q) use ($authUser) {
                 $q->where('user_id', $authUser->id);
             },

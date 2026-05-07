@@ -95,14 +95,16 @@ class PostController extends Controller
 
     private function resolveInteractionPost(Post $post): Post
     {
-        return $post->repost_of_post_id ? ($post->repostOf ?? $post) : $post;
+        // Pivot-based reposts do not create a separate Post row.
+        return $post;
     }
 
     private function notifyRepostersForInteraction(Post $originalPost, User $actor, string $type): void
     {
-        $reposterIds = Post::query()
-            ->where('repost_of_post_id', $originalPost->id)
+        $reposterIds = DB::table('reposts_posts')
+            ->where('post_id', $originalPost->id)
             ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
 
@@ -147,12 +149,30 @@ class PostController extends Controller
 
         $original = Post::with('user')->findOrFail((int) $postId);
 
-        $repost = Post::create([
-            'user_id' => $user->id,
-            'repost_of_post_id' => $original->id,
-            'description' => (string) ($request->input('description') ?? ''),
-            'images' => null,
-        ]);
+        $description = (string) ($request->input('description') ?? '');
+        $already = DB::table('reposts_posts')
+            ->where('user_id', $user->id)
+            ->where('post_id', $original->id)
+            ->exists();
+
+        // Insert or update repost pivot (so "repost with thoughts" can overwrite thoughts).
+        if ($already) {
+            DB::table('reposts_posts')
+                ->where('user_id', $user->id)
+                ->where('post_id', $original->id)
+                ->update([
+                    'description' => $description !== '' ? $description : null,
+                    'updated_at' => now(),
+                ]);
+        } else {
+            DB::table('reposts_posts')->insert([
+                'user_id' => $user->id,
+                'post_id' => $original->id,
+                'description' => $description !== '' ? $description : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $notification = \App\Models\PostNotification::createNotification(
             $original->user_id,
@@ -170,7 +190,7 @@ class PostController extends Controller
         $posts = Post::withCount(['likes', 'comments', 'reposts'])->latest()->get();
 
         return back()->with([
-            'success' => 'Reposted successfully',
+            'success' => $already ? 'Repost updated successfully' : 'Reposted successfully',
             'posts' => $posts,
         ]);
     }
@@ -217,7 +237,7 @@ class PostController extends Controller
 
     public function getPostLikes($postId)
     {
-        $post = Post::with('repostOf')->findOrFail($postId);
+        $post = Post::findOrFail($postId);
         $interactionPost = $this->resolveInteractionPost($post);
 
         $Likes = $interactionPost->likes()
@@ -272,7 +292,7 @@ class PostController extends Controller
             'comment' => 'required|string|max:2000',
             'image' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
-        $post = Post::with('repostOf')->findOrFail($postId);
+        $post = Post::findOrFail($postId);
         $interactionPost = $this->resolveInteractionPost($post);
         $user = Auth::user();
         if (!$user) {
@@ -368,7 +388,7 @@ class PostController extends Controller
     public function AddLike($id)
     {
         $user = Auth::user();
-        $post = Post::with('repostOf')->findOrFail($id);
+        $post = Post::findOrFail($id);
         $interactionPost = $this->resolveInteractionPost($post);
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Post extends Model
 {
@@ -10,7 +11,6 @@ class Post extends Model
 
     protected $fillable = [
         'user_id',
-        'repost_of_post_id',
         'description',
         'images',
         'hashTags',
@@ -25,14 +25,12 @@ class Post extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function repostOf()
-    {
-        return $this->belongsTo(self::class, 'repost_of_post_id');
-    }
-
     public function reposts()
     {
-        return $this->hasMany(self::class, 'repost_of_post_id');
+        // Pivot-based reposts: users who reposted this post.
+        return $this->belongsToMany(User::class, 'reposts_posts', 'post_id', 'user_id')
+            ->withPivot(['description'])
+            ->withTimestamps();
     }
 
     public function likes()

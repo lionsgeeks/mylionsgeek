@@ -9,6 +9,7 @@ use App\Models\Like;
 use App\Models\Project;
 use App\Models\Reservation;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -58,60 +59,15 @@ class PostController extends Controller
 
         return [
             'id' => $post->id ?? null,
-            'type' => $post->repost_of_post_id ? 'repost' : 'post',
+            'type' => 'post',
             'content' => $post->description ?? '',
             'description' => $post->description ?? '',
             'images' => $imageUrls,
             'image' => count($imageUrls) > 0 ? $imageUrls[0] : null,
             'hashtags' => $post->hashTags ?? [],
             'created_at' => $createdAt,
-            'repost_of_post_id' => $post->repost_of_post_id,
             'interaction_post_id' => $interactionId,
             'is_saved_by_user' => in_array($interactionId, $savedInteractionPostIds, true),
-            'repost_of' => $post->repost_of_post_id ? [
-                'id' => $interactionPost->id,
-                'description' => $interactionPost->description ?? '',
-                'content' => $interactionPost->description ?? '',
-                'images' => (function () use ($interactionPost) {
-                    $images = $interactionPost->images ?? [];
-                    $imageUrls = [];
-                    if (!is_array($images) || count($images) === 0) return $imageUrls;
-                    foreach ($images as $image) {
-                        if (!$image) continue;
-                        if (strpos($image, 'http') === 0) {
-                            $imageUrls[] = $image;
-                            continue;
-                        }
-                        $imagePath = ltrim((string) $image, '/');
-                        if (strpos($imagePath, 'img/posts/') !== false) {
-                            $imageUrls[] = url('storage/' . $imagePath);
-                        } else {
-                            $imageUrls[] = url('storage/img/posts/' . $imagePath);
-                        }
-                    }
-                    return $imageUrls;
-                })(),
-                'user' => [
-                    'id' => $interactionPost->user?->id,
-                    'name' => $interactionPost->user?->name ?? 'User',
-                    'avatar' => ($interactionPost->user && $interactionPost->user->image) ? (function () use ($interactionPost) {
-                        $imagePath = ltrim((string) $interactionPost->user->image, '/');
-                        if (strpos($imagePath, 'img/profile/') !== false) {
-                            return url('storage/' . $imagePath);
-                        }
-                        return url('storage/img/profile/' . $imagePath);
-                    })() : null,
-                    'image' => $interactionPost->user?->image,
-                ],
-                'likes' => $interactionPost->likes ? $interactionPost->likes->count() : 0,
-                'comments' => $interactionPost->comments ? $interactionPost->comments->count() : 0,
-                'reposts' => (int) ($interactionPost->reposts()->count()),
-                'created_at' => $interactionPost->created_at
-                    ? (is_string($interactionPost->created_at)
-                        ? $interactionPost->created_at
-                        : $interactionPost->created_at->toDateTimeString())
-                    : null,
-            ] : null,
             'user' => [
                 'id' => $postUser->id ?? null,
                 'name' => $postUser->name ?? 'User',
@@ -128,17 +84,64 @@ class PostController extends Controller
             'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $authUser->id) : false,
             'comments' => $post->comments ? $post->comments->count() : 0,
             'reposts' => (int) ($interactionPost->reposts()->count()),
-            'is_reposted_by_user' => Post::query()
+            'is_reposted_by_user' => DB::table('reposts_posts')
                 ->where('user_id', $authUser->id)
-                ->where('repost_of_post_id', $interactionPost->id)
+                ->where('post_id', $interactionPost->id)
                 ->exists(),
         ];
     }
 
     private function resolveInteractionPost(Post $post): Post
     {
-        $post->loadMissing('repostOf');
-        return $post->repost_of_post_id ? ($post->repostOf ?? $post) : $post;
+        // Pivot-based reposts do not create a separate Post row.
+        return $post;
+    }
+
+    private function mapRepostForMobileFeed(object $repostRow, Post $originalPost, ?User $reposter, $authUser, array $savedInteractionPostIds = []): array
+    {
+        $originalPost->loadMissing(['user', 'likes', 'comments']);
+        $original = $this->mapPostForMobileFeed($originalPost, $authUser, $savedInteractionPostIds);
+
+        $createdAt = null;
+        if (!empty($repostRow->created_at)) {
+            $createdAt = is_string($repostRow->created_at) ? $repostRow->created_at : (string) $repostRow->created_at;
+        }
+
+        $reposterAvatar = null;
+        if ($reposter?->image) {
+            $imagePath = ltrim((string) $reposter->image, '/');
+            $reposterAvatar = str_contains($imagePath, 'img/profile/')
+                ? url('storage/' . $imagePath)
+                : url('storage/img/profile/' . $imagePath);
+        }
+
+        return [
+            'id' => (int) ($repostRow->id ?? 0),
+            'type' => 'repost',
+            'content' => (string) ($repostRow->description ?? ''),
+            'description' => (string) ($repostRow->description ?? ''),
+            'images' => [],
+            'image' => null,
+            'created_at' => $createdAt,
+            'interaction_post_id' => (int) $originalPost->id,
+            'is_saved_by_user' => in_array((int) $originalPost->id, $savedInteractionPostIds, true),
+            'repost_of' => $original,
+            'user' => [
+                'id' => $reposter?->id,
+                'name' => $reposter?->name ?? 'User',
+                'avatar' => $reposterAvatar,
+                'image' => $reposter?->image,
+            ],
+            // Surface original interaction stats at the top-level too (mobile clients often read these).
+            'likes' => (int) ($original['likes'] ?? 0),
+            'comments' => (int) ($original['comments'] ?? 0),
+            'reposts' => (int) ($original['reposts'] ?? 0),
+            'is_liked_by_user' => (bool) ($original['is_liked_by_user'] ?? false),
+            'is_reposted_by_user' => DB::table('reposts_posts')
+                ->where('user_id', $authUser->id)
+                ->where('post_id', $originalPost->id)
+                ->exists(),
+        ];
     }
 
     public function index(Request $request)
@@ -153,19 +156,24 @@ class PostController extends Controller
             $feed = [];
             $recentPosts = collect([]);
 
-            // Get recent posts
+            // Get recent posts + recent reposts (pivot), then merge into one feed.
             try {
-                $recentPosts = Post::with(['user', 'likes', 'comments'])
-                    ->with(['repostOf.user', 'repostOf.likes', 'repostOf.comments'])
+                $recentPostsModels = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
                     ->whereNotNull('created_at')
                     ->orderBy('created_at', 'desc')
                     ->limit(20)
                     ->get()
-                    ->filter(fn ($post) => $post !== null);
+                    ->filter();
 
-                $interactionIds = $recentPosts
-                    ->map(fn ($p) => (int) $this->resolveInteractionPost($p)->id)
+                $recentRepostRows = DB::table('reposts_posts')
+                    ->orderByDesc('created_at')
+                    ->limit(20)
+                    ->get();
+
+                $interactionIds = $recentPostsModels
+                    ->map(fn ($p) => (int) $p->id)
+                    ->concat($recentRepostRows->pluck('post_id')->map(fn ($id) => (int) $id))
                     ->filter()
                     ->unique()
                     ->values()
@@ -182,16 +190,37 @@ class PostController extends Controller
                         ->all();
                 }
 
-                $recentPosts = $recentPosts
-                    ->map(function ($post) use ($user, $savedInteractionIds) {
-                        try {
-                            return $this->mapPostForMobileFeed($post, $user, $savedInteractionIds);
-                        } catch (\Exception $e) {
-                            Log::error('Error mapping post: ' . $e->getMessage());
+                $recentPosts = $recentPostsModels
+                    ->map(fn ($post) => $this->mapPostForMobileFeed($post, $user, $savedInteractionIds))
+                    ->filter()
+                    ->values();
+
+                $originalPostsById = Post::with(['user', 'likes', 'comments'])
+                    ->withCount(['reposts'])
+                    ->whereIn('id', $recentRepostRows->pluck('post_id')->all())
+                    ->get()
+                    ->keyBy('id');
+
+                $repostersById = User::query()
+                    ->select(['id', 'name', 'image'])
+                    ->whereIn('id', $recentRepostRows->pluck('user_id')->all())
+                    ->get()
+                    ->keyBy('id');
+
+                $recentReposts = $recentRepostRows
+                    ->map(function ($row) use ($originalPostsById, $repostersById, $user, $savedInteractionIds) {
+                        $original = $originalPostsById[(int) $row->post_id] ?? null;
+                        if (!$original) {
                             return null;
                         }
+
+                        $reposter = $repostersById[(int) $row->user_id] ?? null;
+                        return $this->mapRepostForMobileFeed($row, $original, $reposter, $user, $savedInteractionIds);
                     })
-                    ->filter(fn ($item) => $item !== null);
+                    ->filter()
+                    ->values();
+
+                $recentPosts = $recentPosts->concat($recentReposts)->values();
             } catch (\Exception $e) {
                 Log::error('Error fetching posts for feed: ' . $e->getMessage());
                 Log::error('Stack trace: ' . $e->getTraceAsString());
@@ -359,7 +388,7 @@ class PostController extends Controller
 
     private function formatPostForFeed(Post $post, $authUser): array
     {
-        $post->loadMissing(['user', 'likes', 'comments', 'repostOf']);
+        $post->loadMissing(['user', 'likes', 'comments']);
         $interactionPost = $this->resolveInteractionPost($post);
         $postUser = $post->user ?? null;
 
@@ -407,9 +436,9 @@ class PostController extends Controller
             'is_liked_by_user' => $post->likes ? $post->likes->contains('user_id', $authUser->id) : false,
             'comments' => $post->comments ? $post->comments->count() : 0,
             'reposts' => (int) ($interactionPost->reposts()->count()),
-            'is_reposted_by_user' => Post::query()
+            'is_reposted_by_user' => DB::table('reposts_posts')
                 ->where('user_id', $authUser->id)
-                ->where('repost_of_post_id', $interactionPost->id)
+                ->where('post_id', $interactionPost->id)
                 ->exists(),
         ];
     }
@@ -723,7 +752,7 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $post = Post::with(['repostOf'])->findOrFail($id);
+        $post = Post::findOrFail($id);
         $interactionPost = $this->resolveInteractionPost($post);
         $interactionId = (int) $interactionPost->id;
 
@@ -764,7 +793,6 @@ class PostController extends Controller
 
         $saved = $user->savedPosts()
             ->with(['user', 'likes', 'comments'])
-            ->with(['repostOf.user', 'repostOf.likes', 'repostOf.comments'])
             ->withCount(['reposts'])
             ->orderByPivot('created_at', 'desc')
             ->limit(60)
@@ -848,12 +876,12 @@ class PostController extends Controller
             'description' => 'nullable|string|max:5000',
         ]);
 
-        $post = Post::with(['user', 'repostOf'])->findOrFail((int) $validated['post_id']);
+        $post = Post::with(['user', 'likes', 'comments'])->withCount(['reposts'])->findOrFail((int) $validated['post_id']);
         $interactionPost = $this->resolveInteractionPost($post);
 
-        $alreadyReposted = Post::query()
+        $alreadyReposted = DB::table('reposts_posts')
             ->where('user_id', $user->id)
-            ->where('repost_of_post_id', $interactionPost->id)
+            ->where('post_id', $interactionPost->id)
             ->exists();
 
         if ($alreadyReposted) {
@@ -865,23 +893,33 @@ class PostController extends Controller
             ], 200);
         }
 
-        $repost = DB::transaction(function () use ($user, $interactionPost, $validated) {
-            return Post::create([
+        $description = (string) ($validated['description'] ?? '');
+
+        $repostId = DB::transaction(function () use ($user, $interactionPost, $description) {
+            return DB::table('reposts_posts')->insertGetId([
                 'user_id' => $user->id,
-                'repost_of_post_id' => $interactionPost->id,
-                'description' => (string) ($validated['description'] ?? ''),
-                'images' => null,
+                'post_id' => $interactionPost->id,
+                'description' => $description !== '' ? $description : null,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         });
 
-        $interactionPost->refresh();
         $repostsCount = (int) $interactionPost->reposts()->count();
+
+        $repostRow = (object) [
+            'id' => $repostId,
+            'user_id' => $user->id,
+            'post_id' => $interactionPost->id,
+            'description' => $description !== '' ? $description : null,
+            'created_at' => now()->toDateTimeString(),
+        ];
 
         return response()->json([
             'message' => 'Post reposted successfully',
             'reposted' => true,
             'reposts_count' => $repostsCount,
-            'post' => $this->formatPostForFeed($repost->fresh(), $user),
+            'post' => $this->mapRepostForMobileFeed($repostRow, $interactionPost, $user, $user, []),
         ], 201);
     }
 
@@ -897,15 +935,15 @@ class PostController extends Controller
             'post_id' => 'required|integer|exists:posts,id',
         ]);
 
-        $post = Post::with(['repostOf'])->findOrFail((int) $validated['post_id']);
+        $post = Post::findOrFail((int) $validated['post_id']);
         $interactionPost = $this->resolveInteractionPost($post);
 
-        $repostRow = Post::query()
+        $repostPivot = DB::table('reposts_posts')
             ->where('user_id', $user->id)
-            ->where('repost_of_post_id', $interactionPost->id)
+            ->where('post_id', $interactionPost->id)
             ->first();
 
-        if (!$repostRow) {
+        if (!$repostPivot) {
             $repostsCount = (int) $interactionPost->reposts()->count();
             return response()->json([
                 'message' => 'Not reposted',
@@ -914,11 +952,13 @@ class PostController extends Controller
             ], 200);
         }
 
-        DB::transaction(function () use ($repostRow) {
-            $repostRow->delete();
+        DB::transaction(function () use ($user, $interactionPost) {
+            DB::table('reposts_posts')
+                ->where('user_id', $user->id)
+                ->where('post_id', $interactionPost->id)
+                ->delete();
         });
 
-        $interactionPost->refresh();
         $repostsCount = (int) $interactionPost->reposts()->count();
 
         return response()->json([

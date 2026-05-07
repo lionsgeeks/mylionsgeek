@@ -182,6 +182,13 @@ class User extends Authenticatable
         return $this->belongsToMany(Post::class, 'post_saves', 'user_id', 'post_id')->withTimestamps();
     }
 
+    public function repostedPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'reposts_posts', 'user_id', 'post_id')
+            ->withPivot(['description'])
+            ->withTimestamps();
+    }
+
     /**
      * Get conversations where this user is user_one
      */
