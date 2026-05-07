@@ -174,15 +174,15 @@ const PostCardFooter = ({ user, post, takeToUserProfile, PostModal = true, onCom
                         onClick={() => toggleLike(interactionPostId)}
                         className={
                             isFacebook
-                                ? `flex flex-1 cursor-pointer flex-col items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
+                                ? `flex flex-1 cursor-pointer items-center justify-center gap-1 py-2.5 text-[15px] font-semibold transition-colors hover:bg-muted/50 dark:hover:bg-white/5 ${isLiked ? 'text-alpha' : 'text-beta dark:text-light'
                                 }`
-                                : `flex cursor-pointer flex-col items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
+                                : `flex cursor-pointer items-center gap-1 rounded-lg px-4 py-2 transition-colors duration-200 ${isLiked ? 'text-alpha' : 'text-beta hover:text-alpha dark:text-light'
                                 }`
                         }
                         aria-pressed={isLiked}
                     >
-                        <LionsGeekLogoIcon className="h-5 w-5" />
-                        <span className={isFacebook ? 'text-[12px] font-semibold leading-none' : 'text-[12px] font-semibold leading-none'}>
+                        <LionsGeekLogoIcon className="h-5 w-5 mt-1" />
+                        <span className={isFacebook ? 'font-semibold' : 'text-sm font-semibold'}>
                             {isLiked ? 'Geeked' : 'Geek'}
                         </span>
                     </button>
