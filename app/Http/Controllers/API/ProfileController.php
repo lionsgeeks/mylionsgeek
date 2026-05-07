@@ -8,6 +8,7 @@ use App\Models\UserSocialLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -302,29 +303,23 @@ class ProfileController extends Controller
         ]);
 
         $file = $request->file('cover');
-        $filename = $file->hashName();
 
-        $coversDir = public_path('/storage/img/cover');
-        if (! File::isDirectory($coversDir)) {
-            File::makeDirectory($coversDir, 0755, true);
-        }
+        // Store covers under: storage/app/public/img/cover
+        // Public URL (via storage symlink): /storage/img/cover/<filename>
+        $disk = 'public';
+        $dir = 'img/cover';
 
-        // Best-effort delete old cover file (if it looks like a stored filename).
-        if (
-            is_string($user->cover)
-            && $user->cover !== ''
-            && strpos($user->cover, '/') === false
-            && strpos($user->cover, '\\') === false
-        ) {
-            $oldPath = $coversDir . DIRECTORY_SEPARATOR . $user->cover;
-            if (File::isFile($oldPath)) {
-                File::delete($oldPath);
+        // Best-effort delete old cover (supports either "filename" or "img/cover/filename").
+        if (is_string($user->cover) && $user->cover !== '') {
+            $old = str_replace('\\', '/', $user->cover);
+            if (strpos($old, '/') === false) {
+                $old = $dir . '/' . $old;
             }
+            Storage::disk($disk)->delete($old);
         }
 
-        $file->move($coversDir, $filename);
-
-        $user->cover = $filename;
+        $storedPath = $file->store($dir, $disk); // returns "img/cover/<filename>"
+        $user->cover = $storedPath;
         $user->save();
 
         return response()->json([
