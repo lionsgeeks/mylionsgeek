@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\PostController;
+use App\Http\Controllers\API\PostReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -15,6 +16,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/like/{id}', [PostController::class, 'toggleLike']);
     Route::post('/posts/save/{id}', [PostController::class, 'toggleSave']);
     Route::get('/posts/{id}', [PostController::class, 'showPost'])->whereNumber('id');
+    Route::post('/posts/{id}/report', [PostReportController::class, 'store'])->whereNumber('id');
     Route::get('/posts/{id}/likes', [PostController::class, 'getLikes']);
     Route::get('/posts/{id}/comments', [PostController::class, 'getComments']);
     Route::get('/posts/{id}/comments-count', [PostController::class, 'getCommentsCount']);
@@ -22,5 +24,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/comments/{id}/like', [PostController::class, 'toggleCommentLike']);
     Route::put('/comments/{id}', [PostController::class, 'updateComment']);
     Route::delete('/comments/{id}', [PostController::class, 'deleteComment']);
+
+    // Staff moderation endpoints
+    Route::post('/post-reports/{id}/accept', [PostReportController::class, 'accept'])->whereNumber('id');
+    Route::post('/post-reports/{id}/refuse', [PostReportController::class, 'refuse'])->whereNumber('id');
 });
 

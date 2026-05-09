@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
-import { Bell, Briefcase, Calendar, CheckCircle, Clock, Lock, User, Users, XCircle } from 'lucide-react';
+import { Bell, Briefcase, Calendar, CheckCircle, Clock, Flag, Lock, User, Users, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 export default function NotificationIcon() {
@@ -216,6 +216,10 @@ export default function NotificationIcon() {
                 // Handle "project-submission-123" or "project-status-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'post' && parts[1] === 'report') {
+                // Handle "post-report-123"
+                type = `${parts[0]}-${parts[1]}`;
+                id = parts[2];
             } else if (parts.length === 3 && parts[0] === 'access' && parts[1] === 'request') {
                 // Handle "access-request-123"
                 type = `${parts[0]}-${parts[1]}`;
@@ -321,6 +325,8 @@ export default function NotificationIcon() {
                 return CheckCircle;
             case 'x-circle':
                 return XCircle;
+            case 'flag':
+                return Flag;
             case 'message-square':
                 return Users;
             case 'user':
@@ -342,6 +348,8 @@ export default function NotificationIcon() {
             case 'check-circle':
                 return 'text-green-600';
             case 'x-circle':
+                return 'text-red-600';
+            case 'flag':
                 return 'text-red-600';
             case 'message-square':
                 return 'text-blue-500';

@@ -17,6 +17,7 @@ use App\Models\AccessRequestNotification;
 use App\Models\AccessRequestResponseNotification;
 use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
+use App\Models\PostReportNotification;
 use App\Models\Formation;
 use App\Models\User;
 use Ably\AblyRest;
@@ -389,6 +390,47 @@ class NotificationController extends Controller
                 ];
             }
 
+            // 4.5. POST REPORT NOTIFICATIONS (Staff)
+            if (($isAdmin || $isModerator || $isCoach || $isStudioResponsable) && Schema::hasTable('post_report_notifications')) {
+                try {
+                    $reportNotifs = PostReportNotification::query()
+                        ->with([
+                            'report',
+                            'report.reporter:id,name,image',
+                        ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($reportNotifs as $rn) {
+                        $report = $rn->report;
+                        $reporter = $report?->reporter;
+                        if (!$report || !$reporter) {
+                            continue;
+                        }
+
+                        $notifications[] = [
+                            'id' => 'post-report-' . $rn->id,
+                            'type' => 'post_report',
+                            'sender_name' => $reporter->name ?? 'User',
+                            'sender_image' => $reporter->image ?? null,
+                            'message' => ($reporter->name ?? 'Someone') . ' reported a post',
+                            'link' => "/admin/post-reports/{$report->id}",
+                            'mobile_link' => "/posts/{$report->post_id}?reportId={$report->id}",
+                            'icon_type' => 'flag',
+                            'created_at' => $rn->created_at?->toISOString() ?? now()->toISOString(),
+                            'read_at' => $rn->read_at ? $rn->read_at->toISOString() : null,
+                            'post_id' => (int) $report->post_id,
+                            'report_id' => (int) $report->id,
+                            'report_status' => (string) $report->status,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching post report notifications: ' . $e->getMessage());
+                }
+            }
+
             // 5. FOLLOW NOTIFICATIONS (All users)
             $followNotifications = FollowNotification::with('follower')
                 ->where('user_id', $user->id)
@@ -659,6 +701,18 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'post-report':
+                case 'post_report':
+                    if (Schema::hasTable('post_report_notifications')) {
+                        $notification = PostReportNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -721,6 +775,13 @@ class NotificationController extends Controller
             // Mark all project message notifications as read (for users)
             if (Schema::hasTable('project_message_notifications')) {
                 ProjectMessageNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // Mark all post report notifications as read (for staff)
+            if (Schema::hasTable('post_report_notifications')) {
+                PostReportNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

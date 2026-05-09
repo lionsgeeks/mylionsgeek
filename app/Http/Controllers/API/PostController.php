@@ -160,6 +160,9 @@ class PostController extends Controller
             try {
                 $recentPostsModels = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
+                    ->where(function ($q) {
+                        $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+                    })
                     ->whereNotNull('created_at')
                     ->orderBy('created_at', 'desc')
                     ->limit(20)
@@ -197,6 +200,9 @@ class PostController extends Controller
 
                 $originalPostsById = Post::with(['user', 'likes', 'comments'])
                     ->withCount(['reposts'])
+                    ->where(function ($q) {
+                        $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+                    })
                     ->whereIn('id', $recentRepostRows->pluck('post_id')->all())
                     ->get()
                     ->keyBy('id');
@@ -295,17 +301,13 @@ class PostController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $post = Post::findOrFail($id);
-        if ((int) $post->user_id !== (int) $user->id) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
+        $post = Post::with(['user', 'likes', 'comments'])
+            ->withCount(['reposts'])
+            ->findOrFail($id);
 
         return response()->json([
-            'post' => [
-                'id' => $post->id,
-                'description' => $post->description ?? '',
-                'images' => $post->images ?? [],
-            ],
+            'post' => $this->mapPostForMobileFeed($post, $user, []),
+            'can_edit' => (int) $post->user_id === (int) $user->id,
         ]);
     }
 
