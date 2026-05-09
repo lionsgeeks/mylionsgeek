@@ -6,6 +6,8 @@ use Ably\AblyRest;
 use App\Models\Comment;
 use App\Models\CommentLike;
 use App\Models\Post;
+use App\Models\PostReport;
+use App\Models\PostReportNotification;
 use App\Models\User;
 use App\Support\PostMentionResolver;
 use Illuminate\Http\Request;
@@ -91,6 +93,107 @@ class PostController extends Controller
             'comments_count' => (int) $post->comments_count,
             'reposts_count' => (int) $post->reposts_count,
         ]);
+    }
+
+    private function isStaff(User $user): bool
+    {
+        $roles = is_array($user->role) ? $user->role : [$user->role];
+        $allowed = ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable'];
+        return count(array_intersect($roles, $allowed)) > 0;
+    }
+
+    private function notifyAdminsAboutReport(PostReport $report, User $reporter): void
+    {
+        try {
+            $admins = User::query()
+                ->select(['id', 'name', 'image', 'role'])
+                ->get()
+                ->filter(fn (User $u) => $this->isStaff($u))
+                ->values();
+
+            if ($admins->isEmpty()) {
+                return;
+            }
+
+            $ablyKey = config('services.ably.key');
+            $ably = $ablyKey ? new AblyRest($ablyKey) : null;
+
+            foreach ($admins as $admin) {
+                $notif = PostReportNotification::query()->create([
+                    'notified_user_id' => (int) $admin->id,
+                    'post_report_id' => (int) $report->id,
+                ]);
+
+                if (!$ably) {
+                    continue;
+                }
+
+                $channel = $ably->channels->get("notifications:{$admin->id}");
+                $channel->publish('new_notification', [
+                    'id' => 'post-report-' . $notif->id,
+                    'type' => 'post_report',
+                    'sender_name' => $reporter->name,
+                    'sender_image' => $reporter->image,
+                    'message' => "{$reporter->name} reported a post",
+                    'link' => "/admin/post-reports/{$report->id}",
+                    'mobile_link' => "/posts/{$report->post_id}?reportId={$report->id}",
+                    'created_at' => $notif->created_at->toISOString(),
+                    'read_at' => null,
+                    'post_id' => (int) $report->post_id,
+                    'report_id' => (int) $report->id,
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::error('Failed to notify admins about post report via Ably: ' . $e->getMessage());
+            report($e);
+        }
+    }
+
+    public function reportPost(Request $request, int $id)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return $this->respondWithMessage($request, 'Unauthorized', false, 401);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:2000',
+        ]);
+
+        $post = Post::findOrFail($id);
+
+        if ((int) $post->user_id === (int) $user->id) {
+            return $this->respondWithMessage($request, 'You cannot report your own post', false, 422);
+        }
+
+        try {
+            $report = PostReport::query()->firstOrCreate(
+                [
+                    'post_id' => (int) $post->id,
+                    'reporter_id' => (int) $user->id,
+                ],
+                [
+                    'reason' => (string) ($validated['reason'] ?? ''),
+                    'status' => PostReport::STATUS_PENDING,
+                ]
+            );
+
+            if ($report->wasRecentlyCreated === false && $report->status === PostReport::STATUS_PENDING) {
+                $incoming = (string) ($validated['reason'] ?? '');
+                if ($incoming !== '' && $incoming !== (string) ($report->reason ?? '')) {
+                    $report->reason = $incoming;
+                    $report->save();
+                }
+            }
+
+            $this->notifyAdminsAboutReport($report, $user);
+
+            return $this->respondWithMessage($request, 'Report submitted');
+        } catch (Throwable $e) {
+            Log::error('Failed to create post report (web): ' . $e->getMessage());
+            report($e);
+            return $this->respondWithMessage($request, 'Failed to submit report', false, 500);
+        }
     }
 
     private function resolveInteractionPost(Post $post): Post

@@ -89,6 +89,28 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
         [deletingPostId, handlePostRemoved],
     );
 
+    const handleReportPost = useCallback((post) => {
+        const postId = post?.id;
+        if (!postId) return;
+
+        const reason = window.prompt('Why are you reporting this post? (optional)') || '';
+
+        router.post(
+            `/posts/post/${postId}/report`,
+            { reason },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    alert('Thanks. Your report has been submitted.');
+                },
+                onError: () => {
+                    alert('Failed to submit report. Please try again.');
+                },
+            },
+        );
+    }, []);
+
     return (
         <>
             {postList?.map((p, index) => (
@@ -101,6 +123,7 @@ const PostCard = ({ user, posts, openModalPostId = null, onConsumedHashModal }) 
                     takeToUserProfile={takeToUserProfile}
                     timeAgo={timeAgo}
                     onDeletePost={handleDeletePost}
+                    onReportPost={handleReportPost}
                     addOrRemoveFollow={addOrRemoveFollow}
                     openModalPostId={openModalPostId}
                     onConsumedHashModal={onConsumedHashModal}

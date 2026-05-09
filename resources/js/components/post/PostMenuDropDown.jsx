@@ -7,7 +7,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Flag, Trash2 } from 'lucide-react';
 import DeleteModal from '../DeleteModal';
 import EditPost from './EditPost';
 
@@ -24,7 +24,10 @@ const PostMenuDropDown = ({
     openEditPost,
     openChangeEdit,
     isDeleting,
+    onReportPost,
 }) => {
+    const isOwner = user?.id === post?.user_id;
+
     return (
         <>
             <DropdownMenu>
@@ -34,24 +37,37 @@ const PostMenuDropDown = ({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="start">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuLabel>Post</DropdownMenuLabel>
                     <DropdownMenuGroup>
-                        <DropdownMenuItem onClick={() => openChangeEdit(true)}>
-                            <Edit size={16} />
-                            Update
-                            {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            onClick={() => {
-                                if (!isDeleting) {
-                                    openChangeDelete(true);
-                                }
-                            }}
-                        >
-                            <Trash2 size={16} />
-                            {isDeleting ? 'Deleting...' : 'Delete'}
-                            {/* <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
-                        </DropdownMenuItem>
+                        {isOwner ? (
+                            <>
+                                <DropdownMenuItem onClick={() => openChangeEdit(true)}>
+                                    <Edit size={16} />
+                                    Update
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        if (!isDeleting) {
+                                            openChangeDelete(true);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 size={16} />
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                </DropdownMenuItem>
+                            </>
+                        ) : (
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    if (typeof onReportPost === 'function') {
+                                        onReportPost(post);
+                                    }
+                                }}
+                            >
+                                <Flag size={16} className="text-red-600" />
+                                <span className="text-red-600 font-semibold">Report</span>
+                            </DropdownMenuItem>
+                        )}
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
             </DropdownMenu>

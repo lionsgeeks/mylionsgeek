@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { helpers } from '../utils/helpers';
 import PostMenuDropDown from './PostMenuDropDown';
 
-const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, isDeleting = false }) => {
+const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, onReportPost, isDeleting = false }) => {
     const { addOrRemoveFollow } = helpers();
     const [openDetails, setOpenDetails] = useState(null);
     const [openDeletePost, setOpenDeletePost] = useState(false);
@@ -65,25 +65,24 @@ const PostCardHeader = ({ post, user, takeUserProfile, timeAgo, onDeletePost, is
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                        {user?.id === post?.user_id && (
-                            <PostMenuDropDown
-                                user={user}
-                                onOpen={openDetails}
-                                onOpenChange={setOpenDetails}
-                                openDelete={openDeletePost}
-                                openChangeDelete={setOpenDeletePost}
-                                openEditPost={openEditPost}
-                                openChangeEdit={(state) => {
-                                    setOpenEditPost(state);
-                                    if (!state) {
-                                        setOpenDetails(null);
-                                    }
-                                }}
-                                post={post}
-                                handleDelete={handleDeletePost}
-                                isDeleting={isDeleting}
-                            />
-                        )}
+                        <PostMenuDropDown
+                            user={user}
+                            onOpen={openDetails}
+                            onOpenChange={setOpenDetails}
+                            openDelete={openDeletePost}
+                            openChangeDelete={setOpenDeletePost}
+                            openEditPost={openEditPost}
+                            openChangeEdit={(state) => {
+                                setOpenEditPost(state);
+                                if (!state) {
+                                    setOpenDetails(null);
+                                }
+                            }}
+                            post={post}
+                            handleDelete={handleDeletePost}
+                            onReportPost={onReportPost}
+                            isDeleting={isDeleting}
+                        />
                     </div>
                 </div>
             </div>

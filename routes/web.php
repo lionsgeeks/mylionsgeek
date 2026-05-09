@@ -296,5 +296,6 @@ require __DIR__.'/students/students.php';
 require __DIR__.'/recruiter.php';
 require __DIR__.'/studentProjects.php';
 require __DIR__.'/admin/project-approvals.php';
+require __DIR__.'/admin/post-reports.php';
 require __DIR__.'/students/posts.php';
 require __DIR__.'/chat.php';

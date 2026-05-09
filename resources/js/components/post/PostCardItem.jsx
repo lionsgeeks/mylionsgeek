@@ -10,6 +10,7 @@ const PostCardItem = ({
     takeToUserProfile,
     timeAgo,
     onDeletePost,
+    onReportPost,
     addOrRemoveFollow,
     openModalPostId,
     onConsumedHashModal,
@@ -30,6 +31,7 @@ const PostCardItem = ({
                 takeUserProfile={takeToUserProfile}
                 timeAgo={timeAgo}
                 onDeletePost={onDeletePost}
+                onReportPost={onReportPost}
                 isDeleting={isDeleting}
             />
 

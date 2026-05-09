@@ -292,6 +292,9 @@ class UsersController extends Controller
             },
         ])
             ->withCount(['likes', 'comments', 'reposts'])
+            ->where(function ($q) {
+                $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
             ->latest();
 
         if ($user) {
@@ -319,6 +322,9 @@ class UsersController extends Controller
                         $q->where('user_id', $authUser->id);
                     }])
                     ->withCount(['likes', 'comments', 'reposts'])
+                    ->where(function ($q) {
+                        $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+                    })
                     ->whereIn('id', $originalIds)
                     ->get()
                     ->keyBy('id');
@@ -372,6 +378,9 @@ class UsersController extends Controller
         ])
             ->withCount(['likes', 'comments', 'reposts'])
             ->where('user_id', $profileUserId)
+            ->where(function ($q) {
+                $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
             ->latest();
 
         if ($limit !== null) {
@@ -380,7 +389,11 @@ class UsersController extends Controller
 
         $dataPosts = $query->get();
         $posts = $dataPosts->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser));
-        $total = (int) Post::where('user_id', $profileUserId)->count();
+        $total = (int) Post::where('user_id', $profileUserId)
+            ->where(function ($q) {
+                $q->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
+            ->count();
 
         return [
             'posts' => $posts,

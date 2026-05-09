@@ -21,4 +21,5 @@ Route::middleware(['auth', 'verified'])->prefix('posts')->group(function () {
     Route::delete('/post/{id}', [PostController::class, 'deletePost']);
     Route::post('/post/{id}', [PostController::class, 'editPost']);
     Route::post('/store/post', [PostController::class, 'storePost']);
+    Route::post('/post/{id}/report', [PostController::class, 'reportPost'])->whereNumber('id');
 });
