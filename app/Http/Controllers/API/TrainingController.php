@@ -555,6 +555,8 @@ class TrainingController extends Controller
             'training' => [
                 'id' => $training->id,
                 'name' => $training->name,
+                'promo' => $training->promo,
+                'category' => $training->category,
             ],
             'user_id' => $targetUserId,
             'days' => array_values($days),
