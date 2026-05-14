@@ -59,7 +59,7 @@ class RecruiterController extends Controller
             'status' => 'Working',
             'cin' => null,
             'formation_id' => null,
-            'account_state' => 1,
+            'account_state' => 0,
             'access_studio' => 0,
             'access_cowork' => 0,
             'role' => ['recruiter'],
