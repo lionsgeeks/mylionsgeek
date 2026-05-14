@@ -51,12 +51,16 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                 <div className="flex items-center gap-4">
                     <ChatIcon />
                     <NotificationIcon />
-                    <Link href={homeHref} prefetch className="flex items-center">
-                        <Button variant="ghost" size="icon" className="flex h-9 w-9 items-center justify-center rounded-md" aria-label="Home">
-                            <Home className="h-5 w-5 flex-shrink-0" />
-                        </Button>
-                    </Link>
-                    <NavUser />
+                    {!isRecruiter && (
+                        <>
+                            <Link href={homeHref} prefetch className="flex items-center">
+                                <Button variant="ghost" size="icon" className="flex h-9 w-9 items-center justify-center rounded-md" aria-label="Home">
+                                    <Home className="h-5 w-5 flex-shrink-0" />
+                                </Button>
+                            </Link>
+                            <NavUser />
+                        </>
+                    )}
                     <div className="">
                         {/* component change mode */}
                         <ThemeToggle />
