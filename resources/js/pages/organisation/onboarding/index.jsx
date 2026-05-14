@@ -2,6 +2,7 @@ import AppLogoIcon from '@/components/app-logo-icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { logout } from '@/routes';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -25,21 +26,20 @@ const STEPS = [
     { number: 2, label: 'Contact details' },
 ];
 
-function FieldIcon({ icon: Icon }) {
-    return (
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-beta/35">
-            <Icon size={15} />
-        </span>
-    );
-}
-
-function Field({ id, label, error, icon, children }) {
+function Field({ id, label, error, icon: Icon, children }) {
     return (
         <div className="space-y-1.5">
             <Label htmlFor={id} className="text-xs font-semibold uppercase tracking-wide text-beta/50">
                 {label}
             </Label>
-            <div className="relative">{children}</div>
+            <div className="relative flex items-center">
+                {Icon && (
+                    <span className="pointer-events-none absolute left-3 z-10 text-beta/35">
+                        <Icon size={14} />
+                    </span>
+                )}
+                {children}
+            </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
     );
@@ -57,15 +57,16 @@ export default function OrganisationOnboarding({ organization }) {
     });
 
     const canGoNext =
-        form.data.contact_name.trim() !== '' && form.data.enterprise_name.trim() !== '' && form.data.sector.trim() !== '';
+        form.data.contact_name.trim() !== '' &&
+        form.data.enterprise_name.trim() !== '' &&
+        form.data.sector.trim() !== '';
 
     const submit = (e) => {
         e.preventDefault();
         form.post('/organisation/onboarding', { preserveScroll: true });
     };
 
-    const inputBase = 'h-11 pl-9 border-beta/15 bg-white focus-visible:ring-alpha focus-visible:border-alpha/50 text-beta placeholder:text-beta/35 transition-colors';
-    const selectBase = `${inputBase} w-full rounded-md border px-9 text-sm appearance-none cursor-pointer`;
+    const inputClass = 'h-11 pl-9 bg-white dark:bg-white border-beta/15 text-beta placeholder:text-beta/35 focus-visible:border-alpha/60 focus-visible:ring-alpha/20 select-text';
 
     return (
         <div className="min-h-svh bg-[#f8f8f5]">
@@ -90,6 +91,7 @@ export default function OrganisationOnboarding({ organization }) {
             </header>
 
             <main className="mx-auto flex max-w-xl flex-col gap-8 px-4 py-12">
+
                 {/* Progress header */}
                 <div className="space-y-5">
                     <div className="space-y-1">
@@ -99,12 +101,12 @@ export default function OrganisationOnboarding({ organization }) {
                         <h1 className="text-2xl font-bold text-beta">
                             {step === 1 ? 'Tell us about your company' : 'How can we reach you?'}
                         </h1>
-                        <p className="text-sm text-beta/55">
-                            Signed in as <span className="font-medium text-beta/75">{organization?.email}</span>
+                        <p className="text-sm text-beta/50">
+                            Signed in as <span className="font-medium text-beta/70">{organization?.email}</span>
                         </p>
                     </div>
 
-                    {/* Step progress bar */}
+                    {/* Step bars */}
                     <div className="flex gap-2">
                         {STEPS.map((s) => (
                             <div key={s.number} className="flex flex-1 flex-col gap-1.5">
@@ -113,7 +115,7 @@ export default function OrganisationOnboarding({ organization }) {
                                         s.number <= step ? 'bg-alpha' : 'bg-beta/12'
                                     }`}
                                 />
-                                <span className={`text-[11px] font-medium ${s.number <= step ? 'text-alpha' : 'text-beta/35'}`}>
+                                <span className={`text-[11px] font-medium transition-colors ${s.number <= step ? 'text-alpha' : 'text-beta/30'}`}>
                                     {s.label}
                                 </span>
                             </div>
@@ -121,102 +123,101 @@ export default function OrganisationOnboarding({ organization }) {
                     </div>
                 </div>
 
-                {/* Form card */}
+                {/* Card */}
                 <div className="rounded-2xl border border-beta/8 bg-white p-7 shadow-sm">
                     <form onSubmit={submit}>
                         <AnimatePresence mode="wait">
                             {step === 1 ? (
                                 <motion.div
                                     key="step1"
-                                    initial={{ opacity: 0, x: 20 }}
+                                    initial={{ opacity: 0, x: 16 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.22 }}
+                                    exit={{ opacity: 0, x: -16 }}
+                                    transition={{ duration: 0.2 }}
                                     className="space-y-5"
                                 >
-                                    <Field id="contact_name" label="Contact name" error={form.errors.contact_name}>
-                                        <FieldIcon icon={User} />
+                                    <Field id="contact_name" label="Contact name" error={form.errors.contact_name} icon={User}>
                                         <Input
                                             id="contact_name"
                                             value={form.data.contact_name}
                                             onChange={(e) => form.setData('contact_name', e.target.value)}
                                             placeholder="Jane Smith"
-                                            className={inputBase}
+                                            className={inputClass}
                                             required
                                         />
                                     </Field>
 
-                                    <Field id="enterprise_name" label="Company name" error={form.errors.enterprise_name}>
-                                        <FieldIcon icon={Building2} />
+                                    <Field id="enterprise_name" label="Company name" error={form.errors.enterprise_name} icon={Building2}>
                                         <Input
                                             id="enterprise_name"
                                             value={form.data.enterprise_name}
                                             onChange={(e) => form.setData('enterprise_name', e.target.value)}
                                             placeholder="Acme Corp"
-                                            className={inputBase}
+                                            className={inputClass}
                                             required
                                         />
                                     </Field>
 
-                                    <Field id="sector" label="Industry sector" error={form.errors.sector}>
-                                        <FieldIcon icon={Building2} />
-                                        <select
-                                            id="sector"
+                                    <Field id="sector" label="Industry sector" error={form.errors.sector} icon={Building2}>
+                                        <Select
                                             value={form.data.sector}
-                                            onChange={(e) => form.setData('sector', e.target.value)}
-                                            className={selectBase}
+                                            onValueChange={(val) => form.setData('sector', val)}
                                             required
                                         >
-                                            <option value="">Select a sector</option>
-                                            {SECTOR_OPTIONS.map((sector) => (
-                                                <option key={sector} value={sector}>
-                                                    {sector}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            <SelectTrigger
+                                                id="sector"
+                                                className="h-11 w-full border-beta/15 bg-white dark:bg-white dark:text-black text-black pl-9 text-sm focus:border-alpha/60 focus:ring-alpha/20 data-[placeholder]:text-beta/35"
+                                            >
+                                                <SelectValue placeholder="Select a sector" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-white dark:bg-white dark:text-black text-black">
+                                                {SECTOR_OPTIONS.map((sector) => (
+                                                    <SelectItem key={sector} value={sector}>
+                                                        {sector}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </Field>
                                 </motion.div>
                             ) : (
                                 <motion.div
                                     key="step2"
-                                    initial={{ opacity: 0, x: 20 }}
+                                    initial={{ opacity: 0, x: 16 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.22 }}
+                                    exit={{ opacity: 0, x: -16 }}
+                                    transition={{ duration: 0.2 }}
                                     className="space-y-5"
                                 >
-                                    <Field id="location" label="Office location" error={form.errors.location}>
-                                        <FieldIcon icon={MapPin} />
+                                    <Field id="location" label="Office location" error={form.errors.location} icon={MapPin}>
                                         <Input
                                             id="location"
                                             value={form.data.location}
                                             onChange={(e) => form.setData('location', e.target.value)}
                                             placeholder="Casablanca, Morocco"
-                                            className={inputBase}
+                                            className={inputClass}
                                             required
                                         />
                                     </Field>
 
-                                    <Field id="linkedin_url" label="LinkedIn URL" error={form.errors.linkedin_url}>
-                                        <FieldIcon icon={Globe} />
+                                    <Field id="linkedin_url" label="LinkedIn URL" error={form.errors.linkedin_url} icon={Globe}>
                                         <Input
                                             id="linkedin_url"
                                             type="url"
                                             value={form.data.linkedin_url}
                                             onChange={(e) => form.setData('linkedin_url', e.target.value)}
                                             placeholder="https://linkedin.com/company/..."
-                                            className={inputBase}
+                                            className={inputClass}
                                         />
                                     </Field>
 
-                                    <Field id="phone" label="Phone number" error={form.errors.phone}>
-                                        <FieldIcon icon={Phone} />
+                                    <Field id="phone" label="Phone number" error={form.errors.phone} icon={Phone}>
                                         <Input
                                             id="phone"
                                             value={form.data.phone}
                                             onChange={(e) => form.setData('phone', e.target.value)}
                                             placeholder="+212 6 00 00 00 00"
-                                            className={inputBase}
+                                            className={inputClass}
                                             required
                                         />
                                     </Field>
@@ -230,7 +231,7 @@ export default function OrganisationOnboarding({ organization }) {
                                 <button
                                     type="button"
                                     onClick={() => setStep(1)}
-                                    className="text-sm font-medium text-beta/55 transition-colors hover:text-beta"
+                                    className="text-sm font-medium text-beta/50 transition-colors hover:text-beta"
                                 >
                                     ← Back
                                 </button>
@@ -267,7 +268,6 @@ export default function OrganisationOnboarding({ organization }) {
                     </form>
                 </div>
 
-                {/* Footer hint */}
                 <p className="text-center text-xs text-beta/35">
                     You can update these details later from your organisation settings.
                 </p>

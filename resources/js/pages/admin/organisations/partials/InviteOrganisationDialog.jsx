@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from '@inertiajs/react';
 
-const inputClass = 'bg-[#e5e5e5] dark:bg-[#262626] text-black dark:text-white focus:ring-2 focus:ring-alpha';
+const inputClass = 'bg-white dark:bg-[#262626] text-black dark:text-white focus:ring-2 focus:ring-alpha';
 
 export default function InviteOrganisationDialog({ open, setOpen }) {
     const { data, setData, post, processing, reset, errors } = useForm({
@@ -47,7 +47,7 @@ export default function InviteOrganisationDialog({ open, setOpen }) {
                         {errors.email && <p className="mt-1 text-sm text-destructive">{errors.email}</p>}
                     </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
+                    <DialogFooter className="gap-2">
                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                             Cancel
                         </Button>
