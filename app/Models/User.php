@@ -51,6 +51,8 @@ class User extends Authenticatable
         'last_online',
         'activation_token',
         'expo_push_token', // Expo push notification token
+        'organization_id',
+        'is_organization_owner',
         // 'xp'
     ];
 
@@ -272,5 +274,22 @@ class User extends Authenticatable
     public function assignedJobPostings(): BelongsToMany
     {
         return $this->belongsToMany(Job::class, 'job_posting_recruiter', 'user_id', 'job_posting_id')->withTimestamps();
+    }
+
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class, 'organization_id');
+    }
+
+    public function isRecruiter(): bool
+    {
+        $roles = is_array($this->role) ? $this->role : [$this->role];
+
+        return in_array('recruiter', $roles, true);
+    }
+
+    public function organizationIdForRecruiting(): ?int
+    {
+        return $this->organization_id ? (int) $this->organization_id : null;
     }
 }

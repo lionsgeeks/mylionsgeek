@@ -3,6 +3,7 @@
 namespace App\Actions\JobPostings;
 
 use App\Models\Job;
+use App\Models\User;
 
 class SaveJobPosting
 {
@@ -15,9 +16,9 @@ class SaveJobPosting
      *   skills?: array<int, string>|null,
      *   is_published?: bool|null
      * }  $data
-     * @param  list<int>  $recruiterIds
+     * @param  list<int>  $organizationIds
      */
-    public function create(array $data, int $creatorUserId, array $recruiterIds = []): Job
+    public function create(array $data, int $creatorUserId, array $organizationIds = []): Job
     {
         $job = Job::query()->create([
             'reference' => Job::generateUniqueReference(),
@@ -30,7 +31,8 @@ class SaveJobPosting
             'user_id' => $creatorUserId,
         ]);
 
-        $job->recruiters()->sync($recruiterIds);
+        $job->organizations()->sync($organizationIds);
+        $this->syncLegacyRecruiterPivot($job, $organizationIds);
 
         return $job;
     }
@@ -44,9 +46,9 @@ class SaveJobPosting
      *   skills?: array<int, string>|null,
      *   is_published?: bool|null
      * }  $data
-     * @param  list<int>  $recruiterIds
+     * @param  list<int>  $organizationIds
      */
-    public function update(Job $job, array $data, array $recruiterIds = []): Job
+    public function update(Job $job, array $data, array $organizationIds = []): Job
     {
         $job->update([
             'title' => $data['title'],
@@ -57,9 +59,32 @@ class SaveJobPosting
             'is_published' => (bool) ($data['is_published'] ?? true),
         ]);
 
-        $job->recruiters()->sync($recruiterIds);
+        $job->organizations()->sync($organizationIds);
+        $this->syncLegacyRecruiterPivot($job, $organizationIds);
 
         return $job;
     }
-}
 
+    /**
+     * Keep job_posting_recruiter in sync for legacy code paths during transition.
+     *
+     * @param  list<int>  $organizationIds
+     */
+    private function syncLegacyRecruiterPivot(Job $job, array $organizationIds): void
+    {
+        if ($organizationIds === []) {
+            $job->recruiters()->sync([]);
+
+            return;
+        }
+
+        $recruiterUserIds = User::query()
+            ->whereIn('organization_id', $organizationIds)
+            ->whereJsonContains('role', 'recruiter')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $job->recruiters()->sync($recruiterUserIds);
+    }
+}

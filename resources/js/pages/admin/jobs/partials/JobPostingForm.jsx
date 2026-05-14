@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import RecruiterMultiSelect from '@/pages/admin/jobs/partials/RecruiterMultiSelect';
+import OrganisationMultiSelect from '@/pages/admin/jobs/partials/OrganisationMultiSelect';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Link } from '@inertiajs/react';
 
@@ -15,8 +15,8 @@ export default function JobPostingForm({
     processing,
     onSubmit,
     jobTypeOptions = [],
-    recruiterOptions = [],
-    showRecruiterSelect = true,
+    organizationOptions = [],
+    showOrganisationSelect = true,
     cancelHref,
     onCancel,
     reference = null,
@@ -94,12 +94,12 @@ export default function JobPostingForm({
                 {errors.skills && <p className="text-sm text-red-600">{errors.skills}</p>}
             </div>
 
-            {showRecruiterSelect && (
-                <RecruiterMultiSelect
-                    recruiterOptions={recruiterOptions}
-                    selectedIds={data.recruiter_ids}
-                    onChange={(ids) => setData('recruiter_ids', ids)}
-                    error={errors.recruiter_ids}
+            {showOrganisationSelect && (
+                <OrganisationMultiSelect
+                    organizationOptions={organizationOptions}
+                    selectedIds={data.organization_ids}
+                    onChange={(ids) => setData('organization_ids', ids)}
+                    error={errors.organization_ids}
                 />
             )}
 

@@ -6,7 +6,7 @@ use App\Actions\JobPostings\SaveJobPosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\JobPostingRequest;
 use App\Models\Job;
-use App\Models\User;
+use App\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +18,7 @@ class JobPostingController extends Controller
         $jobs = Job::query()
             ->with([
                 'creator:id,name,email',
-                'recruiters:id,name,email',
+                'organizations:id,email,enterprise_name,contact_name',
             ])
             ->orderByDesc('created_at')
             ->get()
@@ -26,7 +26,7 @@ class JobPostingController extends Controller
 
         return Inertia::render('admin/jobs/index', [
             'jobs' => $jobs,
-            'recruiterOptions' => $this->recruiterOptions(),
+            'organizationOptions' => $this->organizationOptions(),
             'jobTypeOptions' => Job::JOB_TYPES,
         ]);
     }
@@ -39,8 +39,8 @@ class JobPostingController extends Controller
     public function store(JobPostingRequest $request, SaveJobPosting $saveJobPosting): RedirectResponse
     {
         $validated = $request->validated();
-        $recruiterIds = $validated['recruiter_ids'] ?? [];
-        $saveJobPosting->create($validated, (int) $request->user()->id, $recruiterIds);
+        $organizationIds = $validated['organization_ids'] ?? [];
+        $saveJobPosting->create($validated, (int) $request->user()->id, $organizationIds);
 
         return redirect()->route('admin.jobs.index')->with('success', 'Job posting created.');
     }
@@ -48,8 +48,8 @@ class JobPostingController extends Controller
     public function update(JobPostingRequest $request, Job $job, SaveJobPosting $saveJobPosting): RedirectResponse
     {
         $validated = $request->validated();
-        $recruiterIds = $validated['recruiter_ids'] ?? [];
-        $saveJobPosting->update($job, $validated, $recruiterIds);
+        $organizationIds = $validated['organization_ids'] ?? [];
+        $saveJobPosting->update($job, $validated, $organizationIds);
 
         return redirect()->route('admin.jobs.index')->with('success', 'Job posting updated.');
     }
@@ -57,16 +57,17 @@ class JobPostingController extends Controller
     /**
      * @return array<int, array{id: int, name: string, email: string}>
      */
-    private function recruiterOptions(): array
+    private function organizationOptions(): array
     {
-        return User::query()
-            ->whereJsonContains('role', 'recruiter')
-            ->orderBy('name')
+        return Organization::query()
+            ->whereNotNull('onboarding_completed_at')
+            ->orderBy('enterprise_name')
+            ->orderBy('email')
             ->get()
-            ->map(fn (User $user) => [
-                'id' => (int) $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+            ->map(fn (Organization $org) => [
+                'id' => (int) $org->id,
+                'name' => $org->displayName(),
+                'email' => $org->email,
             ])
             ->all();
     }
@@ -85,17 +86,17 @@ class JobPostingController extends Controller
             'location' => $job->location,
             'is_published' => (bool) $job->is_published,
             'skills' => $job->skills ?? [],
-            'recruiter_ids' => $job->recruiters->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'organization_ids' => $job->organizations->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'created_at' => $job->created_at?->toIso8601String(),
             'creator' => $job->creator ? [
                 'id' => $job->creator->id,
                 'name' => $job->creator->name,
                 'email' => $job->creator->email,
             ] : null,
-            'recruiters' => $job->recruiters->map(fn (User $r) => [
-                'id' => $r->id,
-                'name' => $r->name,
-                'email' => $r->email,
+            'organizations' => $job->organizations->map(fn (Organization $org) => [
+                'id' => $org->id,
+                'name' => $org->displayName(),
+                'email' => $org->email,
             ])->values()->all(),
         ];
     }

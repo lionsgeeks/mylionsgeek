@@ -13,10 +13,15 @@ class RecruiterDashboardController extends Controller
 {
     public function __invoke(Request $request): Response
     {
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
+            abort(403);
+        }
+
         $userId = $request->user()->id;
 
         $applicationsBase = JobApplication::query()
-            ->whereHas('job', fn ($q) => $q->whereHas('recruiters', fn ($q2) => $q2->where('users.id', $userId)));
+            ->whereHas('job', fn ($q) => $q->forOrganization($organizationId));
 
         $totalApplications = (clone $applicationsBase)->count();
 

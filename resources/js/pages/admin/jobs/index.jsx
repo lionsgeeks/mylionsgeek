@@ -15,7 +15,7 @@ const defaultFilters = {
     job_type: '',
 };
 
-export default function AdminJobsIndex({ jobs, recruiterOptions = [], jobTypeOptions = [] }) {
+export default function AdminJobsIndex({ jobs, organizationOptions = [], jobTypeOptions = [] }) {
     const { auth } = usePage().props;
     const [filters, setFilters] = useState(defaultFilters);
     const [createJobOpen, setCreateJobOpen] = useState(false);
@@ -48,13 +48,13 @@ export default function AdminJobsIndex({ jobs, recruiterOptions = [], jobTypeOpt
                     illustration={students}
                     userName={auth?.user?.name ?? ''}
                     title="Job postings"
-                    description="Create postings, assign recruiters to each offer, and review what appears on the student job board."
+                    description="Create postings, assign organisations to each offer, and review what appears on the student job board."
                 />
                 <JobsAdminHeader filteredJobs={jobs} onOpenCreateJob={() => setCreateJobOpen(true)} />
                 <AdminCreateJobDialog
                     open={createJobOpen}
                     onOpenChange={setCreateJobOpen}
-                    recruiterOptions={recruiterOptions}
+                    organizationOptions={organizationOptions}
                     jobTypeOptions={jobTypeOptions}
                 />
                 <AdminEditJobDialog
@@ -65,7 +65,7 @@ export default function AdminJobsIndex({ jobs, recruiterOptions = [], jobTypeOpt
                         }
                     }}
                     job={jobToEdit}
-                    recruiterOptions={recruiterOptions}
+                    organizationOptions={organizationOptions}
                     jobTypeOptions={jobTypeOptions}
                 />
                 <JobsAdminFilter filters={filters} setFilters={setFilters} jobTypes={jobTypes} initialFilters={defaultFilters} />

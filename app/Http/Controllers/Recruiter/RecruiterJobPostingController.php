@@ -13,11 +13,13 @@ class RecruiterJobPostingController extends Controller
     {
         $validated = $request->validated();
 
-        // Recruiters may create jobs, but cannot assign other recruiters.
-        // We always assign the creating recruiter to the posting.
-        $recruiterIds = [(int) $request->user()->id];
+        $organizationId = (int) $request->user()->organization_id;
+        if (! $organizationId) {
+            abort(403);
+        }
 
-        $saveJobPosting->create($validated, (int) $request->user()->id, $recruiterIds);
+        // Recruiters may create jobs for their organisation only.
+        $saveJobPosting->create($validated, (int) $request->user()->id, [$organizationId]);
 
         return redirect()->route('recruiter.jobs.index')->with('success', 'Job posting created.');
     }

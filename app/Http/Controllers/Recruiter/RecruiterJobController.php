@@ -12,10 +12,13 @@ class RecruiterJobController extends Controller
 {
     public function index(Request $request): Response
     {
-        $userId = $request->user()->id;
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
+            abort(403);
+        }
 
         $jobs = Job::query()
-            ->whereHas('recruiters', fn ($q) => $q->where('users.id', $userId))
+            ->forOrganization($organizationId)
             ->withCount('applications')
             ->orderByDesc('created_at')
             ->get()

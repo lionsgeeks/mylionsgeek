@@ -26,6 +26,11 @@ Route::get('/', function () {
             return redirect()->route('student.feed');
         }
         if (in_array('recruiter', $roles, true)) {
+            $user->loadMissing('organization');
+            if ($user->organization && ! $user->organization->hasCompletedOnboarding()) {
+                return redirect()->route('organisation.onboarding');
+            }
+
             return redirect()->route('recruiter.dashboard');
         }
 
@@ -293,6 +298,7 @@ require __DIR__.'/admin/recruitment.php';
 require __DIR__.'/admin/games.php';
 require __DIR__.'/students/exercises.php';
 require __DIR__.'/students/students.php';
+require __DIR__.'/organisation.php';
 require __DIR__.'/recruiter.php';
 require __DIR__.'/studentProjects.php';
 require __DIR__.'/admin/project-approvals.php';

@@ -48,8 +48,13 @@ class RecruiterInterviewController extends Controller
                 ] : null,
             ]);
 
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
+            abort(403);
+        }
+
         $applicationOptions = JobApplication::query()
-            ->whereHas('job', fn ($q) => $q->whereHas('recruiters', fn ($q2) => $q2->where('users.id', $userId)))
+            ->whereHas('job', fn ($q) => $q->forOrganization($organizationId))
             ->with(['job:id,title', 'applicant:id,name'])
             ->orderByDesc('created_at')
             ->limit(200)
@@ -392,11 +397,18 @@ class RecruiterInterviewController extends Controller
     private function jobApplicationExistsForRecruiterRule(int $userId): \Illuminate\Validation\Rules\Exists
     {
         return Rule::exists('job_applications', 'id')->where(function (Builder $query) use ($userId): void {
-            $query->whereExists(function (Builder $sub) use ($userId): void {
+            $organizationId = User::query()->whereKey($userId)->value('organization_id');
+            if (! $organizationId) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $query->whereExists(function (Builder $sub) use ($organizationId): void {
                 $sub->selectRaw('1')
-                    ->from('job_posting_recruiter')
-                    ->whereColumn('job_posting_recruiter.job_posting_id', 'job_applications.job_posting_id')
-                    ->where('job_posting_recruiter.user_id', $userId);
+                    ->from('job_posting_organization')
+                    ->whereColumn('job_posting_organization.job_posting_id', 'job_applications.job_posting_id')
+                    ->where('job_posting_organization.organization_id', $organizationId);
             });
         });
     }

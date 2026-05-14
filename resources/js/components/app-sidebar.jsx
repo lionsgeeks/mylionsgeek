@@ -118,9 +118,9 @@ const getAllNavItems = () => [
         authorizedRoles: ['admin', 'moderateur', 'super_admin'],
     },
     {
-        id: 'recruiters',
-        title: 'Recruiters',
-        href: '/admin/recruiters',
+        id: 'organisations',
+        title: 'Organisations',
+        href: '/admin/organisations',
         icon: UserPlus,
         authorizedRoles: ['admin', 'moderateur', 'super_admin'],
     },

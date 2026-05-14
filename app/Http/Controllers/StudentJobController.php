@@ -129,8 +129,10 @@ class StudentJobController extends Controller
             'status' => 'pending',
         ]);
 
-        $job->load(['recruiters', 'creator']);
-        $recipients = $job->recruiters;
+        $job->load(['organizations.users', 'creator']);
+        $recipients = $job->organizations
+            ->flatMap(fn ($org) => $org->users)
+            ->filter(fn ($u) => $u->isRecruiter());
         if ($recipients->isEmpty() && $job->creator) {
             $recipients = collect([$job->creator]);
         }
@@ -244,6 +246,10 @@ class StudentJobController extends Controller
     {
         $uid = (int) $user->id;
         if ($job->user_id !== null && (int) $job->user_id === $uid) {
+            return false;
+        }
+        $organizationId = $user->organizationIdForRecruiting();
+        if ($organizationId && $job->organizations()->where('organizations.id', $organizationId)->exists()) {
             return false;
         }
         if ($job->recruiters()->where('users.id', $uid)->exists()) {
