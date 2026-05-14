@@ -70,7 +70,7 @@ class AuthenticatedSessionController extends Controller
 
         if (in_array('recruiter', $roles, true)) {
             $user->loadMissing('organization');
-            if ($user->organization && ! $user->organization->hasCompletedOnboarding()) {
+            if ($user->organization && (! $user->organization->hasCompletedOnboarding() || $user->must_change_password)) {
                 return Inertia::location('/organisation/onboarding');
             }
 

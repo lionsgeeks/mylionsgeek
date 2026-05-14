@@ -68,6 +68,7 @@ class OrganisationController extends Controller
                 'name' => $displayName,
                 'email' => $email,
                 'password' => $plainPassword,
+                'must_change_password' => true,
                 'phone' => null,
                 'image' => 'pdp.png',
                 'status' => 'Working',

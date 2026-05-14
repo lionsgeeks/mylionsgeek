@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureOrganisationOnboarded
 {
     /**
-     * Recruiters linked to an organisation must complete onboarding before using the recruiter area.
+     * Recruiters linked to an organisation must complete onboarding and change their password before using the recruiter area.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -25,7 +25,9 @@ class EnsureOrganisationOnboarded
             return $next($request);
         }
 
-        if ($organization->hasCompletedOnboarding()) {
+        $isReady = $organization->hasCompletedOnboarding() && ! $user->must_change_password;
+
+        if ($isReady) {
             return $next($request);
         }
 

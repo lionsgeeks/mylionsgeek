@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Organisation;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,11 +20,11 @@ class OrganisationOnboardingController extends Controller
             abort(403);
         }
 
-        if ($organization->hasCompletedOnboarding()) {
+        if ($organization->hasCompletedOnboarding() && ! $user->must_change_password) {
             return redirect()->route('recruiter.dashboard');
         }
 
-        return Inertia::render('organisation/onboarding/index', [
+        return Inertia::render('organisation/partials/onboardingForm', [
             'organization' => [
                 'email' => $organization->email,
                 'contact_name' => $organization->contact_name,
@@ -33,6 +34,7 @@ class OrganisationOnboardingController extends Controller
                 'linkedin_url' => $organization->linkedin_url,
                 'phone' => $organization->phone,
             ],
+            'passwordChangeOnly' => $organization->hasCompletedOnboarding() && $user->must_change_password,
         ]);
     }
 
@@ -45,8 +47,12 @@ class OrganisationOnboardingController extends Controller
             abort(403);
         }
 
-        if ($organization->hasCompletedOnboarding()) {
+        if ($organization->hasCompletedOnboarding() && ! $user->must_change_password) {
             return redirect()->route('recruiter.dashboard');
+        }
+
+        if ($organization->hasCompletedOnboarding()) {
+            return $this->updatePassword($request, $user);
         }
 
         $validated = $request->validate([
@@ -56,6 +62,8 @@ class OrganisationOnboardingController extends Controller
             'location' => ['required', 'string', 'max:255'],
             'linkedin_url' => ['nullable', 'string', 'max:500', 'url'],
             'phone' => ['required', 'string', 'max:30'],
+            'current_password' => ['required', 'current_password:web'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
         $organization->update([
@@ -71,8 +79,25 @@ class OrganisationOnboardingController extends Controller
         $user->update([
             'name' => $validated['contact_name'],
             'phone' => $validated['phone'],
+            'password' => $validated['password'],
+            'must_change_password' => false,
         ]);
 
         return redirect()->route('recruiter.dashboard')->with('success', __('Your organisation profile is complete.'));
+    }
+
+    private function updatePassword(Request $request, $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password:web'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $user->update([
+            'password' => $validated['password'],
+            'must_change_password' => false,
+        ]);
+
+        return redirect()->route('recruiter.dashboard')->with('success', __('Your password has been updated.'));
     }
 }
