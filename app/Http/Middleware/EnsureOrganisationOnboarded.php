@@ -31,7 +31,7 @@ class EnsureOrganisationOnboarded
             return $next($request);
         }
 
-        if ($request->routeIs('organisation.onboarding', 'organisation.onboarding.store', 'logout')) {
+        if ($request->routeIs('organisation.onboarding', 'organisation.onboarding.validate', 'organisation.onboarding.store', 'logout')) {
             return $next($request);
         }
 

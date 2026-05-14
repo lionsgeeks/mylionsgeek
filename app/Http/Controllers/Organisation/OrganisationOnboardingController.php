@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Organisation;
 use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -40,6 +41,36 @@ class OrganisationOnboardingController extends Controller
         ]);
     }
 
+    public function validateStep(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $organization = $user?->organization;
+
+        if (! $user?->isRecruiter() || ! $organization) {
+            abort(403);
+        }
+
+        if ($organization->hasCompletedOnboarding() && ! $user->must_change_password) {
+            abort(403);
+        }
+
+        if ($organization->hasCompletedOnboarding()) {
+            return response()->json(['message' => __('Invalid request.')], 422);
+        }
+
+        $step = (int) $request->input('step');
+
+        $rules = match ($step) {
+            1 => ['step' => ['required', 'in:1']] + $this->stepOneRules($organization, $user),
+            2 => ['step' => ['required', 'in:2']] + $this->stepTwoRules($organization, $user),
+            default => ['step' => ['required', 'in:1,2']],
+        };
+
+        $request->validate($rules);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -57,7 +88,41 @@ class OrganisationOnboardingController extends Controller
             return $this->updatePassword($request, $user);
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge(
+            $this->stepOneRules($organization, $user),
+            $this->stepTwoRules($organization, $user),
+            [
+                'current_password' => ['required', 'current_password:web'],
+                'password' => ['required', Password::defaults(), 'confirmed'],
+            ]
+        ));
+
+        $organization->update([
+            'contact_name' => $validated['contact_name'],
+            'enterprise_name' => $validated['enterprise_name'],
+            'sector' => $validated['sector'],
+            'location' => $validated['location'],
+            'linkedin_url' => $validated['linkedin_url'] ?? null,
+            'phone' => $validated['phone'],
+            'onboarding_completed_at' => now(),
+        ]);
+
+        $user->update([
+            'name' => $validated['contact_name'],
+            'phone' => $validated['phone'],
+            'password' => $validated['password'],
+            'must_change_password' => false,
+        ]);
+
+        return redirect()->route('recruiter.dashboard')->with('success', __('Your organisation profile is complete.'));
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function stepOneRules(Organization $organization, User $user): array
+    {
+        return [
             'contact_name' => [
                 'required',
                 'string',
@@ -98,6 +163,15 @@ class OrganisationOnboardingController extends Controller
                 },
             ],
             'sector' => ['required', 'string', 'max:120'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function stepTwoRules(Organization $organization, User $user): array
+    {
+        return [
             'location' => ['required', 'string', 'max:255'],
             'linkedin_url' => [
                 'nullable',
@@ -134,28 +208,7 @@ class OrganisationOnboardingController extends Controller
                     }
                 },
             ],
-            'current_password' => ['required', 'current_password:web'],
-            'password' => ['required', Password::defaults(), 'confirmed'],
-        ]);
-
-        $organization->update([
-            'contact_name' => $validated['contact_name'],
-            'enterprise_name' => $validated['enterprise_name'],
-            'sector' => $validated['sector'],
-            'location' => $validated['location'],
-            'linkedin_url' => $validated['linkedin_url'] ?? null,
-            'phone' => $validated['phone'],
-            'onboarding_completed_at' => now(),
-        ]);
-
-        $user->update([
-            'name' => $validated['contact_name'],
-            'phone' => $validated['phone'],
-            'password' => $validated['password'],
-            'must_change_password' => false,
-        ]);
-
-        return redirect()->route('recruiter.dashboard')->with('success', __('Your organisation profile is complete.'));
+        ];
     }
 
     private function updatePassword(Request $request, $user): RedirectResponse

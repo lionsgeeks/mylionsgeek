@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Head, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, Globe, KeyRound, MapPin, Phone, User } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -68,7 +69,6 @@ function PasswordField({ id, label, error, value, onChange, placeholder, show, o
                 onChange={onChange}
                 placeholder={placeholder}
                 className={inputClass}
-                required
                 autoComplete={id === 'current_password' ? 'current-password' : 'new-password'}
             />
             <button
@@ -82,8 +82,17 @@ function PasswordField({ id, label, error, value, onChange, placeholder, show, o
     );
 }
 
+const VALIDATE_STEP_URL = '/organisation/onboarding/validate-step';
+
+function firstValidationMessage(messages) {
+    if (!messages) return undefined;
+    return Array.isArray(messages) ? messages[0] : messages;
+}
+
 export default function OrganisationOnboarding({ organization, passwordChangeOnly = false }) {
     const [step, setStep] = useState(passwordChangeOnly ? 3 : 1);
+    const [stepErrors, setStepErrors] = useState({});
+    const [validatingStep, setValidatingStep] = useState(false);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
@@ -100,6 +109,19 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
         password_confirmation: '',
     });
 
+    const fieldError = (key) => form.errors[key] ?? firstValidationMessage(stepErrors[key]);
+
+    const updateField = (key, value) => {
+        form.setData(key, value);
+        setStepErrors((prev) => {
+            if (!prev[key]) return prev;
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
+        form.clearErrors(key);
+    };
+
     const passwordStrength = useMemo(() => {
         const pwd = form.data.password;
         if (!pwd) return { score: 0, label: 'Too weak', color: 'bg-red-500' };
@@ -114,19 +136,171 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
         return { score, label: labels[score], color: colors[score] };
     }, [form.data.password]);
 
-    const canGoNext =
-        form.data.contact_name.trim() !== '' &&
-        form.data.enterprise_name.trim() !== '' &&
-        form.data.sector.trim() !== '';
+    const validateStepOneClient = () => {
+        const errs = {};
+        if (!form.data.contact_name.trim()) {
+            errs.contact_name = 'The contact name field is required.';
+        }
+        if (!form.data.enterprise_name.trim()) {
+            errs.enterprise_name = 'The company name field is required.';
+        }
+        if (!form.data.sector.trim()) {
+            errs.sector = 'The industry sector field is required.';
+        }
+        return errs;
+    };
 
-    const canSubmitPassword =
-        form.data.current_password.trim() !== '' &&
-        form.data.password.trim() !== '' &&
-        form.data.password_confirmation.trim() !== '' &&
-        form.data.password === form.data.password_confirmation;
+    const validateStepTwoClient = () => {
+        const errs = {};
+        if (!form.data.location.trim()) {
+            errs.location = 'The office location field is required.';
+        }
+        if (!form.data.phone.trim()) {
+            errs.phone = 'The phone number field is required.';
+        }
+        const linkedin = form.data.linkedin_url.trim();
+        if (linkedin && !linkedin.toLowerCase().includes('linkedin')) {
+            errs.linkedin_url = 'The LinkedIn URL must contain "linkedin".';
+        }
+        return errs;
+    };
+
+    const mergeServerValidationErrors = (errorBag) => {
+        const out = {};
+        if (!errorBag || typeof errorBag !== 'object') return out;
+        for (const [key, messages] of Object.entries(errorBag)) {
+            const msg = firstValidationMessage(messages);
+            if (msg) out[key] = msg;
+        }
+        return out;
+    };
+
+    const continueStepOne = async () => {
+        const clientErrs = validateStepOneClient();
+        if (Object.keys(clientErrs).length > 0) {
+            setStepErrors((prev) => ({ ...prev, ...clientErrs }));
+            return;
+        }
+
+        setValidatingStep(true);
+        try {
+            await axios.post(VALIDATE_STEP_URL, {
+                step: 1,
+                contact_name: form.data.contact_name,
+                enterprise_name: form.data.enterprise_name,
+                sector: form.data.sector,
+            });
+            setStepErrors((prev) => {
+                const next = { ...prev };
+                delete next.contact_name;
+                delete next.enterprise_name;
+                delete next.sector;
+                return next;
+            });
+            setStep(2);
+        } catch (err) {
+            if (err.response?.status === 422) {
+                setStepErrors((prev) => ({
+                    ...prev,
+                    ...mergeServerValidationErrors(err.response.data?.errors),
+                }));
+            } else {
+                console.error(err);
+            }
+        } finally {
+            setValidatingStep(false);
+        }
+    };
+
+    const continueStepTwo = async () => {
+        const clientErrs = validateStepTwoClient();
+        if (Object.keys(clientErrs).length > 0) {
+            setStepErrors((prev) => ({ ...prev, ...clientErrs }));
+            return;
+        }
+
+        setValidatingStep(true);
+        try {
+            await axios.post(VALIDATE_STEP_URL, {
+                step: 2,
+                location: form.data.location,
+                linkedin_url: form.data.linkedin_url.trim() || null,
+                phone: form.data.phone,
+            });
+            setStepErrors((prev) => {
+                const next = { ...prev };
+                delete next.location;
+                delete next.linkedin_url;
+                delete next.phone;
+                return next;
+            });
+            setStep(3);
+        } catch (err) {
+            if (err.response?.status === 422) {
+                setStepErrors((prev) => ({
+                    ...prev,
+                    ...mergeServerValidationErrors(err.response.data?.errors),
+                }));
+            } else {
+                console.error(err);
+            }
+        } finally {
+            setValidatingStep(false);
+        }
+    };
+
+    const validatePasswordsClient = () => {
+        const errs = {};
+        if (!form.data.current_password.trim()) {
+            errs.current_password = 'The current password field is required.';
+        }
+        if (!form.data.password.trim()) {
+            errs.password = 'The password field is required.';
+        } else if (form.data.password.length < 8) {
+            errs.password = 'The password must be at least 8 characters.';
+        }
+        if (!form.data.password_confirmation.trim()) {
+            errs.password_confirmation = 'The password confirmation field is required.';
+        } else if (form.data.password !== form.data.password_confirmation) {
+            errs.password_confirmation = 'The password confirmation does not match.';
+        }
+        return errs;
+    };
 
     const submit = (e) => {
         e.preventDefault();
+
+        if (passwordChangeOnly) {
+            const pwErrs = validatePasswordsClient();
+            if (Object.keys(pwErrs).length > 0) {
+                setStepErrors((prev) => ({ ...prev, ...pwErrs }));
+                return;
+            }
+            setStepErrors((prev) => {
+                const next = { ...prev };
+                delete next.current_password;
+                delete next.password;
+                delete next.password_confirmation;
+                return next;
+            });
+            form.post('/organisation/onboarding', { preserveScroll: true });
+            return;
+        }
+
+        const pwErrs = validatePasswordsClient();
+        if (Object.keys(pwErrs).length > 0) {
+            setStepErrors((prev) => ({ ...prev, ...pwErrs }));
+            return;
+        }
+
+        setStepErrors((prev) => {
+            const next = { ...prev };
+            delete next.current_password;
+            delete next.password;
+            delete next.password_confirmation;
+            return next;
+        });
+
         form.post('/organisation/onboarding', { preserveScroll: true });
     };
 
@@ -223,7 +397,7 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                     transition={{ duration: 0.35, delay: 0.1 }}
                     className="rounded-2xl border border-beta/8 bg-white p-7 shadow-sm"
                 >
-                    <form onSubmit={submit}>
+                    <form onSubmit={submit} noValidate>
                         <AnimatePresence mode="wait">
                             {step === 1 ? (
                                 <motion.div
@@ -234,38 +408,35 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     transition={{ duration: 0.25 }}
                                     className="space-y-5"
                                 >
-                                    <Field id="contact_name" label="Contact name" error={form.errors.contact_name} icon={User}>
+                                    <Field id="contact_name" label="Contact name" error={fieldError('contact_name')} icon={User}>
                                         <Input
                                             id="contact_name"
                                             value={form.data.contact_name}
-                                            onChange={(e) => form.setData('contact_name', e.target.value)}
+                                            onChange={(e) => updateField('contact_name', e.target.value)}
                                             placeholder="Jane Smith"
                                             className={inputClass}
-                                            required
                                         />
                                     </Field>
 
                                     <Field
                                         id="enterprise_name"
                                         label="Company name"
-                                        error={form.errors.enterprise_name}
+                                        error={fieldError('enterprise_name')}
                                         icon={Building2}
                                     >
                                         <Input
                                             id="enterprise_name"
                                             value={form.data.enterprise_name}
-                                            onChange={(e) => form.setData('enterprise_name', e.target.value)}
+                                            onChange={(e) => updateField('enterprise_name', e.target.value)}
                                             placeholder="Acme Corp"
                                             className={inputClass}
-                                            required
                                         />
                                     </Field>
 
-                                    <Field id="sector" label="Industry sector" error={form.errors.sector} icon={Building2}>
+                                    <Field id="sector" label="Industry sector" error={fieldError('sector')} icon={Building2}>
                                         <Select
                                             value={form.data.sector}
-                                            onValueChange={(val) => form.setData('sector', val)}
-                                            required
+                                            onValueChange={(val) => updateField('sector', val)}
                                         >
                                             <SelectTrigger
                                                 id="sector"
@@ -292,36 +463,34 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     transition={{ duration: 0.25 }}
                                     className="space-y-5"
                                 >
-                                    <Field id="location" label="Office location" error={form.errors.location} icon={MapPin}>
+                                    <Field id="location" label="Office location" error={fieldError('location')} icon={MapPin}>
                                         <Input
                                             id="location"
                                             value={form.data.location}
-                                            onChange={(e) => form.setData('location', e.target.value)}
+                                            onChange={(e) => updateField('location', e.target.value)}
                                             placeholder="Casablanca, Morocco"
                                             className={inputClass}
-                                            required
                                         />
                                     </Field>
 
-                                    <Field id="linkedin_url" label="LinkedIn URL" error={form.errors.linkedin_url} icon={Globe}>
+                                    <Field id="linkedin_url" label="LinkedIn URL" error={fieldError('linkedin_url')} icon={Globe}>
                                         <Input
                                             id="linkedin_url"
                                             type="url"
                                             value={form.data.linkedin_url}
-                                            onChange={(e) => form.setData('linkedin_url', e.target.value)}
+                                            onChange={(e) => updateField('linkedin_url', e.target.value)}
                                             placeholder="https://linkedin.com/company/..."
                                             className={inputClass}
                                         />
                                     </Field>
 
-                                    <Field id="phone" label="Phone number" error={form.errors.phone} icon={Phone}>
+                                    <Field id="phone" label="Phone number" error={fieldError('phone')} icon={Phone}>
                                         <Input
                                             id="phone"
                                             value={form.data.phone}
-                                            onChange={(e) => form.setData('phone', e.target.value)}
+                                            onChange={(e) => updateField('phone', e.target.value)}
                                             placeholder="+212 6 00 00 00 00"
                                             className={inputClass}
-                                            required
                                         />
                                     </Field>
                                 </motion.div>
@@ -337,9 +506,9 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     <PasswordField
                                         id="current_password"
                                         label="Current password"
-                                        error={form.errors.current_password}
+                                        error={fieldError('current_password')}
                                         value={form.data.current_password}
-                                        onChange={(e) => form.setData('current_password', e.target.value)}
+                                        onChange={(e) => updateField('current_password', e.target.value)}
                                         placeholder="Password from your invitation email"
                                         show={showCurrentPassword}
                                         onToggleShow={() => setShowCurrentPassword((v) => !v)}
@@ -349,9 +518,9 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     <PasswordField
                                         id="password"
                                         label="New password"
-                                        error={form.errors.password}
+                                        error={fieldError('password')}
                                         value={form.data.password}
-                                        onChange={(e) => form.setData('password', e.target.value)}
+                                        onChange={(e) => updateField('password', e.target.value)}
                                         placeholder="Choose a strong password"
                                         show={showPassword}
                                         onToggleShow={() => setShowPassword((v) => !v)}
@@ -384,9 +553,9 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                     <PasswordField
                                         id="password_confirmation"
                                         label="Confirm new password"
-                                        error={form.errors.password_confirmation}
+                                        error={fieldError('password_confirmation')}
                                         value={form.data.password_confirmation}
-                                        onChange={(e) => form.setData('password_confirmation', e.target.value)}
+                                        onChange={(e) => updateField('password_confirmation', e.target.value)}
                                         placeholder="Repeat your new password"
                                         show={showPasswordConfirmation}
                                         onToggleShow={() => setShowPasswordConfirmation((v) => !v)}
@@ -412,24 +581,39 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                             {step === 1 ? (
                                 <Button
                                     type="button"
-                                    disabled={!canGoNext}
-                                    onClick={() => setStep(2)}
-                                    className="h-11 min-w-36 bg-alpha font-semibold text-beta shadow-none hover:bg-alpha/90 disabled:opacity-40"
+                                    disabled={validatingStep}
+                                    onClick={continueStepOne}
+                                    className="h-11 min-w-36 bg-alpha font-semibold text-beta shadow-none hover:bg-alpha/90 disabled:opacity-60"
                                 >
-                                    Continue →
+                                    {validatingStep ? (
+                                        <span className="flex items-center gap-2">
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-beta/30 border-t-beta" />
+                                            Checking…
+                                        </span>
+                                    ) : (
+                                        'Continue →'
+                                    )}
                                 </Button>
                             ) : step === 2 ? (
                                 <Button
                                     type="button"
-                                    onClick={() => setStep(3)}
-                                    className="h-11 min-w-36 bg-alpha font-semibold text-beta shadow-none hover:bg-alpha/90"
+                                    disabled={validatingStep}
+                                    onClick={continueStepTwo}
+                                    className="h-11 min-w-36 bg-alpha font-semibold text-beta shadow-none hover:bg-alpha/90 disabled:opacity-60"
                                 >
-                                    Continue →
+                                    {validatingStep ? (
+                                        <span className="flex items-center gap-2">
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-beta/30 border-t-beta" />
+                                            Checking…
+                                        </span>
+                                    ) : (
+                                        'Continue →'
+                                    )}
                                 </Button>
                             ) : (
                                 <Button
                                     type="submit"
-                                    disabled={form.processing || !canSubmitPassword}
+                                    disabled={form.processing}
                                     className="h-11 min-w-44 bg-alpha font-semibold text-beta shadow-none hover:bg-alpha/90 disabled:opacity-60"
                                 >
                                     {form.processing ? (
