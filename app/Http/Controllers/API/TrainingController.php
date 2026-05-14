@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\DisciplineService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -460,6 +461,131 @@ class TrainingController extends Controller
             });
 
         return response()->json(['events' => $events]);
+    }
+
+    /**
+     * Student (or staff) attendance ledger for one training: one row per day with morning / lunch / evening.
+     */
+    public function attendanceHistory(Request $request, int $id)
+    {
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
+
+        $auth = Auth::guard('sanctum')->user();
+        $training = Formation::findOrFail($id);
+
+        $isMember = (int) ($auth->formation_id ?? 0) === (int) $training->id;
+        $isCoachOfTraining = (int) ($training->user_id ?? 0) === (int) $auth->id;
+        $isPrivileged = $this->userHasPrivilegedTrainingAccess($auth);
+
+        if (! $isMember && ! $isCoachOfTraining && ! $isPrivileged) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $requestedUserId = (int) $request->query('user_id', $auth->id);
+        if ($requestedUserId !== (int) $auth->id) {
+            if (! $isCoachOfTraining && ! $isPrivileged) {
+                return response()->json(['message' => 'Forbidden'], 403);
+            }
+            $subject = User::find($requestedUserId);
+            if (! $subject || (int) ($subject->formation_id ?? 0) !== (int) $training->id) {
+                return response()->json(['message' => 'User not in this training'], 403);
+            }
+        }
+
+        $targetUserId = $requestedUserId;
+
+        $rows = DB::table('attendance_lists as al')
+            ->join('attendances as a', 'a.id', '=', 'al.attendance_id')
+            ->where('a.formation_id', $training->id)
+            ->where('al.user_id', $targetUserId)
+            ->orderByDesc('al.attendance_day')
+            ->orderByDesc('al.id')
+            ->select([
+                'al.attendance_day',
+                'al.morning',
+                'al.lunch',
+                'al.evening',
+                'al.id as list_id',
+                'a.staff_name',
+            ])
+            ->get();
+
+        $byDay = [];
+        foreach ($rows as $row) {
+            $dayKey = (string) $row->attendance_day;
+            if (isset($byDay[$dayKey])) {
+                continue;
+            }
+            $byDay[$dayKey] = $row;
+        }
+
+        $days = [];
+        foreach ($byDay as $row) {
+            $m = $this->normalizeAttendanceSlot($row->morning ?? null);
+            $l = $this->normalizeAttendanceSlot($row->lunch ?? null);
+            $e = $this->normalizeAttendanceSlot($row->evening ?? null);
+
+            $allPresent = ($m === 'present' && $l === 'present' && $e === 'present');
+            $issues = [];
+            foreach (['morning' => $m, 'lunch' => $l, 'evening' => $e] as $slot => $status) {
+                if ($status !== 'present') {
+                    $issues[] = $slot.'_'.$status;
+                }
+            }
+
+            $days[] = [
+                'date' => $row->attendance_day,
+                'morning' => $m,
+                'lunch' => $l,
+                'evening' => $e,
+                'summary' => $allPresent ? 'full_day' : 'partial',
+                'issues' => $issues,
+                'staff_name' => $row->staff_name ?? null,
+            ];
+        }
+
+        usort($days, function ($a, $b) {
+            return strcmp((string) $b['date'], (string) $a['date']);
+        });
+
+        return response()->json([
+            'training' => [
+                'id' => $training->id,
+                'name' => $training->name,
+            ],
+            'user_id' => $targetUserId,
+            'days' => array_values($days),
+        ]);
+    }
+
+    private function userHasPrivilegedTrainingAccess(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+        $roles = $user->role ?? [];
+        if (! is_array($roles)) {
+            $roles = $roles ? [(string) $roles] : [];
+        }
+        $lower = array_map('strtolower', array_map('strval', $roles));
+
+        return (bool) array_intersect($lower, ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable']);
+    }
+
+    private function normalizeAttendanceSlot(?string $value): string
+    {
+        $s = strtolower(trim((string) ($value ?? '')));
+        if ($s === '' || str_starts_with($s, 'present')) {
+            return 'present';
+        }
+        if (in_array($s, ['absent', 'late', 'excused'], true)) {
+            return $s;
+        }
+
+        return 'present';
     }
 
     public function save(Request $request)
