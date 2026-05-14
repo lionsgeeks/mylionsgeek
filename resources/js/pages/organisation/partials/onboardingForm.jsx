@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Head, useForm } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Building2, Globe, KeyRound, MapPin, Phone, User } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const SECTOR_OPTIONS = [
     'Technology',
@@ -130,6 +130,17 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
         form.post('/organisation/onboarding', { preserveScroll: true });
     };
 
+    useEffect(() => {
+        const { errors } = form;
+        if (errors.contact_name || errors.enterprise_name || errors.sector) {
+            setStep(1);
+        } else if (errors.location || errors.linkedin_url || errors.phone) {
+            setStep(2);
+        } else if (errors.current_password || errors.password || errors.password_confirmation) {
+            setStep(3);
+        }
+    }, [form.errors]);
+
     const inputClass =
         'h-11 pl-9 bg-white dark:bg-white border-beta/15 text-beta placeholder:text-beta/35 focus-visible:border-alpha/60 focus-visible:ring-alpha/20 select-text';
 
@@ -168,8 +179,9 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.25 }}
-                        className="space-y-1 flex items-center justify-between"
+                        className="space-y-1 flex items-center gap-4"
                     >
+                        <AppLogoIcon size={80} color="#212529" />
                         <div>
                             <p className="text-xs font-semibold uppercase tracking-widest text-alpha">
                                 Step {step} of {STEPS.length}
@@ -183,7 +195,6 @@ export default function OrganisationOnboarding({ organization, passwordChangeOnl
                                 </p>
                             )}
                         </div>
-                        <AppLogoIcon size={50} color="#212529" />
                     </motion.div>
 
                     {!passwordChangeOnly && (

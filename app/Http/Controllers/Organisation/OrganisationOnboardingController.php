@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Organisation;
 
 use App\Http\Controllers\Controller;
+use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -56,12 +58,82 @@ class OrganisationOnboardingController extends Controller
         }
 
         $validated = $request->validate([
-            'contact_name' => ['required', 'string', 'max:255'],
-            'enterprise_name' => ['required', 'string', 'max:255'],
+            'contact_name' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($organization, $user): void {
+                    $normalized = mb_strtolower(trim((string) $value));
+
+                    $contactTaken = Organization::query()
+                        ->where('id', '!=', $organization->id)
+                        ->whereNotNull('contact_name')
+                        ->whereRaw('LOWER(contact_name) = ?', [$normalized])
+                        ->exists();
+
+                    $nameTaken = User::query()
+                        ->where('id', '!=', $user->id)
+                        ->whereRaw('LOWER(name) = ?', [$normalized])
+                        ->exists();
+
+                    if ($contactTaken || $nameTaken) {
+                        $fail('This contact name already exists.');
+                    }
+                },
+            ],
+            'enterprise_name' => [
+                'required',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail) use ($organization): void {
+                    $exists = Organization::query()
+                        ->where('id', '!=', $organization->id)
+                        ->whereNotNull('enterprise_name')
+                        ->whereRaw('LOWER(enterprise_name) = ?', [mb_strtolower(trim((string) $value))])
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('This company name already exists.');
+                    }
+                },
+            ],
             'sector' => ['required', 'string', 'max:120'],
             'location' => ['required', 'string', 'max:255'],
-            'linkedin_url' => ['nullable', 'string', 'max:500', 'url'],
-            'phone' => ['required', 'string', 'max:30'],
+            'linkedin_url' => [
+                'nullable',
+                'string',
+                'max:500',
+                'url',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value && ! str_contains(mb_strtolower((string) $value), 'linkedin')) {
+                        $fail('The LinkedIn URL must contain "linkedin".');
+                    }
+                },
+            ],
+            'phone' => [
+                'required',
+                'string',
+                'max:30',
+                function (string $attribute, mixed $value, \Closure $fail) use ($organization, $user): void {
+                    $normalized = preg_replace('/\s+/', '', trim((string) $value));
+
+                    $phoneTaken = Organization::query()
+                        ->where('id', '!=', $organization->id)
+                        ->whereNotNull('phone')
+                        ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalized])
+                        ->exists();
+
+                    $userPhoneTaken = User::query()
+                        ->where('id', '!=', $user->id)
+                        ->whereNotNull('phone')
+                        ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalized])
+                        ->exists();
+
+                    if ($phoneTaken || $userPhoneTaken) {
+                        $fail('This phone number is already in use.');
+                    }
+                },
+            ],
             'current_password' => ['required', 'current_password:web'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
