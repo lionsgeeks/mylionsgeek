@@ -340,7 +340,7 @@ class StoryController extends Controller
                             if ($endMs > 30000)    $endMs = 30000;
                             if ($startMs > 29000)  $startMs = 29000;
                             $style = (string) ($o['display'] ?? 'pill');
-                            if (!in_array($style, ['pill', 'card', 'minimal', 'lyrics'], true)) {
+                            if (!in_array($style, ['pill', 'card', 'minimal', 'lyrics', 'none'], true)) {
                                 $style = 'pill';
                             }
                             // Lyrics, if provided, are clipped to 6KB so the
