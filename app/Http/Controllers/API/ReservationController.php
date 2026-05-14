@@ -46,7 +46,12 @@ class ReservationController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $reservations = Reservation::orderBy('created_at', 'desc')
+        $reservations = Reservation::query()
+            ->where('user_id', $user->id)
+            ->with(['studio:id,name'])
+            ->orderByDesc('day')
+            ->orderByDesc('start')
+            ->orderByDesc('created_at')
             ->get()
             ->map(function ($reservation) {
                 return [
@@ -56,8 +61,10 @@ class ReservationController extends Controller
                     'day' => $reservation->day,
                     'start' => $reservation->start,
                     'end' => $reservation->end,
-                    'approved' => $reservation->approved,
-                    'canceled' => $reservation->canceled,
+                    'type' => $reservation->type,
+                    'approved' => (bool) $reservation->approved,
+                    'canceled' => (bool) $reservation->canceled,
+                    'studio_name' => $reservation->studio?->name,
                     'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
                     'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
                 ];
@@ -80,17 +87,26 @@ class ReservationController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $reservations = ReservationCowork::orderBy('created_at', 'desc')
+        $reservations = ReservationCowork::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('day')
+            ->orderByDesc('start')
+            ->orderByDesc('created_at')
             ->get()
             ->map(function ($reservation) {
+                $deskId = $reservation->table;
+
                 return [
                     'id' => $reservation->id,
-                    'title' => $reservation->table,
+                    'title' => 'Desk / spot #'.$deskId,
+                    'desk_id' => $deskId,
+                    'seats' => $reservation->seats ?? 1,
                     'start' => $reservation->start,
                     'end' => $reservation->end,
                     'day' => $reservation->day,
-                    'approved' => $reservation->approved,
-                    'canceled' => $reservation->canceled,
+                    'approved' => (bool) $reservation->approved,
+                    'canceled' => (bool) $reservation->canceled,
+                    'passed' => (bool) ($reservation->passed ?? false),
                     'created_at' => $reservation->created_at ? (is_string($reservation->created_at) ? $reservation->created_at : $reservation->created_at->toDateTimeString()) : null,
                     'updated_at' => $reservation->updated_at ? (is_string($reservation->updated_at) ? $reservation->updated_at : $reservation->updated_at->toDateTimeString()) : null,
                 ];
@@ -125,6 +141,14 @@ class ReservationController extends Controller
 
         if (!$reservationData) {
             return response()->json(['error' => 'Reservation not found'], 404);
+        }
+
+        $authUser = Auth::guard('sanctum')->user();
+        if (!$authUser) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        if (!$this->reservationVisibleToUser($authUser, (int) ($reservationData->user_id ?? 0))) {
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         // Normalize user avatar path
@@ -591,5 +615,21 @@ class ReservationController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Studio reservation detail: owner, or privileged staff (see ACCESS_BYPASS_ROLES).
+     */
+    private function reservationVisibleToUser(?User $authUser, int $reservationOwnerId): bool
+    {
+        if (!$authUser || $reservationOwnerId < 1) {
+            return false;
+        }
+        $roles = $this->normalizeRolesList(data_get($authUser, 'role'));
+        if (!empty(array_intersect($roles, self::ACCESS_BYPASS_ROLES))) {
+            return true;
+        }
+
+        return (int) $authUser->id === $reservationOwnerId;
     }
 }
