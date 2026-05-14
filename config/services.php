@@ -50,4 +50,15 @@ return [
         'redirect' => env('LINKEDIN_REDIRECT_URI'),
     ],
 
+    // Spotify is used for music-sticker search on stories. Credentials are
+    // obtained via Client Credentials Flow (server-to-server). When tracks
+    // don't have a preview_url, we fall back to iTunes Search for the
+    // preview audio. If neither key is set, the music endpoint silently
+    // falls back to iTunes-only search.
+    'spotify' => [
+        'client_id'     => env('SPOTIFY_CLIENT_ID'),
+        'client_secret' => env('SPOTIFY_CLIENT_SECRET'),
+        'market'        => env('SPOTIFY_MARKET', 'US'),
+    ],
+
 ];

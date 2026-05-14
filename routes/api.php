@@ -66,6 +66,36 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
         Route::get('/ably-token', [ChatController::class, 'getAblyToken'])->name('ably-token');
     });
 
+    // Stories routes
+    Route::get('/stories', [\App\Http\Controllers\API\StoryController::class, 'index'])->name('stories.index');
+    Route::post('/stories', [\App\Http\Controllers\API\StoryController::class, 'store'])->name('stories.store');
+    Route::post('/stories/{id}/view', [\App\Http\Controllers\API\StoryController::class, 'view'])->name('stories.view');
+    Route::delete('/stories/{id}', [\App\Http\Controllers\API\StoryController::class, 'destroy'])->name('stories.destroy');
+    // Phase 2: engagement
+    Route::get('/stories/{id}/viewers', [\App\Http\Controllers\API\StoryController::class, 'viewers'])->name('stories.viewers');
+    Route::post('/stories/{id}/react', [\App\Http\Controllers\API\StoryController::class, 'react'])->name('stories.react');
+    Route::delete('/stories/{id}/react', [\App\Http\Controllers\API\StoryController::class, 'unreact'])->name('stories.unreact');
+    Route::post('/stories/{id}/reply', [\App\Http\Controllers\API\StoryController::class, 'reply'])->name('stories.reply');
+
+    // Phase 3: highlights
+    Route::get('/users/{userId}/highlights', [\App\Http\Controllers\API\HighlightController::class, 'indexForUser'])->name('highlights.indexForUser');
+    Route::get('/highlights/{id}', [\App\Http\Controllers\API\HighlightController::class, 'show'])->name('highlights.show');
+    Route::post('/highlights', [\App\Http\Controllers\API\HighlightController::class, 'store'])->name('highlights.store');
+    Route::patch('/highlights/{id}', [\App\Http\Controllers\API\HighlightController::class, 'update'])->name('highlights.update');
+    Route::delete('/highlights/{id}', [\App\Http\Controllers\API\HighlightController::class, 'destroy'])->name('highlights.destroy');
+    Route::post('/highlights/{id}/stories', [\App\Http\Controllers\API\HighlightController::class, 'addStory'])->name('highlights.addStory');
+    Route::delete('/highlights/{id}/stories/{storyId}', [\App\Http\Controllers\API\HighlightController::class, 'removeStory'])->name('highlights.removeStory');
+
+    // Phase 3: close friends
+    Route::get('/close-friends', [\App\Http\Controllers\API\CloseFriendController::class, 'index'])->name('closeFriends.index');
+    Route::post('/close-friends/{friendId}', [\App\Http\Controllers\API\CloseFriendController::class, 'store'])->name('closeFriends.store');
+    Route::delete('/close-friends/{friendId}', [\App\Http\Controllers\API\CloseFriendController::class, 'destroy'])->name('closeFriends.destroy');
+
+    // Phase 4c: music search (Spotify + iTunes fallback) for the story
+    // creator's music sticker.
+    Route::get('/music/search', [\App\Http\Controllers\API\MusicController::class, 'search'])->name('music.search');
+    Route::get('/music/lyrics', [\App\Http\Controllers\API\MusicController::class, 'lyrics'])->name('music.lyrics');
+
     // Voice call routes
     Route::get('/call/ably-token', [\App\Http\Controllers\API\CallController::class, 'getAblyToken'])->name('call.ably-token');
     Route::post('/calls/initiate', [\App\Http\Controllers\API\CallController::class, 'initiate'])->name('calls.initiate');
