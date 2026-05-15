@@ -148,7 +148,18 @@ class CallController extends Controller
     }
 
     /**
-     * Get Ably token for call signaling (subscribe to call:user:{id}).
+     * Get Ably token for call signaling.
+     *
+     * Capabilities granted:
+     *   call:user:{id}         – subscribe to incoming/accepted/rejected events
+     *                            (kept as a wildcard for simplicity since
+     *                            non-matching channels are still filtered by
+     *                            our application logic)
+     *   webrtc:*               – publish/subscribe for WebRTC signaling
+     *                            (offer/answer/ICE candidates) during an
+     *                            active 1-on-1 call. The channel name is
+     *                            the call's unique channel_name so no two
+     *                            calls overlap.
      */
     public function getAblyToken(): JsonResponse
     {
@@ -161,6 +172,7 @@ class CallController extends Controller
             $tokenRequest = [
                 'capability' => json_encode([
                     'call:user:*' => ['subscribe'],
+                    'webrtc:*'    => ['publish', 'subscribe', 'presence'],
                 ]),
                 'clientId' => (string) $user->id,
             ];
