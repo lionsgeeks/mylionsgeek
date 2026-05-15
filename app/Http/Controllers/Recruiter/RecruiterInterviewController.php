@@ -397,7 +397,7 @@ class RecruiterInterviewController extends Controller
     private function jobApplicationExistsForRecruiterRule(int $userId): \Illuminate\Validation\Rules\Exists
     {
         return Rule::exists('job_applications', 'id')->where(function (Builder $query) use ($userId): void {
-            $organizationId = User::query()->whereKey($userId)->value('organization_id');
+            $organizationId = User::query()->whereKey($userId)->first()?->organizationIdForRecruiting();
             if (! $organizationId) {
                 $query->whereRaw('1 = 0');
 

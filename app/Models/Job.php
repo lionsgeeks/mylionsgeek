@@ -40,11 +40,6 @@ class Job extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function recruiters(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'job_posting_recruiter', 'job_posting_id', 'user_id')->withTimestamps();
-    }
-
     public function organizations(): BelongsToMany
     {
         return $this->belongsToMany(Organization::class, 'job_posting_organization', 'job_posting_id', 'organization_id')->withTimestamps();

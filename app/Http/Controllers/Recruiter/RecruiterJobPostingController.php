@@ -13,8 +13,8 @@ class RecruiterJobPostingController extends Controller
     {
         $validated = $request->validated();
 
-        $organizationId = (int) $request->user()->organization_id;
-        if (! $organizationId) {
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId || ! $request->user()->canCreateJobsForOrganisation()) {
             abort(403);
         }
 

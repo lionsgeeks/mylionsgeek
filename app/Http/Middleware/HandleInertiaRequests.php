@@ -86,11 +86,18 @@ class HandleInertiaRequests extends Middleware
                         $linkedin = null;
                     }
 
+                    $resumeFilename = $user->resume ?? null;
+
                     return array_merge($user->toArray(), [
                         'avatarUrl' => $avatarUrl,
                         'isProfileImageMissing' => empty($avatarUrl),
+                        'is_organisation_account' => $user->isOrganisationAccount(),
                         'social_links' => $user->socialLinks,
                         'linkedin_connected' => (bool) $linkedin,
+                        'resume' => $resumeFilename,
+                        'resume_url' => $resumeFilename
+                            ? asset('storage/resumes/' . ltrim($resumeFilename, '/'))
+                            : null,
                         'certificate_share_token' => $user->certificate_share_token ?? null,
                         'certificate_share_url' => $user->certificate_share_token
                             ? url('/certificates/share/' . $user->certificate_share_token)

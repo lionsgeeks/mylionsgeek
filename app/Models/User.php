@@ -52,8 +52,6 @@ class User extends Authenticatable
         'last_online',
         'activation_token',
         'expo_push_token', // Expo push notification token
-        'organization_id',
-        'is_organization_owner',
         // 'xp'
     ];
 
@@ -272,15 +270,18 @@ class User extends Authenticatable
         return $this->hasMany(UserSocialLink::class);
     }
 
-    /** Job postings this recruiter is assigned to (not necessarily the creator). */
-    public function assignedJobPostings(): BelongsToMany
+    /** Organisation this user logs in as (the company account). */
+    public function organisationAccount(): HasOne
     {
-        return $this->belongsToMany(Job::class, 'job_posting_recruiter', 'user_id', 'job_posting_id')->withTimestamps();
+        return $this->hasOne(Organization::class, 'account_user_id');
     }
 
-    public function organization(): BelongsTo
+    /** Organisations this user belongs to as an invited employer. */
+    public function employerOrganizations(): BelongsToMany
     {
-        return $this->belongsTo(Organization::class, 'organization_id');
+        return $this->belongsToMany(Organization::class, 'organization_user')
+            ->withPivot(['member_role', 'invited_by'])
+            ->withTimestamps();
     }
 
     public function isRecruiter(): bool
@@ -290,8 +291,61 @@ class User extends Authenticatable
         return in_array('recruiter', $roles, true);
     }
 
+    public function isOrganisationAccount(): bool
+    {
+        if ($this->relationLoaded('organisationAccount')) {
+            return $this->organisationAccount !== null;
+        }
+
+        return Organization::query()->where('account_user_id', $this->id)->exists();
+    }
+
+    public function organizationForRecruiting(): ?Organization
+    {
+        if ($this->relationLoaded('organisationAccount') && $this->organisationAccount) {
+            return $this->organisationAccount;
+        }
+
+        $asAccount = Organization::query()->where('account_user_id', $this->id)->first();
+        if ($asAccount) {
+            return $asAccount;
+        }
+
+        if ($this->relationLoaded('employerOrganizations')) {
+            return $this->employerOrganizations->first();
+        }
+
+        return $this->employerOrganizations()->first();
+    }
+
     public function organizationIdForRecruiting(): ?int
     {
-        return $this->organization_id ? (int) $this->organization_id : null;
+        return $this->organizationForRecruiting()?->id;
+    }
+
+    public function canCreateJobsForOrganisation(): bool
+    {
+        if (! $this->isRecruiter()) {
+            return false;
+        }
+
+        if ($this->isOrganisationAccount()) {
+            return true;
+        }
+
+        $organizationId = $this->organizationIdForRecruiting();
+        if (! $organizationId) {
+            return false;
+        }
+
+        return $this->employerOrganizations()
+            ->where('organizations.id', $organizationId)
+            ->whereIn('organization_user.member_role', ['employer', 'admin'])
+            ->exists();
+    }
+
+    public function canManageOrganisationMembers(): bool
+    {
+        return $this->isOrganisationAccount();
     }
 }

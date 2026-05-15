@@ -688,8 +688,22 @@ class UsersController extends Controller
     }
     public function update(Request $request, User $user)
     {
+        $actor = $request->user();
+        $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $actorRolesLower = array_map('strtolower', $actorRoles);
+        $canEditOthers = ! empty(array_intersect($actorRolesLower, [
+            'admin',
+            'super_admin',
+            'moderateur',
+            'coach',
+            'studio_responsable',
+            'responsable_studio',
+        ]));
 
-        // dd($request->all());
+        if (! $canEditOthers && (int) $actor->id !== (int) $user->id) {
+            abort(403, 'You can only update your own profile.');
+        }
+
         $validated = $request->validate([
             'name' => 'nullable|string',
             'email' => 'nullable|email|unique:users,email,' . $user->id,

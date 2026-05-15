@@ -30,7 +30,7 @@ export default function AdminOrganisationsIndex({ organisations }) {
                     illustration={students}
                     userName={auth?.user?.name ?? ''}
                     title="Organisations"
-                    description="Invite hiring partners by email. They complete their company profile after first login."
+                    description="Invite organisations by email. Each organisation receives one account to complete their company profile and invite employers."
                 />
 
                 {flash?.success && (

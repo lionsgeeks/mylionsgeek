@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
@@ -18,6 +17,7 @@ class Organization extends Model
         'linkedin_url',
         'phone',
         'invited_by',
+        'account_user_id',
         'onboarding_completed_at',
         'account_state',
     ];
@@ -35,9 +35,18 @@ class Organization extends Model
         return $this->belongsTo(User::class, 'invited_by');
     }
 
-    public function users(): HasMany
+    /** The organisation login account (one per organisation). */
+    public function accountUser(): BelongsTo
     {
-        return $this->hasMany(User::class, 'organization_id');
+        return $this->belongsTo(User::class, 'account_user_id');
+    }
+
+    /** Employer accounts invited by the organisation (not the org account itself). */
+    public function employers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'organization_user')
+            ->withPivot(['member_role', 'invited_by'])
+            ->withTimestamps();
     }
 
     public function jobPostings(): BelongsToMany

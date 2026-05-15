@@ -19,7 +19,8 @@ class OrganisationController extends Controller
     public function index(): Response
     {
         $organisations = Organization::query()
-            ->with(['users:id,organization_id,name,email,image,last_online'])
+            ->with(['accountUser:id,name,email,image,last_online'])
+            ->withCount('employers')
             ->orderByDesc('created_at')
             ->get()
             ->map(fn (Organization $org) => [
@@ -35,7 +36,14 @@ class OrganisationController extends Controller
                 'onboarding_completed' => $org->hasCompletedOnboarding(),
                 'onboarding_completed_at' => $org->onboarding_completed_at?->toIso8601String(),
                 'created_at' => $org->created_at?->toIso8601String(),
-                'owner' => $org->users->firstWhere('is_organization_owner', true) ?? $org->users->first(),
+                'employers_count' => $org->employers_count,
+                'account' => $org->accountUser ? [
+                    'id' => $org->accountUser->id,
+                    'name' => $org->accountUser->name,
+                    'email' => $org->accountUser->email,
+                    'image' => $org->accountUser->image,
+                    'last_online' => $org->accountUser->last_online,
+                ] : null,
             ]);
 
         return Inertia::render('admin/organisations/index', [
@@ -63,7 +71,7 @@ class OrganisationController extends Controller
             $lastUser = User::query()->orderByDesc('id')->first();
             $nextId = $lastUser ? ((int) $lastUser->id) + 1 : 1;
 
-            return User::create([
+            $accountUser = User::create([
                 'id' => $nextId,
                 'name' => $displayName,
                 'email' => $email,
@@ -78,11 +86,13 @@ class OrganisationController extends Controller
                 'access_studio' => 0,
                 'access_cowork' => 0,
                 'role' => ['recruiter'],
-                'organization_id' => $organization->id,
-                'is_organization_owner' => true,
                 'email_verified_at' => now(),
                 'activation_token' => null,
             ]);
+
+            $organization->update(['account_user_id' => $accountUser->id]);
+
+            return $accountUser;
         });
 
         try {
@@ -96,7 +106,7 @@ class OrganisationController extends Controller
             );
         }
 
-        return redirect()->back()->with('success', 'Organisation invited. Login details were sent by email.');
+        return redirect()->back()->with('success', 'Organisation account created. Login details were sent by email.');
     }
 
     public function updateAccountState(Request $request, Organization $organization): RedirectResponse
@@ -107,7 +117,17 @@ class OrganisationController extends Controller
 
         $organization->update(['account_state' => $validated['account_state']]);
 
-        $organization->users()->update(['account_state' => $validated['account_state']]);
+        $organization->load('employers');
+
+        $userIds = collect([$organization->account_user_id])
+            ->merge($organization->employers->pluck('id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($userIds->isNotEmpty()) {
+            User::query()->whereIn('id', $userIds)->update(['account_state' => $validated['account_state']]);
+        }
 
         return redirect()->back()->with('success', 'Organisation account status updated.');
     }

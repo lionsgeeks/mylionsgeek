@@ -3,7 +3,6 @@
 namespace App\Actions\JobPostings;
 
 use App\Models\Job;
-use App\Models\User;
 
 class SaveJobPosting
 {
@@ -32,7 +31,6 @@ class SaveJobPosting
         ]);
 
         $job->organizations()->sync($organizationIds);
-        $this->syncLegacyRecruiterPivot($job, $organizationIds);
 
         return $job;
     }
@@ -60,31 +58,7 @@ class SaveJobPosting
         ]);
 
         $job->organizations()->sync($organizationIds);
-        $this->syncLegacyRecruiterPivot($job, $organizationIds);
 
         return $job;
-    }
-
-    /**
-     * Keep job_posting_recruiter in sync for legacy code paths during transition.
-     *
-     * @param  list<int>  $organizationIds
-     */
-    private function syncLegacyRecruiterPivot(Job $job, array $organizationIds): void
-    {
-        if ($organizationIds === []) {
-            $job->recruiters()->sync([]);
-
-            return;
-        }
-
-        $recruiterUserIds = User::query()
-            ->whereIn('organization_id', $organizationIds)
-            ->whereJsonContains('role', 'recruiter')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $job->recruiters()->sync($recruiterUserIds);
     }
 }

@@ -17,9 +17,9 @@ class OrganisationOnboardingController extends Controller
     public function show(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
-        $organization = $user?->organization;
+        $organization = $user?->organisationAccount;
 
-        if (! $user?->isRecruiter() || ! $organization) {
+        if (! $user?->isRecruiter() || ! $organization || ! $user->isOrganisationAccount()) {
             abort(403);
         }
 
@@ -27,7 +27,7 @@ class OrganisationOnboardingController extends Controller
             return redirect()->route('recruiter.dashboard');
         }
 
-        return Inertia::render('organisation/partials/onboardingForm', [
+        return Inertia::render('organisation/onboarding', [
             'organization' => [
                 'email' => $organization->email,
                 'contact_name' => $organization->contact_name,
@@ -44,9 +44,9 @@ class OrganisationOnboardingController extends Controller
     public function validateStep(Request $request): JsonResponse
     {
         $user = $request->user();
-        $organization = $user?->organization;
+        $organization = $user?->organisationAccount;
 
-        if (! $user?->isRecruiter() || ! $organization) {
+        if (! $user?->isRecruiter() || ! $organization || ! $user->isOrganisationAccount()) {
             abort(403);
         }
 
@@ -74,9 +74,9 @@ class OrganisationOnboardingController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $organization = $user?->organization;
+        $organization = $user?->organisationAccount;
 
-        if (! $user?->isRecruiter() || ! $organization) {
+        if (! $user?->isRecruiter() || ! $organization || ! $user->isOrganisationAccount()) {
             abort(403);
         }
 
@@ -131,14 +131,14 @@ class OrganisationOnboardingController extends Controller
                     $normalized = mb_strtolower(trim((string) $value));
 
                     $contactTaken = Organization::query()
-                        ->where('id', '!=', $organization->id)
-                        ->whereNotNull('contact_name')
-                        ->whereRaw('LOWER(contact_name) = ?', [$normalized])
+                        ->whereKeyNot($organization->getKey())
+                        ->whereNotNull('contact_name', 'and')
+                        ->whereRaw('LOWER(contact_name) = ?', [$normalized], 'and')
                         ->exists();
 
                     $nameTaken = User::query()
-                        ->where('id', '!=', $user->id)
-                        ->whereRaw('LOWER(name) = ?', [$normalized])
+                        ->whereKeyNot($user->getKey())
+                        ->whereRaw('LOWER(name) = ?', [$normalized], 'and')
                         ->exists();
 
                     if ($contactTaken || $nameTaken) {
@@ -152,9 +152,9 @@ class OrganisationOnboardingController extends Controller
                 'max:255',
                 function (string $attribute, mixed $value, \Closure $fail) use ($organization): void {
                     $exists = Organization::query()
-                        ->where('id', '!=', $organization->id)
-                        ->whereNotNull('enterprise_name')
-                        ->whereRaw('LOWER(enterprise_name) = ?', [mb_strtolower(trim((string) $value))])
+                        ->whereKeyNot($organization->getKey())
+                        ->whereNotNull('enterprise_name', 'and')
+                        ->whereRaw('LOWER(enterprise_name) = ?', [mb_strtolower(trim((string) $value))], 'and')
                         ->exists();
 
                     if ($exists) {
@@ -188,30 +188,24 @@ class OrganisationOnboardingController extends Controller
                 'required',
                 'string',
                 'max:30',
-                function (string $attribute, mixed $value, \Closure $fail) use ($organization, $user): void {
+                function (string $attribute, mixed $value, \Closure $fail) use ($organization): void {
                     $normalized = preg_replace('/\s+/', '', trim((string) $value));
 
                     $phoneTaken = Organization::query()
-                        ->where('id', '!=', $organization->id)
-                        ->whereNotNull('phone')
-                        ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalized])
+                        ->whereKeyNot($organization->getKey())
+                        ->whereNotNull('phone', 'and')
+                        ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalized], 'and')
                         ->exists();
 
-                    $userPhoneTaken = User::query()
-                        ->where('id', '!=', $user->id)
-                        ->whereNotNull('phone')
-                        ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalized])
-                        ->exists();
-
-                    if ($phoneTaken || $userPhoneTaken) {
-                        $fail('This phone number is already in use.');
+                    if ($phoneTaken) {
+                        $fail('This phone number is already in use by another organisation.');
                     }
                 },
             ],
         ];
     }
 
-    private function updatePassword(Request $request, $user): RedirectResponse
+    private function updatePassword(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password:web'],

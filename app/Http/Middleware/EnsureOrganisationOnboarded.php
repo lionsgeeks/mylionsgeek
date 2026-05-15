@@ -9,7 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureOrganisationOnboarded
 {
     /**
-     * Recruiters linked to an organisation must complete onboarding and change their password before using the recruiter area.
+     * Organisation accounts must complete onboarding before using the hiring area.
+     * Employer accounts skip onboarding (only the org account completes company profile).
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -19,7 +20,11 @@ class EnsureOrganisationOnboarded
             return $next($request);
         }
 
-        $organization = $user->organization;
+        if (! $user->isOrganisationAccount()) {
+            return $next($request);
+        }
+
+        $organization = $user->organisationAccount;
 
         if (! $organization) {
             return $next($request);
