@@ -58,9 +58,9 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                                     <Home className="h-5 w-5 flex-shrink-0" />
                                 </Button>
                             </Link>
-                            <NavUser />
                         </>
                     )}
+                    <NavUser />
                     <div className="">
                         {/* component change mode */}
                         <ThemeToggle />
