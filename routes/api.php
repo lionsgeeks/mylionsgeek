@@ -76,6 +76,8 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     Route::post('/stories/{id}/react', [\App\Http\Controllers\API\StoryController::class, 'react'])->name('stories.react');
     Route::delete('/stories/{id}/react', [\App\Http\Controllers\API\StoryController::class, 'unreact'])->name('stories.unreact');
     Route::post('/stories/{id}/reply', [\App\Http\Controllers\API\StoryController::class, 'reply'])->name('stories.reply');
+    Route::post('/stories/{id}/mention-repost', [\App\Http\Controllers\API\StoryController::class, 'mentionRepost'])->name('stories.mentionRepost');
+    Route::post('/stories/{id}/capture-event', [\App\Http\Controllers\API\StoryController::class, 'reportCapture'])->name('stories.captureEvent');
 
     // Phase 3: highlights
     Route::get('/users/{userId}/highlights', [\App\Http\Controllers\API\HighlightController::class, 'indexForUser'])->name('highlights.indexForUser');

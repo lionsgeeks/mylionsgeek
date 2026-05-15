@@ -73,25 +73,86 @@ class StoryController extends Controller
             : url('storage/img/profile/' . $path);
     }
 
-    private function mapStory(Story $s, int $authUserId): array
+    private function mapStory(Story $s, int $authUserId, ?array $repostStoryIds = null): array
     {
+        $canRepost = false;
+        if ($authUserId > 0 && (int) $s->user_id !== $authUserId) {
+            if (is_array($repostStoryIds)) {
+                $canRepost = !empty($repostStoryIds[(int) $s->id]);
+            } else {
+                $canRepost = DB::table('story_mentions')
+                    ->where('story_id', $s->id)
+                    ->where('mentioned_user_id', $authUserId)
+                    ->exists();
+            }
+        }
+
         return [
-            'id'              => (int) $s->id,
-            'media_url'       => $this->publicUrl($s->media_path),
-            'media_type'      => $s->media_type,
-            'audience'        => $s->audience ?: 'public',
-            'overlays'        => is_array($s->overlays) ? $s->overlays : [],
-            'duration_ms'     => (int) ($s->duration_ms ?? 5000),
-            'width'           => $s->width,
-            'height'          => $s->height,
-            'created_at'      => optional($s->created_at)->toIso8601String(),
-            'expires_at'      => optional($s->expires_at)->toIso8601String(),
-            'is_mine'         => (int) $s->user_id === $authUserId,
-            'views_count'     => (int) ($s->views_count ?? 0),
-            'has_viewed'      => (bool) ($s->viewer_has_seen ?? false),
-            'reactions_count' => (int) ($s->reactions_count ?? 0),
-            'my_reaction'     => $s->viewer_reaction ?: null,
+            'id'                     => (int) $s->id,
+            'media_url'              => $this->publicUrl($s->media_path),
+            'media_type'             => $s->media_type,
+            'audience'               => $s->audience ?: 'public',
+            'overlays'               => is_array($s->overlays) ? $s->overlays : [],
+            'duration_ms'            => (int) ($s->duration_ms ?? 5000),
+            'width'                  => $s->width,
+            'height'                 => $s->height,
+            'created_at'             => optional($s->created_at)->toIso8601String(),
+            'expires_at'             => optional($s->expires_at)->toIso8601String(),
+            'is_mine'                => (int) $s->user_id === $authUserId,
+            'views_count'            => (int) ($s->views_count ?? 0),
+            'has_viewed'             => (bool) ($s->viewer_has_seen ?? false),
+            'reactions_count'        => (int) ($s->reactions_count ?? 0),
+            'my_reaction'            => $s->viewer_reaction ?: null,
+            'can_repost_as_mention'  => $canRepost,
         ];
+    }
+
+    /**
+     * Sync story_mentions from overlay JSON (trusted after sanitization).
+     */
+    private function syncStoryMentionsFromOverlays(Story $story, ?array $overlays): void
+    {
+        if (!is_array($overlays)) {
+            return;
+        }
+        foreach ($overlays as $o) {
+            if (!is_array($o) || ($o['type'] ?? '') !== 'mention') {
+                continue;
+            }
+            $uid = (int) ($o['user_id'] ?? 0);
+            if ($uid <= 0) {
+                continue;
+            }
+            try {
+                DB::table('story_mentions')->insertOrIgnore([
+                    'story_id'           => $story->id,
+                    'mentioned_user_id'  => $uid,
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ]);
+            } catch (Throwable $e) {
+                Log::warning('story_mentions insert failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Overlays copied to a mention-repost story (strip @mentions).
+     */
+    private function overlaysForMentionRepost(?array $overlays): ?array
+    {
+        if (!is_array($overlays) || $overlays === []) {
+            return null;
+        }
+        $out = [];
+        foreach ($overlays as $o) {
+            if (!is_array($o) || ($o['type'] ?? '') === 'mention') {
+                continue;
+            }
+            $out[] = $o;
+        }
+
+        return $out === [] ? null : array_values($out);
     }
 
     /**
@@ -151,8 +212,20 @@ class StoryController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
+            $repostStoryIds = [];
+            if ($stories->isNotEmpty()) {
+                $ids = $stories->pluck('id')->all();
+                $rows = DB::table('story_mentions')
+                    ->whereIn('story_id', $ids)
+                    ->where('mentioned_user_id', $user->id)
+                    ->pluck('story_id');
+                foreach ($rows as $sid) {
+                    $repostStoryIds[(int) $sid] = true;
+                }
+            }
+
             // Group by user.
-            $groups = $stories->groupBy('user_id')->map(function ($group) use ($user) {
+            $groups = $stories->groupBy('user_id')->map(function ($group) use ($user, $repostStoryIds) {
                 $owner = $group->first()->user;
                 $latest = $group->max('created_at');
                 $hasUnseen = $group->contains(function ($s) {
@@ -167,7 +240,7 @@ class StoryController extends Controller
                     ],
                     'has_unseen' => $hasUnseen,
                     'latest_at'  => $latest ? Carbon::parse($latest)->toIso8601String() : null,
-                    'stories'    => $group->map(fn ($s) => $this->mapStory($s, $user->id))->values(),
+                    'stories'    => $group->map(fn ($s) => $this->mapStory($s, $user->id, $repostStoryIds))->values(),
                 ];
             })->values();
 
@@ -293,6 +366,7 @@ class StoryController extends Controller
                             $base['color']    = is_string($o['color'] ?? null) ? substr($o['color'], 0, 16) : '#ffffff';
                             $base['has_bg']   = !empty($o['has_bg']);
                             $base['bg_color'] = is_string($o['bg_color'] ?? null) ? substr($o['bg_color'], 0, 16) : null;
+                            $base['hidden']   = !empty($o['hidden']);
                             if ($base['user_id'] <= 0 || $base['username'] === '') return null;
                             return $base;
                         }
@@ -391,12 +465,14 @@ class StoryController extends Controller
                 'expires_at'  => now()->addHours(self::TTL_HOURS),
             ]);
 
+            $this->syncStoryMentionsFromOverlays($story, $overlays);
+
             $story->loadCount(['views as views_count', 'reactions as reactions_count']);
             $story->viewer_has_seen = 0;
             $story->viewer_reaction = null;
 
             return response()->json([
-                'story' => $this->mapStory($story, $user->id),
+                'story' => $this->mapStory($story, $user->id, []),
             ], 201);
         } catch (Throwable $e) {
             Log::error('Story store failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -502,7 +578,18 @@ class StoryController extends Controller
             ->limit(500)
             ->get(['u.id', 'u.name', 'u.image', 'sv.viewed_at', 'sr.emoji']);
 
-        $viewers = $rows->map(function ($r) {
+        $captureAgg = DB::table('story_capture_events')
+            ->where('story_id', $story->id)
+            ->select(
+                'viewer_id',
+                DB::raw("SUM(CASE WHEN kind = 'screenshot' THEN 1 ELSE 0 END) as capture_screenshots"),
+                DB::raw("SUM(CASE WHEN kind = 'screen_recording' THEN 1 ELSE 0 END) as capture_recordings")
+            )
+            ->groupBy('viewer_id')
+            ->get()
+            ->keyBy(fn ($row) => (int) $row->viewer_id);
+
+        $viewers = $rows->map(function ($r) use ($captureAgg) {
             $avatar = null;
             if ($r->image) {
                 $path = ltrim((string) $r->image, '/');
@@ -510,19 +597,35 @@ class StoryController extends Controller
                     ? url('storage/' . $path)
                     : url('storage/img/profile/' . $path);
             }
+            $vid = (int) $r->id;
+            $cap = $captureAgg->get($vid);
+
             return [
-                'id'        => (int) $r->id,
-                'name'      => $r->name,
-                'avatar'    => $avatar,
-                'viewed_at' => $r->viewed_at,
-                'reaction'  => $r->emoji,
+                'id'                   => $vid,
+                'name'                 => $r->name,
+                'avatar'               => $avatar,
+                'viewed_at'            => $r->viewed_at,
+                'reaction'             => $r->emoji,
+                'capture_screenshots'  => $cap ? (int) $cap->capture_screenshots : 0,
+                'capture_recordings'   => $cap ? (int) $cap->capture_recordings : 0,
             ];
         });
 
+        $ss = (int) DB::table('story_capture_events')
+            ->where('story_id', $story->id)
+            ->where('kind', 'screenshot')
+            ->count();
+        $sr = (int) DB::table('story_capture_events')
+            ->where('story_id', $story->id)
+            ->where('kind', 'screen_recording')
+            ->count();
+
         return response()->json([
-            'viewers'         => $viewers,
-            'total'           => $viewers->count(),
-            'reactions_count' => $story->reactions()->count(),
+            'viewers'              => $viewers,
+            'total'                => $viewers->count(),
+            'reactions_count'      => $story->reactions()->count(),
+            'capture_screenshots'  => $ss,
+            'capture_recordings'   => $sr,
         ]);
     }
 
@@ -703,5 +806,128 @@ class StoryController extends Controller
                 'error'   => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    /**
+     * POST /api/mobile/stories/{id}/mention-repost
+     *
+     * Creates a copy of the story media on the authed user's account when they
+     * were @mentioned on the original story. Mention overlays are stripped.
+     */
+    public function mentionRepost(int $id)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $story = Story::active()->find($id);
+        if (!$story) {
+            return response()->json(['message' => 'Story not found or expired'], 404);
+        }
+        if ((int) $story->user_id === (int) $user->id) {
+            return response()->json(['message' => 'Use your own story composer for new posts'], 422);
+        }
+
+        $allowed = DB::table('story_mentions')
+            ->where('story_id', $story->id)
+            ->where('mentioned_user_id', $user->id)
+            ->exists();
+        if (!$allowed) {
+            return response()->json(['message' => 'You are not mentioned on this story'], 403);
+        }
+
+        $src = (string) $story->media_path;
+        if ($src === '' || !Storage::disk('public')->exists($src)) {
+            return response()->json(['message' => 'Story media is missing'], 422);
+        }
+
+        $ext = pathinfo($src, PATHINFO_EXTENSION) ?: ($story->media_type === 'video' ? 'mp4' : 'jpg');
+        $newFilename = 'story_' . $user->id . '_' . time() . '_' . substr(bin2hex(random_bytes(4)), 0, 8) . '.' . $ext;
+        $newPath = self::STORIES_DIR . '/' . $newFilename;
+
+        try {
+            Storage::disk('public')->copy($src, $newPath);
+        } catch (Throwable $e) {
+            Log::error('mentionRepost copy failed: ' . $e->getMessage());
+
+            return response()->json(['message' => 'Could not copy media'], 500);
+        }
+
+        $overlays = $this->overlaysForMentionRepost(is_array($story->overlays) ? $story->overlays : null);
+
+        try {
+            $newStory = Story::create([
+                'user_id'     => $user->id,
+                'media_path'  => $newPath,
+                'media_type'  => $story->media_type,
+                'audience'    => 'public',
+                'overlays'    => $overlays,
+                'duration_ms' => (int) ($story->duration_ms ?? 5000),
+                'width'       => $story->width,
+                'height'      => $story->height,
+                'expires_at'  => now()->addHours(self::TTL_HOURS),
+            ]);
+        } catch (Throwable $e) {
+            try {
+                Storage::disk('public')->delete($newPath);
+            } catch (Throwable $ignored) {
+            }
+            Log::error('mentionRepost create failed: ' . $e->getMessage());
+
+            return response()->json(['message' => 'Could not create story'], 500);
+        }
+
+        $this->syncStoryMentionsFromOverlays($newStory, $overlays);
+
+        $newStory->loadCount(['views as views_count', 'reactions as reactions_count']);
+        $newStory->viewer_has_seen = 0;
+        $newStory->viewer_reaction = null;
+
+        return response()->json([
+            'story' => $this->mapStory($newStory, $user->id, []),
+        ], 201);
+    }
+
+    /**
+     * POST /api/mobile/stories/{id}/capture-event
+     * Body: { kind: "screenshot" | "screen_recording" }
+     *
+     * Best-effort logging when a viewer captures the screen (privacy signal for
+     * the story owner). Self-captures are ignored.
+     */
+    public function reportCapture(int $id, Request $request)
+    {
+        $user = Auth::guard('sanctum')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $kind = (string) $request->input('kind');
+        if (!in_array($kind, ['screenshot', 'screen_recording'], true)) {
+            return response()->json(['message' => 'Invalid kind'], 422);
+        }
+
+        $story = Story::active()->find($id);
+        if (!$story) {
+            return response()->json(['message' => 'Story not found or expired'], 404);
+        }
+        if ((int) $story->user_id === (int) $user->id) {
+            return response()->json(['ok' => true, 'ignored' => true]);
+        }
+
+        try {
+            DB::table('story_capture_events')->insert([
+                'story_id'  => $story->id,
+                'viewer_id' => $user->id,
+                'kind'      => $kind,
+                'created_at'=> now(),
+                'updated_at'=> now(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('story_capture_events insert failed: ' . $e->getMessage());
+        }
+
+        return response()->json(['ok' => true]);
     }
 }
