@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewJobApplicationMail;
 use App\Models\Job;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
@@ -83,6 +85,9 @@ class StudentJobController extends Controller
     public function apply(Request $request, Job $job): RedirectResponse
     {
         $user = $request->user();
+        if (! $user instanceof User) {
+            abort(401);
+        }
 
         if (! $job->is_published) {
             abort(404);
@@ -117,7 +122,13 @@ class StudentJobController extends Controller
                 ]);
             }
         } else {
-            $cvPath = $request->file('cv')->store('job-application-cvs', 'public');
+            $cvFile = $request->file('cv');
+            if (! $cvFile instanceof UploadedFile) {
+                return back()->withErrors([
+                    'cv' => __('A CV file is required.'),
+                ]);
+            }
+            $cvPath = $cvFile->store('job-application-cvs', 'public');
         }
 
         /** @var \App\Models\JobApplication $application */
@@ -181,10 +192,8 @@ class StudentJobController extends Controller
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    /**
      * @param  array{href: string, label: string}|null  $manage
+     * @return array<string, mixed>
      */
     private function serializeJobDetail(Job $job, bool $hasApplied = false, bool $isManager = false, ?array $manage = null, bool $canApply = false): array
     {
@@ -205,23 +214,17 @@ class StudentJobController extends Controller
     }
 
     /**
-     * Copy the user's profile resume (public/storage/resumes) into the public disk
-     * so application CVs stay on the same storage layout as uploaded application files.
+     * Copy the user's profile resume (storage/app/public/resumes) into job-application-cvs.
      */
-    private function copyProfileResumeToApplicationCv(\App\Models\User $user): ?string
+    private function copyProfileResumeToApplicationCv(User $user): ?string
     {
-        $storedName = $user->resume;
-        if (! is_string($storedName) || $storedName === '') {
+        $contents = $user->readStoredResumeContents();
+        if ($contents === null) {
             return null;
         }
 
-        $safeName = basename($storedName);
+        $safeName = basename((string) $user->resume);
         if ($safeName === '') {
-            return null;
-        }
-
-        $src = public_path('storage/resumes/'.$safeName);
-        if (! is_file($src) || ! is_readable($src)) {
             return null;
         }
 
@@ -231,12 +234,12 @@ class StudentJobController extends Controller
         }
 
         $destRelative = 'job-application-cvs/'.Str::uuid()->toString().'.'.$ext;
-        $ok = Storage::disk('public')->put($destRelative, file_get_contents($src));
+        $ok = Storage::disk('public')->put($destRelative, $contents);
 
         return $ok ? $destRelative : null;
     }
 
-    private function userCanStartNewApplication(Job $job, \App\Models\User $user): bool
+    private function userCanStartNewApplication(Job $job, User $user): bool
     {
         if ($job->applications()->where('user_id', $user->id)->exists()) {
             return false;
@@ -249,7 +252,7 @@ class StudentJobController extends Controller
      * Who may post an application: students/coworkers, staff who browse job pages, or recruiters not assigned to this job.
      * Blocks job creator and recruiters assigned to this posting.
      */
-    private function userEligibleAsApplicant(Job $job, \App\Models\User $user): bool
+    private function userEligibleAsApplicant(Job $job, User $user): bool
     {
         $uid = (int) $user->id;
         if ($job->user_id !== null && (int) $job->user_id === $uid) {
@@ -280,7 +283,7 @@ class StudentJobController extends Controller
     /**
      * @return list<string>
      */
-    private function normalizedRoleStrings(\App\Models\User $user): array
+    private function normalizedRoleStrings(User $user): array
     {
         $raw = $user->role;
         if ($raw === null || $raw === '') {
@@ -307,11 +310,12 @@ class StudentJobController extends Controller
     {
         return Job::query()
             ->published()
-            ->whereNotNull('job_type')
-            ->where('job_type', '!=', '')
-            ->distinct()
-            ->orderBy('job_type')
-            ->pluck('job_type');
+            ->pluck('job_type')
+            ->map(fn ($type) => is_string($type) ? trim($type) : '')
+            ->filter(fn (string $type) => $type !== '')
+            ->unique()
+            ->sort()
+            ->values();
     }
 
     private function distinctSkills(): Collection

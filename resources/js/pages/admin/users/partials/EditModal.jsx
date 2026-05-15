@@ -324,14 +324,21 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                             <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
                         )}
                         {!formData.resumeFile && editedUser?.resume && (
-                            <a
-                                href={`/storage/resumes/${editedUser.resume}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"
-                            >
-                                View current CV
-                            </a>
+                            <>
+                                <a
+                                    href={`/users/${editedUser.id}/resume`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"
+                                >
+                                    View current CV
+                                </a>
+                                {!String(editedUser.resume).toLowerCase().endsWith('.pdf') && (
+                                    <p className="mt-1 text-xs text-beta/60 dark:text-light/60">
+                                        Word files cannot preview in the browser and may download. Use a PDF to open in a new tab.
+                                    </p>
+                                )}
+                            </>
                         )}
                         {formData.resumeFile && <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Selected: {formData.resumeFile.name}</p>}
                     </div>

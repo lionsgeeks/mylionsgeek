@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\ForgotPasswordLinkMail;
 
 class User extends Authenticatable
@@ -82,11 +84,129 @@ class User extends Authenticatable
         ];
     }
 
-    protected $casts = [
-        'role' => 'array',
-        'socials' => 'array',
-    ];
+    public const RESUME_DISK = 'public';
 
+    public const RESUME_DIRECTORY = 'resumes';
+
+    /** Relative path on the public disk, e.g. resumes/abc.pdf */
+    public function resumeStoragePath(): ?string
+    {
+        $name = $this->resume;
+        if (! is_string($name) || $name === '') {
+            return null;
+        }
+
+        $basename = basename($name);
+
+        return $basename !== '' ? self::RESUME_DIRECTORY.'/'.$basename : null;
+    }
+
+    public function resumePublicUrl(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if (! $relative) {
+            return null;
+        }
+
+        if (Storage::disk(self::RESUME_DISK)->exists($relative)) {
+            return asset('storage/'.ltrim($relative, '/'));
+        }
+
+        $basename = basename($relative);
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                return asset($legacyDir.'/'.$basename);
+            }
+        }
+
+        return null;
+    }
+
+    public function resolveResumeAbsolutePath(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if ($relative && Storage::disk(self::RESUME_DISK)->exists($relative)) {
+            return Storage::disk(self::RESUME_DISK)->path($relative);
+        }
+
+        $basename = basename((string) $this->resume);
+        if ($basename === '') {
+            return null;
+        }
+
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                return $legacy;
+            }
+        }
+
+        return null;
+    }
+
+    public function resumeViewUrl(): ?string
+    {
+        if (! $this->resume) {
+            return null;
+        }
+
+        return route('users.resume.view', $this);
+    }
+
+    public function readStoredResumeContents(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if (! $relative) {
+            return null;
+        }
+
+        $disk = Storage::disk(self::RESUME_DISK);
+        if ($disk->exists($relative)) {
+            return $disk->get($relative);
+        }
+
+        $basename = basename($relative);
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy) && is_readable($legacy)) {
+                $contents = file_get_contents($legacy);
+
+                return $contents !== false ? $contents : null;
+            }
+        }
+
+        return null;
+    }
+
+    public function deleteStoredResume(): void
+    {
+        $relative = $this->resumeStoragePath();
+        if ($relative) {
+            Storage::disk(self::RESUME_DISK)->delete($relative);
+        }
+
+        $basename = basename((string) $this->resume);
+        if ($basename === '') {
+            return;
+        }
+
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                @unlink($legacy);
+            }
+        }
+    }
+
+    public function storeResumeFromUpload(UploadedFile $file): string
+    {
+        $this->deleteStoredResume();
+        $filename = $file->hashName();
+        $file->storeAs(self::RESUME_DIRECTORY, $filename, self::RESUME_DISK);
+
+        return $filename;
+    }
 
     public function access(): HasOne
     {
@@ -297,7 +417,7 @@ class User extends Authenticatable
             return $this->organisationAccount !== null;
         }
 
-        return Organization::query()->where('account_user_id', $this->id)->exists();
+        return Organization::query()->where('account_user_id', '=', $this->id)->exists();
     }
 
     public function organizationForRecruiting(): ?Organization
@@ -306,7 +426,7 @@ class User extends Authenticatable
             return $this->organisationAccount;
         }
 
-        $asAccount = Organization::query()->where('account_user_id', $this->id)->first();
+        $asAccount = Organization::query()->where('account_user_id', '=', $this->id)->first();
         if ($asAccount) {
             return $asAccount;
         }
@@ -339,8 +459,8 @@ class User extends Authenticatable
         }
 
         return $this->employerOrganizations()
-            ->where('organizations.id', $organizationId)
-            ->whereIn('organization_user.member_role', ['employer', 'admin'])
+            ->where('organizations.id', '=', $organizationId, 'and')
+            ->whereIn('organization_user.member_role', ['employer', 'admin'], 'and', false)
             ->exists();
     }
 

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserSocialLink;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
@@ -69,6 +69,8 @@ class ProfileController extends Controller
         $userData['speciality'] = $user->speciality ?? null;
         $userData['about'] = $user->about ?? null;
         $userData['resume'] = $user->resume ?? null;
+        $userData['resume_url'] = $user->resumePublicUrl();
+        $userData['resume_view_url'] = $user->resumeViewUrl();
         $userData['social_links'] = $user->socialLinks()->ordered()->get(['id', 'title', 'url'])->toArray();
 
         // Experiences (ordered: latest first)
@@ -135,7 +137,10 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $user = User::where('id', '=', $userId, 'and')->where('account_state', '=', 0, 'and')->first();
+        $user = User::query()
+            ->whereKey($userId)
+            ->where('account_state', '=', 0)
+            ->first();
 
         if (! $user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -215,7 +220,7 @@ class ProfileController extends Controller
 
         // Whether the current authenticated viewer follows this user
         $userData['is_following'] = $currentUser
-            ? $currentUser->following()->where('followed_id', $user->id)->exists()
+            ? $currentUser->following()->where('followed_id', '=', $user->id)->exists()
             : false;
 
         // Sensitive fields - only for admins
@@ -254,35 +259,38 @@ class ProfileController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $file     = $request->file('image');
-            $filename = $file->hashName();
-            $file->move(public_path('/storage/img/profile'), $filename);
-            $data['image'] = $filename;
+            $file = $request->file('image');
+            if ($file instanceof UploadedFile) {
+                $filename = $file->hashName();
+                $file->move(public_path('/storage/img/profile'), $filename);
+                $data['image'] = $filename;
+            }
         }
 
         if ($request->hasFile('resume')) {
-            $file     = $request->file('resume');
-            $filename = $file->hashName();
-            $file->move(public_path('/storage/resume'), $filename);
-            $data['resume'] = $filename;
+            $resumeFile = $request->file('resume');
+            if ($resumeFile instanceof UploadedFile) {
+                $data['resume'] = $user->storeResumeFromUpload($resumeFile);
+            }
         }
 
         $allowed = ['name', 'email', 'phone', 'status', 'speciality', 'image', 'resume'];
-        User::where('id', '=', $user->id, 'and')->update(array_intersect_key($data, array_flip($allowed)));
-
-        $fresh = User::find($user->id, ['*']);
+        $user->update(array_intersect_key($data, array_flip($allowed)));
+        $user->refresh();
 
         return response()->json([
             'message' => 'Profile updated',
             'data'    => [
-                'id'     => $fresh->id,
-                'name'   => $fresh->name,
-                'email'  => $fresh->email,
-                'phone'  => $fresh->phone,
-                'status' => $fresh->status,
-                'speciality' => $fresh->speciality,
-                'image'  => $fresh->image,
-                'resume' => $fresh->resume,
+                'id'     => $user->id,
+                'name'   => $user->name,
+                'email'  => $user->email,
+                'phone'  => $user->phone,
+                'status' => $user->status,
+                'speciality' => $user->speciality,
+                'image'  => $user->image,
+                'resume' => $user->resume,
+                'resume_url' => $user->resumePublicUrl(),
+                'resume_view_url' => $user->resumeViewUrl(),
             ],
         ]);
     }
@@ -366,7 +374,7 @@ class ProfileController extends Controller
             'user_id'    => $user->id,
             'title'      => $data['title'],
             'url'        => $data['url'],
-            'sort_order' => UserSocialLink::where('user_id', '=', $user->id, 'and')->max('sort_order') + 1,
+            'sort_order' => (int) UserSocialLink::query()->where('user_id', '=', $user->id)->max('sort_order') + 1,
         ]);
 
         return response()->json(['data' => $link], 201);
@@ -383,7 +391,10 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Unauthenticated'], 401);
         }
 
-        $link = UserSocialLink::where('id', '=', $id, 'and')->where('user_id', '=', $user->id, 'and')->first();
+        $link = UserSocialLink::query()
+            ->whereKey($id)
+            ->where('user_id', '=', $user->id)
+            ->first();
 
         if (! $link) {
             return response()->json(['message' => 'Not found'], 404);
@@ -474,7 +485,7 @@ class ProfileController extends Controller
 
         $target = User::findOrFail($userId);
 
-        $already = $currentUser->following()->where('followed_id', $target->id)->exists();
+        $already = $currentUser->following()->where('followed_id', '=', $target->id)->exists();
 
         if ($already) {
             $currentUser->following()->detach($target->id);
