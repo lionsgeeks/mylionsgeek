@@ -69,7 +69,14 @@ class AuthenticatedSessionController extends Controller
         }
 
         if (in_array('recruiter', $roles, true)) {
-            return Inertia::location('/recruiter/jobs');
+            $user->loadMissing('organisationAccount');
+            if ($user->isOrganisationAccount()
+                && $user->organisationAccount
+                && (! $user->organisationAccount->hasCompletedOnboarding() || $user->must_change_password)) {
+                return Inertia::location('/organisation/onboarding');
+            }
+
+            return Inertia::location('/recruiter/dashboard');
         }
 
         return Inertia::location('/admin/dashboard');

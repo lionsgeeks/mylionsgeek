@@ -57,6 +57,14 @@ const getRecruiterNavItems = () => [
         authorizedRoles: ['recruiter'],
     },
     {
+        id: 'recruiter_team',
+        title: 'Team',
+        href: '/organisation/members',
+        icon: UserPlus,
+        authorizedRoles: ['recruiter'],
+        organisationAccountOnly: true,
+    },
+    {
         id: 'recruiter_settings',
         title: 'Settings',
         href: '/settings',
@@ -118,9 +126,9 @@ const getAllNavItems = () => [
         authorizedRoles: ['admin', 'moderateur', 'super_admin'],
     },
     {
-        id: 'recruiters',
-        title: 'Recruiters',
-        href: '/admin/recruiters',
+        id: 'organisations',
+        title: 'Organisations',
+        href: '/admin/organisations',
         icon: UserPlus,
         authorizedRoles: ['admin', 'moderateur', 'super_admin'],
     },
@@ -167,7 +175,8 @@ export function AppSidebar() {
     // Filter nav items based on user permissions
     const mainNavItems = useMemo(() => {
         if (isRecruiterOnlySidebar) {
-            return getRecruiterNavItems();
+            const isOrgAccount = Boolean(user?.is_organisation_account);
+            return getRecruiterNavItems().filter((item) => !item.organisationAccountOnly || isOrgAccount);
         }
 
         const allItems = getAllNavItems();

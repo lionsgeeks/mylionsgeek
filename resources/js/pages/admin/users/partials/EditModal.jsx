@@ -194,10 +194,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         }
 
         router.post(`/students/update/${editedUser.id}`, form, {
+            forceFormData: true,
             onSuccess: () => {
                 setErrors({});
                 onClose();
-                //console.log('success');
             },
             onError: (err) => {
                 setErrors(err);

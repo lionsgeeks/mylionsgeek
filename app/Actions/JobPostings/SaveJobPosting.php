@@ -15,9 +15,9 @@ class SaveJobPosting
      *   skills?: array<int, string>|null,
      *   is_published?: bool|null
      * }  $data
-     * @param  list<int>  $recruiterIds
+     * @param  list<int>  $organizationIds
      */
-    public function create(array $data, int $creatorUserId, array $recruiterIds = []): Job
+    public function create(array $data, int $creatorUserId, array $organizationIds = []): Job
     {
         $job = Job::query()->create([
             'reference' => Job::generateUniqueReference(),
@@ -30,7 +30,7 @@ class SaveJobPosting
             'user_id' => $creatorUserId,
         ]);
 
-        $job->recruiters()->sync($recruiterIds);
+        $job->organizations()->sync($organizationIds);
 
         return $job;
     }
@@ -44,9 +44,9 @@ class SaveJobPosting
      *   skills?: array<int, string>|null,
      *   is_published?: bool|null
      * }  $data
-     * @param  list<int>  $recruiterIds
+     * @param  list<int>  $organizationIds
      */
-    public function update(Job $job, array $data, array $recruiterIds = []): Job
+    public function update(Job $job, array $data, array $organizationIds = []): Job
     {
         $job->update([
             'title' => $data['title'],
@@ -57,9 +57,8 @@ class SaveJobPosting
             'is_published' => (bool) ($data['is_published'] ?? true),
         ]);
 
-        $job->recruiters()->sync($recruiterIds);
+        $job->organizations()->sync($organizationIds);
 
         return $job;
     }
 }
-

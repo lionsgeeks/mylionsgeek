@@ -11,11 +11,11 @@ function buildFormState(job, jobTypeOptions) {
         job_type: job.job_type ?? jobTypeOptions[0] ?? 'full_time',
         skills: Array.isArray(job.skills) ? job.skills.join(', ') : (job.skills ?? ''),
         is_published: job.is_published ?? true,
-        recruiter_ids: job.recruiter_ids ?? job.recruiters?.map((r) => r.id) ?? [],
+        organization_ids: job.organization_ids ?? job.organizations?.map((r) => r.id) ?? [],
     };
 }
 
-export default function AdminEditJobDialog({ open, onOpenChange, job, recruiterOptions = [], jobTypeOptions = [] }) {
+export default function AdminEditJobDialog({ open, onOpenChange, job, organizationOptions = [], jobTypeOptions = [] }) {
     const { data, setData, put, processing, errors } = useForm({
         title: '',
         description: '',
@@ -23,7 +23,7 @@ export default function AdminEditJobDialog({ open, onOpenChange, job, recruiterO
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
         is_published: true,
-        recruiter_ids: [],
+        organization_ids: [],
     });
 
     useEffect(() => {
@@ -57,7 +57,7 @@ export default function AdminEditJobDialog({ open, onOpenChange, job, recruiterO
                 <div className="max-h-[min(92vh,56rem)] overflow-y-auto p-6">
                     <DialogHeader className="text-left">
                         <DialogTitle className="text-xl">Edit job posting</DialogTitle>
-                        <DialogDescription>Update the role, publication status, and recruiter assignments for this posting.</DialogDescription>
+                        <DialogDescription>Update the role, publication status, and organisation assignments for this posting.</DialogDescription>
                     </DialogHeader>
                     {job && (
                         <JobPostingForm
@@ -67,7 +67,7 @@ export default function AdminEditJobDialog({ open, onOpenChange, job, recruiterO
                             processing={processing}
                             onSubmit={submit}
                             jobTypeOptions={jobTypeOptions}
-                            recruiterOptions={recruiterOptions}
+                            organizationOptions={organizationOptions}
                             onCancel={handleCancel}
                             reference={job.reference}
                             submitLabel="Save changes"

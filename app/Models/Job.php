@@ -40,9 +40,9 @@ class Job extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function recruiters(): BelongsToMany
+    public function organizations(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'job_posting_recruiter', 'job_posting_id', 'user_id')->withTimestamps();
+        return $this->belongsToMany(Organization::class, 'job_posting_organization', 'job_posting_id', 'organization_id')->withTimestamps();
     }
 
     public function applications(): HasMany
@@ -53,6 +53,11 @@ class Job extends Model
     public function scopePublished($query)
     {
         return $query->where('is_published', true);
+    }
+
+    public function scopeForOrganization($query, int $organizationId)
+    {
+        return $query->whereHas('organizations', fn ($q) => $q->where('organizations.id', $organizationId));
     }
 
     public static function generateUniqueReference(): string

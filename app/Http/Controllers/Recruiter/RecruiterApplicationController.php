@@ -16,10 +16,13 @@ class RecruiterApplicationController extends Controller
 {
     public function index(Request $request): Response
     {
-        $userId = $request->user()->id;
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
+            abort(403);
+        }
 
         $jobs = Job::query()
-            ->whereHas('recruiters', fn ($q) => $q->where('users.id', $userId))
+            ->forOrganization($organizationId)
             ->withCount('applications')
             ->orderByDesc('created_at')
             ->get()
@@ -41,11 +44,16 @@ class RecruiterApplicationController extends Controller
 
     public function showJob(Request $request, Job $job): Response
     {
-        $userId = (int) $request->user()->id;
-
-        if (! $job->recruiters()->where('users.id', $userId)->exists()) {
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
             abort(403);
         }
+
+        if (! $job->organizations()->where('organizations.id', $organizationId)->exists()) {
+            abort(403);
+        }
+
+        $userId = $request->user()->id;
 
         $applications = JobApplication::query()
             ->where('job_posting_id', $job->id)
@@ -106,10 +114,11 @@ class RecruiterApplicationController extends Controller
     public function downloadCv(Request $request, JobApplication $application): BinaryFileResponse
     {
         $userId = $request->user()->id;
+        $organizationId = $request->user()->organizationIdForRecruiting();
 
         $allowed = JobApplication::query()
             ->whereKey($application->getKey())
-            ->whereHas('job', fn ($q) => $q->whereHas('recruiters', fn ($q2) => $q2->where('users.id', $userId)))
+            ->whereHas('job', fn ($q) => $q->forOrganization($organizationId))
             ->exists();
 
         if (! $allowed) {
