@@ -7,15 +7,19 @@ use App\Http\Controllers\CertificateShareController;
 use App\Http\Controllers\LinkedInController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReservationsController;
+use App\Http\Controllers\UsersController;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
     if (Auth::check()) {
+        /** @var User $user */
         $user = Auth::user();
         $roles = is_array($user->role) ? $user->role : [$user->role];
         $staffForAdminDashboard = array_intersect($roles, ['admin', 'moderateur', 'coach', 'studio_responsable']);
@@ -26,16 +30,26 @@ Route::get('/', function () {
             return redirect()->route('student.feed');
         }
         if (in_array('recruiter', $roles, true)) {
+            $user->loadMissing('organisationAccount');
+            if ($user->isOrganisationAccount()
+                && $user->organisationAccount
+                && (! $user->organisationAccount->hasCompletedOnboarding() || $user->must_change_password)) {
+                return redirect()->route('organisation.onboarding');
+            }
+
             return redirect()->route('recruiter.dashboard');
         }
 
         return redirect()->route('profile.edit');
     }
-    $users = User::count();
-    $staf = User::where(function ($query) {
-        $query->whereJsonDoesntContain('role', 'student')
-            ->orWhereJsonLength('role', '>', 1);
-    })->count();
+    $users = User::query()->toBase()->count();
+    $staf = User::query()
+        ->where(function ($query) {
+            $query->whereJsonDoesntContain('role', 'student')
+                ->orWhereJsonLength('role', '>', 1);
+        })
+        ->toBase()
+        ->count();
 
     return Inertia::render('Welcome/index', [
         'users' => $users,
@@ -55,6 +69,8 @@ Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_respo
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/users/{user}/resume', [UsersController::class, 'viewResume'])->name('users.resume.view');
+
     Route::post('/presence/ping', function (Request $request) {
         $user = $request->user();
         if (! $user) {
@@ -216,7 +232,7 @@ Route::middleware(['auth'])->group(function () {
         }
 
         try {
-            $pendingReservations = \DB::table('reservations')
+            $pendingReservations = DB::table('reservations')
                 ->leftJoin('users', 'users.id', '=', 'reservations.user_id')
                 ->leftJoin('studios', 'studios.id', '=', 'reservations.studio_id')
                 ->where('reservations.canceled', 0)
@@ -251,7 +267,7 @@ Route::middleware(['auth'])->group(function () {
 
             return response()->json(['pending_reservations' => $pendingReservations]);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch pending reservations: '.$e->getMessage());
+            Log::error('Failed to fetch pending reservations: '.$e->getMessage());
 
             return response()->json(['pending_reservations' => []], 500);
         }
@@ -293,6 +309,7 @@ require __DIR__.'/admin/recruitment.php';
 require __DIR__.'/admin/games.php';
 require __DIR__.'/students/exercises.php';
 require __DIR__.'/students/students.php';
+require __DIR__.'/organisation.php';
 require __DIR__.'/recruiter.php';
 require __DIR__.'/studentProjects.php';
 require __DIR__.'/admin/project-approvals.php';

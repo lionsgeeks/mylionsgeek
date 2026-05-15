@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureOrganisationOnboarded;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RoleMiddleware;
@@ -32,13 +33,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // hna  alias  ta3 l middlware
         $middleware->alias(([
             'role' => RoleMiddleware::class,
-
+            'organisation.onboarded' => EnsureOrganisationOnboarded::class,
         ]));
 
         $middleware->web(append: [
             HandleAppearance::class,
             UpdateRolesUsers::class,
             // UpdateLastOnline::class,
+            EnsureOrganisationOnboarded::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

@@ -11,18 +11,18 @@ function buildDefaults(jobTypeOptions) {
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
         is_published: true,
-        recruiter_ids: [],
+        organization_ids: [],
     };
 }
 
 export default function AdminCreateJobDialog({
     open,
     onOpenChange,
-    recruiterOptions = [],
+    organizationOptions = [],
     jobTypeOptions = [],
     actionUrl = '/admin/jobs',
-    showRecruiterSelect = true,
-    defaultRecruiterIds = [],
+    showOrganisationSelect = true,
+    defaultOrganizationIds = [],
 }) {
     const { data, setData, post, processing, errors } = useForm(buildDefaults(jobTypeOptions));
 
@@ -31,11 +31,11 @@ export default function AdminCreateJobDialog({
             return;
         }
         const d = buildDefaults(jobTypeOptions);
-        if (Array.isArray(defaultRecruiterIds) && defaultRecruiterIds.length > 0) {
-            d.recruiter_ids = defaultRecruiterIds;
+        if (Array.isArray(defaultOrganizationIds) && defaultOrganizationIds.length > 0) {
+            d.organization_ids = defaultOrganizationIds;
         }
         Object.keys(d).forEach((key) => setData(key, d[key]));
-    }, [open, jobTypeOptions, setData, defaultRecruiterIds]);
+    }, [open, jobTypeOptions, setData, defaultOrganizationIds]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -58,7 +58,7 @@ export default function AdminCreateJobDialog({
                     <DialogHeader className="text-left">
                         <DialogTitle className="text-xl">New job posting</DialogTitle>
                         <DialogDescription>
-                            Create the role, publish when ready, and assign one or more recruiters to review applicants.
+                            Create the role, publish when ready, and assign one or more organisations to review applicants.
                         </DialogDescription>
                     </DialogHeader>
                     <JobPostingForm
@@ -68,8 +68,8 @@ export default function AdminCreateJobDialog({
                         processing={processing}
                         onSubmit={submit}
                         jobTypeOptions={jobTypeOptions}
-                        recruiterOptions={recruiterOptions}
-                        showRecruiterSelect={showRecruiterSelect}
+                        organizationOptions={organizationOptions}
+                        showOrganisationSelect={showOrganisationSelect}
                         onCancel={handleCancel}
                         submitLabel="Create posting"
                         embedInModal

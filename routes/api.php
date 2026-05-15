@@ -36,6 +36,7 @@ Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationC
 
 Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/profile.php';
+    require __DIR__ . '/api/activity.php';
     require __DIR__ . '/api/posts.php';
     require __DIR__ . '/api/projects.php';
     require __DIR__ . '/api/reservations.php';

@@ -8,7 +8,7 @@ use App\Http\Controllers\Recruiter\RecruiterJobPostingController;
 use App\Http\Controllers\Recruiter\RecruiterStudentController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:recruiter'])->prefix('recruiter')->group(function () {
+Route::middleware(['auth', 'verified', 'role:recruiter', 'organisation.onboarded'])->prefix('recruiter')->group(function () {
     Route::get('/dashboard', RecruiterDashboardController::class)->name('recruiter.dashboard');
     Route::get('/jobs', [RecruiterJobController::class, 'index'])->name('recruiter.jobs.index');
     Route::post('/jobs', [RecruiterJobPostingController::class, 'store'])->name('recruiter.jobs.store');

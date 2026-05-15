@@ -95,6 +95,7 @@ class StudentController extends Controller
                 'status' => $user->status,
                 'field' => $user->field,
                 'phone' => $user->phone,
+                'resume' => $user->resume,
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'formation' => $user->formation_id != null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,

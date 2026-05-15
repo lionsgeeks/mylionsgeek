@@ -37,10 +37,10 @@ class JobPostingRequest extends FormRequest
             'skills' => ['nullable', 'array'],
             'skills.*' => ['string', 'max:80'],
             'is_published' => ['sometimes', 'boolean'],
-            'recruiter_ids' => ['nullable', 'array'],
-            'recruiter_ids.*' => [
+            'organization_ids' => ['nullable', 'array'],
+            'organization_ids.*' => [
                 'integer',
-                Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('role', 'recruiter')),
+                Rule::exists('organizations', 'id')->whereNotNull('onboarding_completed_at'),
             ],
         ];
     }

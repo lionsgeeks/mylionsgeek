@@ -32,7 +32,7 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                         <TableHead>Type</TableHead>
                         <TableHead>Published</TableHead>
                         <TableHead>Created by</TableHead>
-                        <TableHead>Recruiters</TableHead>
+                        <TableHead>Organisations</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -67,8 +67,8 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                                 )}
                             </TableCell>
                             <TableCell className="max-w-[200px] text-sm">
-                                {job.recruiters?.length ? (
-                                    <span className="line-clamp-3">{job.recruiters.map((r) => r.name).join(', ')}</span>
+                                {job.organizations?.length ? (
+                                    <span className="line-clamp-3">{job.organizations.map((r) => r.name).join(', ')}</span>
                                 ) : (
                                     <span className="text-muted-foreground">—</span>
                                 )}

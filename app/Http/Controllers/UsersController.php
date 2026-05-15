@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Models\Follower;
@@ -35,6 +36,8 @@ use App\Models\Reservation;
 use App\Support\PostMentionResolver;
 use App\Models\UserProject;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\ExportService;
 use App\Services\DisciplineService;
 
@@ -42,14 +45,17 @@ class UsersController extends Controller
 {
     public function index()
     {
-        $allUsers = User::where('role', '!=', 'admin')
-            ->orderBy('created_at', 'desc')
+        $allUsers = User::query()
+            ->where('role', '!=', 'admin')
+            ->orderByDesc('created_at')
             ->get();
 
         $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
 
         return Inertia::render('admin/users/index', [
-            'users' => $allUsers,
+            'users' => $allUsers->map(fn (User $user) => array_merge($user->toArray(), [
+                'resume_view_url' => $user->resumeViewUrl(),
+            ])),
             'trainings' => $allFormation,
         ]);
     }
@@ -117,7 +123,7 @@ class UsersController extends Controller
 
         // Get assigned computer
         $assignedComputer = Schema::hasTable('computers')
-            ? Computer::where('user_id', $user->id)->latest('start')->first()
+            ? Computer::query()->where('user_id', $user->id)->latest('start')->first()
             : null;
 
         // Paginated data
@@ -130,7 +136,7 @@ class UsersController extends Controller
         $discipline = $disciplineService->calculateDisciplineScore($user);
 
         // Get all formations
-        $allFormations = Formation::latest()->get();
+        $allFormations = Formation::query()->orderByDesc('created_at')->get();
 
         $roles = [
             'student',
@@ -168,8 +174,9 @@ class UsersController extends Controller
 
     private function getReservations(User $user, Request $request)
     {
-        $reservations = Reservation::where('user_id', $user->id)
-            ->latest()
+        $reservations = Reservation::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
             ->paginate(10, ['*'], 'reservations_page', $request->get('reservations_page', 1))
             ->onEachSide(1);
 
@@ -295,7 +302,7 @@ class UsersController extends Controller
             ->where(function ($q) {
                 $q->whereNull('is_hidden')->orWhere('is_hidden', false);
             })
-            ->latest();
+            ->orderByDesc('created_at');
 
         if ($user) {
             $dataPosts = $dataPosts->where('user_id', $user->id);
@@ -381,7 +388,7 @@ class UsersController extends Controller
             ->where(function ($q) {
                 $q->whereNull('is_hidden')->orWhere('is_hidden', false);
             })
-            ->latest();
+            ->orderByDesc('created_at');
 
         if ($limit !== null) {
             $query->limit($limit);
@@ -389,10 +396,12 @@ class UsersController extends Controller
 
         $dataPosts = $query->get();
         $posts = $dataPosts->map(fn (Post $post) => $this->mapPostForFeed($post, $authUser));
-        $total = (int) Post::where('user_id', $profileUserId)
+        $total = (int) Post::query()
+            ->where('user_id', $profileUserId)
             ->where(function ($q) {
                 $q->whereNull('is_hidden')->orWhere('is_hidden', false);
             })
+            ->toBase()
             ->count();
 
         return [
@@ -406,14 +415,15 @@ class UsersController extends Controller
 
     private function getAbsences(User $user, Request $request)
     {
-        $absencesQuery = AttendanceListe::where('user_id', $user->id)
+        $absencesQuery = AttendanceListe::query()
+            ->where('user_id', $user->id)
             ->where(function ($q) {
                 $q->whereRaw('LOWER(TRIM(morning)) = ?', ['absent'])
                     ->orWhereRaw('LOWER(TRIM(lunch)) = ?', ['absent'])
                     ->orWhereRaw('LOWER(TRIM(evening)) = ?', ['absent']);
             })
-            ->latest('attendance_day')
-            ->latest('updated_at');
+            ->orderByDesc('attendance_day')
+            ->orderByDesc('updated_at');
 
         $paginated = $absencesQuery->paginate(10, ['*'], 'absences_page', $request->get('absences_page', 1))
             ->onEachSide(1);
@@ -425,7 +435,8 @@ class UsersController extends Controller
             ->merge($paginated->pluck('attendance_id'))
             ->unique();
 
-        $notesByAttendance = Note::whereIn('attendance_id', $attendanceIds)
+        $notesByAttendance = Note::query()
+            ->whereIn('attendance_id', $attendanceIds->values()->all(), 'and', false)
             ->get()
             ->groupBy('attendance_id');
 
@@ -467,10 +478,13 @@ class UsersController extends Controller
             'last_online' => $user->last_online,
             'is_online' => $isOnline,
             'formation_name' => $user->formation?->name,
+            'resume' => $user->resume,
+            'resume_view_url' => $user->resumeViewUrl(),
+            'role' => $user->role,
         ];
 
         // Debug logging
-        \Log::info('User payload for user ' . $user->id, [
+        Log::info('User payload for user ' . $user->id, [
             'phone' => $user->phone,
             'status' => $user->status,
             'formation_id' => $user->formation_id,
@@ -508,7 +522,8 @@ class UsersController extends Controller
     // Return user notes as JSON for modal consumption
     public function notes(User $user)
     {
-        $notes = Note::where('user_id', $user->id)
+        $notes = Note::query()
+            ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(50)
             ->get(['note', 'author', 'created_at'])
@@ -560,7 +575,8 @@ class UsersController extends Controller
             return Storage::url($p);
         };
 
-        $contracts = Contract::where('user_id', $user->id)
+        $contracts = Contract::query()
+            ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->get(['id', 'contract', 'type', 'created_at'])
             ->map(function ($c) {
@@ -580,7 +596,8 @@ class UsersController extends Controller
                 ];
             });
 
-        $medicals = Medical::where('user_id', $user->id)
+        $medicals = Medical::query()
+            ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->get(['id', 'mc_document', 'description', 'created_at'])
             ->map(function ($m) {
@@ -640,10 +657,10 @@ class UsersController extends Controller
     {
         // Fetch by document id only to handle legacy rows with mismatched user_id types
         if ($kind === 'contract') {
-            $row = Contract::where('id', $doc)->firstOrFail();
+            $row = Contract::query()->whereKey($doc)->firstOrFail();
             $path = (string) $row->contract;
         } else {
-            $row = Medical::where('id', $doc)->firstOrFail();
+            $row = Medical::query()->whereKey($doc)->firstOrFail();
             $path = (string) $row->mc_document;
         }
 
@@ -686,10 +703,88 @@ class UsersController extends Controller
 
         return response()->file($fullPath);
     }
+
+    /**
+     * Stream the user's CV for inline viewing in a browser tab.
+     */
+    public function viewResume(Request $request, User $user): StreamedResponse|Response
+    {
+        $actor = $request->user();
+        if (! $actor instanceof User) {
+            abort(401);
+        }
+
+        $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $actorRolesLower = array_map('strtolower', $actorRoles);
+        $canViewOthers = ! empty(array_intersect($actorRolesLower, [
+            'admin',
+            'super_admin',
+            'moderateur',
+            'coach',
+            'studio_responsable',
+            'responsable_studio',
+            'recruiter',
+        ]));
+
+        if (! $canViewOthers && (int) $actor->id !== (int) $user->id) {
+            abort(403);
+        }
+
+        $fullPath = $user->resolveResumeAbsolutePath();
+        if (! $fullPath || ! is_readable($fullPath)) {
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION) ?: 'pdf');
+        $mime = match ($ext) {
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            default => 'application/octet-stream',
+        };
+
+        $safeName = preg_replace('/[^a-z0-9._-]+/i', '_', (string) $user->name).'_cv.'.$ext;
+        $asciiName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $safeName);
+
+        // PDF: stream with inline headers so the browser opens the built-in viewer in a new tab.
+        if ($ext === 'pdf') {
+            return response()->stream(function () use ($fullPath) {
+                $handle = fopen($fullPath, 'rb');
+                if ($handle === false) {
+                    return;
+                }
+                fpassthru($handle);
+                fclose($handle);
+            }, 200, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="'.$asciiName.'"',
+                'Cache-Control' => 'private, max-age=3600',
+            ]);
+        }
+
+        return response()
+            ->file($fullPath, ['Content-Type' => $mime])
+            ->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, $safeName, $asciiName);
+    }
+
     public function update(Request $request, User $user)
     {
+        $actor = $request->user();
+        $actorRoles = is_array($actor->role) ? $actor->role : array_filter([(string) $actor->role]);
+        $actorRolesLower = array_map('strtolower', $actorRoles);
+        $canEditOthers = ! empty(array_intersect($actorRolesLower, [
+            'admin',
+            'super_admin',
+            'moderateur',
+            'coach',
+            'studio_responsable',
+            'responsable_studio',
+        ]));
 
-        // dd($request->all());
+        if (! $canEditOthers && (int) $actor->id !== (int) $user->id) {
+            abort(403, 'You can only update your own profile.');
+        }
+
         $validated = $request->validate([
             'name' => 'nullable|string',
             'email' => 'nullable|email|unique:users,email,' . $user->id,
@@ -708,7 +803,7 @@ class UsersController extends Controller
         ]);
 
             if ($request->has('formation_id')) {
-            $formation = Formation::where('id', $request->formation_id)->first();
+            $formation = Formation::query()->whereKey($request->formation_id)->first();
             // dd($formation->category);
             $user->field = $formation->category;
             $user->save();
@@ -733,20 +828,7 @@ class UsersController extends Controller
         }
 
         if ($request->hasFile('resume')) {
-            $resumeFile = $request->file('resume');
-            $resumeName = $resumeFile->hashName();
-            $resumesDir = public_path('storage/resumes');
-            if (! File::isDirectory($resumesDir)) {
-                File::makeDirectory($resumesDir, 0755, true);
-            }
-            if ($user->resume) {
-                $oldPath = $resumesDir . DIRECTORY_SEPARATOR . $user->resume;
-                if (File::isFile($oldPath)) {
-                    File::delete($oldPath);
-                }
-            }
-            $resumeFile->move($resumesDir, $resumeName);
-            $validated['resume'] = $resumeName;
+            $validated['resume'] = $user->storeResumeFromUpload($request->file('resume'));
         }
 
         // Map roles (array) to 'role' JSON column, lowercased
@@ -880,7 +962,8 @@ class UsersController extends Controller
 
         $all = $absencesQuery->get(['attendance_id', 'attendance_day', 'morning', 'lunch', 'evening']);
         $attendanceIds = $all->pluck('attendance_id')->unique()->values();
-        $notesByAttendance = Note::whereIn('attendance_id', $attendanceIds)
+        $notesByAttendance = Note::query()
+            ->whereIn('attendance_id', $attendanceIds->all(), 'and', false)
             ->get(['attendance_id', 'note'])
             ->groupBy('attendance_id');
 
@@ -928,7 +1011,9 @@ class UsersController extends Controller
     }
     public function UserAttendanceChart(User $user)
     {
-        $attendances = AttendanceListe::where('user_id', $user->id)->get(['attendance_day', 'morning', 'lunch', 'evening']);
+        $attendances = AttendanceListe::query()
+            ->where('user_id', $user->id)
+            ->get(['attendance_day', 'morning', 'lunch', 'evening']);
         $monthlyAbsences = $attendances
             ->groupBy(function ($record) {
                 // Group by month name, e.g., "October"
@@ -987,22 +1072,23 @@ class UsersController extends Controller
 
         if ($isAllUsers) {
             // Send to all users (including those with and without training)
-            $users = User::whereNotNull('email')->get();
+            $users = User::query()->whereNotNull('email', 'and')->get();
         } else {
             $hasTrainingFilter = isset($validated['training_ids']) && count($validated['training_ids']) > 0;
             $hasRoleFilter = isset($validated['role_ids']) && count($validated['role_ids']) > 0;
 
             // Start with training filter if provided
             if ($hasTrainingFilter) {
-                $users = User::whereIn('formation_id', $validated['training_ids'])
-                    ->whereNotNull('email')
+                $users = User::query()
+                    ->whereIn('formation_id', array_values($validated['training_ids']), 'and', false)
+                    ->whereNotNull('email', 'and')
                     ->get();
             }
 
             // Apply role filter: if both filters exist, use intersection (AND logic)
             // If only roles are selected, use role users
             if ($hasRoleFilter) {
-                $roleUsers = User::whereNotNull('email')->get()->filter(function ($user) use ($validated) {
+                $roleUsers = User::query()->whereNotNull('email', 'and')->get()->filter(function ($user) use ($validated) {
                     $userRoles = is_array($user->role) ? $user->role : ($user->role ? [$user->role] : []);
                     return collect($userRoles)->map(fn($r) => strtolower($r ?? ''))->intersect(
                         collect($validated['role_ids'])->map(fn($r) => strtolower($r))
@@ -1024,8 +1110,9 @@ class UsersController extends Controller
         // Add users from user_ids (users without training or specific users)
         // This works even if "All Users" is selected (they'll be deduplicated)
         if (isset($validated['user_ids']) && count($validated['user_ids']) > 0) {
-            $specificUsers = User::whereIn('id', $validated['user_ids'])
-                ->whereNotNull('email')
+            $specificUsers = User::query()
+                ->whereIn('id', array_values($validated['user_ids']), 'and', false)
+                ->whereNotNull('email', 'and')
                 ->get();
             $users = $users->merge($specificUsers);
         }
@@ -1071,7 +1158,7 @@ class UsersController extends Controller
                 });
             }
         } catch (\Exception $e) {
-            \Log::error("Failed to send notification email: " . $e->getMessage());
+            Log::error('Failed to send notification email: '.$e->getMessage());
         }
 
         return response()->json([

@@ -20,4 +20,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/attendances', [TrainingController::class, 'attendance']);
     Route::post('/attendance/save', [TrainingController::class, 'save']);
     Route::get('/trainings/{id}/attendance-events', [TrainingController::class, 'attendanceEvents']);
+    Route::get('/trainings/{id}/attendance-history', [TrainingController::class, 'attendanceHistory']);
 });

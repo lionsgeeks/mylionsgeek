@@ -44,7 +44,7 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
-            return [
+        return [
             ...parent::share($request),
             'name' => config('app.name'),
             'csrfToken' => csrf_token(),
@@ -89,8 +89,12 @@ class HandleInertiaRequests extends Middleware
                     return array_merge($user->toArray(), [
                         'avatarUrl' => $avatarUrl,
                         'isProfileImageMissing' => empty($avatarUrl),
+                        'is_organisation_account' => $user->isOrganisationAccount(),
                         'social_links' => $user->socialLinks,
                         'linkedin_connected' => (bool) $linkedin,
+                        'resume' => $user->resume,
+                        'resume_url' => $user->resumePublicUrl(),
+                        'resume_view_url' => $user->resumeViewUrl(),
                         'certificate_share_token' => $user->certificate_share_token ?? null,
                         'certificate_share_url' => $user->certificate_share_token
                             ? url('/certificates/share/' . $user->certificate_share_token)
@@ -158,8 +162,8 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 $attendedToday = Attendance::query()
-                    ->whereIn('formation_id', $trainingIds)
-                    ->whereDate('attendance_day', $todayString)
+                    ->whereIn('formation_id', $trainingIds->all(), 'and', false)
+                    ->whereDate('attendance_day', '=', $todayString, 'and')
                     ->pluck('formation_id')
                     ->map(fn ($id) => (string) $id)
                     ->all();

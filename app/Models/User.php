@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\ForgotPasswordLinkMail;
 
 class User extends Authenticatable
@@ -27,6 +29,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'must_change_password',
         'role',
         'phone',
         'cin',
@@ -75,16 +78,135 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_online' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
             'role' => 'array',
             'socials' => 'array',
         ];
     }
 
-    protected $casts = [
-        'role' => 'array',
-        'socials' => 'array',
-    ];
+    public const RESUME_DISK = 'public';
 
+    public const RESUME_DIRECTORY = 'resumes';
+
+    /** Relative path on the public disk, e.g. resumes/abc.pdf */
+    public function resumeStoragePath(): ?string
+    {
+        $name = $this->resume;
+        if (! is_string($name) || $name === '') {
+            return null;
+        }
+
+        $basename = basename($name);
+
+        return $basename !== '' ? self::RESUME_DIRECTORY.'/'.$basename : null;
+    }
+
+    public function resumePublicUrl(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if (! $relative) {
+            return null;
+        }
+
+        if (Storage::disk(self::RESUME_DISK)->exists($relative)) {
+            return asset('storage/'.ltrim($relative, '/'));
+        }
+
+        $basename = basename($relative);
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                return asset($legacyDir.'/'.$basename);
+            }
+        }
+
+        return null;
+    }
+
+    public function resolveResumeAbsolutePath(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if ($relative && Storage::disk(self::RESUME_DISK)->exists($relative)) {
+            return Storage::disk(self::RESUME_DISK)->path($relative);
+        }
+
+        $basename = basename((string) $this->resume);
+        if ($basename === '') {
+            return null;
+        }
+
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                return $legacy;
+            }
+        }
+
+        return null;
+    }
+
+    public function resumeViewUrl(): ?string
+    {
+        if (! $this->resume) {
+            return null;
+        }
+
+        return route('users.resume.view', $this);
+    }
+
+    public function readStoredResumeContents(): ?string
+    {
+        $relative = $this->resumeStoragePath();
+        if (! $relative) {
+            return null;
+        }
+
+        $disk = Storage::disk(self::RESUME_DISK);
+        if ($disk->exists($relative)) {
+            return $disk->get($relative);
+        }
+
+        $basename = basename($relative);
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy) && is_readable($legacy)) {
+                $contents = file_get_contents($legacy);
+
+                return $contents !== false ? $contents : null;
+            }
+        }
+
+        return null;
+    }
+
+    public function deleteStoredResume(): void
+    {
+        $relative = $this->resumeStoragePath();
+        if ($relative) {
+            Storage::disk(self::RESUME_DISK)->delete($relative);
+        }
+
+        $basename = basename((string) $this->resume);
+        if ($basename === '') {
+            return;
+        }
+
+        foreach (['storage/resumes', 'storage/resume'] as $legacyDir) {
+            $legacy = public_path($legacyDir.'/'.$basename);
+            if (is_file($legacy)) {
+                @unlink($legacy);
+            }
+        }
+    }
+
+    public function storeResumeFromUpload(UploadedFile $file): string
+    {
+        $this->deleteStoredResume();
+        $filename = $file->hashName();
+        $file->storeAs(self::RESUME_DIRECTORY, $filename, self::RESUME_DISK);
+
+        return $filename;
+    }
 
     public function access(): HasOne
     {
@@ -268,9 +390,82 @@ class User extends Authenticatable
         return $this->hasMany(UserSocialLink::class);
     }
 
-    /** Job postings this recruiter is assigned to (not necessarily the creator). */
-    public function assignedJobPostings(): BelongsToMany
+    /** Organisation this user logs in as (the company account). */
+    public function organisationAccount(): HasOne
     {
-        return $this->belongsToMany(Job::class, 'job_posting_recruiter', 'user_id', 'job_posting_id')->withTimestamps();
+        return $this->hasOne(Organization::class, 'account_user_id');
+    }
+
+    /** Organisations this user belongs to as an invited employer. */
+    public function employerOrganizations(): BelongsToMany
+    {
+        return $this->belongsToMany(Organization::class, 'organization_user')
+            ->withPivot(['member_role', 'invited_by'])
+            ->withTimestamps();
+    }
+
+    public function isRecruiter(): bool
+    {
+        $roles = is_array($this->role) ? $this->role : [$this->role];
+
+        return in_array('recruiter', $roles, true);
+    }
+
+    public function isOrganisationAccount(): bool
+    {
+        if ($this->relationLoaded('organisationAccount')) {
+            return $this->organisationAccount !== null;
+        }
+
+        return Organization::query()->where('account_user_id', '=', $this->id)->exists();
+    }
+
+    public function organizationForRecruiting(): ?Organization
+    {
+        if ($this->relationLoaded('organisationAccount') && $this->organisationAccount) {
+            return $this->organisationAccount;
+        }
+
+        $asAccount = Organization::query()->where('account_user_id', '=', $this->id)->first();
+        if ($asAccount) {
+            return $asAccount;
+        }
+
+        if ($this->relationLoaded('employerOrganizations')) {
+            return $this->employerOrganizations->first();
+        }
+
+        return $this->employerOrganizations()->first();
+    }
+
+    public function organizationIdForRecruiting(): ?int
+    {
+        return $this->organizationForRecruiting()?->id;
+    }
+
+    public function canCreateJobsForOrganisation(): bool
+    {
+        if (! $this->isRecruiter()) {
+            return false;
+        }
+
+        if ($this->isOrganisationAccount()) {
+            return true;
+        }
+
+        $organizationId = $this->organizationIdForRecruiting();
+        if (! $organizationId) {
+            return false;
+        }
+
+        return $this->employerOrganizations()
+            ->where('organizations.id', '=', $organizationId, 'and')
+            ->whereIn('organization_user.member_role', ['employer', 'admin'], 'and', false)
+            ->exists();
+    }
+
+    public function canManageOrganisationMembers(): bool
+    {
+        return $this->isOrganisationAccount();
     }
 }
