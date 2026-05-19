@@ -4,22 +4,27 @@ return [
 
     'templates' => [
         'coding' => 'assets/images/certif/codeCertfifcation.pdf',
-        'media' => 'assets/images/certif/mediaCertification.pdf',
+        'media'  => 'assets/images/certif/mediaCertification.pdf',
     ],
 
     /*
-    | Text positions (mm) on landscape A4 (297 × 210 mm).
-    | Name: large, bold, horizontally centered in the colorful blob area (y ≈ 97 mm).
-    | Date: small, centered at the bottom near the Lionsgeek logo (y ≈ 172 mm).
+    | Text positions on landscape A4 (297 × 210 mm).
+    |
+    | y_pct  — vertical position as a percentage of page height (preferred).
+    |           47% of 210 mm ≈ 98.7 mm, placing the name between
+    |           "fièrement décerné à" and "Pour avoir complété…".
+    |
+    | name   — Great Vibes 65pt, pure black, Cell-centered across full width.
+    | date   — Helvetica 12pt, grey, Cell-centered across full width.
     */
     'positions' => [
         'coding' => [
-            'name' => ['x' => 0, 'y' => 105, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 168, 'size' => 15, 'style' => '', 'center' => true],
+            'name' => ['y_pct' => 47, 'size' => 65, 'style' => ''],
+            'date' => ['y_pct' => 82, 'size' => 12, 'style' => ''],
         ],
         'media' => [
-            'name' => ['x' => 0, 'y' => 105, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 168, 'size' => 15, 'style' => '', 'center' => true],
+            'name' => ['y_pct' => 47, 'size' => 65, 'style' => ''],
+            'date' => ['y_pct' => 82, 'size' => 12, 'style' => ''],
         ],
     ],
 

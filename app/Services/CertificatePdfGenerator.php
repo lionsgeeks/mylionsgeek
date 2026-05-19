@@ -3,7 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
-use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\Tcpdf\Fpdi;
+use TCPDF_FONTS;
 
 class CertificatePdfGenerator
 {
@@ -41,9 +42,29 @@ class CertificatePdfGenerator
         }
 
         try {
+            // Convert font once; subsequent calls return the cached name instantly.
+            // addTTFfont() writes the TCPDF font definition files to the TCPDF fonts
+            // directory so SetFont() can locate them by the returned name.
+            $tcpdfFontsDir = base_path('vendor/tecnickcom/tcpdf/fonts/');
+            $nameFont = TCPDF_FONTS::addTTFfont(
+                public_path('assets/fonts/GreatVibes-Regular.ttf'),
+                'TrueTypeUnicode',
+                '',
+                32,
+                $tcpdfFontsDir,
+            );
+
+            if (! $nameFont) {
+                Log::error('CertificatePdfGenerator: failed to load Great Vibes font');
+
+                return null;
+            }
+
             $pdf = new Fpdi('L', 'mm', 'A4');
             $pdf->SetAutoPageBreak(false);
             $pdf->SetMargins(0, 0, 0);
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
             $pdf->AddPage();
 
             $pageCount = $pdf->setSourceFile($templatePath);
@@ -54,36 +75,39 @@ class CertificatePdfGenerator
             }
 
             $tplId = $pdf->importPage(1);
-            $size = $pdf->getTemplateSize($tplId);
+            $size  = $pdf->getTemplateSize($tplId);
             $pdf->useTemplate($tplId, 0, 0, $size['width'], $size['height']);
 
-            $pageWidth = (float) $size['width'];
+            $pageWidth  = (float) $size['width'];
+            $pageHeight = (float) $size['height'];
 
+            // --- Date: Helvetica, small, grey, centered at bottom ---
             if (isset($positions['date']) && is_array($positions['date'])) {
                 $dateCfg = $positions['date'];
-                $pdf->SetFont('Helvetica', (string) ($dateCfg['style'] ?? ''), (int) ($dateCfg['size'] ?? 12));
+                $pdf->SetFont('helvetica', (string) ($dateCfg['style'] ?? ''), (int) ($dateCfg['size'] ?? 12));
                 $pdf->SetTextColor(85, 85, 85);
-                $dateText = $this->toPdfString($issuedDateFormatted);
-                $pdf->SetXY(
-                    $this->resolveTextX($pdf, $pageWidth, $dateText, $dateCfg),
-                    (float) ($dateCfg['y'] ?? 166),
-                );
-                $pdf->Cell(0, 0, $dateText);
+                $y = isset($dateCfg['y_pct'])
+                    ? $pageHeight * (float) $dateCfg['y_pct'] / 100
+                    : (float) ($dateCfg['y'] ?? 172);
+                $pdf->SetXY(0, $y);
+                $pdf->Cell($pageWidth, 0, $issuedDateFormatted, 0, 0, 'C');
             }
 
+            // --- Student name: Great Vibes, 65pt, pure black, centered ---
             if (isset($positions['name']) && is_array($positions['name'])) {
                 $nameCfg = $positions['name'];
-                $pdf->SetFont('Helvetica', (string) ($nameCfg['style'] ?? 'B'), (int) ($nameCfg['size'] ?? 22));
-                $pdf->SetTextColor(44, 44, 44);
-                $nameText = $this->toPdfString($studentName);
-                $pdf->SetXY(
-                    $this->resolveTextX($pdf, $pageWidth, $nameText, $nameCfg),
-                    (float) ($nameCfg['y'] ?? 118),
-                );
-                $pdf->Cell(0, 0, $nameText);
+                $fontSize = (int) ($nameCfg['size'] ?? 65);
+                $pdf->SetFont($nameFont, '', $fontSize);
+                $pdf->SetTextColor(0, 0, 0);
+                // y_pct takes priority over absolute y, allowing template-agnostic positioning
+                $y = isset($nameCfg['y_pct'])
+                    ? $pageHeight * (float) $nameCfg['y_pct'] / 100
+                    : (float) ($nameCfg['y'] ?? 99);
+                $pdf->SetXY(0, $y);
+                $pdf->Cell($pageWidth, 0, $studentName, 0, 0, 'C');
             }
 
-            return $pdf->Output('S');
+            return $pdf->Output('', 'S');
         } catch (\Throwable $e) {
             Log::error('CertificatePdfGenerator failed', [
                 'track' => $track,
@@ -93,24 +117,5 @@ class CertificatePdfGenerator
 
             return null;
         }
-    }
-
-    /**
-     * @param  array{x?: float, center?: bool}  $cfg
-     */
-    private function resolveTextX(Fpdi $pdf, float $pageWidth, string $text, array $cfg): float
-    {
-        if (! empty($cfg['center'])) {
-            return max(0, ($pageWidth - $pdf->GetStringWidth($text)) / 2);
-        }
-
-        return (float) ($cfg['x'] ?? 0);
-    }
-
-    private function toPdfString(string $text): string
-    {
-        $converted = @mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8');
-
-        return $converted !== false ? $converted : $text;
     }
 }
