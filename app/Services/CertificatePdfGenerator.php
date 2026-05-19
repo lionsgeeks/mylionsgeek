@@ -63,8 +63,12 @@ class CertificatePdfGenerator
                 $dateCfg = $positions['date'];
                 $pdf->SetFont('Helvetica', (string) ($dateCfg['style'] ?? ''), (int) ($dateCfg['size'] ?? 12));
                 $pdf->SetTextColor(85, 85, 85);
-                $pdf->SetXY((float) ($dateCfg['x'] ?? 32), (float) ($dateCfg['y'] ?? 138));
-                $pdf->Cell(0, 0, $this->toPdfString($issuedDateFormatted));
+                $dateText = $this->toPdfString($issuedDateFormatted);
+                $pdf->SetXY(
+                    $this->resolveTextX($pdf, $pageWidth, $dateText, $dateCfg),
+                    (float) ($dateCfg['y'] ?? 166),
+                );
+                $pdf->Cell(0, 0, $dateText);
             }
 
             if (isset($positions['name']) && is_array($positions['name'])) {
@@ -72,9 +76,10 @@ class CertificatePdfGenerator
                 $pdf->SetFont('Helvetica', (string) ($nameCfg['style'] ?? 'B'), (int) ($nameCfg['size'] ?? 22));
                 $pdf->SetTextColor(44, 44, 44);
                 $nameText = $this->toPdfString($studentName);
-                $nameWidth = $pdf->GetStringWidth($nameText);
-                $x = max(0, ($pageWidth - $nameWidth) / 2);
-                $pdf->SetXY($x, (float) ($nameCfg['y'] ?? 118));
+                $pdf->SetXY(
+                    $this->resolveTextX($pdf, $pageWidth, $nameText, $nameCfg),
+                    (float) ($nameCfg['y'] ?? 118),
+                );
                 $pdf->Cell(0, 0, $nameText);
             }
 
@@ -88,6 +93,18 @@ class CertificatePdfGenerator
 
             return null;
         }
+    }
+
+    /**
+     * @param  array{x?: float, center?: bool}  $cfg
+     */
+    private function resolveTextX(Fpdi $pdf, float $pageWidth, string $text, array $cfg): float
+    {
+        if (! empty($cfg['center'])) {
+            return max(0, ($pageWidth - $pdf->GetStringWidth($text)) / 2);
+        }
+
+        return (float) ($cfg['x'] ?? 0);
     }
 
     private function toPdfString(string $text): string
