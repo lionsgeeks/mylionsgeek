@@ -14,12 +14,9 @@ class CertificateShareController extends Controller
             ->where('certificate_share_token', $token)
             ->firstOrFail();
 
-        $trainingId = $user->certified_training_id;
-        if (empty($trainingId)) {
-            abort(404);
-        }
-
-        $pdfPath = 'certificates/' . $trainingId . '/' . $user->id . '.pdf';
+        // Use the stored path when available; fall back to the flat-path convention
+        // for certificates generated before the certificate_pdf_path column existed.
+        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
         $pdfUrl = Storage::disk('public')->exists($pdfPath)
             ? url('/storage/' . $pdfPath)
             : null;

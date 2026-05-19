@@ -498,56 +498,37 @@ public function save(Request $request)
                 continue;
             }
 
-            $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
+            // Flat path: one file per student, regardless of training.
+            // put() overwrites automatically, so regeneration is always safe.
+            $pdfStoragePath = 'certificates/' . $user->id . '.pdf';
             $zipEntryName = 'certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf';
 
             try {
-                $pdfBytes = null;
-                $shouldGenerate = $regenerate || ! Storage::disk('public')->exists($pdfStoragePath);
+                $pdfBytes = $pdfGenerator->generate(
+                    $track,
+                    (string) ($user->name ?? ''),
+                    $issuedDateFormatted,
+                );
 
-                if ($shouldGenerate) {
-                    $pdfBytes = $pdfGenerator->generate(
-                        $track,
-                        (string) ($user->name ?? ''),
-                        $issuedDateFormatted,
-                    );
-
-                    if ($pdfBytes === null || $pdfBytes === '') {
-                        $skipped[] = [
-                            'id' => $user->id,
-                            'name' => (string) $user->name,
-                            'reason' => 'Échec de génération du PDF.',
-                        ];
-
-                        continue;
-                    }
-
-                    Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
-
-                    $user->forceFill([
-                        'status' => 'Certified',
-                        'certified_at' => $issuedCarbon,
-                        'certified_training_id' => (int) $training->id,
-                        'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
-                    ])->save();
-                } else {
-                    $pdfBytes = Storage::disk('public')->get($pdfStoragePath);
-
-                    $updates = [
-                        'status' => 'Certified',
-                        'certified_training_id' => (int) $training->id,
+                if ($pdfBytes === null || $pdfBytes === '') {
+                    $skipped[] = [
+                        'id' => $user->id,
+                        'name' => (string) $user->name,
+                        'reason' => 'Échec de génération du PDF.',
                     ];
 
-                    if ((string) ($user->status ?? '') !== 'Certified') {
-                        $updates['certified_at'] = $user->certified_at ?? $issuedCarbon;
-                    }
-
-                    if (! $user->certificate_share_token) {
-                        $updates['certificate_share_token'] = Str::random(48);
-                    }
-
-                    $user->forceFill($updates)->save();
+                    continue;
                 }
+
+                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+
+                $user->forceFill([
+                    'status'                  => 'Certified',
+                    'certified_at'            => $issuedCarbon,
+                    'certified_training_id'   => (int) $training->id,
+                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                    'certificate_pdf_path'    => $pdfStoragePath,
+                ])->save();
 
                 $zip->addFromString($zipEntryName, $pdfBytes);
                 $savedCount++;

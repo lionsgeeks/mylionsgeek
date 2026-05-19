@@ -217,13 +217,12 @@ class LinkedInController extends Controller
             return response()->json(['error' => 'LinkedIn member id is missing. Please reconnect LinkedIn.'], 400);
         }
 
-        $trainingId = $user->certified_training_id;
-        if (empty($trainingId)) {
-            return response()->json(['error' => 'No certificate training is associated with this user yet.'], 400);
-        }
+        // Use the stored path when available; fall back to the flat-path convention
+        // for certificates generated before the certificate_pdf_path column existed.
+        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
 
-        $pngPath = 'certificates/' . $trainingId . '/' . $user->id . '.png';
-        $pdfPath = 'certificates/' . $trainingId . '/' . $user->id . '.pdf';
+        // PNG lives alongside the PDF — same base path, different extension.
+        $pngPath = preg_replace('/\.pdf$/i', '.png', $pdfPath);
 
         if (! Storage::disk('public')->exists($pngPath)) {
             // Attempt to generate PNG from the stored PDF if Imagick is available
