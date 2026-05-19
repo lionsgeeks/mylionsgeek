@@ -7,9 +7,10 @@ use App\Models\AttendanceListe;
 use App\Models\Note;
 use App\Models\Formation;
 use App\Models\User;
-use App\Services\CertificateImageGenerator;
+use App\Services\CertificatePdfGenerator;
+use App\Services\CertificateTrackResolver;
 use App\Services\DisciplineService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -416,36 +417,61 @@ public function save(Request $request)
     }
 
     /**
-     * Generate certificates on the server, store them, and return a ZIP download.
-     * - Stores PDF: storage/app/public/certificates/{trainingId}/{userId}.pdf
-     * - Stores PNG screenshot: storage/app/public/images/certificationImages/{userId}.png
+     * Admin or assigned coach only.
      */
-    public function downloadCertificatesZip(Formation $training, Request $request)
+    private function canPrintCertificates(Formation $training): bool
     {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        $roles = is_array($user->role) ? $user->role : [(string) $user->role];
+        $roles = array_filter(array_map('strval', $roles));
+
+        if (count(array_intersect($roles, ['admin', 'super_admin'])) > 0) {
+            return true;
+        }
+
+        if (in_array('coach', $roles, true) && (int) $training->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Generate or reuse certificates (PDF), store per student, return ZIP download.
+     * Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     */
+    public function downloadCertificatesZip(
+        Formation $training,
+        Request $request,
+        CertificateTrackResolver $trackResolver,
+        CertificatePdfGenerator $pdfGenerator,
+    ) {
+        if (! $this->canPrintCertificates($training)) {
+            abort(403, 'You are not allowed to print certificates for this training.');
+        }
+
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'required|exists:users,id',
+            'issued_date' => 'required|date',
+            'regenerate' => 'sometimes|boolean',
         ]);
+
+        $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
+        $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
+        $regenerate = (bool) ($validated['regenerate'] ?? false);
 
         $users = User::whereIn('id', $validated['user_ids'])
             ->where('formation_id', $training->id)
             ->get();
 
         if ($users->isEmpty()) {
-            return back()->with('error', 'No valid users found for this training.');
+            return $this->certificateZipErrorResponse($request, 'No valid users found for this training.', 422);
         }
-
-        $readTemplateAsDataUri = function () use ($training): string {
-            $defaultPath = public_path('assets/images/certif.jpg');
-
-            if (! is_file($defaultPath)) {
-                abort(500, 'Default certificate template is missing at /public/assets/images/certif.jpg.');
-            }
-
-            return 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents($defaultPath));
-        };
-
-        $templateDataUri = $readTemplateAsDataUri();
 
         $tmpZipPath = storage_path('app/tmp/certificates-' . $training->id . '-' . now()->format('YmdHis') . '-' . Str::random(8) . '.zip');
         if (! is_dir(dirname($tmpZipPath))) {
@@ -454,47 +480,76 @@ public function save(Request $request)
 
         $zip = new ZipArchive();
         if ($zip->open($tmpZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            abort(500, 'Failed to create ZIP archive.');
+            return $this->certificateZipErrorResponse($request, 'Failed to create ZIP archive.', 500);
         }
 
         $savedCount = 0;
+        $skipped = [];
+
         foreach ($users as $user) {
+            $track = $trackResolver->resolve($user->field ?? null);
+            if ($track === null) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Le champ doit être « coding » ou « media ».',
+                ];
+
+                continue;
+            }
+
+            $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
+            $zipEntryName = 'certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf';
+
             try {
-                $pdf = Pdf::loadView('certificates.certificate', [
-                    'studentName' => (string) ($user->name ?? ''),
-                    'field' => (string) ($user->field ?? ''),
-                    'trainingTitle' => (string) ($training->name ?? ''),
-                    'issuedDate' => now()->locale('fr_FR')->translatedFormat('d F Y'),
-                    'templateDataUri' => $templateDataUri,
-                ])->setPaper('a4', 'landscape');
+                $pdfBytes = null;
+                $shouldGenerate = $regenerate || ! Storage::disk('public')->exists($pdfStoragePath);
 
-                $pdfBytes = $pdf->output();
+                if ($shouldGenerate) {
+                    $pdfBytes = $pdfGenerator->generate(
+                        $track,
+                        (string) ($user->name ?? ''),
+                        $issuedDateFormatted,
+                    );
 
-                $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
-                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+                    if ($pdfBytes === null || $pdfBytes === '') {
+                        $skipped[] = [
+                            'id' => $user->id,
+                            'name' => (string) $user->name,
+                            'reason' => 'Échec de génération du PDF.',
+                        ];
 
-                $zip->addFromString('certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf', $pdfBytes);
+                        continue;
+                    }
 
-                // Mark Certified when a certificate is issued
-                $user->forceFill([
-                    'status' => 'Certified',
-                    'certified_at' => $user->certified_at ?? now(),
-                    'certified_training_id' => (int) $training->id,
-                    'linkedin_share_prompted_at' => null,
-                    'linkedin_share_dismissed_at' => null,
-                    'linkedin_shared_at' => null,
-                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
-                ])->save();
+                    Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
 
-                // Generate PNG using GD (no Ghostscript required)
-                app(CertificateImageGenerator::class)->generate(
-                    userId: $user->id,
-                    studentName: (string) ($user->name ?? ''),
-                    field: (string) ($user->field ?? ''),
-                    trainingTitle: (string) ($training->name ?? ''),
-                    issuedDate: now()->locale('fr_FR')->translatedFormat('d F Y'),
-                );
+                    $user->forceFill([
+                        'status' => 'Certified',
+                        'certified_at' => $issuedCarbon,
+                        'certified_training_id' => (int) $training->id,
+                        'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                    ])->save();
+                } else {
+                    $pdfBytes = Storage::disk('public')->get($pdfStoragePath);
 
+                    $updates = [
+                        'status' => 'Certified',
+                        'certified_training_id' => (int) $training->id,
+                    ];
+
+                    if ((string) ($user->status ?? '') !== 'Certified') {
+                        $updates['certified_at'] = $user->certified_at ?? $issuedCarbon;
+                    }
+
+                    if (! $user->certificate_share_token) {
+                        $updates['certificate_share_token'] = Str::random(48);
+                    }
+
+                    $user->forceFill($updates)->save();
+                }
+
+                $zip->addFromString($zipEntryName, $pdfBytes);
                 $savedCount++;
             } catch (\Throwable $e) {
                 Log::error('Failed to generate certificate', [
@@ -502,6 +557,12 @@ public function save(Request $request)
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
+
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Erreur serveur lors de la génération.',
+                ];
             }
         }
 
@@ -509,12 +570,30 @@ public function save(Request $request)
 
         if ($savedCount === 0) {
             @unlink($tmpZipPath);
-            abort(500, 'Failed to generate certificates.');
+
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat généré.',
+                422,
+                ['skipped' => $skipped],
+            );
         }
 
-        return response()->download($tmpZipPath, 'certificats-' . $training->id . '.zip', [
-            'Content-Type' => 'application/zip',
-        ])->deleteFileAfterSend(true);
+        return response()
+            ->download($tmpZipPath, 'certificats-' . $training->id . '.zip', [
+                'Content-Type' => 'application/zip',
+                'X-Certificate-Warnings' => json_encode($skipped, JSON_UNESCAPED_UNICODE),
+            ])
+            ->deleteFileAfterSend(true);
+    }
+
+    private function certificateZipErrorResponse(Request $request, string $message, int $status, array $extra = [])
+    {
+        if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json(array_merge(['error' => $message], $extra), $status);
+        }
+
+        return back()->with('error', $message);
     }
 
 

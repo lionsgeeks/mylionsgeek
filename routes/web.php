@@ -101,7 +101,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/auth/linkedin/callback', [LinkedInController::class, 'callback'])->name('linkedin.callback');
     Route::post('/linkedin/share-prompted', [LinkedInController::class, 'markSharePrompted'])->name('linkedin.share.prompted');
     Route::post('/linkedin/share-dismiss', [LinkedInController::class, 'dismissSharePrompt'])->name('linkedin.share.dismiss');
-    Route::post('/linkedin/share-certificate', [LinkedInController::class, 'shareCertificate'])->name('linkedin.share.certificate');
+    // Certificate sharing to LinkedIn disabled (PDF-only certificates).
+    // Route::post('/linkedin/share-certificate', [LinkedInController::class, 'shareCertificate'])->name('linkedin.share.certificate');
 
     // Notifications API - Get all notifications
     // Route::get('/api/notifications', function (Request $request) {

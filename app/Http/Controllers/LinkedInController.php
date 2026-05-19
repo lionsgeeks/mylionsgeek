@@ -192,6 +192,10 @@ class LinkedInController extends Controller
 
     public function shareCertificate(Request $request): JsonResponse
     {
+        return response()->json([
+            'error' => 'Certificate sharing on LinkedIn is temporarily disabled.',
+        ], 410);
+
         $user = $request->user();
         if (! $user) abort(401);
 
