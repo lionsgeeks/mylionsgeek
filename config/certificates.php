@@ -14,12 +14,12 @@ return [
     */
     'positions' => [
         'coding' => [
-            'name' => ['x' => 0, 'y' => 97, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 160, 'size' => 12, 'style' => '', 'center' => true],
+            'name' => ['x' => 0, 'y' => 105, 'size' => 48, 'style' => 'B', 'center' => true],
+            'date' => ['x' => 0, 'y' => 168, 'size' => 15, 'style' => '', 'center' => true],
         ],
         'media' => [
-            'name' => ['x' => 0, 'y' => 97, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 160, 'size' => 12, 'style' => '', 'center' => true],
+            'name' => ['x' => 0, 'y' => 105, 'size' => 48, 'style' => 'B', 'center' => true],
+            'date' => ['x' => 0, 'y' => 168, 'size' => 15, 'style' => '', 'center' => true],
         ],
     ],
 
