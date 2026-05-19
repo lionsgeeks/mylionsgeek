@@ -47,7 +47,7 @@ class CertificatePdfGenerator
             // directory so SetFont() can locate them by the returned name.
             $tcpdfFontsDir = base_path('vendor/tecnickcom/tcpdf/fonts/');
             $nameFont = TCPDF_FONTS::addTTFfont(
-                public_path('assets/fonts/GreatVibes-Regular.ttf'),
+                public_path('assets/fonts/Creattion Demo.ttf'),
                 'TrueTypeUnicode',
                 '',
                 32,
@@ -55,7 +55,7 @@ class CertificatePdfGenerator
             );
 
             if (! $nameFont) {
-                Log::error('CertificatePdfGenerator: failed to load Great Vibes font');
+                Log::error('CertificatePdfGenerator: failed to load Creattion Demo font');
 
                 return null;
             }

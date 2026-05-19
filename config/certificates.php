@@ -19,12 +19,12 @@ return [
     */
     'positions' => [
         'coding' => [
-            'name' => ['y_pct' => 47, 'size' => 65, 'style' => ''],
-            'date' => ['y_pct' => 82, 'size' => 12, 'style' => ''],
+            'name' => ['y_pct' => 42, 'size' => 65, 'style' => ''],
+            'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
         'media' => [
-            'name' => ['y_pct' => 47, 'size' => 65, 'style' => ''],
-            'date' => ['y_pct' => 82, 'size' => 12, 'style' => ''],
+            'name' => ['y_pct' => 42, 'size' => 65, 'style' => ''],
+            'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
     ],
 

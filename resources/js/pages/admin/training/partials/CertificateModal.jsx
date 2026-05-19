@@ -17,7 +17,7 @@ const AttendanceBadge = ({ score }) => {
               ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30'
               : 'bg-red-500/15 text-red-600 dark:text-red-400 ring-red-500/30';
     return (
-        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`} title="Taux de présence">
+        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`} title="Attendance rate">
             {pct}%
         </span>
     );
@@ -38,8 +38,8 @@ const resolveTrack = (field) => {
 };
 
 const trackLabel = (field) => {
-    if (resolveTrack(field) === 'coding') return 'CODING / DÉVELOPPEMENT WEB';
-    if (resolveTrack(field) === 'media') return 'CRÉATEUR-RICE UGC / MARKETING DIGITAL';
+    if (resolveTrack(field) === 'coding') return 'Coding / Web Development';
+    if (resolveTrack(field) === 'media') return 'UGC Creator / Digital Marketing';
     return null;
 };
 
@@ -118,7 +118,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
             }
 
             if (!response.ok) {
-                let message = `Échec (${response.status})`;
+                let message = `Failed (${response.status})`;
                 const contentType = response.headers.get('Content-Type') || '';
                 if (contentType.includes('application/json')) {
                     const data = await response.json();
@@ -134,7 +134,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
             }
 
             const zipBlob = await response.blob();
-            saveAs(zipBlob, `certificats-${training.id}.zip`);
+            saveAs(zipBlob, `certificates-${training.id}.zip`);
 
             if (parsedWarnings.length === 0) {
                 resetForm();
@@ -142,7 +142,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
             }
         } catch (err) {
             console.error('Certificate generation failed:', err);
-            setError(err?.message || 'Échec de génération des certificats.');
+            setError(err?.message || 'Certificate generation failed.');
         } finally {
             setIsGenerating(false);
         }
@@ -159,20 +159,20 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="w-[95vw] max-w-3xl overflow-hidden border border-alpha/20 bg-light p-0 text-dark dark:bg-dark dark:text-light">
-                <div className="border-b border-alpha/10 px-6 pt-6 pb-4">
+            <DialogContent className="w-[95vw] max-w-5xl overflow-hidden border border-alpha/20 bg-light p-0 text-dark dark:bg-dark dark:text-light">
+                <div className="border-b border-alpha/10 px-8 pt-6 pb-4">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                         <Award className="h-6 w-6 flex-shrink-0 text-alpha" />
-                        Imprimer Certificats
+                        Print Certificates
                     </DialogTitle>
                     <DialogDescription className="mt-1 text-sm text-dark/60 dark:text-light/60">
-                        Sélectionnez les étudiants et la date à afficher sur le certificat (
-                        <span className="font-mono text-xs">JJ/MM/AAAA</span>).
+                        Select students and the date to print on the certificate (
+                        <span className="font-mono text-xs">DD/MM/YYYY</span>).
                     </DialogDescription>
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                         <div>
-                            <Label htmlFor="certificate-issued-date">Date du certificat</Label>
+                            <Label htmlFor="certificate-issued-date">Certificate Date</Label>
                             <Input
                                 id="certificate-issued-date"
                                 type="date"
@@ -182,7 +182,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                 className="mt-1"
                             />
                             {datePreview && (
-                                <p className="mt-1 text-xs text-dark/50 dark:text-light/50">Sur le certificat : {datePreview}</p>
+                                <p className="mt-1 text-xs text-dark/50 dark:text-light/50">On the certificate: {datePreview}</p>
                             )}
                         </div>
                         <div className="flex items-end">
@@ -194,9 +194,9 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                     className="mt-0.5"
                                 />
                                 <span className="text-sm leading-snug">
-                                    <span className="font-semibold">Régénérer les certificats existants</span>
+                                    <span className="font-semibold">Regenerate existing certificates</span>
                                     <span className="mt-0.5 block text-xs text-dark/55 dark:text-light/55">
-                                        Remplace les PDF déjà enregistrés avec la nouvelle date et le nom actuel.
+                                        Replaces already saved PDFs with the new date and current name.
                                     </span>
                                 </span>
                             </label>
@@ -207,16 +207,16 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                         <span className="text-sm font-medium text-dark/60 dark:text-light/60">
                             <span className="font-bold text-alpha">{selectedIds.length}</span>
                             {' / '}
-                            {students.length} sélectionné{selectedIds.length !== 1 ? 's' : ''}
+                            {students.length} selected
                         </span>
                         <button type="button" onClick={toggleSelectAll} className="text-sm font-semibold text-alpha hover:underline">
-                            {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                            {allSelected ? 'Deselect all' : 'Select all'}
                         </button>
                     </div>
                 </div>
 
                 {(error || warnings.length > 0) && (
-                    <div className="border-b border-amber-500/20 bg-amber-500/10 px-6 py-3">
+                    <div className="border-b border-amber-500/20 bg-amber-500/10 px-8 py-3">
                         {error && (
                             <p className="flex items-start gap-2 text-sm text-amber-800 dark:text-amber-200">
                                 <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -236,14 +236,14 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     </div>
                 )}
 
-                <div className="max-h-[50vh] overflow-y-auto px-6 py-4">
+                <div className="max-h-[55vh] overflow-y-auto px-8 py-4">
                     {students.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-dark/40 dark:text-light/40">
                             <Award className="h-12 w-12 opacity-30" />
-                            <p className="text-sm">Aucun étudiant inscrit à cette formation.</p>
+                            <p className="text-sm">No students enrolled in this training.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {students.map((student) => {
                                 const checked = selectedIds.includes(student.id);
                                 const track = trackLabel(student.field);
@@ -281,7 +281,7 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                                             )}
                                             {invalidTrack && (
                                                 <p className="mt-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-                                                    Champ invalide — sera ignoré
+                                                    Invalid field — will be skipped
                                                 </p>
                                             )}
                                             {student.email && (
@@ -303,11 +303,11 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                     )}
                 </div>
 
-                <div className="flex flex-col items-stretch justify-between gap-3 border-t border-alpha/10 px-6 py-4 sm:flex-row sm:items-center">
-                    <p className="hidden text-xs text-dark/50 sm:block dark:text-light/50">Un PDF par étudiant · réutilise les fichiers existants sauf si régénération</p>
+                <div className="flex flex-col items-stretch justify-between gap-3 border-t border-alpha/10 px-8 py-4 sm:flex-row sm:items-center">
+                    <p className="hidden text-xs text-dark/50 sm:block dark:text-light/50">One PDF per student · reuses existing files unless regeneration is enabled</p>
                     <div className="flex justify-end gap-3">
                         <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isGenerating} className="flex-1 sm:flex-none">
-                            Annuler
+                            Cancel
                         </Button>
                         <Button
                             type="button"
@@ -318,12 +318,12 @@ export default function CertificateModal({ open, onOpenChange, training }) {
                             {isGenerating ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Génération…
+                                    Generating…
                                 </>
                             ) : (
                                 <>
                                     <Award className="h-4 w-4" />
-                                    Confirmer ({selectedIds.length})
+                                    Confirm ({selectedIds.length})
                                 </>
                             )}
                         </Button>
