@@ -15,11 +15,11 @@ return [
     'positions' => [
         'coding' => [
             'name' => ['x' => 0, 'y' => 97, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 172, 'size' => 12, 'style' => '', 'center' => true],
+            'date' => ['x' => 0, 'y' => 160, 'size' => 12, 'style' => '', 'center' => true],
         ],
         'media' => [
             'name' => ['x' => 0, 'y' => 97, 'size' => 48, 'style' => 'B', 'center' => true],
-            'date' => ['x' => 0, 'y' => 172, 'size' => 12, 'style' => '', 'center' => true],
+            'date' => ['x' => 0, 'y' => 160, 'size' => 12, 'style' => '', 'center' => true],
         ],
     ],
 
