@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
@@ -109,8 +113,48 @@ class StudentController extends Controller
                 'experiences' => $userExperience->experiences,
                 'educations' => $userEducation->educations,
                 'social_links' => $userSocialLinks->socialLinks,
+                'certified_at' => $user->certified_at
+                    ? Carbon::parse($user->certified_at)->format('Y-m-d')
+                    : null,
+                'certificate_pdf_url' => $this->resolveCertificatePdfUrl($user),
             ],
         ];
+    }
+
+    /**
+     * Public URL for a stored certificate PDF, or null if the file does not exist.
+     */
+    private function resolveCertificatePdfUrl(User $user): ?string
+    {
+        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
+
+        if (! Storage::disk('public')->exists($pdfPath)) {
+            return null;
+        }
+
+        return url('/storage/' . $pdfPath);
+    }
+
+    /**
+     * Download the authenticated student's stored certificate PDF (profile owner only).
+     */
+    public function downloadCertificate(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+
+        if ((string) ($user->status ?? '') !== 'Certified') {
+            abort(403, 'Only certified students can download a certificate.');
+        }
+
+        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
+
+        if (! Storage::disk('public')->exists($pdfPath)) {
+            abort(404, 'Certificate file not found.');
+        }
+
+        $safeName = Str::slug((string) $user->name) ?: 'certificate';
+
+        return Storage::disk('public')->download($pdfPath, "certificate_{$safeName}.pdf");
     }
 
     public function changeProfileImage(Request $request, $id)
