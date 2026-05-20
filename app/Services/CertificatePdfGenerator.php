@@ -101,40 +101,75 @@ class CertificatePdfGenerator
                 $pdf->Cell($pageWidth, 0, $issuedDateFormatted, 0, 0, 'C');
             }
 
-            // --- Student name: Creattion Demo, auto-sized, pure black, centered ---
+            // --- Student name: Creattion Demo, pure black, centered ---
             if (isset($positions['name']) && is_array($positions['name'])) {
                 $nameCfg = $positions['name'];
-                $fontSize = (int) ($nameCfg['size'] ?? 65);
-                $minSize = 24;
+                $sizeTwoWords = (int) ($nameCfg['size_two_words'] ?? $nameCfg['size'] ?? 65);
+                $sizeMoreWords = (int) ($nameCfg['size_more_words'] ?? $nameCfg['size'] ?? 40);
+                // CSS-like px → mm (96dpi), used as extra gap *between* words (in addition to the normal space).
+                $extraWordGapMm = 35 * 25.4 / 96;
 
-                // Normalize spaces so every run of whitespace becomes a single space,
-                // preventing collapsed or missing inter-word gaps with custom TTF fonts.
-                $displayName = preg_replace('/\s+/u', ' ', trim($studentName));
+                $normalized = preg_replace('/\s+/u', ' ', trim($studentName));
+                $displayName = $normalized === ''
+                    ? ''
+                    : mb_convert_case($normalized, MB_CASE_TITLE, 'UTF-8');
+                $words = $displayName === '' ? [] : preg_split('/\s+/u', $displayName, -1, PREG_SPLIT_NO_EMPTY);
+                $wordCount = count($words);
 
-                // Fit the name within 80% of the page width, stepping down 2pt at a time.
-                $safeWidth = $pageWidth * 0.80;
-                do {
-                    $pdf->SetFont($nameFont, '', $fontSize);
-                    if ($pdf->GetStringWidth($displayName) <= $safeWidth || $fontSize <= $minSize) {
-                        break;
-                    }
-                    $fontSize -= 2;
-                } while (true);
+                $usesTwoWordSize = $this->shouldUseTwoWordNameSize($words);
+                $nameFontSize = $usesTwoWordSize ? $sizeTwoWords : $sizeMoreWords;
 
-                // Stroke width scales with font size so the boldness looks proportional.
-                $strokeWidth = round($fontSize * 0.018, 1.5);
-
-                $pdf->SetTextColor(0, 0, 0);
-                $pdf->SetDrawColor(0, 0, 0);
-                // TCPDF: setTextRenderingMode($strokeWidth, $fill, $clip) → PDF mode 2 (fill + stroke).
-                // (This TCPDF build has no setWordSpacing().)
-                $pdf->setTextRenderingMode($strokeWidth, true, false);
-
-                $y = isset($nameCfg['y_pct'])
+                $baselineY = isset($nameCfg['y_pct'])
                     ? $pageHeight * (float) $nameCfg['y_pct'] / 100
                     : (float) ($nameCfg['y'] ?? 99);
-                $pdf->SetXY(0, $y);
-                $pdf->Cell($pageWidth, 0, $displayName, 0, 0, 'C');
+
+                $textWidth = $pageWidth * 0.88;
+                $pdf->setCellPadding(0);
+
+                $pdf->SetFont($nameFont, '', $nameFontSize);
+                $pdf->SetTextColor(0, 0, 0);
+                $pdf->SetDrawColor(0, 0, 0);
+
+                // Stroke matches two-word style when using size_two_words (incl. "X el Y" names).
+                if ($wordCount > 2 && ! $usesTwoWordSize) {
+                    $strokeWidth = round($nameFontSize * 0.015, 2);
+                } else {
+                    $strokeWidth = round($nameFontSize * 0.005, 2);
+                }
+
+                $pdf->setTextRenderingMode($strokeWidth, true, false);
+
+                // Two lines only for 3+ words without "el" as the second word (e.g. Fatima Zahra Kadiri…).
+                // Names like "Nour El Houda" stay on one line with size_two_words.
+                if ($wordCount > 2 && ! $usesTwoWordSize) {
+                    $line1Words = array_slice($words, 0, 2);
+                    $line2Words = array_slice($words, 2);
+
+                    $lineHeightMm = $nameFontSize * 0.3528 * 1.2;
+                    $blockHalf = $lineHeightMm; // two lines ≈ centered on anchor
+                    $yFirst = $baselineY - $blockHalf;
+
+                    $this->drawCenteredNameLine($pdf, $pageWidth, $yFirst, $line1Words, $extraWordGapMm);
+                    $this->drawCenteredNameLine($pdf, $pageWidth, $yFirst + $lineHeightMm, $line2Words, $extraWordGapMm);
+                } else {
+                    $lineWords = $words;
+                    $totalW = $this->measureNameLineWidth($pdf, $lineWords, 0.0);
+                    $stretch = 100;
+                    if ($totalW > 0 && $totalW > $textWidth) {
+                        $stretch = max(80, (int) floor(($textWidth / $totalW) * 100));
+                        $pdf->setFontStretching($stretch);
+                        $totalW = $this->measureNameLineWidth($pdf, $lineWords, 0.0);
+                    }
+
+                    $fontMm = $nameFontSize * 0.3528;
+                    $ascentMm = $fontMm * 0.73;
+                    $pdf->SetXY(0, $baselineY - $ascentMm);
+                    $this->drawCenteredNameLine($pdf, $pageWidth, $pdf->GetY(), $lineWords, 0.0);
+
+                    if ($stretch !== 100) {
+                        $pdf->setFontStretching(100);
+                    }
+                }
 
                 $pdf->setTextRenderingMode(0, true, false);
             }
@@ -148,6 +183,63 @@ class CertificatePdfGenerator
             ]);
 
             return null;
+        }
+    }
+
+    /**
+     * Use size_two_words for 0–2 words, or when the second word is "el" (e.g. Nour El Houda).
+     *
+     * @param  list<string>  $words
+     */
+    private function shouldUseTwoWordNameSize(array $words): bool
+    {
+        $count = count($words);
+        if ($count <= 2) {
+            return true;
+        }
+
+        return mb_strtolower($words[1], 'UTF-8') === 'el';
+    }
+
+    /**
+     * @param  list<string>  $words
+     */
+    private function measureNameLineWidth(Fpdi $pdf, array $words, float $extraGapMm): float
+    {
+        if ($words === []) {
+            return 0.0;
+        }
+        $width = 0.0;
+        $spaceW = $pdf->GetStringWidth(' ');
+        $last = count($words) - 1;
+        foreach ($words as $i => $word) {
+            $width += $pdf->GetStringWidth($word);
+            if ($i < $last) {
+                $width += $spaceW + $extraGapMm;
+            }
+        }
+
+        return $width;
+    }
+
+    /**
+     * @param  list<string>  $words
+     */
+    private function drawCenteredNameLine(Fpdi $pdf, float $pageWidth, float $y, array $words, float $extraGapMm): void
+    {
+        if ($words === []) {
+            return;
+        }
+        $spaceW = $pdf->GetStringWidth(' ');
+        $total = $this->measureNameLineWidth($pdf, $words, $extraGapMm);
+        $pdf->SetXY(($pageWidth - $total) / 2, $y);
+        $last = count($words) - 1;
+        foreach ($words as $i => $word) {
+            $w = $pdf->GetStringWidth($word);
+            $pdf->Cell($w, 0, $word, 0, 0, 'L');
+            if ($i < $last) {
+                $pdf->SetX($pdf->GetX() + $spaceW + $extraGapMm);
+            }
         }
     }
 }

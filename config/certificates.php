@@ -4,7 +4,7 @@ return [
 
     'templates' => [
         'coding' => 'assets/images/certif/codeCertfifcation.pdf',
-        'media'  => 'assets/images/certif/mediaCertification.pdf',
+        'media' => 'assets/images/certif/mediaCertification.pdf',
     ],
 
     /*
@@ -19,13 +19,16 @@ return [
     */
     'positions' => [
         'coding' => [
-            'name' => ['y_pct' => 42, 'size' => 65, 'style' => ''],
+            // 'size_two_words' — 0–2 words, or "X el …" on one line. 'size_more_words' — other 3+ words on two lines.
+            // Optional legacy 'size' is used only as fallback if those keys are missing.
+            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 40, 'style' => ''],
             'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
         'media' => [
-            'name' => ['y_pct' => 42, 'size' => 65, 'style' => ''],
+            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 40, 'style' => ''],
             'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
+
     ],
 
 ];
