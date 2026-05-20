@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::post('/changeCover/{id}', [StudentController::class, 'changeCover']);
     Route::post('/changeProfileImage/{id}', [StudentController::class, 'changeProfileImage']);
     Route::post('/about/{id}', [StudentController::class, 'updateAbout']);
+    Route::get('/certificate/download', [StudentController::class, 'downloadCertificate'])->name('student.certificate.download');
     Route::post('/follow/{user}', [FollowController::class, 'create']);
     Route::delete('/unfollow/{user}', [FollowController::class, 'delete']);
     Route::post('/social-links', [UserSocialLinkController::class, 'create']);
