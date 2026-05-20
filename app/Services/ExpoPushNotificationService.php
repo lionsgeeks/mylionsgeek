@@ -84,18 +84,46 @@ class ExpoPushNotificationService
             }
         }
 
+        // For incoming-call pushes, route through the high-priority Android
+        // notification channel registered in the mobile app so the device
+        // rings persistently like a phone call (loud, repeating vibration,
+        // bypass Do Not Disturb).
+        $isIncomingCall = isset($data['type']) && $data['type'] === 'incoming_call';
+        $channelId = $isIncomingCall ? 'incoming-calls' : 'default';
+        // Critical iOS APS settings – `interruptionLevel: critical` would
+        // require the Critical Alerts entitlement (production builds only),
+        // so we use `time-sensitive` which works in dev/Expo Go.
+        $iosInterruptionLevel = $isIncomingCall ? 'time-sensitive' : 'active';
+
         // Prepare messages for Expo API
         $messages = [];
         foreach ($tokenArray as $token) {
-            $messages[] = [
+            $payload = [
                 'to' => $token,
-                'sound' => 'default',
+                'sound' => $isIncomingCall ? null : 'default', // CallKeep plays the system ringtone, not the notification sound
                 'title' => $title,
                 'body' => $body,
                 'data' => $data,
                 'priority' => 'high',
-                'channelId' => 'default',
+                'channelId' => $channelId,
+                '_displayInForeground' => true,
+                'interruptionLevel' => $iosInterruptionLevel,
+                'ttl' => $isIncomingCall ? 30 : null, // call invites expire fast
             ];
+
+            if ($isIncomingCall) {
+                // Setting _contentAvailable causes APNs to deliver this push as a
+                // silent / background push on iOS, which lets the JS background
+                // notification task fire and trigger CallKit via CallKeep.
+                // On Android the high-priority FCM push also wakes the app for
+                // the same background task.
+                $payload['_contentAvailable'] = true;
+                // Suppress the regular notification banner; the native incoming
+                // call UI takes over instead.
+                $payload['mutableContent'] = true;
+            }
+
+            $messages[] = $payload;
         }
         
         Log::info('Prepared messages for Expo API', [
