@@ -42,20 +42,28 @@ class CertificatePdfGenerator
         }
 
         try {
-            // Convert font once; subsequent calls return the cached name instantly.
-            // addTTFfont() writes the TCPDF font definition files to the TCPDF fonts
-            // directory so SetFont() can locate them by the returned name.
             $tcpdfFontsDir = base_path('vendor/tecnickcom/tcpdf/fonts/');
-            $nameFont = TCPDF_FONTS::addTTFfont(
-                public_path('assets/fonts/Creattion Demo.ttf'),
-                'TrueTypeUnicode',
-                '',
-                32,
-                $tcpdfFontsDir,
-            );
+            $bundledCreattion = $tcpdfFontsDir.'creattiondemo.php';
+            $ttfPath = public_path('assets/fonts/Creattion Demo.ttf');
 
-            if (! $nameFont) {
-                Log::error('CertificatePdfGenerator: failed to load Creattion Demo font');
+            if (is_file($bundledCreattion)) {
+                // Shipped TCPDF metrics (creattiondemo.php + .z) — no write to vendor/, fast path.
+                $nameFont = 'creattiondemo';
+            } elseif (is_file($ttfPath)) {
+                $nameFont = TCPDF_FONTS::addTTFfont(
+                    $ttfPath,
+                    'TrueTypeUnicode',
+                    '',
+                    32,
+                    $tcpdfFontsDir,
+                );
+                if (! $nameFont) {
+                    Log::error('CertificatePdfGenerator: failed to convert Creattion Demo TTF');
+
+                    return null;
+                }
+            } else {
+                Log::error('CertificatePdfGenerator: Creattion Demo font missing (no bundled TCPDF font, no TTF)');
 
                 return null;
             }
@@ -75,10 +83,10 @@ class CertificatePdfGenerator
             }
 
             $tplId = $pdf->importPage(1);
-            $size  = $pdf->getTemplateSize($tplId);
+            $size = $pdf->getTemplateSize($tplId);
             $pdf->useTemplate($tplId, 0, 0, $size['width'], $size['height']);
 
-            $pageWidth  = (float) $size['width'];
+            $pageWidth = (float) $size['width'];
             $pageHeight = (float) $size['height'];
 
             // --- Date: Helvetica, small, grey, centered at bottom ---
@@ -93,18 +101,42 @@ class CertificatePdfGenerator
                 $pdf->Cell($pageWidth, 0, $issuedDateFormatted, 0, 0, 'C');
             }
 
-            // --- Student name: Great Vibes, 65pt, pure black, centered ---
+            // --- Student name: Creattion Demo, auto-sized, pure black, centered ---
             if (isset($positions['name']) && is_array($positions['name'])) {
                 $nameCfg = $positions['name'];
                 $fontSize = (int) ($nameCfg['size'] ?? 65);
-                $pdf->SetFont($nameFont, '', $fontSize);
+                $minSize = 24;
+
+                // Normalize spaces so every run of whitespace becomes a single space,
+                // preventing collapsed or missing inter-word gaps with custom TTF fonts.
+                $displayName = preg_replace('/\s+/u', ' ', trim($studentName));
+
+                // Fit the name within 80% of the page width, stepping down 2pt at a time.
+                $safeWidth = $pageWidth * 0.80;
+                do {
+                    $pdf->SetFont($nameFont, '', $fontSize);
+                    if ($pdf->GetStringWidth($displayName) <= $safeWidth || $fontSize <= $minSize) {
+                        break;
+                    }
+                    $fontSize -= 2;
+                } while (true);
+
+                // Stroke width scales with font size so the boldness looks proportional.
+                $strokeWidth = round($fontSize * 0.018, 1.5);
+
                 $pdf->SetTextColor(0, 0, 0);
-                // y_pct takes priority over absolute y, allowing template-agnostic positioning
+                $pdf->SetDrawColor(0, 0, 0);
+                // TCPDF: setTextRenderingMode($strokeWidth, $fill, $clip) → PDF mode 2 (fill + stroke).
+                // (This TCPDF build has no setWordSpacing().)
+                $pdf->setTextRenderingMode($strokeWidth, true, false);
+
                 $y = isset($nameCfg['y_pct'])
                     ? $pageHeight * (float) $nameCfg['y_pct'] / 100
                     : (float) ($nameCfg['y'] ?? 99);
                 $pdf->SetXY(0, $y);
-                $pdf->Cell($pageWidth, 0, $studentName, 0, 0, 'C');
+                $pdf->Cell($pageWidth, 0, $displayName, 0, 0, 'C');
+
+                $pdf->setTextRenderingMode(0, true, false);
             }
 
             return $pdf->Output('', 'S');
