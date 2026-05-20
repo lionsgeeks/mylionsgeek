@@ -19,13 +19,13 @@ return [
     */
     'positions' => [
         'coding' => [
-            // 'size_two_words' — 0–2 words, or "X el …" on one line. 'size_more_words' — other 3+ words on two lines.
+            // < 20 letters (trimmed, no spaces): one line, size_more_words, stroke ×0.018. ≥ 20: size_two_words, stroke ×0.005.
             // Optional legacy 'size' is used only as fallback if those keys are missing.
-            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 40, 'style' => ''],
+            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 55, 'style' => ''],
             'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
         'media' => [
-            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 40, 'style' => ''],
+            'name' => ['y_pct' => 50, 'size_two_words' => 65, 'size_more_words' => 55, 'style' => ''],
             'date' => ['y_pct' => 79, 'size' => 10, 'style' => 'B'],
         ],
 

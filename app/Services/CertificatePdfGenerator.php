@@ -106,8 +106,8 @@ class CertificatePdfGenerator
                 $nameCfg = $positions['name'];
                 $sizeTwoWords = (int) ($nameCfg['size_two_words'] ?? $nameCfg['size'] ?? 65);
                 $sizeMoreWords = (int) ($nameCfg['size_more_words'] ?? $nameCfg['size'] ?? 40);
-                // CSS-like px → mm (96dpi), used as extra gap *between* words (in addition to the normal space).
-                $extraWordGapMm = 35 * 25.4 / 96;
+                // word-spacing: 15px — extra gap between words (96dpi → mm), on top of the normal space width.
+                $extraWordGapMm = 15 * 25.4 / 96;
 
                 $normalized = preg_replace('/\s+/u', ' ', trim($studentName));
                 $displayName = $normalized === ''
@@ -116,32 +116,33 @@ class CertificatePdfGenerator
                 $words = $displayName === '' ? [] : preg_split('/\s+/u', $displayName, -1, PREG_SPLIT_NO_EMPTY);
                 $wordCount = count($words);
 
-                $usesTwoWordSize = $this->shouldUseTwoWordNameSize($words);
-                $nameFontSize = $usesTwoWordSize ? $sizeTwoWords : $sizeMoreWords;
+                // Letter count after trim, spaces excluded.
+                $nameCharsNoSpaces = mb_strlen(preg_replace('/\s+/u', '', $displayName));
+                $isShortName = $nameCharsNoSpaces < 25;
 
+                if ($isShortName) {
+                    $nameFontSize = $sizeMoreWords;
+                    $useTwoLineLayout = false;
+                } else {
+                    $nameFontSize = $sizeTwoWords;
+                    // Long names: two lines for 3+ words unless second word is "el" (stay on one line).
+                    $useTwoLineLayout = $wordCount > 2 && ! $this->shouldUseTwoWordNameSize($words);
+                }
+                $strokeWidth = round($nameFontSize * 0.007, 2);
                 $baselineY = isset($nameCfg['y_pct'])
                     ? $pageHeight * (float) $nameCfg['y_pct'] / 100
                     : (float) ($nameCfg['y'] ?? 99);
 
-                $textWidth = $pageWidth * 0.88;
+                $textWidth = $pageWidth * 0.75;
                 $pdf->setCellPadding(0);
 
                 $pdf->SetFont($nameFont, '', $nameFontSize);
                 $pdf->SetTextColor(0, 0, 0);
                 $pdf->SetDrawColor(0, 0, 0);
 
-                // Stroke matches two-word style when using size_two_words (incl. "X el Y" names).
-                if ($wordCount > 2 && ! $usesTwoWordSize) {
-                    $strokeWidth = round($nameFontSize * 0.015, 2);
-                } else {
-                    $strokeWidth = round($nameFontSize * 0.005, 2);
-                }
-
                 $pdf->setTextRenderingMode($strokeWidth, true, false);
 
-                // Two lines only for 3+ words without "el" as the second word (e.g. Fatima Zahra Kadiri…).
-                // Names like "Nour El Houda" stay on one line with size_two_words.
-                if ($wordCount > 2 && ! $usesTwoWordSize) {
+                if ($useTwoLineLayout) {
                     $line1Words = array_slice($words, 0, 2);
                     $line2Words = array_slice($words, 2);
 
@@ -153,18 +154,18 @@ class CertificatePdfGenerator
                     $this->drawCenteredNameLine($pdf, $pageWidth, $yFirst + $lineHeightMm, $line2Words, $extraWordGapMm);
                 } else {
                     $lineWords = $words;
-                    $totalW = $this->measureNameLineWidth($pdf, $lineWords, 0.0);
+                    $totalW = $this->measureNameLineWidth($pdf, $lineWords, $extraWordGapMm);
                     $stretch = 100;
                     if ($totalW > 0 && $totalW > $textWidth) {
                         $stretch = max(80, (int) floor(($textWidth / $totalW) * 100));
                         $pdf->setFontStretching($stretch);
-                        $totalW = $this->measureNameLineWidth($pdf, $lineWords, 0.0);
+                        $totalW = $this->measureNameLineWidth($pdf, $lineWords, $extraWordGapMm);
                     }
 
                     $fontMm = $nameFontSize * 0.3528;
                     $ascentMm = $fontMm * 0.73;
                     $pdf->SetXY(0, $baselineY - $ascentMm);
-                    $this->drawCenteredNameLine($pdf, $pageWidth, $pdf->GetY(), $lineWords, 0.0);
+                    $this->drawCenteredNameLine($pdf, $pageWidth, $pdf->GetY(), $lineWords, $extraWordGapMm);
 
                     if ($stretch !== 100) {
                         $pdf->setFontStretching(100);
@@ -187,7 +188,7 @@ class CertificatePdfGenerator
     }
 
     /**
-     * Use size_two_words for 0–2 words, or when the second word is "el" (e.g. Nour El Houda).
+     * Keep long names on one line when the second word is "el" (e.g. Nour El Houda).
      *
      * @param  list<string>  $words
      */
