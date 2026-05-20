@@ -156,7 +156,7 @@ const LeftColumn = ({ user }) => {
                             {user.certified_at ? ` · ${user.certified_at}` : ''}
                         </p>
                         <div className="overflow-hidden rounded-lg border border-beta/10 bg-white dark:border-light/10">
-                            <object data={certificatePdfUrl} type="application/pdf" className="h-36 w-full">
+                            <object data={certificatePdfUrl} type="application/pdf" className="h-60 w-full ">
                                 <div className="flex h-36 items-center justify-center p-3 text-center text-xs text-beta/60 dark:text-light/60">
                                     PDF preview unavailable in this browser.
                                 </div>
