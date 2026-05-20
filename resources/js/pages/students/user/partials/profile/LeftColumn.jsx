@@ -148,13 +148,13 @@ const LeftColumn = ({ user }) => {
                 {showCertificateCard && (
                     <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
                         <div className="mb-3 flex items-center gap-2">
-                            <Award className="h-5 w-5 text-alpha" />
+                            {/* <Award className="h-5 w-5 text-alpha" /> */}
                             <h2 className="text-lg font-semibold text-beta dark:text-light">Certification</h2>
                         </div>
-                        <p className="mb-3 text-xs text-beta/60 dark:text-light/60">
+                        {/* <p className="mb-3 text-xs text-beta/60 dark:text-light/60">
                             LionsGeek training certificate
                             {user.certified_at ? ` · ${user.certified_at}` : ''}
-                        </p>
+                        </p> */}
                         <div className="overflow-hidden rounded-lg border border-beta/10 bg-white dark:border-light/10">
                             <object data={certificatePdfUrl} type="application/pdf" className="h-60 w-full ">
                                 <div className="flex h-36 items-center justify-center p-3 text-center text-xs text-beta/60 dark:text-light/60">
