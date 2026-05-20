@@ -28,8 +28,29 @@ class TrainingController extends Controller
             $coachId = $request->query('coach');
             $track = $request->query('track');
             $promo = $request->query('promo');
+            $mineOnly = $request->boolean('mine');
+
+            $authUser = Auth::guard('sanctum')->user();
+            $myFormationIds = $mineOnly && $authUser
+                ? $authUser->resolvedFormationIds()
+                : [];
 
             $query = Formation::with('coach')->withCount('users');
+
+            if ($mineOnly) {
+                if (empty($myFormationIds)) {
+                    return response()->json([
+                        'trainings' => [],
+                        'formation_id' => null,
+                        'formation_ids' => [],
+                        'coaches' => [],
+                        'tracks' => [],
+                        'promos' => [],
+                        'filters' => ['mine' => true],
+                    ]);
+                }
+                $query->whereIn('id', $myFormationIds);
+            }
 
             if (!empty($coachId)) {
                 $query->where('user_id', $coachId);
@@ -109,7 +130,7 @@ class TrainingController extends Controller
             $tracks = Formation::select('category')->distinct()->pluck('category')->filter()->values()->toArray();
             $promos = Formation::select('promo')->distinct()->pluck('promo')->filter()->values()->toArray();
 
-            return response()->json([
+            $payload = [
                 'trainings' => $trainings->values()->toArray(),
                 'coaches' => $coaches->values()->toArray(),
                 'tracks' => $tracks,
@@ -118,8 +139,16 @@ class TrainingController extends Controller
                     'coach' => $coachId,
                     'track' => $track,
                     'promo' => $promo,
+                    'mine' => $mineOnly,
                 ],
-            ]);
+            ];
+
+            if ($mineOnly && $authUser) {
+                $payload['formation_id'] = $authUser->primaryFormationId();
+                $payload['formation_ids'] = $myFormationIds;
+            }
+
+            return response()->json($payload);
         } catch (\Exception $e) {
             Log::error('TrainingController@index error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
@@ -132,6 +161,38 @@ class TrainingController extends Controller
                 'message' => config('app.debug') ? $e->getMessage() : 'An error occurred while fetching trainings',
             ], 500);
         }
+    }
+
+    /**
+     * Formations the authenticated user is enrolled in (for mobile attendance history).
+     */
+    public function enrolled(Request $request)
+    {
+        $checkResult = $this->checkRequestedUser();
+        if ($checkResult) {
+            return $checkResult;
+        }
+
+        $user = Auth::guard('sanctum')->user();
+        $ids = $user->resolvedFormationIds();
+
+        $trainings = empty($ids)
+            ? collect()
+            : Formation::query()
+                ->whereIn('id', $ids)
+                ->orderByDesc('id')
+                ->get(['id', 'name', 'category', 'promo']);
+
+        return response()->json([
+            'formation_id' => $user->primaryFormationId(),
+            'formation_ids' => $ids,
+            'trainings' => $trainings->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'category' => $t->category,
+                'promo' => $t->promo,
+            ])->values()->all(),
+        ]);
     }
 
     public function show($id)
@@ -476,7 +537,7 @@ class TrainingController extends Controller
         $auth = Auth::guard('sanctum')->user();
         $training = Formation::findOrFail($id);
 
-        $isMember = (int) ($auth->formation_id ?? 0) === (int) $training->id;
+        $isMember = $auth->isEnrolledInFormation((int) $training->id);
         $isCoachOfTraining = (int) ($training->user_id ?? 0) === (int) $auth->id;
         $isPrivileged = $this->userHasPrivilegedTrainingAccess($auth);
 
@@ -490,7 +551,7 @@ class TrainingController extends Controller
                 return response()->json(['message' => 'Forbidden'], 403);
             }
             $subject = User::find($requestedUserId);
-            if (! $subject || (int) ($subject->formation_id ?? 0) !== (int) $training->id) {
+            if (! $subject || ! $subject->isEnrolledInFormation((int) $training->id)) {
                 return response()->json(['message' => 'User not in this training'], 403);
             }
         }

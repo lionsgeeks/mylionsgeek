@@ -11,7 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\ForgotPasswordLinkMail;
 
@@ -215,6 +217,54 @@ class User extends Authenticatable
     public function formation()
     {
         return $this->belongsTo(Formation::class, 'formation_id');
+    }
+
+    /**
+     * All formation IDs this user belongs to (column, pivot, or promo match).
+     */
+    public function resolvedFormationIds(): array
+    {
+        $ids = [];
+
+        if (! empty($this->formation_id)) {
+            $ids[] = (int) $this->formation_id;
+        }
+
+        if (Schema::hasTable('formation_user')) {
+            $pivotIds = DB::table('formation_user')
+                ->where('user_id', $this->id)
+                ->pluck('formation_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $ids = array_merge($ids, $pivotIds);
+        }
+
+        if ($this->promo !== null && $this->promo !== '') {
+            $promo = $this->promo;
+            $byPromo = Formation::query()
+                ->where(function ($q) use ($promo) {
+                    $q->where('promo', $promo)
+                        ->orWhere('promo', (string) $promo);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $ids = array_merge($ids, $byPromo);
+        }
+
+        return array_values(array_unique(array_filter($ids, fn ($id) => $id > 0)));
+    }
+
+    public function primaryFormationId(): ?int
+    {
+        $ids = $this->resolvedFormationIds();
+
+        return $ids[0] ?? null;
+    }
+
+    public function isEnrolledInFormation(int $formationId): bool
+    {
+        return in_array($formationId, $this->resolvedFormationIds(), true);
     }
 
     /**
