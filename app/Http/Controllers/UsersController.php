@@ -40,6 +40,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\ExportService;
 use App\Services\DisciplineService;
+use App\Services\UserProfileStatsService;
 
 class UsersController extends Controller
 {
@@ -156,9 +157,14 @@ class UsersController extends Controller
             'working'
         ];
 
+        $profileStats = app(UserProfileStatsService::class)->getStats($user);
+        $userPayload = array_merge(
+            $this->formatUserPayload($user, $isOnline),
+            $profileStats
+        );
 
         return Inertia::render('admin/users/[id]', [
-            'user' => $this->formatUserPayload($user, $isOnline),
+            'user' => $userPayload,
             'roles' => $roles,
             'stats' => $stats,
             'trainings' => $allFormations,
