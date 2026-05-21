@@ -33,16 +33,40 @@ const STATE_LABELS = {
     damaged: 'Damaged',
 };
 
+const normalizeStateToken = (value) =>
+    (value ?? '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '_');
+
 const getComputerState = (computer) => {
     if (!computer) return 'not_working';
 
-    const normalizedState = (computer.state ?? '').toString().trim().toLowerCase();
+    if (computer.isDamaged === true) {
+        return 'damaged';
+    }
+
+    const normalizedState = normalizeStateToken(computer.state);
+
     if (VALID_COMPUTER_STATES.includes(normalizedState)) {
         return normalizedState;
     }
 
     if (LEGACY_STATE_MAP[normalizedState]) {
         return LEGACY_STATE_MAP[normalizedState];
+    }
+
+    if (normalizedState.includes('damage')) {
+        return 'damaged';
+    }
+
+    if (normalizedState.includes('not') && normalizedState.includes('work')) {
+        return 'not_working';
+    }
+
+    if (normalizedState.includes('work')) {
+        return 'working';
     }
 
     const assignedId = computer.assignedUserId ?? computer.user_id;
@@ -55,7 +79,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [query, setQuery] = useState('');
     const [computers, setComputers] = useState(computersProp);
     const [users] = useState(usersProp);
-    const [damaged, setDamaged] = useState('all');
+    const [stateFilter, setStateFilter] = useState('all');
     const [assigned, setAssigned] = useState('all');
     const searchInputRef = useRef(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -80,6 +104,10 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [selectedUserForHistory, setSelectedUserForHistory] = useState(null);
     const [userAssignmentHistory, setUserAssignmentHistory] = useState([]);
     const [isExportOpen, setIsExportOpen] = useState(false);
+
+    useEffect(() => {
+        setComputers(computersProp);
+    }, [computersProp]);
 
     const totalComputers = computers.length;
     const assignedCount = computers.filter((c) => !!c.assignedUserId).length;
@@ -124,14 +152,8 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             );
         }
 
-        if (damaged !== 'all') {
-            list = list.filter((c) => {
-                const state = getComputerState(c);
-                if (damaged === 'damaged') return state === 'damaged';
-                if (damaged === 'working') return state === 'working';
-                if (damaged === 'not_working') return state === 'not_working';
-                return true;
-            });
+        if (stateFilter !== 'all') {
+            list = list.filter((c) => getComputerState(c) === stateFilter);
         }
 
         if (assigned !== 'all') {
@@ -140,7 +162,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         }
 
         return list;
-    }, [computers, query, users, damaged, assigned]);
+    }, [computers, query, users, stateFilter, assigned]);
 
     const userAssignmentMap = useMemo(() => {
         const map = new Map();
@@ -167,7 +189,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
     function resetFilters() {
         setQuery('');
-        setDamaged('all');
+        setStateFilter('all');
         setAssigned('all');
         if (searchInputRef.current) {
             searchInputRef.current.value = '';
@@ -517,15 +539,15 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                             />
                         </div>
 
-                        <Select value={damaged} onValueChange={setDamaged}>
+                        <Select value={stateFilter} onValueChange={setStateFilter}>
                             <SelectTrigger className="bg-neutral-200 dark:bg-neutral-800">
-                                <SelectValue placeholder="Damaged" />
+                                <SelectValue placeholder="State" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Damaged: All</SelectItem>
-                                <SelectItem value="damaged">Damaged</SelectItem>
+                                <SelectItem value="all">State: All</SelectItem>
                                 <SelectItem value="working">Working</SelectItem>
                                 <SelectItem value="not_working">Not Working</SelectItem>
+                                <SelectItem value="damaged">Damaged</SelectItem>
                             </SelectContent>
                         </Select>
 

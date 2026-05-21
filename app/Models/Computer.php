@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,6 +29,14 @@ class Computer extends Model
         'end' => 'date',
     ];
 
+    protected function state(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => self::normalizeState($value, $this->user_id),
+            set: fn (mixed $value) => self::normalizeState($value, null),
+        );
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -45,6 +54,7 @@ class Computer extends Model
     {
         if ($state !== null && $state !== '') {
             $normalized = strtolower(trim((string) $state));
+            $normalized = str_replace([' ', '-'], '_', $normalized);
 
             if (in_array($normalized, ['working', 'not_working', 'damaged'], true)) {
                 return $normalized;
@@ -58,6 +68,18 @@ class Computer extends Model
 
             if (isset($legacyMap[$normalized])) {
                 return $legacyMap[$normalized];
+            }
+
+            if (str_contains($normalized, 'damage')) {
+                return 'damaged';
+            }
+
+            if (str_contains($normalized, 'not') && str_contains($normalized, 'work')) {
+                return 'not_working';
+            }
+
+            if (str_contains($normalized, 'work')) {
+                return 'working';
             }
         }
 
