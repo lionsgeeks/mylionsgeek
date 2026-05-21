@@ -1,5 +1,6 @@
 import Banner from '@/components/banner';
 import StatCard from '@/components/StatCard';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -18,15 +19,35 @@ function findUserById(users, id) {
     return users.find((u) => u.id === id) || null;
 }
 
+const VALID_COMPUTER_STATES = ['working', 'not_working', 'damaged'];
+
+const LEGACY_STATE_MAP = {
+    '0': 'not_working',
+    '1': 'working',
+    '2': 'damaged',
+};
+
+const STATE_LABELS = {
+    working: 'Working',
+    not_working: 'Not Working',
+    damaged: 'Damaged',
+};
+
 const getComputerState = (computer) => {
     if (!computer) return 'not_working';
 
     const normalizedState = (computer.state ?? '').toString().trim().toLowerCase();
-    if (['working', 'not_working', 'damaged'].includes(normalizedState)) {
+    if (VALID_COMPUTER_STATES.includes(normalizedState)) {
         return normalizedState;
     }
 
-    if (computer.assignedUserId) return 'working';
+    if (LEGACY_STATE_MAP[normalizedState]) {
+        return LEGACY_STATE_MAP[normalizedState];
+    }
+
+    const assignedId = computer.assignedUserId ?? computer.user_id;
+    if (assignedId) return 'working';
+
     return 'not_working';
 };
 
@@ -38,10 +59,10 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
     const [assigned, setAssigned] = useState('all');
     const searchInputRef = useRef(null);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [addForm, setAddForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
+    const [addForm, setAddForm] = useState({ reference: '', cpu: '', gpu: '', state: 'working', user_id: null, start: '', end: '', mark: '' });
     const [showEditModal, setShowEditModal] = useState(false);
     const [editTargetId, setEditTargetId] = useState(null);
-    const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: '', user_id: null, start: '', end: '', mark: '' });
+    const [editForm, setEditForm] = useState({ reference: '', cpu: '', gpu: '', state: 'not_working', user_id: null, start: '', end: '', mark: '' });
     const [userSearch, setUserSearch] = useState('');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [deletingComputer, setDeletingComputer] = useState(null);
@@ -176,7 +197,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
             reference: computer.reference || '',
             cpu: computer.cpu || '',
             gpu: computer.gpu || '',
-            state: computer.state || 'not_working',
+            state: getComputerState(computer),
             user_id: computer.assignedUserId || null,
             start: computer.contractStart || '',
             end: computer.contractEnd || '',
@@ -186,17 +207,13 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
         setShowEditModal(true);
     }
 
-    function computeStateForComputer(computer) {
-        return computer.state || 'not_working';
-    }
-
     function assignComputer(computer, userId) {
         if (!computer?.id) return;
         const payload = {
             reference: computer.reference || '',
             cpu: computer.cpu || '',
             gpu: computer.gpu || '',
-            state: computeStateForComputer(computer),
+            state: getComputerState(computer),
             mark: computer.mark || '',
             user_id: userId,
         };
@@ -319,6 +336,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         <TableRow>
                             <TableHead className="w-[180px]">Serial number</TableHead>
                             <TableHead>CPU/GPU</TableHead>
+                            <TableHead>State</TableHead>
                             <TableHead>Assign</TableHead>
                             <TableHead> Start Contract</TableHead>
                             <TableHead>Menu</TableHead>
@@ -327,6 +345,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                     <TableBody>
                         {filteredComputers.map((c) => {
                             const user = findUserById(users, c.assignedUserId);
+                            const state = getComputerState(c);
                             return (
                                 <TableRow key={c.id}>
                                     <TableCell className="font-medium">
@@ -340,6 +359,11 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                                         </button>
                                     </TableCell>
                                     <TableCell>{c.gpu}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className="capitalize">
+                                            {STATE_LABELS[state] ?? state}
+                                        </Badge>
+                                    </TableCell>
 
                                     <TableCell>
                                         {user ? (
@@ -566,7 +590,7 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
 
                         <div>
                             <label className="mb-1 block text-sm">Computer State :</label>
-                            <Select value={addForm.state} onValueChange={(value) => setAddForm((f) => ({ ...f, state: value }))}>
+                            <Select value={addForm.state || 'working'} onValueChange={(value) => setAddForm((f) => ({ ...f, state: value }))}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select state" />
                                 </SelectTrigger>
@@ -639,7 +663,11 @@ export default function ComputersIndex({ computers: computersProp = [], users: u
                         </Rolegard>
                         <div>
                             <label className="mb-1 block text-sm">Computer State :</label>
-                            <Select value={editForm.state} onValueChange={(value) => setEditForm((f) => ({ ...f, state: value }))}>
+                            <Select
+                                key={editTargetId ?? 'edit-state'}
+                                value={editForm.state || 'not_working'}
+                                onValueChange={(value) => setEditForm((f) => ({ ...f, state: value }))}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select state" />
                                 </SelectTrigger>

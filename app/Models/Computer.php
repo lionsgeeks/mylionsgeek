@@ -37,6 +37,32 @@ class Computer extends Model
     {
         return $this->hasMany(ComputerHistory::class, 'computer_id', 'id')->orderBy('start', 'desc');
     }
+
+    /**
+     * Normalize stored state to working | not_working | damaged.
+     */
+    public static function normalizeState(mixed $state, ?int $userId = null): string
+    {
+        if ($state !== null && $state !== '') {
+            $normalized = strtolower(trim((string) $state));
+
+            if (in_array($normalized, ['working', 'not_working', 'damaged'], true)) {
+                return $normalized;
+            }
+
+            $legacyMap = [
+                '0' => 'not_working',
+                '1' => 'working',
+                '2' => 'damaged',
+            ];
+
+            if (isset($legacyMap[$normalized])) {
+                return $legacyMap[$normalized];
+            }
+        }
+
+        return ($userId && (int) $userId !== 0) ? 'working' : 'not_working';
+    }
 }
 
 
