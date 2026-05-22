@@ -80,6 +80,8 @@ class StudentController extends Controller
             ->select('users.id', 'users.name', 'users.image')
             ->get();
 
+        $isOwner = Auth::id() === (int) $id;
+
         return [
             'user' => [
                 'id' => $user->id,
@@ -116,39 +118,36 @@ class StudentController extends Controller
                 'certified_at' => $user->certified_at
                     ? Carbon::parse($user->certified_at)->format('Y-m-d')
                     : null,
-                'certificate_pdf_url' => $this->resolveCertificatePdfUrl($user),
+                'certificate_pdf_path' => $isOwner ? $user->certificate_pdf_path : null,
+                'certificate_pdf_url' => $isOwner ? $this->resolveCertificatePdfUrl($user) : null,
             ],
         ];
     }
 
     /**
-     * Public URL for a stored certificate PDF, or null if the file does not exist.
+     * Public URL for a stored certificate PDF, or null if path is unset or file missing.
      */
     private function resolveCertificatePdfUrl(User $user): ?string
     {
-        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
+        $pdfPath = $user->certificate_pdf_path;
 
-        if (! Storage::disk('public')->exists($pdfPath)) {
+        if (! $pdfPath || ! Storage::disk('public')->exists($pdfPath)) {
             return null;
         }
 
-        return url('/storage/' . $pdfPath);
+        return url('/storage/' . ltrim($pdfPath, '/'));
     }
 
     /**
-     * Download the authenticated student's stored certificate PDF (profile owner only).
+     * Download the authenticated user's stored certificate PDF (profile owner only).
      */
     public function downloadCertificate(Request $request): StreamedResponse
     {
         $user = $request->user();
 
-        if ((string) ($user->status ?? '') !== 'Certified') {
-            abort(403, 'Only certified students can download a certificate.');
-        }
+        $pdfPath = $user->certificate_pdf_path;
 
-        $pdfPath = $user->certificate_pdf_path ?? ('certificates/' . $user->id . '.pdf');
-
-        if (! Storage::disk('public')->exists($pdfPath)) {
+        if (! $pdfPath || ! Storage::disk('public')->exists($pdfPath)) {
             abort(404, 'Certificate file not found.');
         }
 

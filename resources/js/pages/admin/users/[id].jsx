@@ -19,7 +19,6 @@ export default function AdminUserProfile({
     trainings,
     absences,
     discipline,
-    stats,
     roles,
 }) {
     //console.log(posts);
@@ -27,7 +26,7 @@ export default function AdminUserProfile({
     return (
         <AppLayout>
             <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
-                <ProfileHeader user={user} trainings={trainings} roles={roles} stats={stats} />
+                <ProfileHeader user={user} trainings={trainings} roles={roles} />
                 <div className="bg-neutral-50 dark:bg-dark">
                     <div className="mx-auto max-w-7xl px-6">
                         <ProfileStatsGrid user={user} />

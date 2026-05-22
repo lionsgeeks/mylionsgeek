@@ -206,8 +206,8 @@ class ComputersController extends Controller
 
 
         if ($request->filled('state')) {
-            $stateFilter = $request->query('state');
-            $query->where('computers.state', $stateFilter);
+            $stateFilter = Computer::normalizeState($request->query('state'));
+            $query->whereRaw('LOWER(TRIM(computers.state)) = ?', [$stateFilter]);
         }
 
 

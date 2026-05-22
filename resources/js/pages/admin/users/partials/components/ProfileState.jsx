@@ -1,11 +1,18 @@
 import { Briefcase, Code, MessageCircle, Trophy } from 'lucide-react';
 
+const formatStat = (value, suffix = '') => {
+    if (value === null || value === undefined || value === '') {
+        return '—';
+    }
+
+    return `${value}${suffix}`;
+};
+
 const ProfileStatsGrid = ({ user }) => {
-    // Fallback/example props: fallback to ?/- if value not present
-    const globalRank = user?.global_rank ?? '0';
-    const codingHours = user?.coding_hours ?? '0';
+    const globalRank = formatStat(user?.global_rank);
+    const codingHours = formatStat(user?.coding_hours, 'h');
     const projects = user?.projects_count ?? '0';
-    const posts = user?.posts_count ?? '0';
+    const posts = user?.posts_count ?? 0;
 
     return (
         <div className="grid grid-cols-2 gap-4 py-6 transition-colors duration-300 md:grid-cols-4">
@@ -15,7 +22,9 @@ const ProfileStatsGrid = ({ user }) => {
                     <Trophy className="h-7 w-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
                 </div>
                 <div>
-                    <div className="text-3xl font-bold text-[var(--color-alpha)]">#{globalRank}</div>
+                    <div className="text-3xl font-bold text-[var(--color-alpha)]">
+                        {globalRank === '—' ? globalRank : `#${globalRank}`}
+                    </div>
                     <div className="text-md font-medium text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">Global Rank</div>
                 </div>
             </div>
@@ -26,7 +35,7 @@ const ProfileStatsGrid = ({ user }) => {
                     <Code className="h-7 w-7 text-[var(--color-dark)] dark:text-[var(--color-beta)]" />
                 </div>
                 <div>
-                    <div className="text-3xl font-bold text-[var(--color-alpha)]">{codingHours}h</div>
+                    <div className="text-3xl font-bold text-[var(--color-alpha)]">{codingHours}</div>
                     <div className="text-md font-medium text-[var(--color-dark_gray)] dark:text-[var(--color-light)]">Coding Hours</div>
                 </div>
             </div>
