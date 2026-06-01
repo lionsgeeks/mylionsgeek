@@ -36,13 +36,6 @@ const getRecruiterHiringNavItems = () => [
         authorizedRoles: ['recruiter'],
     },
     {
-        id: 'recruiter_team',
-        title: 'Team',
-        href: '/organisation/members',
-        icon: UserPlus,
-        authorizedRoles: ['recruiter'],
-    },
-    {
         id: 'recruiter_students',
         title: 'Students',
         href: '/recruiter/students',
@@ -186,8 +179,6 @@ export function AppSidebar() {
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
-    const isOrgAccount = Boolean(auth?.recruiting?.membership_type === 'organisation_account' || user?.is_organisation_account);
-
     const mainNavItems = useMemo(() => {
         if (isRecruiterOnlySidebar) {
             return null;
@@ -220,10 +211,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 {isRecruiterOnlySidebar ? (
-                    <>
-                        <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
-                        {/* {isOrgAccount && <NavMain label="Organisation" items={getRecruiterOrganisationNavItems()} />} */}
-                    </>
+                    <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
                 ) : (
                     <NavMain items={mainNavItems ?? []} />
                 )}
