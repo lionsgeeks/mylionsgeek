@@ -39,9 +39,9 @@ const LeftColumn = ({ user }) => {
     const { auth } = usePage().props;
     // const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id;
-    const isCertified = user?.status === 'Certified';
+    const hasCertificate = Boolean(user?.certificate_pdf_path);
     const certificatePdfUrl = user?.certificate_pdf_url ?? null;
-    const showCertificateCard = isCertified && Boolean(certificatePdfUrl);
+    const showCertificateCard = canManage && hasCertificate && Boolean(certificatePdfUrl);
 
     // Check if user is a coding user
     const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || user?.formation?.toLowerCase().includes('coding');
@@ -173,19 +173,17 @@ const LeftColumn = ({ user }) => {
                                 <Eye className="h-4 w-4" />
                                 Preview
                             </Button>
-                            {canManage && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90"
-                                    asChild
-                                >
-                                    <a href="/students/certificate/download">
-                                        <Download className="h-4 w-4" />
-                                        Download
-                                    </a>
-                                </Button>
-                            )}
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90"
+                                asChild
+                            >
+                                <a href="/students/certificate/download">
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </a>
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -371,14 +369,12 @@ const LeftColumn = ({ user }) => {
                                     Open in new tab
                                 </a>
                             </Button>
-                            {canManage && (
-                                <Button type="button" className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90" asChild>
-                                    <a href="/students/certificate/download">
-                                        <Download className="h-4 w-4" />
-                                        Download
-                                    </a>
-                                </Button>
-                            )}
+                            <Button type="button" className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90" asChild>
+                                <a href="/students/certificate/download">
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </a>
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>

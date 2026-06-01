@@ -128,7 +128,7 @@ class CertificatePdfGenerator
                     // Long names: two lines for 3+ words unless second word is "el" (stay on one line).
                     $useTwoLineLayout = $wordCount > 2 && ! $this->shouldUseTwoWordNameSize($words);
                 }
-                $strokeWidth = round($nameFontSize * 0.007, 2);
+                $strokeWidth = round($nameFontSize * 0.0010, 2);
                 $baselineY = isset($nameCfg['y_pct'])
                     ? $pageHeight * (float) $nameCfg['y_pct'] / 100
                     : (float) ($nameCfg['y'] ?? 99);

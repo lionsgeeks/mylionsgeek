@@ -518,4 +518,56 @@ class User extends Authenticatable
     {
         return $this->isOrganisationAccount();
     }
+
+    /**
+     * Shared Inertia context for recruiter UI (org account vs team member).
+     *
+     * @return array{
+     *   organization_id: int,
+     *   organization_name: string,
+     *   membership_type: 'organisation_account'|'employer',
+     *   membership_label: string,
+     *   member_role: string,
+     *   can_manage_team: bool,
+     *   can_create_jobs: bool
+     * }|null
+     */
+    public function recruitingContext(): ?array
+    {
+        if (! $this->isRecruiter()) {
+            return null;
+        }
+
+        $organization = $this->organizationForRecruiting();
+        if (! $organization) {
+            return null;
+        }
+
+        $isOrgAccount = $this->isOrganisationAccount();
+        $memberRole = 'owner';
+
+        if (! $isOrgAccount) {
+            if ($this->relationLoaded('employerOrganizations')) {
+                $pivotOrg = $this->employerOrganizations->firstWhere('id', $organization->id);
+            } else {
+                $pivotOrg = $this->employerOrganizations()
+                    ->where('organizations.id', $organization->id)
+                    ->first();
+            }
+            $memberRole = $pivotOrg?->pivot?->member_role ?? 'employer';
+        }
+
+        $membershipType = $isOrgAccount ? 'organisation_account' : 'employer';
+        $membershipLabel = $isOrgAccount ? __('Organisation owner') : __('Team member');
+
+        return [
+            'organization_id' => (int) $organization->id,
+            'organization_name' => $organization->displayName(),
+            'membership_type' => $membershipType,
+            'membership_label' => $membershipLabel,
+            'member_role' => $memberRole,
+            'can_manage_team' => $this->canManageOrganisationMembers(),
+            'can_create_jobs' => $this->canCreateJobsForOrganisation(),
+        ];
+    }
 }

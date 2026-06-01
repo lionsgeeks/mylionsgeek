@@ -12,6 +12,9 @@ Route::middleware(['auth', 'verified', 'role:recruiter', 'organisation.onboarded
     Route::get('/dashboard', RecruiterDashboardController::class)->name('recruiter.dashboard');
     Route::get('/jobs', [RecruiterJobController::class, 'index'])->name('recruiter.jobs.index');
     Route::post('/jobs', [RecruiterJobPostingController::class, 'store'])->name('recruiter.jobs.store');
+    Route::put('/jobs/{job}', [RecruiterJobPostingController::class, 'update'])
+        ->whereNumber('job')
+        ->name('recruiter.jobs.update');
     Route::get('/students', [RecruiterStudentController::class, 'index'])->name('recruiter.students.index');
     Route::get('/students/{user}', [RecruiterStudentController::class, 'show'])
         ->whereNumber('user')
@@ -23,6 +26,9 @@ Route::middleware(['auth', 'verified', 'role:recruiter', 'organisation.onboarded
     Route::get('/applications/{application}/cv', [RecruiterApplicationController::class, 'downloadCv'])
         ->whereNumber('application')
         ->name('recruiter.applications.cv');
+    Route::patch('/applications/{application}/status', [RecruiterApplicationController::class, 'updateStatus'])
+        ->whereNumber('application')
+        ->name('recruiter.applications.status');
 
     Route::get('/interviews', [RecruiterInterviewController::class, 'index'])->name('recruiter.interviews.index');
     Route::post('/interviews', [RecruiterInterviewController::class, 'store'])->name('recruiter.interviews.store');

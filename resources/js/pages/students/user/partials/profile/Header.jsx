@@ -7,6 +7,7 @@ import FollowModal from '../../../../../components/FollowModal';
 import ProfilePictureModal from '../../../../../components/ProfilePictureModal';
 import Rolegard from '../../../../../components/rolegard';
 import { helpers } from '../../../../../components/utils/helpers';
+import { STUDENT_EDITABLE_STATUSES } from '@/components/helpers/userStatuses';
 import EditUserModal from '../../../../admin/users/partials/EditModal';
 
 const Header = ({ user }) => {
@@ -354,7 +355,7 @@ const Header = ({ user }) => {
                         open={openEdit}
                         editedUser={user}
                         onClose={() => setOpenEdit(false)}
-                        status={['studying', 'unemployed', 'internship', 'freelancing', 'working']}
+                        status={STUDENT_EDITABLE_STATUSES}
                         roles={['student', 'admin', 'coach', 'studio_responsable']}
                         trainings={[]}
                     />

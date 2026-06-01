@@ -20,7 +20,7 @@ import {
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
-const getRecruiterNavItems = () => [
+const getRecruiterHiringNavItems = () => [
     {
         id: 'recruiter_dashboard',
         title: 'Dashboard',
@@ -55,14 +55,6 @@ const getRecruiterNavItems = () => [
         href: '/recruiter/interviews',
         icon: Calendar,
         authorizedRoles: ['recruiter'],
-    },
-    {
-        id: 'recruiter_team',
-        title: 'Team',
-        href: '/organisation/members',
-        icon: UserPlus,
-        authorizedRoles: ['recruiter'],
-        organisationAccountOnly: true,
     },
     {
         id: 'recruiter_settings',
@@ -117,7 +109,6 @@ const getAllNavItems = () => [
     { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, excludedRoles: ['studio_responsable'] },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
     { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, excludedRoles: ['studio_responsable'] },
-    // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     {
         id: 'jobs',
         title: 'Jobs',
@@ -135,7 +126,25 @@ const getAllNavItems = () => [
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
 
-// Footer links removed per request
+function RecruiterSidebarContext() {
+    const { auth } = usePage().props;
+    const recruiting = auth?.recruiting;
+
+    if (!recruiting?.organization_name) {
+        return null;
+    }
+
+    const isOwner = recruiting.membership_type === 'organisation_account';
+
+    return (
+        <div className="mx-2 mb-2 rounded-md border border-alpha/20 bg-alpha/5 px-3 py-2.5 group-data-[collapsible=icon]:hidden dark:border-light/10">
+            <p className="truncate text-sm font-semibold text-beta dark:text-light">{recruiting.organization_name}</p>
+            <p className="mt-0.5 text-xs text-beta/65 dark:text-light/65">
+                {isOwner ? 'Organisation owner' : 'Team member'}
+            </p>
+        </div>
+    );
+}
 
 // Check if user is one of the appointment persons
 const isAppointmentPerson = (user) => {
@@ -149,12 +158,10 @@ const isAppointmentPerson = (user) => {
         'aymenboujjar12@gmail.com': true,
     };
 
-    // Check by name
     if (personNames.includes(user.name)) {
         return true;
     }
 
-    // Check by email
     if (user.email && emailMapping[user.email.toLowerCase()]) {
         return true;
     }
@@ -172,17 +179,14 @@ export function AppSidebar() {
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
-    // Filter nav items based on user permissions
     const mainNavItems = useMemo(() => {
         if (isRecruiterOnlySidebar) {
-            const isOrgAccount = Boolean(user?.is_organisation_account);
-            return getRecruiterNavItems().filter((item) => !item.organisationAccountOnly || isOrgAccount);
+            return null;
         }
 
         const allItems = getAllNavItems();
 
         return allItems.filter((item) => {
-            // Filter out appointments if user is not an appointment person
             if (item.id === 'appointments') {
                 return isAppointmentPerson(user);
             }
@@ -202,10 +206,15 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+                {isRecruiterOnlySidebar && <RecruiterSidebarContext />}
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                {isRecruiterOnlySidebar ? (
+                    <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
+                ) : (
+                    <NavMain items={mainNavItems ?? []} />
+                )}
             </SidebarContent>
 
             <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>

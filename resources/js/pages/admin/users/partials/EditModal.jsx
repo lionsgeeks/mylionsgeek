@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useInitials } from '@/hooks/use-initials';
 import { router, usePage } from '@inertiajs/react';
 import { Briefcase, ExternalLink, Facebook, Github, ImagePlus, Instagram, Linkedin, MessageCircle, Send, Trash, Twitter, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { normalizeStatusForSelect, resolveStatusOptions } from '@/components/helpers/userStatuses';
 import Rolegard from '../../../../components/rolegard';
 import RolesMultiSelect from './RolesMultiSelect';
 
@@ -37,13 +38,35 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
     const getInitials = useInitials();
     const { auth } = usePage().props;
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
-    const isAdminOrStudioResponsable = userRoles.includes('admin') || userRoles.includes('moderateur') || userRoles.includes('studio_responsable');
+    const userRolesLower = userRoles.map((r) => String(r).toLowerCase());
+    const canEditOthers = userRolesLower.some((r) =>
+        ['admin', 'super_admin', 'moderateur', 'coach', 'studio_responsable', 'responsable_studio'].includes(r),
+    );
+    const isAdminOrStudioResponsable =
+        userRolesLower.includes('admin') ||
+        userRolesLower.includes('super_admin') ||
+        userRolesLower.includes('moderateur') ||
+        userRolesLower.includes('studio_responsable') ||
+        userRolesLower.includes('responsable_studio');
     const [errors, setErrors] = useState({});
     const [newSocialPlatform, setNewSocialPlatform] = useState('');
     const [newSocialUrl, setNewSocialUrl] = useState('');
     const [socialValidationError, setSocialValidationError] = useState('');
     const [socialLinks, setSocialLinks] = useState(editedUser?.social_links || []);
     const canManageSocials = auth?.user?.id === editedUser?.id;
+    const isEditingSelf = auth?.user?.id === editedUser?.id;
+    const isStudying = editedUser?.status?.toLowerCase() === 'studying';
+    const showStatusField = canEditOthers || !isEditingSelf || !isStudying;
+
+    const statusOptions = useMemo(
+        () =>
+            resolveStatusOptions({
+                isStaff: canEditOthers,
+                passedOptions: status,
+                currentStatus: editedUser?.status,
+            }),
+        [canEditOthers, status, editedUser?.status],
+    );
 
     // Filter out platforms that are already added
     const availablePlatforms = platforms.filter((platform) => !socialLinks.some((link) => link.title === platform.value));
@@ -86,11 +109,16 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 }
             }
             rolesArray = rolesArray.map((r) => String(r).toLowerCase());
+            const optionsForNormalize = resolveStatusOptions({
+                isStaff: canEditOthers,
+                passedOptions: status,
+                currentStatus: editedUser.status,
+            });
             setFormData({
                 name: editedUser.name || '',
                 email: editedUser.email || '',
                 roles: rolesArray,
-                status: editedUser.status || '',
+                status: normalizeStatusForSelect(editedUser.status, optionsForNormalize),
                 formation_id: editedUser.formation_id || '',
                 phone: editedUser.phone ?? '',
                 cin: editedUser.cin ?? '',
@@ -102,7 +130,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
             });
             setSocialLinks(editedUser?.social_links || []);
         }
-    }, [editedUser]);
+    }, [editedUser, canEditOthers, status]);
 
     const validateSocialUrl = () => {
         if (!newSocialPlatform || !newSocialUrl) return false;
@@ -176,7 +204,9 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         form.append('name', formData.name);
         form.append('email', formData.email);
         formData.roles.forEach((r) => form.append('roles[]', r));
-        form.append('status', formData.status);
+        if (showStatusField && formData.status) {
+            form.append('status', formData.status);
+        }
         form.append('phone', formData.phone);
         form.append('cin', formData.cin);
         form.append('speciality', formData.speciality ?? '');
@@ -265,7 +295,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
                     </div>
                     {/* Left Column - Phone */}
-                    <div className={editedUser?.status?.toLowerCase() == 'studying' ? 'col-span-2' : 'col-span-1'}>
+                    <div className={!showStatusField ? 'col-span-2' : 'col-span-1'}>
                         <Label htmlFor="phone">Phone</Label>
                         <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                     </div>
@@ -289,7 +319,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         )}
                     </div>
                     {/* Left Column - Status */}
-                    {editedUser?.status?.toLowerCase() == 'studying' ? null : (
+                    {showStatusField && (
                         <div className="col-span-1">
                             <Label>Status</Label>
                             <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
@@ -297,8 +327,8 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {status?.map((s, idx) => (
-                                        <SelectItem key={idx} value={s}>
+                                    {statusOptions.map((s) => (
+                                        <SelectItem key={s} value={s}>
                                             {s}
                                         </SelectItem>
                                     ))}
@@ -323,10 +353,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         {errors.resume && (
                             <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
                         )}
-                        {!formData.resumeFile && editedUser?.resume && (
+                        {!formData.resumeFile && editedUser?.resume_url && (
                             <>
                                 <a
-                                    href={`/users/${editedUser.id}/resume`}
+                                    href={editedUser.resume_view_url || editedUser.resume_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"

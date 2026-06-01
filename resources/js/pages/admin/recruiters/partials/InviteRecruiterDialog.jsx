@@ -65,7 +65,7 @@ export default function InviteRecruiterDialog({ open, setOpen }) {
                         <Button
                             type="submit"
                             disabled={processing}
-                            className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer"
                         >
                             {processing ? 'Sending…' : 'Send invitation'}
                         </Button>
