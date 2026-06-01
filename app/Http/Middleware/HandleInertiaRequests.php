@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                 'id' => $request->session()->getId(),
             ],
             'auth' => [
+                'recruiting' => fn () => $request->user()?->recruitingContext(),
                 'user' => (function () use ($request) {
                     $user = $request->user();
                     if (! $user) {

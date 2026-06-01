@@ -1,5 +1,7 @@
+import RecruiterWorkspaceBanner from '@/components/recruiter/RecruiterWorkspaceBanner';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { usePage } from '@inertiajs/react';
 import { Head, Link } from '@inertiajs/react';
 import { Briefcase, CalendarDays, ClipboardList } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -14,6 +16,8 @@ function formatDateTime(iso) {
 }
 
 export default function RecruiterDashboard({ stats, upcomingInterviews }) {
+    const { auth } = usePage().props;
+    const isOrgOwner = auth?.recruiting?.membership_type === 'organisation_account';
     const byStatus = stats?.by_status ?? {};
     const chartData = Object.entries(byStatus).map(([name, value]) => ({
         name,
@@ -24,10 +28,17 @@ export default function RecruiterDashboard({ stats, upcomingInterviews }) {
         <AppLayout>
             <Head title="Recruiter dashboard" />
             <div className="flex flex-col gap-8 p-6">
+                <RecruiterWorkspaceBanner />
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-beta dark:text-light">Dashboard</h1>
-                        <p className="mt-1 text-sm text-beta/70 dark:text-light/70">Applications overview and upcoming interviews.</p>
+                        <h1 className="text-2xl font-bold text-beta dark:text-light">
+                            {isOrgOwner ? 'Organisation dashboard' : 'My hiring dashboard'}
+                        </h1>
+                        <p className="mt-1 text-sm text-beta/70 dark:text-light/70">
+                            {isOrgOwner
+                                ? 'Overview for your company: applications across all jobs and your team’s interviews.'
+                                : 'Your workspace for this organisation: applications and interviews assigned to you.'}
+                        </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" asChild>

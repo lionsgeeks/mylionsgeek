@@ -1,3 +1,4 @@
+import RecruiterWorkspaceBanner from '@/components/recruiter/RecruiterWorkspaceBanner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,6 +19,7 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
         <AppLayout>
             <Head title="Assigned job postings" />
             <div className="flex flex-col gap-6 p-6">
+                <RecruiterWorkspaceBanner />
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-beta dark:text-light">Job postings</h1>
