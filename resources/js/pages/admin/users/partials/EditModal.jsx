@@ -353,10 +353,10 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                         {errors.resume && (
                             <p className="mt-1 text-xs text-red-500">{Array.isArray(errors.resume) ? errors.resume[0] : errors.resume}</p>
                         )}
-                        {!formData.resumeFile && editedUser?.resume && (
+                        {!formData.resumeFile && editedUser?.resume_url && (
                             <>
                                 <a
-                                    href={`/users/${editedUser.id}/resume`}
+                                    href={editedUser.resume_view_url || editedUser.resume_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="mt-2 inline-block text-sm text-alpha underline hover:text-alpha/90"
