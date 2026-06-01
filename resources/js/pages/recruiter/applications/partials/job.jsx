@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { formatApplicationStatusLabel, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Download, MapPin } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import ScheduleInterviewFromApplicationModal from './ScheduleInterviewFromApplicationModal';
 
@@ -233,9 +233,9 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                             <TableCell className="align-center p-0">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {row.has_cv ? (
-                                                        <Button size="sm" className="rounded-md bg-alpha px-5 py-1.5 text-center text-black" asChild>
+                                                        <Button size="sm" className="rounded-lg bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90" asChild>
                                                             <a href={`/recruiter/applications/${row.id}/cv`} target="_blank">
-                                                                <Download className="h-3.5 w-3.5" />
+                                                                <ArrowUpRight className="mr-2 h-3.5 w-3.5" />
                                                                 Open CV
                                                             </a>
                                                         </Button>
@@ -250,7 +250,7 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                         <Button
                                                             type="button"
                                                             size="sm"
-                                                            className="bg-alpha px-5 py-1.5 text-center text-black"
+                                                            className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer"
                                                             onClick={() => setScheduleForApplication(row)}
                                                         >
                                                             Add Schedule

@@ -36,6 +36,13 @@ const getRecruiterHiringNavItems = () => [
         authorizedRoles: ['recruiter'],
     },
     {
+        id: 'recruiter_team',
+        title: 'Team',
+        href: '/organisation/members',
+        icon: UserPlus,
+        authorizedRoles: ['recruiter'],
+    },
+    {
         id: 'recruiter_students',
         title: 'Students',
         href: '/recruiter/students',
@@ -61,23 +68,6 @@ const getRecruiterHiringNavItems = () => [
         title: 'Settings',
         href: '/settings',
         icon: Settings,
-        authorizedRoles: ['recruiter'],
-    },
-];
-
-const getRecruiterOrganisationNavItems = () => [
-    {
-        id: 'recruiter_company',
-        title: 'Company profile',
-        href: '/organisation/company',
-        icon: Building2,
-        authorizedRoles: ['recruiter'],
-    },
-    {
-        id: 'recruiter_team',
-        title: 'Team',
-        href: '/organisation/members',
-        icon: UserPlus,
         authorizedRoles: ['recruiter'],
     },
 ];
@@ -231,8 +221,8 @@ export function AppSidebar() {
             <SidebarContent>
                 {isRecruiterOnlySidebar ? (
                     <>
-                        {isOrgAccount && <NavMain label="Organisation" items={getRecruiterOrganisationNavItems()} />}
                         <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
+                        {/* {isOrgAccount && <NavMain label="Organisation" items={getRecruiterOrganisationNavItems()} />} */}
                     </>
                 ) : (
                     <NavMain items={mainNavItems ?? []} />

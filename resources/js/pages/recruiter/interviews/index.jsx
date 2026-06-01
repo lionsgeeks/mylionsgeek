@@ -135,7 +135,7 @@ export default function RecruiterInterviewsIndex({ interviews = [], applicationO
                         <Button variant="outline" size="sm" asChild>
                             <Link href="/recruiter/dashboard">Dashboard</Link>
                         </Button>
-                        <Button className="bg-alpha text-black hover:bg-alpha/90" size="sm" onClick={() => openCreate(null)}>
+                        <Button className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer" size="sm" onClick={() => openCreate(null)}>
                             New interview
                         </Button>
                     </div>

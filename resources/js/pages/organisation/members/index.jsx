@@ -26,7 +26,7 @@ export default function OrganisationMembersIndex({ organization, employers }) {
                     <Button
                         type="button"
                         onClick={() => setInviteOpen(true)}
-                        className="border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                        className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer"
                     >
                         <UserPlus className="mr-2 h-4 w-4" />
                         Invite employer

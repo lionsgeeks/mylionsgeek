@@ -149,7 +149,7 @@ const InviteModal = ({ isOpen, onClose, projectId, projectName }) => {
                             Cancel
                         </Button>
                         {inviteType === 'email' && (
-                            <Button type="submit" disabled={processing} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <Button type="submit" disabled={processing} className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer">
                                 {processing ? 'Sending...' : 'Send Invitations'}
                             </Button>
                         )}
