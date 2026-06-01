@@ -49,7 +49,9 @@ class UsersController extends Controller
         $allUsers = User::query()
             ->where('role', '!=', 'admin')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->filter(fn (User $user) => ! $user->isRecruiter())
+            ->values();
 
         $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
 

@@ -15,13 +15,13 @@ import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-export function NavMain({ items = [] }: { items: NavItem[] }) {
+export function NavMain({ items = [], label = 'Platform' }: { items: NavItem[]; label?: string }) {
     const page = usePage();
     const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
     const toggleOpen = (key: string) => setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
+            <SidebarGroupLabel>{label}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
                     const href = typeof item.href === 'string' ? item.href : item.href.url;

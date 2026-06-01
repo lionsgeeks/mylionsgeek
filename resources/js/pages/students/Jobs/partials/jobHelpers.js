@@ -1,3 +1,13 @@
+export function formatApplicationStatusLabel(value) {
+    const map = {
+        pending: 'Pending',
+        under_review: 'Under review',
+        rejected: 'Rejected',
+        accepted: 'Accepted',
+    };
+    return map[value] ?? String(value ?? 'pending').replace(/_/g, ' ');
+}
+
 export function formatJobTypeLabel(value) {
     const map = {
         full_time: 'Full-time',

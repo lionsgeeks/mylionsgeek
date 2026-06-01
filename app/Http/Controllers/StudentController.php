@@ -102,6 +102,8 @@ class StudentController extends Controller
                 'field' => $user->field,
                 'phone' => $user->phone,
                 'resume' => $user->resume,
+                'resume_url' => $user->resumePublicUrl(),
+                'resume_view_url' => $user->resumePublicUrl() ? $user->resumeViewUrl() : null,
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'formation' => $user->formation_id != null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,
