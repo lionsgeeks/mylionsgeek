@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewJobApplicationMail;
 use App\Models\Job;
+use App\Models\JobApplication;
+use App\Models\JobApplicationNotification;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
@@ -17,6 +19,50 @@ use Inertia\Response;
 
 class StudentJobController extends Controller
 {
+    public function myApplications(Request $request): Response
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            abort(401);
+        }
+
+        $applications = JobApplication::query()
+            ->where('user_id', $user->id)
+            ->with([
+                'job:id,title,reference,location,job_type,is_published',
+                'recruiterInterviews' => fn ($q) => $q->orderByDesc('starts_at')->limit(1),
+            ])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (JobApplication $application) {
+                $interview = $application->recruiterInterviews->first();
+
+                return [
+                    'id' => $application->id,
+                    'status' => $application->status,
+                    'subject' => $application->subject,
+                    'created_at' => $application->created_at?->toIso8601String(),
+                    'job' => $application->job ? [
+                        'id' => $application->job->id,
+                        'title' => $application->job->title,
+                        'reference' => $application->job->reference,
+                        'location' => $application->job->location,
+                        'job_type' => $application->job->job_type,
+                        'is_published' => (bool) $application->job->is_published,
+                    ] : null,
+                    'interview' => $interview ? [
+                        'starts_at' => $interview->starts_at?->toIso8601String(),
+                        'location' => $interview->location,
+                        'outcome' => $interview->outcome,
+                    ] : null,
+                ];
+            });
+
+        return Inertia::render('students/Jobs/my-applications', [
+            'applications' => $applications,
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $filterJobTypes = $this->distinctJobTypes();
@@ -137,7 +183,7 @@ class StudentJobController extends Controller
             'subject' => $validated['subject'],
             'cover_letter' => $validated['cover_letter'],
             'cv_path' => $cvPath,
-            'status' => 'pending',
+            'status' => JobApplication::STATUS_PENDING,
         ]);
 
         $job->load(['organizations.accountUser', 'organizations.employers', 'creator']);
@@ -165,6 +211,8 @@ class StudentJobController extends Controller
             $sentTo[$email] = true;
             Mail::to($recipient->email)->send(new NewJobApplicationMail($job, $application, $user, $applicationsUrl));
         }
+
+        JobApplicationNotification::notifyRecruiters($job, $application, $user);
 
         return back()->with('success', __('Your application was submitted.'));
     }

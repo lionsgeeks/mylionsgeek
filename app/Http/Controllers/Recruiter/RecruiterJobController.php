@@ -26,10 +26,12 @@ class RecruiterJobController extends Controller
                 'id' => $job->id,
                 'reference' => $job->reference,
                 'title' => $job->title,
+                'description' => $job->description,
                 'job_type' => $job->job_type,
                 'location' => $job->location,
                 'is_published' => (bool) $job->is_published,
                 'skills' => $job->skills ?? [],
+                'organization_ids' => [$organizationId],
                 'applications_count' => $job->applications_count,
                 'created_at' => $job->created_at?->toIso8601String(),
             ]);

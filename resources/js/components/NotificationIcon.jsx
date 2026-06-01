@@ -236,6 +236,10 @@ export default function NotificationIcon() {
                 // Handle "project-message-123"
                 type = `${parts[0]}-${parts[1]}`;
                 id = parts[2];
+            } else if (parts.length === 3 && parts[0] === 'job' && parts[1] === 'application') {
+                // Handle "job-application-123"
+                type = `${parts[0]}-${parts[1]}`;
+                id = parts[2];
             } else {
                 // Handle simple types like "follow-123"
                 type = parts[0];

@@ -131,16 +131,13 @@ class RecruiterStudentController extends Controller
     private function hasApplicationOnRecruitersJob(User $applicant, User $recruiter): bool
     {
         $organizationId = $recruiter->organizationIdForRecruiting();
+        if (! $organizationId) {
+            return false;
+        }
 
         return JobApplication::query()
             ->where('user_id', $applicant->id)
-            ->whereHas('job', function ($q) use ($recruiter, $organizationId) {
-                if ($organizationId) {
-                    $q->forOrganization($organizationId);
-                } else {
-                    $q->whereHas('recruiters', fn ($q2) => $q2->where('users.id', $recruiter->id));
-                }
-            })
+            ->whereHas('job', fn ($q) => $q->forOrganization($organizationId))
             ->exists();
     }
 }

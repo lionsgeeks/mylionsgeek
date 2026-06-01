@@ -11,15 +11,23 @@ import {
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import ScheduleInterviewFromApplicationModal from '@/pages/recruiter/applications/partials/ScheduleInterviewFromApplicationModal';
-import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { formatApplicationStatusLabel, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
 
 const INTERVIEW_SLOT_MINUTES = 30;
+
+const APPLICATION_STATUS_OPTIONS = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'under_review', label: 'Under review' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'accepted', label: 'Accepted' },
+];
 
 function formatDate(iso) {
     if (!iso) return '—';
@@ -50,6 +58,19 @@ export default function RecruiterApplicationsJob({ job, applications }) {
     const [pendingDeleteInterviewId, setPendingDeleteInterviewId] = useState(null);
     const [outcomeBusyInterviewId, setOutcomeBusyInterviewId] = useState(null);
     const [lastOutcomeAttemptInterviewId, setLastOutcomeAttemptInterviewId] = useState(null);
+    const [statusBusyId, setStatusBusyId] = useState(null);
+
+    const updateApplicationStatus = (applicationId, status) => {
+        router.patch(
+            `/recruiter/applications/${applicationId}/status`,
+            { status },
+            {
+                preserveScroll: true,
+                onStart: () => setStatusBusyId(applicationId),
+                onFinish: () => setStatusBusyId(null),
+            },
+        );
+    };
 
     const submitInterviewOutcome = (interviewId, outcome) => {
         router.patch(
@@ -181,20 +202,25 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     <div className="px-3 py-3">{row.subject ?? '—'}</div>
                                                 )}
                                             </TableCell> */}
-                                            <TableCell className="align-center p-0">
-                                                {href ? (
-                                                    <Link href={href} className={`${profileLinkClass} flex items-start`}>
-                                                        <Badge variant="secondary" className="capitalize">
-                                                            {row.status ?? 'pending'}
-                                                        </Badge>
-                                                    </Link>
-                                                ) : (
-                                                    <div className="px-3 py-3">
-                                                        <Badge variant="secondary" className="capitalize">
-                                                            {row.status ?? 'pending'}
-                                                        </Badge>
-                                                    </div>
-                                                )}
+                                            <TableCell className="align-center">
+                                                <div className="min-w-[140px] px-3 py-2">
+                                                    <Select
+                                                        value={row.status ?? 'pending'}
+                                                        disabled={statusBusyId === row.id}
+                                                        onValueChange={(value) => updateApplicationStatus(row.id, value)}
+                                                    >
+                                                        <SelectTrigger className="h-9 w-full border-alpha/20 bg-white dark:bg-dark_gray">
+                                                            <SelectValue>{formatApplicationStatusLabel(row.status ?? 'pending')}</SelectValue>
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {APPLICATION_STATUS_OPTIONS.map((opt) => (
+                                                                <SelectItem key={opt.value} value={opt.value}>
+                                                                    {opt.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="align-center p-0 text-sm">
                                                 {href ? (

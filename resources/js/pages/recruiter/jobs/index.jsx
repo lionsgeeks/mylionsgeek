@@ -3,15 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import AdminCreateJobDialog from '@/pages/admin/jobs/partials/AdminCreateJobDialog';
+import AdminEditJobDialog from '@/pages/admin/jobs/partials/AdminEditJobDialog';
 import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
 export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
-    const { auth } = usePage().props;
     const list = jobs ?? [];
     const [createOpen, setCreateOpen] = useState(false);
+    const [jobToEdit, setJobToEdit] = useState(null);
 
     return (
         <AppLayout>
@@ -32,11 +33,21 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                 <AdminCreateJobDialog
                     open={createOpen}
                     onOpenChange={setCreateOpen}
-                    recruiterOptions={[]}
                     jobTypeOptions={jobTypeOptions}
                     actionUrl="/recruiter/jobs"
-                    showRecruiterSelect={false}
-                    defaultRecruiterIds={auth?.user?.id ? [auth.user.id] : []}
+                    showOrganisationSelect={false}
+                />
+                <AdminEditJobDialog
+                    open={jobToEdit !== null}
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setJobToEdit(null);
+                        }
+                    }}
+                    job={jobToEdit}
+                    jobTypeOptions={jobTypeOptions}
+                    updateUrl={jobToEdit ? `/recruiter/jobs/${jobToEdit.id}` : undefined}
+                    showOrganisationSelect={false}
                 />
 
                 {list.length === 0 ? (
@@ -55,6 +66,7 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                     <TableHead>Applications</TableHead>
                                     <TableHead>Published</TableHead>
                                     <TableHead>Public view</TableHead>
+                                    <TableHead className="w-[100px]">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -89,6 +101,11 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                             ) : (
                                                 <span className="text-sm text-muted-foreground">—</span>
                                             )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button type="button" variant="outline" size="sm" onClick={() => setJobToEdit(job)}>
+                                                Edit
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
