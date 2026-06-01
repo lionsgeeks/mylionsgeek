@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import AdminCreateJobDialog from '@/pages/admin/jobs/partials/AdminCreateJobDialog';
 import AdminEditJobDialog from '@/pages/admin/jobs/partials/AdminEditJobDialog';
-import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import { formatApplicationDeadline, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head } from '@inertiajs/react';
 import { ExternalLink } from 'lucide-react';
 import { useState } from 'react';
@@ -66,7 +66,8 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                     <TableHead>Title</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead>Applications</TableHead>
-                                    <TableHead>Published</TableHead>
+                                    <TableHead>Deadline</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Public view</TableHead>
                                     <TableHead className="w-[100px]">Actions</TableHead>
                                 </TableRow>
@@ -80,20 +81,23 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                         </TableCell>
                                         <TableCell>{formatJobTypeLabel(job.job_type)}</TableCell>
                                         <TableCell>{job.applications_count ?? 0}</TableCell>
+                                        <TableCell className="text-sm whitespace-nowrap">
+                                            {formatApplicationDeadline(job.application_deadline)}
+                                        </TableCell>
                                         <TableCell>
                                             <Badge
                                                 variant="secondary"
                                                 className={
-                                                    job.is_published
+                                                    job.is_open_for_applications
                                                         ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
                                                         : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
                                                 }
                                             >
-                                                {job.is_published ? 'Yes' : 'No'}
+                                                {job.is_open_for_applications ? 'Live' : job.is_published ? 'Expired' : 'Draft'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {job.is_published ? (
+                                            {job.is_open_for_applications ? (
                                                 <Button variant="ghost" size="sm" className="h-8 gap-1 text-alpha" asChild>
                                                     <a href={`/students/jobs/${job.id}`} target="_blank" rel="noreferrer">
                                                         <ExternalLink className="h-4 w-4" />

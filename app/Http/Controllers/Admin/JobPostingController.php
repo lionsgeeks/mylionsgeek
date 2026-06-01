@@ -85,6 +85,8 @@ class JobPostingController extends Controller
             'job_type' => $job->job_type,
             'location' => $job->location,
             'is_published' => (bool) $job->is_published,
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
+            'is_open_for_applications' => $job->isOpenForApplications(),
             'skills' => $job->skills ?? [],
             'organization_ids' => $job->organizations->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'created_at' => $job->created_at?->toIso8601String(),
