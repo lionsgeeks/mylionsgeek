@@ -58,7 +58,7 @@ class StudentJobController extends Controller
                 ];
             });
 
-        return Inertia::render('students/Jobs/my-applications', [
+        return Inertia::render('students/Jobs/partials/my-applications', [
             'applications' => $applications,
         ]);
     }

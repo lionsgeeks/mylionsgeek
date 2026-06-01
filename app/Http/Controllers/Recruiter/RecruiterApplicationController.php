@@ -97,7 +97,7 @@ class RecruiterApplicationController extends Controller
             ];
         });
 
-        return Inertia::render('recruiter/applications/job', [
+        return Inertia::render('recruiter/applications/partials/job', [
             'job' => [
                 'id' => $job->id,
                 'title' => $job->title,

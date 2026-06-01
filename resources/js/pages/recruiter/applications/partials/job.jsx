@@ -14,11 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import ScheduleInterviewFromApplicationModal from '@/pages/recruiter/applications/partials/ScheduleInterviewFromApplicationModal';
 import { formatApplicationStatusLabel, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Download, MapPin } from 'lucide-react';
 import { useState } from 'react';
+import ScheduleInterviewFromApplicationModal from './ScheduleInterviewFromApplicationModal';
 
 const INTERVIEW_SLOT_MINUTES = 30;
 
@@ -129,7 +129,6 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Applicant</TableHead>
-                                    {/* <TableHead>Subject</TableHead> */}
                                     <TableHead>Status</TableHead>
                                     <TableHead>Applied</TableHead>
                                     <TableHead className="w-[120px]">Profile</TableHead>
@@ -193,15 +192,6 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     </div>
                                                 )}
                                             </TableCell>
-                                            {/* <TableCell className="max-w-[200px] p-0 align-center text-sm font-medium">
-                                                {href ? (
-                                                    <Link href={href} className={profileLinkClass}>
-                                                        {row.subject ?? '—'}
-                                                    </Link>
-                                                ) : (
-                                                    <div className="px-3 py-3">{row.subject ?? '—'}</div>
-                                                )}
-                                            </TableCell> */}
                                             <TableCell className="align-center">
                                                 <div className="min-w-[140px] px-3 py-2">
                                                     <Select
@@ -231,25 +221,6 @@ export default function RecruiterApplicationsJob({ job, applications }) {
                                                     <div className="px-3 py-3">{formatDate(row.created_at)}</div>
                                                 )}
                                             </TableCell>
-                                            {/* <TableCell className="max-w-md p-0 align-center text-sm text-beta/85 dark:text-light/85">
-                                                {href ? (
-                                                    <Link href={href} className={profileLinkClass}>
-                                                        {row.cover_letter ? (
-                                                            <span className="line-clamp-4 whitespace-pre-wrap">{row.cover_letter}</span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">—</span>
-                                                        )}
-                                                    </Link>
-                                                ) : (
-                                                    <div className="px-3 py-3">
-                                                        {row.cover_letter ? (
-                                                            <span className="line-clamp-4 whitespace-pre-wrap">{row.cover_letter}</span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">—</span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </TableCell> */}
                                             <TableCell className="align-center p-0">
                                                 <div className="flex min-h-[48px] flex-col justify-center gap-2 px-3 py-3">
                                                     {href ? (
