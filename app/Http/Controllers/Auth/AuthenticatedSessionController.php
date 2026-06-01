@@ -73,7 +73,7 @@ class AuthenticatedSessionController extends Controller
             if ($user->isOrganisationAccount()
                 && $user->organisationAccount
                 && (! $user->organisationAccount->hasCompletedOnboarding() || $user->must_change_password)) {
-                return Inertia::location('/organisation/onboarding');
+                return Inertia::location('/organisation/partials/onboardingForm');
             }
 
             return Inertia::location('/recruiter/dashboard');
