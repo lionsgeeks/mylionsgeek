@@ -6,20 +6,51 @@ import AppLayout from '@/layouts/app-layout';
 import AdminCreateJobDialog from '@/pages/admin/jobs/partials/AdminCreateJobDialog';
 import AdminEditJobDialog from '@/pages/admin/jobs/partials/AdminEditJobDialog';
 import { formatApplicationDeadline, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
-import { Head } from '@inertiajs/react';
-import { ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import DeleteJobPostingDialog from '@/pages/admin/jobs/partials/DeleteJobPostingDialog';
+import { Head, usePage } from '@inertiajs/react';
+import { ExternalLink, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
+    const { flash } = usePage().props;
     const list = jobs ?? [];
     const [createOpen, setCreateOpen] = useState(false);
     const [jobToEdit, setJobToEdit] = useState(null);
+    const [jobToDelete, setJobToDelete] = useState(null);
+    const [flashBanner, setFlashBanner] = useState(null);
+
+    useEffect(() => {
+        if (flash?.success || flash?.error) {
+            setFlashBanner({ type: flash.success ? 'success' : 'error', message: flash.success ?? flash.error });
+        }
+    }, [flash?.success, flash?.error]);
 
     return (
         <AppLayout>
             <Head title="Assigned job postings" />
             <div className="flex flex-col gap-6 p-6">
                 <RecruiterWorkspaceBanner />
+                {flashBanner && (
+                    <div
+                        className={
+                            flashBanner.type === 'success'
+                                ? 'rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200'
+                                : 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200'
+                        }
+                    >
+                        {flashBanner.message}
+                    </div>
+                )}
+                <DeleteJobPostingDialog
+                    open={jobToDelete !== null}
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setJobToDelete(null);
+                        }
+                    }}
+                    job={jobToDelete}
+                    deleteUrl={jobToDelete ? `/recruiter/jobs/${jobToDelete.id}` : undefined}
+                />
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-beta dark:text-light">Job postings</h1>
@@ -109,9 +140,21 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => setJobToEdit(job)}>
-                                                Edit
-                                            </Button>
+                                            <div className="flex flex-wrap gap-1">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setJobToEdit(job)}>
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                                                    onClick={() => setJobToDelete(job)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}

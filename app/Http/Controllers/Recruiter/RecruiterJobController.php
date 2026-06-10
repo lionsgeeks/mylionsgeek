@@ -32,6 +32,7 @@ class RecruiterJobController extends Controller
                 'is_published' => (bool) $job->is_published,
                 'application_deadline' => $job->application_deadline?->format('Y-m-d'),
                 'is_open_for_applications' => $job->isOpenForApplications(),
+                'can_delete' => $job->applications_count === 0,
                 'skills' => $job->skills ?? [],
                 'organization_ids' => [$organizationId],
                 'applications_count' => $job->applications_count,

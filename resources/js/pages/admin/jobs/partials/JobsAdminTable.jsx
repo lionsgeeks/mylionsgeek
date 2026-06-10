@@ -1,11 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronsLeft, ChevronsRight, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatApplicationDeadline, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 
-export default function JobsAdminTable({ jobs, onEditJob }) {
+export default function JobsAdminTable({ jobs, onEditJob, onDeleteJob }) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const totalPages = Math.max(1, Math.ceil(jobs.length / itemsPerPage));
@@ -88,6 +88,16 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                                             <ExternalLink className="h-4 w-4" />
                                             View
                                         </a>
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 gap-1 text-red-600 hover:text-red-700 dark:text-red-400"
+                                        onClick={() => onDeleteJob?.(job)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        Delete
                                     </Button>
                                 </div>
                             </TableCell>
