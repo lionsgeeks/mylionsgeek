@@ -20,6 +20,11 @@ Route::post("/invite-student", [UserController::class, "inviteStudent"]);
 Route::post('/mobile/login', [MobileAuthController::class, 'login']);
 Route::post('/mobile/forgot-password', [MobileAuthController::class, 'forgot']);
 
+// LionsGeek (lionsgeek.ma) events/info-session proxy for the mobile app.
+// Gated by the shared bearer key inside the controller, so it stays public
+// here (the device authenticates with the upstream key, not a sanctum token).
+require __DIR__ . '/api/events-info.php';
+
 Route::get('/users', [ReservationController::class, 'getUserss'])
     ->name('admin.api.users');
 
