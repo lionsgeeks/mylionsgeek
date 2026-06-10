@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\MobileAuthController;
 use App\Http\Controllers\PlacesController;
@@ -7,7 +8,6 @@ use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
 Route::get('/reservations/{id}', [ReservationController::class, 'show']);
 Route::get('/user', function (Request $request) {

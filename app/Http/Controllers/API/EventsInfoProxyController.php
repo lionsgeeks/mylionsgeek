@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -44,6 +45,60 @@ class EventsInfoProxyController extends Controller
     {
         return $this->forward('PUT', 'validate-event-invitation', [
             'json' => $request->all(),
+        ]);
+    }
+
+    /**
+     * Proxies an event cover image from lionsgeek.ma so LAN devices can load it
+     * without direct public-internet access. The {cover} segment is the encoded
+     * filename (spaces and special chars allowed).
+     */
+    public function eventCover(string $cover): Response
+    {
+        $baseUrl = rtrim((string) config('services.lionsgeek.url'), '/');
+
+        if ($baseUrl === '') {
+            return response('Events proxy is not configured.', 500);
+        }
+
+        $filename = basename(urldecode($cover));
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            return response('Invalid image path.', 400);
+        }
+
+        $verify = config('services.lionsgeek.verify', true);
+        $imageUrl = "{$baseUrl}/storage/images/events/" . rawurlencode($filename);
+
+        try {
+            $client = Http::timeout(self::TIMEOUT);
+            if ($verify === false) {
+                $client = $client->withoutVerifying();
+            }
+
+            $response = $client->get($imageUrl);
+        } catch (ConnectionException $e) {
+            Log::error('LionsGeek image proxy could not reach upstream.', [
+                'filename' => $filename,
+                'message'  => $e->getMessage(),
+            ]);
+
+            return response('Could not reach the image server.', 502);
+        } catch (Throwable $e) {
+            Log::error('LionsGeek image proxy failed unexpectedly.', [
+                'filename' => $filename,
+                'message'  => $e->getMessage(),
+            ]);
+
+            return response('Unexpected error while fetching image.', 502);
+        }
+
+        if (! $response->successful()) {
+            return response('Image not found.', $response->status());
+        }
+
+        return response($response->body(), 200, [
+            'Content-Type'  => $response->header('Content-Type') ?? 'image/jpeg',
+            'Cache-Control' => 'public, max-age=3600',
         ]);
     }
 
