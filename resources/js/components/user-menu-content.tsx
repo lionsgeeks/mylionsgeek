@@ -44,7 +44,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <Rolegard authorized={['admin', 'responsable_studio', 'coach']}>
+                <Rolegard authorized={['admin', 'responsable_studio', 'coach', 'pro']}>
                     <DropdownMenuItem asChild>
                         <Link className="block w-full" href="/admin/dashboard" prefetch onClick={cleanup}>
                             <LayoutGrid className="mr-2" />

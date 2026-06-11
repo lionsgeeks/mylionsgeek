@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 // Public join route (no auth required)
 Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join'])->name('projects.join');
 
-Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach,pro'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
     Route::post('projects/share/{project}', [ProjectController::class, 'shareProject'])->name('projects.share');
     Route::delete('projects/attachments/{attachment}', [ProjectController::class, 'deleteAttachment'])->name('projects.delete-attachment');
