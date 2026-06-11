@@ -315,7 +315,7 @@ const TeamManager: React.FC<TeamManagerProps> = ({ teamMembers, availableUsers, 
                             <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={processing} className="bg-[var(--color-alpha)] hover:bg-[var(--color-alpha)]/90">
+                            <Button type="submit" disabled={processing} className="rounded-md bg-alpha px-5 py-1.5 text-center text-black hover:bg-alpha/90 cursor-pointer">
                                 {processing ? 'Inviting...' : 'Send Invitation'}
                             </Button>
                         </div>

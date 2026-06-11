@@ -34,7 +34,7 @@ Route::get('/', function () {
             if ($user->isOrganisationAccount()
                 && $user->organisationAccount
                 && (! $user->organisationAccount->hasCompletedOnboarding() || $user->must_change_password)) {
-                return redirect()->route('organisation.onboarding');
+                    return redirect()->route('organisation.onboarding');
             }
 
             return redirect()->route('recruiter.dashboard');

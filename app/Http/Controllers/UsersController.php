@@ -40,6 +40,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\ExportService;
 use App\Services\DisciplineService;
+use App\Services\UserProfileStatsService;
 
 class UsersController extends Controller
 {
@@ -48,7 +49,9 @@ class UsersController extends Controller
         $allUsers = User::query()
             ->where('role', '!=', 'admin')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->filter(fn (User $user) => ! $user->isRecruiter())
+            ->values();
 
         $allFormation = Formation::with(['coach:id,name'])->orderBy('created_at', 'desc')->get();
 
@@ -148,19 +151,15 @@ class UsersController extends Controller
             'recruiter',
             'coworker'
         ];
-        $stats = [
-            'studying',
-            'unemployed',
-            'internship',
-            'freelancing',
-            'working'
-        ];
-
+        $profileStats = app(UserProfileStatsService::class)->getStats($user);
+        $userPayload = array_merge(
+            $this->formatUserPayload($user, $isOnline),
+            $profileStats
+        );
 
         return Inertia::render('admin/users/[id]', [
-            'user' => $this->formatUserPayload($user, $isOnline),
+            'user' => $userPayload,
             'roles' => $roles,
-            'stats' => $stats,
             'trainings' => $allFormations,
             'assignedComputer' => $this->formatComputer($assignedComputer),
             'posts' => $posts,
@@ -840,6 +839,25 @@ class UsersController extends Controller
                 }, $roles));
             }
             unset($validated['roles']);
+        }
+
+        $isSelfUpdate = (int) $actor->id === (int) $user->id;
+        $currentStatusNormalized = strtolower(trim((string) $user->status));
+
+        if ($isSelfUpdate && ! $canEditOthers) {
+            if ($currentStatusNormalized === 'studying') {
+                unset($validated['status']);
+            } elseif (isset($validated['status'])) {
+                $requestedStatus = strtolower(trim((string) $validated['status']));
+                if ($requestedStatus === 'studying') {
+                    unset($validated['status']);
+                } else {
+                    $studentAllowed = ['working', 'internship', 'unemployed', 'freelancing', 'certified', 'left'];
+                    if (! in_array($requestedStatus, $studentAllowed, true)) {
+                        unset($validated['status']);
+                    }
+                }
+            }
         }
 
         $previousStatus = $user->status;

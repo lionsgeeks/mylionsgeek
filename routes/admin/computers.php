@@ -11,9 +11,8 @@ use Illuminate\Support\Facades\DB;
 Route::middleware(['auth','role:admin,super_admin,moderateur,coach'])->group(function () {
     Route::get('/admin/computers', function () {
         $computers = Computer::with('user')->get()->map(function ($c) {
-            $isAssigned = (int) ($c->user_id ?? 0) !== 0;
-            $state = $c->state ?? 'not_working';
-            $isDamaged = strtolower($state) === 'damaged';
+            $state = Computer::normalizeState($c->state, $c->user_id);
+
             return [
                 'id' => $c->id,
                 'mark' => $c->mark,
@@ -21,7 +20,6 @@ Route::middleware(['auth','role:admin,super_admin,moderateur,coach'])->group(fun
                 'cpu' => $c->cpu,
                 'gpu' => $c->gpu,
                 'state' => $state,
-                'isDamaged' => $isDamaged,
                 'assignedUserId' => $c->user_id,
                 'contractStart' => optional($c->start)->toDateString(),
                 'contractEnd' => optional($c->end)->toDateString(),
@@ -41,8 +39,19 @@ Route::middleware(['auth','role:admin,super_admin,moderateur,coach'])->group(fun
 
     Route::get('/admin/computers/{id}', function (string $id) {
         $computer = Computer::with('user')->findOrFail($id);
+
         return Inertia::render('admin/computers/[id]', [
-            'computer' => $computer,
+            'computer' => [
+                'id' => $computer->id,
+                'reference' => $computer->reference,
+                'cpu' => $computer->cpu,
+                'gpu' => $computer->gpu,
+                'state' => Computer::normalizeState($computer->state, $computer->user_id),
+                'mark' => $computer->mark,
+                'user_id' => $computer->user_id,
+                'start' => optional($computer->start)->toDateString(),
+                'end' => optional($computer->end)->toDateString(),
+            ],
         ]);
     })->name('admin.computers.show');
 

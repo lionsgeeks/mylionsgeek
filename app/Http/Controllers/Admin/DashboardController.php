@@ -72,13 +72,13 @@ class DashboardController extends Controller
             $computerStats = [
                 'total' => Schema::hasTable('computers') ? Computer::count() : 0,
                 'working' => Schema::hasTable('computers')
-                    ? Computer::where('state', 'working')->count()
+                    ? Computer::whereRaw('LOWER(TRIM(state)) = ?', ['working'])->count()
                     : 0,
                 'not_working' => Schema::hasTable('computers')
-                    ? Computer::where('state', 'not_working')->count()
+                    ? Computer::whereRaw('LOWER(TRIM(state)) = ?', ['not_working'])->count()
                     : 0,
                 'damaged' => Schema::hasTable('computers')
-                    ? Computer::where('state', 'damaged')->count()
+                    ? Computer::whereRaw('LOWER(TRIM(state)) = ?', ['damaged'])->count()
                     : 0,
                 'assigned' => Schema::hasTable('computers')
                     ? Computer::whereNotNull('user_id')->where('user_id', '!=', 0)->count()
