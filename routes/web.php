@@ -61,7 +61,7 @@ Route::get('/', function () {
 Route::get('/certificates/share/{token}', [CertificateShareController::class, 'show'])->name('certificates.share');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable,pro'])->prefix('admin')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Global Analytics (admin)

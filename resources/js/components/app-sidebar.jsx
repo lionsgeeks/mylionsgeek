@@ -89,11 +89,11 @@ const getAllNavItems = () => [
     },
 
     {
-        id: 'leaderboard',
+        id: 'leaderboard',  
         title: 'LeaderBoard',
         href: '/students/leaderboard',
         icon: AwardIcon,
-        excludedRoles: ['studio_responsable'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
 
     {
@@ -101,14 +101,15 @@ const getAllNavItems = () => [
         title: 'Spaces ',
         href: '/admin/places',
         icon: Building2,
-        excludedRoles: ['coach'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
     },
     { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
     { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
 
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, excludedRoles: ['studio_responsable'] },
+    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
-    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, excludedRoles: ['studio_responsable'] },
+    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
+    // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     {
         id: 'jobs',
         title: 'Jobs',
@@ -174,7 +175,7 @@ export function AppSidebar() {
     const user = auth?.user;
 
     const userRoles = Array.isArray(user?.role) ? user.role : user?.role ? [user.role] : [];
-    const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(r));
+    const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin', 'pro'].includes(r));
     const isRecruiterOnlySidebar = userRoles.includes('recruiter') && !isStaff;
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
