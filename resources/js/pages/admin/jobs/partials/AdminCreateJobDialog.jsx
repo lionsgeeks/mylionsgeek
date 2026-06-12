@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import JobPostingForm from '@/pages/admin/jobs/partials/JobPostingForm';
+import { defaultApplicationDeadline } from '@/pages/students/Jobs/partials/jobHelpers';
 import { useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
 
@@ -12,6 +13,7 @@ function buildDefaults(jobTypeOptions) {
         location: '',
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
+        application_deadline: defaultApplicationDeadline(),
         is_published: true,
         organization_ids: [],
     };

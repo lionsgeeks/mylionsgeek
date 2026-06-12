@@ -7,9 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import DOMPurify from 'dompurify';
-import { ArrowLeft, MapPin, Send } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { formatJobTypeLabel } from './jobHelpers';
+import { formatApplicationDeadline, formatJobTypeLabel } from './jobHelpers';
 
 function looksLikeHtml(s) {
     const t = typeof s === 'string' ? s.trim() : '';
@@ -123,6 +123,12 @@ export default function JobShow({ job }) {
                                     <span className="inline-flex items-center gap-1">
                                         <MapPin className="h-4 w-4" />
                                         {job.location}
+                                    </span>
+                                )}
+                                {job.application_deadline && (
+                                    <span className="inline-flex items-center gap-1">
+                                        <Calendar className="h-4 w-4" />
+                                        Apply by {formatApplicationDeadline(job.application_deadline)}
                                     </span>
                                 )}
                             </div>

@@ -8,8 +8,8 @@ use App\Models\JobApplication;
 use App\Models\JobApplicationNotification;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -113,7 +113,7 @@ class StudentJobController extends Controller
 
     public function show(Request $request, Job $job): Response
     {
-        if (! $job->is_published) {
+        if (! $job->isOpenForApplications()) {
             abort(404);
         }
 
@@ -135,7 +135,7 @@ class StudentJobController extends Controller
             abort(401);
         }
 
-        if (! $job->is_published) {
+        if (! $job->isOpenForApplications()) {
             abort(404);
         }
 
@@ -235,6 +235,7 @@ class StudentJobController extends Controller
             'location' => $job->location,
             'job_type' => $job->job_type,
             'skills' => $skills,
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
             'created_at' => $job->created_at->toIso8601String(),
         ];
     }
@@ -253,6 +254,7 @@ class StudentJobController extends Controller
             'location' => $job->location,
             'job_type' => $job->job_type,
             'skills' => $job->skills ?? [],
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
             'created_at' => $job->created_at->toIso8601String(),
             'has_applied' => $hasApplied,
             'can_apply' => $canApply,
@@ -289,6 +291,10 @@ class StudentJobController extends Controller
 
     private function userCanStartNewApplication(Job $job, User $user): bool
     {
+        if (! $job->isOpenForApplications()) {
+            return false;
+        }
+
         if ($job->applications()->where('user_id', $user->id)->exists()) {
             return false;
         }
