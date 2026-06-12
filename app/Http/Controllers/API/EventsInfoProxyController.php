@@ -25,6 +25,10 @@ use Throwable;
  *   GET  /api/events
  *   GET  /api/events/{event}
  *   PUT  /api/validate-event-invitation
+ *   GET  /api/lionsgate/infosessions
+ *   GET  /api/session-data
+ *   PUT  /api/validate-invitation
+ *   GET  /api/profile-data
  */
 class EventsInfoProxyController extends Controller
 {
@@ -46,6 +50,32 @@ class EventsInfoProxyController extends Controller
         return $this->forward('PUT', 'validate-event-invitation', [
             'json' => $request->all(),
         ]);
+    }
+
+    public function infoSessions(): JsonResponse
+    {
+        return $this->forward('GET', 'lionsgate/infosessions');
+    }
+
+    public function sessionData(Request $request): JsonResponse
+    {
+        $query = http_build_query($request->query());
+
+        return $this->forward('GET', 'session-data' . ($query ? "?{$query}" : ''));
+    }
+
+    public function validateInvitation(Request $request): JsonResponse
+    {
+        return $this->forward('PUT', 'validate-invitation', [
+            'json' => $request->all(),
+        ]);
+    }
+
+    public function profileData(Request $request): JsonResponse
+    {
+        $query = http_build_query($request->query());
+
+        return $this->forward('GET', 'profile-data' . ($query ? "?{$query}" : ''));
     }
 
     /**
