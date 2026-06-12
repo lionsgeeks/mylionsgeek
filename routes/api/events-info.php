@@ -20,4 +20,6 @@ Route::prefix('events-info')->group(function () {
     Route::get('/session-data', [EventsInfoProxyController::class, 'sessionData']);
     Route::put('/validate-invitation', [EventsInfoProxyController::class, 'validateInvitation']);
     Route::get('/profile-data', [EventsInfoProxyController::class, 'profileData']);
+    Route::post('/session-photo', [EventsInfoProxyController::class, 'sessionPhoto']);
+    Route::get('/images/participants/{photo}', [EventsInfoProxyController::class, 'participantPhoto'])->where('photo', '.*');
 });

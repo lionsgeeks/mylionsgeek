@@ -29,6 +29,7 @@ use Throwable;
  *   GET  /api/session-data
  *   PUT  /api/validate-invitation
  *   GET  /api/profile-data
+ *   POST /api/session-photo
  */
 class EventsInfoProxyController extends Controller
 {
@@ -76,6 +77,107 @@ class EventsInfoProxyController extends Controller
         $query = http_build_query($request->query());
 
         return $this->forward('GET', 'profile-data' . ($query ? "?{$query}" : ''));
+    }
+
+    public function sessionPhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'photo' => 'required|file',
+            'id'    => 'required',
+        ]);
+
+        $baseUrl = rtrim((string) config('services.lionsgeek.url'), '/');
+        $apiKey  = (string) config('services.lionsgeek.key');
+
+        if ($baseUrl === '' || $apiKey === '') {
+            return response()->json(['error' => 'Events proxy is not configured.'], 500);
+        }
+
+        $verify = config('services.lionsgeek.verify', true);
+        $file   = $request->file('photo');
+
+        try {
+            $client = Http::withToken($apiKey)->acceptJson()->timeout(30);
+            if ($verify === false) {
+                $client = $client->withoutVerifying();
+            }
+
+            $response = $client
+                ->attach(
+                    'photo',
+                    fopen($file->getRealPath(), 'r'),
+                    $file->getClientOriginalName()
+                )
+                ->post("{$baseUrl}/api/session-photo", [
+                    'id' => $request->input('id'),
+                ]);
+        } catch (ConnectionException $e) {
+            Log::error('LionsGeek session-photo proxy could not reach upstream.', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Could not reach the LionsGeek server.'], 502);
+        } catch (Throwable $e) {
+            Log::error('LionsGeek session-photo proxy failed unexpectedly.', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Unexpected error while uploading photo.'], 502);
+        }
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * Proxies a participant check-in photo from lionsgeek.ma.
+     */
+    public function participantPhoto(string $photo): Response
+    {
+        $baseUrl = rtrim((string) config('services.lionsgeek.url'), '/');
+
+        if ($baseUrl === '') {
+            return response('Events proxy is not configured.', 500);
+        }
+
+        $filename = basename(urldecode($photo));
+        if ($filename === '' || $filename === '.' || $filename === '..') {
+            return response('Invalid image path.', 400);
+        }
+
+        $verify   = config('services.lionsgeek.verify', true);
+        $imageUrl = "{$baseUrl}/storage/images/participants/" . rawurlencode($filename);
+
+        try {
+            $client = Http::timeout(self::TIMEOUT);
+            if ($verify === false) {
+                $client = $client->withoutVerifying();
+            }
+
+            $response = $client->get($imageUrl);
+        } catch (ConnectionException $e) {
+            Log::error('LionsGeek participant image proxy could not reach upstream.', [
+                'filename' => $filename,
+                'message'  => $e->getMessage(),
+            ]);
+
+            return response('Could not reach the image server.', 502);
+        } catch (Throwable $e) {
+            Log::error('LionsGeek participant image proxy failed unexpectedly.', [
+                'filename' => $filename,
+                'message'  => $e->getMessage(),
+            ]);
+
+            return response('Unexpected error while fetching image.', 502);
+        }
+
+        if (! $response->successful()) {
+            return response('Image not found.', $response->status());
+        }
+
+        return response($response->body(), 200, [
+            'Content-Type'  => $response->header('Content-Type') ?? 'image/jpeg',
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
     }
 
     /**
