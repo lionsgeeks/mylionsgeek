@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\JobPostings\DeleteJobPosting;
 use App\Actions\JobPostings\SaveJobPosting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\JobPostingRequest;
@@ -16,6 +17,7 @@ class JobPostingController extends Controller
     public function index(): Response
     {
         $jobs = Job::query()
+            ->withCount('applications')
             ->with([
                 'creator:id,name,email',
                 'organizations:id,email,enterprise_name,contact_name',
@@ -54,6 +56,19 @@ class JobPostingController extends Controller
         return redirect()->route('admin.jobs.index')->with('success', 'Job posting updated.');
     }
 
+    public function destroy(Job $job, DeleteJobPosting $deleteJobPosting): RedirectResponse
+    {
+        try {
+            $deleteJobPosting->delete($job);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $message = $e->validator->errors()->first('job') ?? __('Unable to delete this job posting.');
+
+            return redirect()->route('admin.jobs.index')->with('error', $message);
+        }
+
+        return redirect()->route('admin.jobs.index')->with('success', 'Job posting deleted.');
+    }
+
     /**
      * @return array<int, array{id: int, name: string, email: string}>
      */
@@ -85,6 +100,10 @@ class JobPostingController extends Controller
             'job_type' => $job->job_type,
             'location' => $job->location,
             'is_published' => (bool) $job->is_published,
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
+            'is_open_for_applications' => $job->isOpenForApplications(),
+            'applications_count' => (int) $job->applications_count,
+            'can_delete' => (int) $job->applications_count === 0,
             'skills' => $job->skills ?? [],
             'organization_ids' => $job->organizations->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
             'created_at' => $job->created_at?->toIso8601String(),

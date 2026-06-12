@@ -103,12 +103,29 @@ export default function JobPostingForm({
                 />
             )}
 
+            <div className="space-y-2">
+                <Label htmlFor="application_deadline">Application deadline</Label>
+                <Input
+                    id="application_deadline"
+                    type="date"
+                    value={data.application_deadline ?? ''}
+                    onChange={(e) => setData('application_deadline', e.target.value)}
+                    className="border-alpha/30 dark:border-light/15"
+                    required
+                />
+                <p className="text-xs text-muted-foreground">
+                    Students can apply through this date (inclusive). After it passes, the job is hidden from the job board.
+                </p>
+                {errors.application_deadline && <p className="text-sm text-red-600">{errors.application_deadline}</p>}
+            </div>
+
             <div className="flex items-center space-x-2">
                 <Checkbox id="is_published" checked={data.is_published} onCheckedChange={(c) => setData('is_published', c === true)} />
                 <Label htmlFor="is_published" className="text-sm font-normal">
                     Publish on the student job board
                 </Label>
             </div>
+            {errors.is_published && <p className="text-sm text-red-600">{errors.is_published}</p>}
 
             <div className="flex flex-wrap gap-3 pt-2">
                 <Button type="submit" disabled={processing} className="bg-alpha text-black hover:bg-alpha/90">

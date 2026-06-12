@@ -92,10 +92,14 @@ class JobSeeder extends Seeder
             ],
         ];
 
-        foreach ($rows as $row) {
+        foreach ($rows as $index => $row) {
             Job::updateOrCreate(
                 ['reference' => $row['reference']],
-                array_merge($row, ['is_published' => true, 'user_id' => null])
+                array_merge($row, [
+                    'is_published' => true,
+                    'user_id' => null,
+                    'application_deadline' => now()->addDays(60 + ($index * 7))->toDateString(),
+                ])
             );
         }
     }

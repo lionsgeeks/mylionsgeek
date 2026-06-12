@@ -10,6 +10,7 @@ function buildFormState(job, jobTypeOptions) {
         location: job.location ?? '',
         job_type: job.job_type ?? jobTypeOptions[0] ?? 'full_time',
         skills: Array.isArray(job.skills) ? job.skills.join(', ') : (job.skills ?? ''),
+        application_deadline: job.application_deadline ?? '',
         is_published: job.is_published ?? true,
         organization_ids: job.organization_ids ?? job.organizations?.map((r) => r.id) ?? [],
     };
@@ -30,6 +31,7 @@ export default function AdminEditJobDialog({
         location: '',
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
+        application_deadline: '',
         is_published: true,
         organization_ids: [],
     });

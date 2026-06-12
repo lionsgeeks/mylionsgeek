@@ -15,6 +15,9 @@ Route::middleware(['auth', 'verified', 'role:recruiter', 'organisation.onboarded
     Route::put('/jobs/{job}', [RecruiterJobPostingController::class, 'update'])
         ->whereNumber('job')
         ->name('recruiter.jobs.update');
+    Route::delete('/jobs/{job}', [RecruiterJobPostingController::class, 'destroy'])
+        ->whereNumber('job')
+        ->name('recruiter.jobs.destroy');
     Route::get('/students', [RecruiterStudentController::class, 'index'])->name('recruiter.students.index');
     Route::get('/students/{user}', [RecruiterStudentController::class, 'show'])
         ->whereNumber('user')

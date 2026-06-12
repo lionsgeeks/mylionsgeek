@@ -1,11 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronsLeft, ChevronsRight, ExternalLink, Pencil } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { formatJobTypeLabel } from './adminJobHelpers';
+import { formatApplicationDeadline, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
 
-export default function JobsAdminTable({ jobs, onEditJob }) {
+export default function JobsAdminTable({ jobs, onEditJob, onDeleteJob }) {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const totalPages = Math.max(1, Math.ceil(jobs.length / itemsPerPage));
@@ -30,6 +30,7 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                         <TableHead>Reference</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Deadline</TableHead>
                         <TableHead>Published</TableHead>
                         <TableHead>Created by</TableHead>
                         <TableHead>Organisations</TableHead>
@@ -44,16 +45,19 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                                 <span className="line-clamp-2">{job.title}</span>
                             </TableCell>
                             <TableCell>{formatJobTypeLabel(job.job_type)}</TableCell>
+                            <TableCell className="text-sm whitespace-nowrap">
+                                {formatApplicationDeadline(job.application_deadline)}
+                            </TableCell>
                             <TableCell>
                                 <Badge
                                     variant="secondary"
                                     className={
-                                        job.is_published
+                                        job.is_open_for_applications
                                             ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
                                             : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
                                     }
                                 >
-                                    {job.is_published ? 'Yes' : 'No'}
+                                    {job.is_open_for_applications ? 'Live' : job.is_published ? 'Expired' : 'Draft'}
                                 </Badge>
                             </TableCell>
                             <TableCell className="text-sm">
@@ -84,6 +88,16 @@ export default function JobsAdminTable({ jobs, onEditJob }) {
                                             <ExternalLink className="h-4 w-4" />
                                             View
                                         </a>
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 gap-1 text-red-600 hover:text-red-700 dark:text-red-400"
+                                        onClick={() => onDeleteJob?.(job)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        Delete
                                     </Button>
                                 </div>
                             </TableCell>

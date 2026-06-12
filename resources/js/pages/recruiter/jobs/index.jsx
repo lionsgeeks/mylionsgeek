@@ -5,21 +5,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import AdminCreateJobDialog from '@/pages/admin/jobs/partials/AdminCreateJobDialog';
 import AdminEditJobDialog from '@/pages/admin/jobs/partials/AdminEditJobDialog';
-import { formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
-import { Head } from '@inertiajs/react';
-import { ExternalLink } from 'lucide-react';
-import { useState } from 'react';
+import { formatApplicationDeadline, formatJobTypeLabel } from '@/pages/students/Jobs/partials/jobHelpers';
+import DeleteJobPostingDialog from '@/pages/admin/jobs/partials/DeleteJobPostingDialog';
+import { Head, usePage } from '@inertiajs/react';
+import { ExternalLink, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
+    const { flash } = usePage().props;
     const list = jobs ?? [];
     const [createOpen, setCreateOpen] = useState(false);
     const [jobToEdit, setJobToEdit] = useState(null);
+    const [jobToDelete, setJobToDelete] = useState(null);
+    const [flashBanner, setFlashBanner] = useState(null);
+
+    useEffect(() => {
+        if (flash?.success || flash?.error) {
+            setFlashBanner({ type: flash.success ? 'success' : 'error', message: flash.success ?? flash.error });
+        }
+    }, [flash?.success, flash?.error]);
 
     return (
         <AppLayout>
             <Head title="Assigned job postings" />
             <div className="flex flex-col gap-6 p-6">
                 <RecruiterWorkspaceBanner />
+                {flashBanner && (
+                    <div
+                        className={
+                            flashBanner.type === 'success'
+                                ? 'rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-200'
+                                : 'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200'
+                        }
+                    >
+                        {flashBanner.message}
+                    </div>
+                )}
+                <DeleteJobPostingDialog
+                    open={jobToDelete !== null}
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setJobToDelete(null);
+                        }
+                    }}
+                    job={jobToDelete}
+                    deleteUrl={jobToDelete ? `/recruiter/jobs/${jobToDelete.id}` : undefined}
+                />
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-beta dark:text-light">Job postings</h1>
@@ -66,7 +97,8 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                     <TableHead>Title</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead>Applications</TableHead>
-                                    <TableHead>Published</TableHead>
+                                    <TableHead>Deadline</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Public view</TableHead>
                                     <TableHead className="w-[100px]">Actions</TableHead>
                                 </TableRow>
@@ -80,20 +112,23 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                         </TableCell>
                                         <TableCell>{formatJobTypeLabel(job.job_type)}</TableCell>
                                         <TableCell>{job.applications_count ?? 0}</TableCell>
+                                        <TableCell className="text-sm whitespace-nowrap">
+                                            {formatApplicationDeadline(job.application_deadline)}
+                                        </TableCell>
                                         <TableCell>
                                             <Badge
                                                 variant="secondary"
                                                 className={
-                                                    job.is_published
+                                                    job.is_open_for_applications
                                                         ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
                                                         : 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200'
                                                 }
                                             >
-                                                {job.is_published ? 'Yes' : 'No'}
+                                                {job.is_open_for_applications ? 'Live' : job.is_published ? 'Expired' : 'Draft'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {job.is_published ? (
+                                            {job.is_open_for_applications ? (
                                                 <Button variant="ghost" size="sm" className="h-8 gap-1 text-alpha" asChild>
                                                     <a href={`/students/jobs/${job.id}`} target="_blank" rel="noreferrer">
                                                         <ExternalLink className="h-4 w-4" />
@@ -105,9 +140,21 @@ export default function RecruiterJobsIndex({ jobs, jobTypeOptions = [] }) {
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => setJobToEdit(job)}>
-                                                Edit
-                                            </Button>
+                                            <div className="flex flex-wrap gap-1">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => setJobToEdit(job)}>
+                                                    Edit
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-red-600 hover:text-red-700 dark:text-red-400"
+                                                    onClick={() => setJobToDelete(job)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
