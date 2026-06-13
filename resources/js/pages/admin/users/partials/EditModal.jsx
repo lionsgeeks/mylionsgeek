@@ -537,7 +537,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                     )}
                     {/* Left Column - Training */}
                     {isAdminOrStudioResponsable && (
-                        <div className="col-span-1 md:col-span-2">
+                        <div className="md:col-span-1 lg:col-span-1 col-span-2">
                             <Label>Training</Label>
                             <Select
                                 value={formData.formation_id ? String(formData.formation_id) : ''}
