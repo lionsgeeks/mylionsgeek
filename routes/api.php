@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\LearningController;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\MobileAuthController;
 use App\Http\Controllers\PlacesController;
@@ -8,7 +9,6 @@ use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
 Route::post("/token", [LearningController::class, "handleToken"]);
 
@@ -22,6 +22,11 @@ Route::post("/invite-student", [UserController::class, "inviteStudent"]);
 // Mobile authentication endpoints (public)
 Route::post('/mobile/login', [MobileAuthController::class, 'login']);
 Route::post('/mobile/forgot-password', [MobileAuthController::class, 'forgot']);
+
+// LionsGeek (lionsgeek.ma) events/info-session proxy for the mobile app.
+// Gated by the shared bearer key inside the controller, so it stays public
+// here (the device authenticates with the upstream key, not a sanctum token).
+require __DIR__ . '/api/events-info.php';
 
 Route::get('/users', [ReservationController::class, 'getUserss'])
     ->name('admin.api.users');

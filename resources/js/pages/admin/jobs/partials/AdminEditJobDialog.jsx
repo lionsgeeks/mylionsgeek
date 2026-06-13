@@ -10,18 +10,28 @@ function buildFormState(job, jobTypeOptions) {
         location: job.location ?? '',
         job_type: job.job_type ?? jobTypeOptions[0] ?? 'full_time',
         skills: Array.isArray(job.skills) ? job.skills.join(', ') : (job.skills ?? ''),
+        application_deadline: job.application_deadline ?? '',
         is_published: job.is_published ?? true,
         organization_ids: job.organization_ids ?? job.organizations?.map((r) => r.id) ?? [],
     };
 }
 
-export default function AdminEditJobDialog({ open, onOpenChange, job, organizationOptions = [], jobTypeOptions = [] }) {
+export default function AdminEditJobDialog({
+    open,
+    onOpenChange,
+    job,
+    organizationOptions = [],
+    jobTypeOptions = [],
+    updateUrl,
+    showOrganisationSelect = true,
+}) {
     const { data, setData, put, processing, errors } = useForm({
         title: '',
         description: '',
         location: '',
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
+        application_deadline: '',
         is_published: true,
         organization_ids: [],
     });
@@ -39,7 +49,7 @@ export default function AdminEditJobDialog({ open, onOpenChange, job, organizati
         if (!job) {
             return;
         }
-        put(`/admin/jobs/${job.id}`, {
+        put(updateUrl ?? `/admin/jobs/${job.id}`, {
             preserveScroll: true,
             onSuccess: () => {
                 onOpenChange(false);
@@ -68,6 +78,7 @@ export default function AdminEditJobDialog({ open, onOpenChange, job, organizati
                             onSubmit={submit}
                             jobTypeOptions={jobTypeOptions}
                             organizationOptions={organizationOptions}
+                            showOrganisationSelect={showOrganisationSelect}
                             onCancel={handleCancel}
                             reference={job.reference}
                             submitLabel="Save changes"

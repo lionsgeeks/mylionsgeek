@@ -20,7 +20,7 @@ import {
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
-const getRecruiterNavItems = () => [
+const getRecruiterHiringNavItems = () => [
     {
         id: 'recruiter_dashboard',
         title: 'Dashboard',
@@ -57,14 +57,6 @@ const getRecruiterNavItems = () => [
         authorizedRoles: ['recruiter'],
     },
     {
-        id: 'recruiter_team',
-        title: 'Team',
-        href: '/organisation/members',
-        icon: UserPlus,
-        authorizedRoles: ['recruiter'],
-        organisationAccountOnly: true,
-    },
-    {
         id: 'recruiter_settings',
         title: 'Settings',
         href: '/settings',
@@ -97,11 +89,11 @@ const getAllNavItems = () => [
     },
 
     {
-        id: 'leaderboard',
+        id: 'leaderboard',  
         title: 'LeaderBoard',
         href: '/students/leaderboard',
         icon: AwardIcon,
-        excludedRoles: ['studio_responsable'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'],
     },
 
     {
@@ -109,14 +101,14 @@ const getAllNavItems = () => [
         title: 'Spaces ',
         href: '/admin/places',
         icon: Building2,
-        excludedRoles: ['coach'],
+        authorizedRoles: ['admin', 'super_admin', 'moderateur', 'studio_responsable'],
     },
     { id: 'reservations', title: 'Reservations', href: '/admin/reservations', icon: Timer, excludedRoles: ['coach'] },
     { id: 'appointments', title: 'Appointments', href: '/admin/appointments', icon: Calendar },
 
-    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, excludedRoles: ['studio_responsable'] },
+    { id: 'computers', title: 'Computers', href: '/admin/computers', icon: Monitor, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
     { id: 'equipment', title: 'Equipment', href: '/admin/equipements', icon: Wrench, excludedRoles: ['coach'] },
-    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, excludedRoles: ['studio_responsable'] },
+    { id: 'training', title: 'Training', href: '/admin/training', icon: GraduationCap, authorizedRoles: ['admin', 'super_admin', 'moderateur', 'coach'] },
     // { id: 'games', title: 'Games', href: '/games', icon: Gamepad2 },
     {
         id: 'jobs',
@@ -135,7 +127,25 @@ const getAllNavItems = () => [
     { id: 'settings', title: 'Settings', href: '/settings', icon: Settings },
 ];
 
-// Footer links removed per request
+function RecruiterSidebarContext() {
+    const { auth } = usePage().props;
+    const recruiting = auth?.recruiting;
+
+    if (!recruiting?.organization_name) {
+        return null;
+    }
+
+    const isOwner = recruiting.membership_type === 'organisation_account';
+
+    return (
+        <div className="mx-2 mb-2 rounded-md border border-alpha/20 bg-alpha/5 px-3 py-2.5 group-data-[collapsible=icon]:hidden dark:border-light/10">
+            <p className="truncate text-sm font-semibold text-beta dark:text-light">{recruiting.organization_name}</p>
+            <p className="mt-0.5 text-xs text-beta/65 dark:text-light/65">
+                {isOwner ? 'Organisation owner' : 'Team member'}
+            </p>
+        </div>
+    );
+}
 
 // Check if user is one of the appointment persons
 const isAppointmentPerson = (user) => {
@@ -149,12 +159,10 @@ const isAppointmentPerson = (user) => {
         'aymenboujjar12@gmail.com': true,
     };
 
-    // Check by name
     if (personNames.includes(user.name)) {
         return true;
     }
 
-    // Check by email
     if (user.email && emailMapping[user.email.toLowerCase()]) {
         return true;
     }
@@ -167,22 +175,19 @@ export function AppSidebar() {
     const user = auth?.user;
 
     const userRoles = Array.isArray(user?.role) ? user.role : user?.role ? [user.role] : [];
-    const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(r));
+    const isStaff = userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin', 'pro'].includes(r));
     const isRecruiterOnlySidebar = userRoles.includes('recruiter') && !isStaff;
 
     const logoHref = isRecruiterOnlySidebar ? '/recruiter/dashboard' : '/admin/dashboard';
 
-    // Filter nav items based on user permissions
     const mainNavItems = useMemo(() => {
         if (isRecruiterOnlySidebar) {
-            const isOrgAccount = Boolean(user?.is_organisation_account);
-            return getRecruiterNavItems().filter((item) => !item.organisationAccountOnly || isOrgAccount);
+            return null;
         }
 
         const allItems = getAllNavItems();
 
         return allItems.filter((item) => {
-            // Filter out appointments if user is not an appointment person
             if (item.id === 'appointments') {
                 return isAppointmentPerson(user);
             }
@@ -202,10 +207,15 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+                {isRecruiterOnlySidebar && <RecruiterSidebarContext />}
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                {isRecruiterOnlySidebar ? (
+                    <NavMain label="Hiring" items={getRecruiterHiringNavItems()} />
+                ) : (
+                    <NavMain items={mainNavItems ?? []} />
+                )}
             </SidebarContent>
 
             <SidebarFooter>{/* <NavUser /> */}</SidebarFooter>

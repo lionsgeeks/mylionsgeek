@@ -51,6 +51,65 @@ class OrganisationController extends Controller
         ]);
     }
 
+    public function show(Organization $organization): Response
+    {
+        $organization->load([
+            'accountUser:id,name,email,image,last_online,account_state,status',
+            'employers' => fn ($query) => $query->orderByDesc('organization_user.created_at'),
+        ]);
+
+        $teamMembers = collect();
+
+        if ($organization->accountUser) {
+            $account = $organization->accountUser;
+            $teamMembers->push([
+                'id' => $account->id,
+                'name' => $account->name,
+                'email' => $account->email,
+                'image' => $account->image,
+                'last_online' => $account->last_online,
+                'status' => $account->status,
+                'account_state' => (int) $account->account_state,
+                'member_role' => 'owner',
+                'member_label' => 'Organisation owner',
+                'joined_at' => $organization->created_at?->toIso8601String(),
+            ]);
+        }
+
+        foreach ($organization->employers as $employer) {
+            $teamMembers->push([
+                'id' => $employer->id,
+                'name' => $employer->name,
+                'email' => $employer->email,
+                'image' => $employer->image,
+                'last_online' => $employer->last_online,
+                'status' => $employer->status,
+                'account_state' => (int) $employer->account_state,
+                'member_role' => $employer->pivot->member_role,
+                'member_label' => ucfirst((string) ($employer->pivot->member_role ?? 'employer')),
+                'joined_at' => $employer->pivot->created_at?->toIso8601String(),
+            ]);
+        }
+
+        return Inertia::render('admin/organisations/[id]', [
+            'organization' => [
+                'id' => $organization->id,
+                'email' => $organization->email,
+                'enterprise_name' => $organization->enterprise_name,
+                'contact_name' => $organization->contact_name,
+                'sector' => $organization->sector,
+                'location' => $organization->location,
+                'phone' => $organization->phone,
+                'linkedin_url' => $organization->linkedin_url,
+                'account_state' => (int) $organization->account_state,
+                'onboarding_completed' => $organization->hasCompletedOnboarding(),
+                'display_name' => $organization->displayName(),
+                'employers_count' => $organization->employers->count(),
+            ],
+            'teamMembers' => $teamMembers->values()->all(),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([

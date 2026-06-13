@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Clipboard, Code, Copy, Mail, Plus, Users2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import StatsCard from '../../../../components/StatCard';
-
+import Rolegard from '@/components/rolegard';
 import AddUserDialog from './components/AddUserDialog';
 import ExportStudentsDialog from './components/ExportStudentsDialog';
 import SendEmailDialog from './components/SendEmailDialog';
@@ -57,44 +57,46 @@ const Header = ({ message, roles, trainings, filteredUsers }) => {
                 <div></div>
 
                 <div className="flex items-center gap-3">
-                    {/* Copy Emails */}
-                    <Button
-                        onClick={handleCopyEmails}
-                        className="cursor-pointer border bg-light text-dark hover:bg-transparent hover:text-[var(--color-alpha)]"
-                    >
-                        {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-                        {copy ? 'Copy Emails' : 'Copied!'}
-                    </Button>
+                    <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                        {/* Copy Emails */}
+                        <Button
+                            onClick={handleCopyEmails}
+                            className="cursor-pointer border bg-light text-dark hover:bg-transparent hover:text-[var(--color-alpha)]"
+                        >
+                            {copy ? <Copy className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                            {copy ? 'Copy Emails' : 'Copied!'}
+                        </Button>
 
-                    {/* Export Dialog */}
-                    <ExportStudentsDialog open={isExportOpen} setOpen={setIsExportOpen} />
+                        {/* Export Dialog */}
+                        <ExportStudentsDialog open={isExportOpen} setOpen={setIsExportOpen} />
 
-                    <Button
-                        className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                        onClick={() => setIsExportOpen(true)}
-                    >
-                        Export Students
-                    </Button>
+                        <Button
+                            className="cursor-pointer border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            onClick={() => setIsExportOpen(true)}
+                        >
+                            Export Students
+                        </Button>
 
-                    {/* Add User Dialog */}
-                    <AddUserDialog open={isAddUserOpen} setOpen={setIsAddUserOpen} trainings={trainings} />
+                        {/* Add User Dialog */}
+                        <AddUserDialog open={isAddUserOpen} setOpen={setIsAddUserOpen} trainings={trainings} />
 
-                    <Button
-                        className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                        onClick={() => setIsAddUserOpen(true)}
-                    >
-                        <Plus /> Add User
-                    </Button>
+                        <Button
+                            className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                            onClick={() => setIsAddUserOpen(true)}
+                        >
+                            <Plus /> Add User
+                        </Button>
 
-                    {/* Send Email Dialog */}
-                    <SendEmailDialog open={isEmailOpen} setOpen={setIsEmailOpen} trainings={trainings} roles={roles} filteredUsers={filteredUsers} />
+                        {/* Send Email Dialog */}
+                        <SendEmailDialog open={isEmailOpen} setOpen={setIsEmailOpen} trainings={trainings} roles={roles} filteredUsers={filteredUsers} />
 
-                    <Button
-                        onClick={() => setIsEmailOpen(true)}
-                        className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
-                    >
-                        <Mail /> Send Email
-                    </Button>
+                        <Button
+                            onClick={() => setIsEmailOpen(true)}
+                            className="flex cursor-pointer gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] px-7 py-4 text-black hover:bg-transparent hover:text-[var(--color-alpha)]"
+                        >
+                            <Mail /> Send Email
+                        </Button>
+                    </Rolegard>
                 </div>
             </div>
         </>

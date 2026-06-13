@@ -2,10 +2,11 @@ import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
 import { Award, Calendar, Camera, Edit3, Github, Globe, Linkedin, Twitter } from 'lucide-react';
 import { useState } from 'react';
+import { ADMIN_USER_STATUSES } from '@/components/helpers/userStatuses';
 import EditUserModal from '../EditModal';
 import DownloadCertificateDialog, { resolveCertificateTrack } from './DownloadCertificateDialog';
 
-const ProfileHeader = ({ user, trainings, roles, stats }) => {
+const ProfileHeader = ({ user, trainings, roles }) => {
     const [open, setOpen] = useState(false);
     const [certDialogOpen, setCertDialogOpen] = useState(false);
     const hasCertificateTrack = resolveCertificateTrack(user?.field) !== null;
@@ -190,7 +191,7 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
                     </div>
                 </div>
             </div>
-            <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={stats} trainings={trainings} />
+            <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={ADMIN_USER_STATUSES} trainings={trainings} />
             {hasCertificateTrack && (
                 <DownloadCertificateDialog open={certDialogOpen} onOpenChange={setCertDialogOpen} user={user} />
             )}

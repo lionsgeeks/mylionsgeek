@@ -13,9 +13,11 @@ import { Home } from 'lucide-react';
 export function AppSidebarHeader({ breadcrumbs = [] }) {
     const page = usePage();
     const { auth } = page.props;
+    const recruiting = auth?.recruiting;
     const pathname = page.url.split('?')[0];
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role];
     const isRecruiter = userRoles.includes('recruiter');
+    const isRecruiterOnly = isRecruiter && !userRoles.some((r) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(r));
     const isRecruiterStudentProfileShell = isRecruiter && /^\/recruiter\/students\/\d+$/.test(pathname);
     const homeHref = isRecruiter ? '/recruiter/jobs' : '/students/feed';
     const [now, setNow] = useState(new Date());
@@ -43,9 +45,18 @@ export function AppSidebarHeader({ breadcrumbs = [] }) {
                 {/* <Breadcrumbs breadcrumbs={breadcrumbs} /> */}
             </div>
             <div className="flex w-full items-center justify-end pl-4 lg:justify-between">
-                <div className="hidden flex-col leading-tight lg:flex">
-                    <span className="text-xl font-semibold tracking-tight text-foreground">{hours}</span>
-                    <span className="text-sm text-muted-foreground">{dateStr}</span>
+                <div className="hidden min-w-0 flex-col leading-tight lg:flex">
+                    {isRecruiterOnly && recruiting?.organization_name ? (
+                        <>
+                            <span className="truncate text-lg font-semibold tracking-tight text-foreground">{recruiting.organization_name}</span>
+                            <span className="text-sm text-muted-foreground">{recruiting.membership_label}</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-xl font-semibold tracking-tight text-foreground">{hours}</span>
+                            <span className="text-sm text-muted-foreground">{dateStr}</span>
+                        </>
+                    )}
                 </div>
                 {!isRecruiter && <SearchDialog className="hidden sm:flex" />}
                 <div className="flex items-center gap-4">

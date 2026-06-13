@@ -49,7 +49,7 @@ export default function AppLayout({ children, breadcrumbs, ...props }) {
     const userRoles = Array.isArray(auth?.user?.role) ? auth.user.role : [auth?.user?.role || ''];
 
     const isRecruiter = userRoles.includes('recruiter');
-    const isStaff = userRoles.some((role) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin'].includes(role));
+    const isStaff = userRoles.some((role) => ['admin', 'moderateur', 'studio_responsable', 'coach', 'super_admin', 'pro'].includes(role));
 
     // Student-area pages: top navbar only (no admin sidebar) so staff browse like students.
     const pathname = page.url.split('?')[0];

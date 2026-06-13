@@ -28,7 +28,7 @@ Route::middleware(['auth'])->group(function () {
 // =====================
 // ADMIN RESERVATIONS (PROTECTED)
 // =====================
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable,pro'])->prefix('admin')->group(function () {
     Route::get('/reservations', [ReservationsController::class, 'index'])->name('admin.reservations');
     Route::get('/reservations/analytics', [ReservationsController::class, 'analytics'])->name('admin.reservations.analytics');
     Route::post('/reservations/{reservation}/approve', [ReservationsController::class, 'approve'])
@@ -94,7 +94,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->group(function () {
 // =====================
 // VERIFICATION ROUTES (ADMIN & STUDIO_RESPONSABLE ONLY)
 // =====================
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,studio_responsable,pro'])->group(function () {
     Route::get('/reservations/{reservation}/verify-end', [ReservationsController::class, 'verifyEnd'])
         ->name('reservations.verify-end');
     Route::post('/reservations/{reservation}/verify-end', [ReservationsController::class, 'submitVerification'])

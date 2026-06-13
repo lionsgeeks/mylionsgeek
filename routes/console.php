@@ -13,5 +13,4 @@ Schedule::command('reservations:check-end-times')
     ->everyMinute()
     ->runInBackground();
 
-
-
+Schedule::command('jobs:close-expired')->daily();

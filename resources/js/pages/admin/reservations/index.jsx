@@ -425,7 +425,7 @@ const ReservationsIndex = ({ reservations = [], coworkReservations = [], studioR
                             {rangeActive ? baseStudio.length : studioReservations.length} studios
                         </p>
                     </div>
-                    <Rolegard except={['studio_responsable']}>
+                    <Rolegard except={['studio_responsable', 'pro']}>
                         <div className="flex items-end justify-end">
                             <div className="flex gap-x-2">
                                 <Button

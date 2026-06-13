@@ -234,7 +234,11 @@ class RecruiterInterviewController extends Controller
 
             $application = JobApplication::query()->whereKey($recruiterInterview->job_application_id)->first();
             if ($application) {
-                $application->update(['status' => $validated['outcome']]);
+                $application->update([
+                    'status' => $validated['outcome'] === 'accepted'
+                        ? JobApplication::STATUS_ACCEPTED
+                        : JobApplication::STATUS_REJECTED,
+                ]);
             }
         });
 
