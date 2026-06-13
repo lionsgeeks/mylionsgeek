@@ -16,7 +16,7 @@ class LearningController extends Controller
     public function redirectCode(): RedirectResponse
     {
         $code = $this->getCode();
-        return redirect()->guest(env("LEARNING_URL") . "callback/" . $code);
+        return redirect()->guest(env("LEARNING_URL") . "/callback/" . $code);
     }
 
 
@@ -46,9 +46,12 @@ class LearningController extends Controller
         Cache::delete($code);
         if ($user) {
             $token = [
+                "central_id" => $user->id ?? 0,
                 "username" => $user->name ?? "",
-                "role"  => $user->role ?? "",
+                "role"  => $user->role ?? [],
                 "promo" => $user->promo ?? "",
+                "email" => $user->email ?? "",
+
             ];
         }
 
@@ -60,7 +63,7 @@ class LearningController extends Controller
     {
         $code = $request->code;
         $client_secret = $request->client_secret;
-        if (!$code || hash_equals(env("LEARNING_CLIENT_SECRET"), $client_secret)) {
+        if (!$code || env("LEARNING_CLIENT_SECRET") !== $client_secret) {
             return response()->json([
                 "status" => "error",
                 "message" => "unauthorized"
