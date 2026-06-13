@@ -72,6 +72,13 @@ class EventsInfoProxyController extends Controller
         ]);
     }
 
+    public function manualChecking(Request $request): JsonResponse
+    {
+        return $this->forward('PUT', 'manual-checking', [
+            'json' => $request->all(),
+        ]);
+    }
+
     public function profileData(Request $request): JsonResponse
     {
         $query = http_build_query($request->query());
