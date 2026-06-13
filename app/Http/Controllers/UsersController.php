@@ -79,6 +79,7 @@ class UsersController extends Controller
             'formation' => 'formation',
             'access_studio' => 'access_studio',
             'access_cowork' => 'access_cowork',
+            'access_scan' => 'access_scan',
         ];
 
         $query = User::query();
@@ -106,6 +107,9 @@ class UsersController extends Controller
                 },
                 'access_cowork' => function ($user) {
                     return (string) $user->access_cowork === '1' || $user->access_cowork === 1 ? 'Yes' : 'No';
+                },
+                'access_scan' => function ($user) {
+                    return (string) $user->access_scan === '1' || $user->access_scan === 1 ? 'Yes' : 'No';
                 },
             ],
         ]);
@@ -799,6 +803,7 @@ class UsersController extends Controller
             'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'access_cowork' => 'nullable|integer|in:0,1',
             'access_studio' => 'nullable|integer|in:0,1',
+            'access_scan' => 'nullable|integer|in:0,1',
         ]);
 
             if ($request->has('formation_id')) {

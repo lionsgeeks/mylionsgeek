@@ -396,6 +396,18 @@ const User = ({ user, trainings, close, open }) => {
                                                 {(user?.access?.access_cowork ?? user?.access_cowork) ? 'Granted' : 'No Access'}
                                             </span>
                                         </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-alpha/10 bg-white/60 p-3 backdrop-blur dark:bg-neutral-900/60">
+                                            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Scan</span>
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                                    (user?.access?.access_scan ?? user?.access_scan)
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400'
+                                                }`}
+                                            >
+                                                {(user?.access?.access_scan ?? user?.access_scan) ? 'Granted' : 'No Access'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 

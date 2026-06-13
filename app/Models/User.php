@@ -44,6 +44,7 @@ class User extends Authenticatable
         'socials', // social links JSON
         'access_cowork',
         'access_studio',
+        'access_scan',
         'promo',
         'remember_token',
         'email_verified_at',
