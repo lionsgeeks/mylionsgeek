@@ -84,6 +84,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
         resumeFile: null,
         access_studio: editedUser?.access_studio === 1 ? 'Yes' : 'No',
         access_cowork: editedUser?.access_cowork === 1 ? 'Yes' : 'No',
+        access_scan: editedUser?.access_scan === 1 ? 'Yes' : 'No',
     });
 
     // Load user data into form when modal opens or user changes
@@ -127,6 +128,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                 resumeFile: null,
                 access_studio: editedUser.access_studio === 1 ? 'Yes' : 'No',
                 access_cowork: editedUser.access_cowork === 1 ? 'Yes' : 'No',
+                access_scan: editedUser.access_scan === 1 ? 'Yes' : 'No',
             });
             setSocialLinks(editedUser?.social_links || []);
         }
@@ -214,6 +216,7 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
 
         form.append('access_studio', formData.access_studio === 'Yes' ? 1 : 0);
         form.append('access_cowork', formData.access_cowork === 'Yes' ? 1 : 0);
+        form.append('access_scan', formData.access_scan === 'Yes' ? 1 : 0);
 
         if (formData?.image instanceof File) {
             form.append('image', formData?.image);
@@ -509,6 +512,27 @@ const EditUserModal = ({ open, editedUser, onClose, roles = [], status = [], tra
                                     <SelectItem value={'No'}>No</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    )}
+                    {isAdminOrStudioResponsable && (
+                        <div className="col-span-1">
+                            <Label htmlFor="access-scan">Access Scan</Label>
+                            <Select
+                                id="access-scan"
+                                value={formData.access_scan}
+                                onValueChange={(v) => setFormData({ ...formData, access_scan: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Access Scan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'Yes'}>Yes</SelectItem>
+                                    <SelectItem value={'No'}>No</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-neutral-500">
+                                Mobile Scan tab (events and info sessions)
+                            </p>
                         </div>
                     )}
                     {/* Left Column - Training */}
