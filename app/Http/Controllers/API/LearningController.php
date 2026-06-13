@@ -35,21 +35,23 @@ class LearningController extends Controller
 
     private function getToken(string $code): array
     {
-
-        $cachKey = Cache::get($code);
-        if (!$cachKey) {
-            return [];
+        $token = [];
+        $cacheKey = Cache::get($code);
+        if (!$cacheKey) {
+            return $token;
         }
 
-        // dd($cachKey);
 
-        $user = User::where("id",$cachKey["user_id"])->first();
+        $user = User::where("id", $cacheKey["user_id"])->first();
         Cache::delete($code);
-        $token = [
-            "username" => $user->name ?? "",
-            "role"  => $user->role ?? "",
-            "promo" => $user->promo ?? "",
-        ];
+        if ($user) {
+            $token = [
+                "username" => $user->name ?? "",
+                "role"  => $user->role ?? "",
+                "promo" => $user->promo ?? "",
+            ];
+        }
+
 
         return $token;
     }
@@ -58,7 +60,7 @@ class LearningController extends Controller
     {
         $code = $request->code;
         $client_secret = $request->client_secret;
-        if (!$code || $client_secret !== env("LEARNING_CLIENT_SECRET")) {
+        if (!$code || hash_equals(env("LEARNING_CLIENT_SECRET"), $client_secret)) {
             return response()->json([
                 "status" => "error",
                 "message" => "unauthorized"
