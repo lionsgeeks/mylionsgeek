@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
+use App\Http\Controllers\API\LearningController;
 use App\Http\Controllers\API\SearchController as ApiSearchController;
 use App\Http\Controllers\CertificateShareController;
 use App\Http\Controllers\LinkedInController;
@@ -291,6 +292,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
     Route::get('/api/notifications/ably-token', [NotificationController::class, 'getAblyToken'])->name('api.notifications.ably-token');
 });
+
+// learning routes
+    Route::middleware("auth")->get("/auth/learning",[LearningController::class, "redirectCode"]);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
