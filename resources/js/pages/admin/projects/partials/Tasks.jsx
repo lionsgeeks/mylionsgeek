@@ -304,7 +304,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
     const getStatusBadge = (status) => {
         const statusConfig = {
             completed: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', icon: CheckCircle },
-            'in-progress': { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            in_progress: { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            review: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300', icon: AlertCircle },
             todo: { color: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: AlertCircle },
         };
 
@@ -315,7 +316,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         return (
             <Badge variant="outline" className={`${config.color} flex items-center gap-1 border-none`}>
                 <Icon className="h-3 w-3" />
-                {safeStatus === 'in-progress' ? 'In Progress' : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
+                {safeStatus
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}
             </Badge>
         );
     };
@@ -365,7 +369,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                     </Select>
