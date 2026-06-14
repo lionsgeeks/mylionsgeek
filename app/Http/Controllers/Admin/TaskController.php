@@ -15,6 +15,47 @@ use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
+    private function ensureProjectOwner(Project $project): void
+    {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can manage project tasks.');
+        }
+    }
+
+    private function ensureCanWorkOnTask(Task $task): void
+    {
+        $userId = (int) Auth::id();
+
+        if ((int) $task->project->created_by === $userId) {
+            return;
+        }
+
+        if ((int) $task->assigned_to === $userId) {
+            return;
+        }
+
+        abort(403, 'You can only edit tasks assigned to you.');
+    }
+
+    private function ensureCanViewTask(Task $task): void
+    {
+        $userId = (int) Auth::id();
+
+        if ((int) $task->project->created_by === $userId) {
+            return;
+        }
+
+        if ((int) $task->assigned_to === $userId) {
+            return;
+        }
+
+        if ($task->project->users()->where('users.id', $userId)->exists()) {
+            return;
+        }
+
+        abort(403, 'You do not have access to this task.');
+    }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -37,6 +78,9 @@ class TaskController extends Controller
 
             $data = $request->all();
             $data['created_by'] = Auth::id();
+
+            $project = Project::findOrFail($request->project_id);
+            $this->ensureProjectOwner($project);
 
             // Set default values
             $data['priority'] = $data['priority'] ?? 'medium';
@@ -69,7 +113,6 @@ class TaskController extends Controller
             }
 
             // Update project last activity
-            $project = Project::find($request->project_id);
             $project->update([
                 'last_activity' => now(),
                 'is_updated' => true,
@@ -89,6 +132,8 @@ class TaskController extends Controller
     public function update(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'title' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
@@ -169,6 +214,8 @@ class TaskController extends Controller
     public function destroy(Task $task)
     {
         try {
+            $this->ensureProjectOwner($task->project);
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
@@ -191,6 +238,8 @@ class TaskController extends Controller
     public function updateStatus(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'status' => 'required|in:todo,in_progress,review,completed',
             ]);
@@ -235,6 +284,8 @@ class TaskController extends Controller
      */
     public function addSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'title' => 'required|string|max:255',
             'completed' => 'boolean',
@@ -259,6 +310,8 @@ class TaskController extends Controller
      */
     public function updateSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'subtask_id' => 'required|string',
             'title' => 'nullable|string|max:255',
@@ -298,6 +351,8 @@ class TaskController extends Controller
      */
     public function deleteSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'subtask_id' => 'required|string',
         ]);
@@ -317,6 +372,8 @@ class TaskController extends Controller
     public function togglePin(Task $task)
     {
         try {
+            $this->ensureProjectOwner($task->project);
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
@@ -339,6 +396,8 @@ class TaskController extends Controller
     public function updateTitle(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'title' => 'required|string|max:255',
             ]);
@@ -363,6 +422,8 @@ class TaskController extends Controller
     public function updateDescription(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'description' => 'nullable|string',
             ]);
@@ -387,6 +448,8 @@ class TaskController extends Controller
     public function updatePriority(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'priority' => 'required|in:low,medium,high,urgent',
             ]);
@@ -411,6 +474,8 @@ class TaskController extends Controller
     public function addAttachment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'file' => 'required|file|max:10240', // 10MB max
                 'name' => 'nullable|string|max:255',
@@ -447,6 +512,8 @@ class TaskController extends Controller
     public function removeAttachment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'attachment_id' => 'required|string',
             ]);
@@ -470,6 +537,8 @@ class TaskController extends Controller
     public function updateAssignedTo(Request $request, Task $task)
     {
         try {
+            $this->ensureProjectOwner($task->project);
+
             $request->validate([
                 'assigned_to' => 'nullable|exists:users,id',
             ]);
@@ -527,6 +596,8 @@ class TaskController extends Controller
     public function addComment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $request->validate([
                 'content' => 'required|string|max:1000',
             ]);
@@ -556,6 +627,8 @@ class TaskController extends Controller
     public function updateComment(Request $request, Task $task, $commentId)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $request->validate([
                 'content' => 'required|string|max:1000',
             ]);
@@ -586,6 +659,8 @@ class TaskController extends Controller
     public function deleteComment(Request $request, Task $task, $commentId)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $comments = $task->comments ?? [];
             $commentIndex = array_search($commentId, array_column($comments, 'id'));
 

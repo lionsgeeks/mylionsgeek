@@ -348,7 +348,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
             <Head title={`${project.name} - Project Details`} />
             <div className="flex min-h-screen flex-col">
                 {/* Project Header with Banner */}
-                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} />
+                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} isProjectOwner={isProjectOwner} />
 
                 {/* Main Content with Sidebar */}
                 <div className="flex flex-1 flex-col lg:flex-row">
@@ -382,7 +382,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                 </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
-                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} />
+                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} isProjectOwner={isProjectOwner} />
                                 </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">

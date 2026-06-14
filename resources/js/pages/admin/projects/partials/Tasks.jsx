@@ -28,7 +28,7 @@ const getTaskOverallProgress = (task) => {
     }
 };
 
-const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
+const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
 
@@ -91,7 +91,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
 
     // Get flash messages from Inertia
-    const { flash } = usePage().props;
+    const { auth, flash } = usePage().props;
+    const currentUserId = auth?.user?.id;
+    const canEditTask = (task) => isProjectOwner || String(task?.assigned_to?.id || task?.assigned_to) === String(currentUserId);
 
     // Handle flash messages
     useEffect(() => {
@@ -421,10 +423,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select> */}
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Task
-                </Button>
+                {isProjectOwner && (
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                )}
             </div>
 
             {/* Tasks Table */}
@@ -513,19 +517,29 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         <span>View Details</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Task</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTogglePin(task)}>
-                                                        {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
-                                                        <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
-                                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                                        <span>Mark as Completed</span>
-                                                    </DropdownMenuItem>
-                                                    {(task.status === 'completed' || task.status === 'review') && (
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Task</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {isProjectOwner && (
+                                                        <DropdownMenuItem onClick={() => handleTogglePin(task)}>
+                                                            {task.is_pinned ? (
+                                                                <PinOff className="mr-2 h-4 w-4" />
+                                                            ) : (
+                                                                <Pin className="mr-2 h-4 w-4" />
+                                                            )}
+                                                            <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
+                                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                                            <span>Mark as Completed</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (task.status === 'completed' || task.status === 'review') && (
                                                         <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
                                                             <AlertCircle className="mr-2 h-4 w-4" />
                                                             <span>Mark as Incomplete</span>
@@ -535,11 +549,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        <span>Delete</span>
-                                                    </DropdownMenuItem>
+                                                    {isProjectOwner && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
+                                                                <Trash className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -688,6 +706,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 teamMembers={safeTeamMembers}
                 onUpdateTask={handleUpdateTask}
                 focusCommentInput={focusCommentInput}
+                isProjectOwner={isProjectOwner}
+                canEditTask={selectedTask ? canEditTask(selectedTask) : false}
             />
 
             {/* Confirmation Modal for Deletion */}

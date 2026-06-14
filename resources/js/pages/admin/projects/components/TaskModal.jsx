@@ -325,7 +325,18 @@ const AttachPopover = ({ onClose, onFileUpload }) => {
     );
 };
 
-const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, teamMembers = [], onUpdateTask, focusCommentInput = false }) => {
+const TaskModal = ({
+    projectId,
+    setSelectedTask,
+    isOpen,
+    onClose,
+    selectedTask,
+    teamMembers = [],
+    onUpdateTask,
+    focusCommentInput = false,
+    isProjectOwner = false,
+    canEditTask = false,
+}) => {
     const commentInputRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -976,13 +987,13 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                     <div className="flex items-center gap-3">
                         <div className="relative">
                             <button
-                                onClick={() => setShowStatusPopover(true)}
-                                className={`flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${getStatusBadgeClass(taskData.status)}`}
+                                onClick={() => canEditTask && setShowStatusPopover(true)}
+                                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${canEditTask ? 'cursor-pointer' : 'cursor-default'} ${getStatusBadgeClass(taskData.status)}`}
                             >
                                 {getStatusIcon(taskData.status)}
                                 <span className="capitalize">{taskData.status.replace('_', ' ')}</span>
                             </button>
-                            {showStatusPopover && (
+                            {canEditTask && showStatusPopover && (
                                 <StatusPopover
                                     currentStatus={taskData.status}
                                     onStatusChange={handleUpdateStatus}
@@ -1001,31 +1012,41 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                     </div>
 
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={handleTogglePin} className="h-8 w-8">
-                            {taskData.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-                        </Button>
+                        {isProjectOwner && (
+                            <Button variant="ghost" size="icon" onClick={handleTogglePin} className="h-8 w-8">
+                                {taskData.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                            </Button>
+                        )}
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleArchiveTask()}>
-                                    <Archive className="mr-2 h-4 w-4" />
-                                    Archive Task
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleProgression()}>
-                                    <Progress className="mr-2 h-4 w-4" />
-                                    Progression
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDeleteTask()} className="text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Task
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {(isProjectOwner || canEditTask) && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {isProjectOwner && (
+                                        <DropdownMenuItem onClick={() => handleArchiveTask()}>
+                                            <Archive className="mr-2 h-4 w-4" />
+                                            Archive Task
+                                        </DropdownMenuItem>
+                                    )}
+                                    {canEditTask && (
+                                        <DropdownMenuItem onClick={() => handleProgression()}>
+                                            <Progress className="mr-2 h-4 w-4" />
+                                            Progression
+                                        </DropdownMenuItem>
+                                    )}
+                                    {isProjectOwner && (
+                                        <DropdownMenuItem onClick={() => handleDeleteTask()} className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete Task
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                         <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
                             <X className="h-4 w-4" />
                         </Button>
@@ -1060,8 +1081,8 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                     </div>
                                 ) : (
                                     <h1
-                                        onClick={() => setIsEditingTitle(true)}
-                                        className="cursor-pointer text-2xl font-semibold text-foreground transition-opacity hover:opacity-70"
+                                        onClick={() => canEditTask && setIsEditingTitle(true)}
+                                        className={`text-2xl font-semibold text-foreground transition-opacity ${canEditTask ? 'cursor-pointer hover:opacity-70' : ''}`}
                                     >
                                         {selectedTask.title || 'Untitled Task'}
                                     </h1>
@@ -1091,8 +1112,8 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                     </div>
                                 ) : (
                                     <div
-                                        onClick={() => setIsEditingDescription(true)}
-                                        className="min-h-[100px] cursor-pointer rounded-md border border-border p-3 transition-colors hover:border-primary/50"
+                                        onClick={() => canEditTask && setIsEditingDescription(true)}
+                                        className={`min-h-[100px] rounded-md border border-border p-3 transition-colors ${canEditTask ? 'cursor-pointer hover:border-primary/50' : ''}`}
                                     >
                                         {selectedTask.description ? (
                                             <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{selectedTask.description}</p>
@@ -1121,18 +1142,20 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                 {showSubtasks && (
                                     <div className="space-y-3">
                                         {/* Add New Subtask */}
-                                        <div className="flex gap-2">
-                                            <Input
-                                                value={newSubtask}
-                                                onChange={(e) => setNewSubtask(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
-                                                placeholder="Add item..."
-                                                className="h-9 text-sm"
-                                            />
-                                            <Button onClick={handleAddSubtask} size="sm" className="h-9">
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                        {canEditTask && (
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    value={newSubtask}
+                                                    onChange={(e) => setNewSubtask(e.target.value)}
+                                                    onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
+                                                    placeholder="Add item..."
+                                                    className="h-9 text-sm"
+                                                />
+                                                <Button onClick={handleAddSubtask} size="sm" className="h-9">
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
 
                                         {/* Progress Bar */}
                                         <div>
@@ -1150,7 +1173,8 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                                     <Checkbox
                                                         id={`subtask-${subtask.id}`}
                                                         checked={subtask.completed}
-                                                        onCheckedChange={() => handleToggleSubtask(subtask.id)}
+                                                        onCheckedChange={() => canEditTask && handleToggleSubtask(subtask.id)}
+                                                        disabled={!canEditTask}
                                                         className="h-4 w-4"
                                                     />
                                                     {editingSubtask?.id === subtask.id ? (
@@ -1188,24 +1212,26 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                                             >
                                                                 {subtask.title}
                                                             </label>
-                                                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleEditSubtask(subtask)}
-                                                                    className="h-7 w-7"
-                                                                >
-                                                                    <Edit className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleDeleteSubtask(subtask.id)}
-                                                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            </div>
+                                                            {canEditTask && (
+                                                                <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleEditSubtask(subtask)}
+                                                                        className="h-7 w-7"
+                                                                    >
+                                                                        <Edit className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleDeleteSubtask(subtask.id)}
+                                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
+                                                            )}
                                                         </>
                                                     )}
                                                 </div>
@@ -1230,22 +1256,24 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                 {showAttachments && (
                                     <div className="space-y-2">
                                         {/* Upload Button */}
-                                        <div className="rounded-md border border-dashed border-border p-3 transition-colors hover:border-primary/50">
-                                            <input
-                                                type="file"
-                                                multiple
-                                                onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                                                className="hidden"
-                                                id="file-upload"
-                                            />
-                                            <label
-                                                htmlFor="file-upload"
-                                                className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                                            >
-                                                <UploadCloud className="h-4 w-4" />
-                                                <span>Upload files</span>
-                                            </label>
-                                        </div>
+                                        {canEditTask && (
+                                            <div className="rounded-md border border-dashed border-border p-3 transition-colors hover:border-primary/50">
+                                                <input
+                                                    type="file"
+                                                    multiple
+                                                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                                                    className="hidden"
+                                                    id="file-upload"
+                                                />
+                                                <label
+                                                    htmlFor="file-upload"
+                                                    className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                                                >
+                                                    <UploadCloud className="h-4 w-4" />
+                                                    <span>Upload files</span>
+                                                </label>
+                                            </div>
+                                        )}
 
                                         {/* Attachments List */}
                                         {(taskData.attachments || []).length > 0
@@ -1292,14 +1320,16 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                                           >
                                                               <Download className="h-4 w-4" />
                                                           </a>
-                                                          <Button
-                                                              variant="ghost"
-                                                              size="icon"
-                                                              onClick={() => handleRemoveAttachment(attachment.id)}
-                                                              className="h-7 w-7 text-destructive hover:text-destructive"
-                                                          >
-                                                              <Trash2 className="h-4 w-4" />
-                                                          </Button>
+                                                          {canEditTask && (
+                                                              <Button
+                                                                  variant="ghost"
+                                                                  size="icon"
+                                                                  onClick={() => handleRemoveAttachment(attachment.id)}
+                                                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                                              >
+                                                                  <Trash2 className="h-4 w-4" />
+                                                              </Button>
+                                                          )}
                                                       </div>
                                                   </div>
                                               ))
@@ -1327,19 +1357,21 @@ const TaskModal = ({ projectId, setSelectedTask, isOpen, onClose, selectedTask, 
                                             onlineCircleClass="hidden"
                                         />
                                     )}
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setShowMembersPopover(true)}
-                                        className="h-8 w-8 border border-dashed"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
+                                    {isProjectOwner && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowMembersPopover(true)}
+                                            className="h-8 w-8 border border-dashed"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
 
                             {/* MemberPopover */}
-                            {showMembersPopover && (
+                            {isProjectOwner && showMembersPopover && (
                                 <MemberPopover
                                     key={`members-${taskData.assigned_to || 'none'}`}
                                     teamMembers={teamMembers}
