@@ -21,9 +21,9 @@ const formatRelativeTime = (dateString) => {
     }
 };
 
-const Activity = ({ activities = [] }) => {
+const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
     const [notificationTab, setNotificationTab] = useState('all');
-    const [unreadCount, setUnreadCount] = useState(activities.filter((activity) => !activity.read).length);
+    const unreadCount = activities.filter((activity) => !activity.read).length;
 
     const filteredActivities = useMemo(() => {
         if (notificationTab === 'all') return activities;
@@ -32,13 +32,11 @@ const Activity = ({ activities = [] }) => {
     }, [activities, notificationTab]);
 
     const markAllAsRead = () => {
-        setUnreadCount(0);
+        onMarkAllAsRead?.();
     };
 
     const markAsRead = (activityId) => {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-        // In a real app, you would update the activity as read
-        //('Marking activity as read:', activityId);
+        onMarkAsRead?.(activityId);
     };
 
     const getActivityIcon = (type) => {

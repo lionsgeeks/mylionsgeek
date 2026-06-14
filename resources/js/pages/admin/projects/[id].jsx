@@ -87,6 +87,22 @@ const sampleTasks = [
 const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManageTeam = false, isProjectOwner = false }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+    const activityReadStorageKey = `project-${project.id}-read-activities`;
+    const [readActivityIds, setReadActivityIds] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem(activityReadStorageKey) || '[]');
+        } catch {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        try {
+            setReadActivityIds(JSON.parse(localStorage.getItem(activityReadStorageKey) || '[]'));
+        } catch {
+            setReadActivityIds([]);
+        }
+    }, [activityReadStorageKey]);
 
     // //console.log(notes)
     const todaysTasks = useMemo(() => {
@@ -338,8 +354,34 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
         });
 
         // Sort by timestamp descending
-        return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }, [project, tasks]);
+        return activities
+            .map((activity) => ({
+                ...activity,
+                read: readActivityIds.includes(activity.id),
+            }))
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }, [project, tasks, readActivityIds]);
+
+    const markActivityAsRead = (activityId) => {
+        setReadActivityIds((currentIds) => {
+            if (currentIds.includes(activityId)) {
+                return currentIds;
+            }
+
+            const nextIds = [...currentIds, activityId];
+            localStorage.setItem(activityReadStorageKey, JSON.stringify(nextIds));
+
+            return nextIds;
+        });
+    };
+
+    const markAllActivitiesAsRead = () => {
+        const allActivityIds = recentActivities.map((activity) => activity.id);
+        setReadActivityIds(allActivityIds);
+        localStorage.setItem(activityReadStorageKey, JSON.stringify(allActivityIds));
+    };
+
+    const unreadActivityCount = recentActivities.filter((activity) => !activity.read).length;
 
     // Message handling is now done in the Chat component
 
@@ -348,7 +390,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
             <Head title={`${project.name} - Project Details`} />
             <div className="flex min-h-screen flex-col">
                 {/* Project Header with Banner */}
-                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} />
+                <ProjectHeader project={project} teamMembers={teamMembers} tasks={tasks} isProjectOwner={isProjectOwner} />
 
                 {/* Main Content with Sidebar */}
                 <div className="flex flex-1 flex-col lg:flex-row">
@@ -369,9 +411,9 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                     <TabsTrigger value="team">Team</TabsTrigger>
                                     <TabsTrigger value="activity" className="relative">
                                         Activity
-                                        {recentActivities.filter((a) => !a.read).length > 0 && (
+                                        {unreadActivityCount > 0 && (
                                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-alpha text-[10px] text-black">
-                                                {recentActivities.filter((a) => !a.read).length}
+                                                {unreadActivityCount}
                                             </span>
                                         )}
                                     </TabsTrigger>
@@ -382,7 +424,7 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                 </TabsContent>
 
                                 <TabsContent value="tasks" className="mt-6">
-                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} />
+                                    <Tasks tasks={tasks} teamMembers={teamMembers} projectId={project.id} isProjectOwner={isProjectOwner} />
                                 </TabsContent>
 
                                 <TabsContent value="files" className="mt-6">
@@ -398,7 +440,11 @@ const ProjectShow = ({ project, teamMembers, tasks, attachments, notes, canManag
                                 </TabsContent>
 
                                 <TabsContent value="activity" className="mt-6">
-                                    <Activity activities={recentActivities} />
+                                    <Activity
+                                        activities={recentActivities}
+                                        onMarkAsRead={markActivityAsRead}
+                                        onMarkAllAsRead={markAllActivitiesAsRead}
+                                    />
                                 </TabsContent>
 
                                 <TabsContent value="team" className="mt-6">

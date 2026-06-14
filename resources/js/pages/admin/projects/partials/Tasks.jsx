@@ -28,7 +28,7 @@ const getTaskOverallProgress = (task) => {
     }
 };
 
-const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
+const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
 
@@ -91,7 +91,9 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
 
     // Get flash messages from Inertia
-    const { flash } = usePage().props;
+    const { auth, flash } = usePage().props;
+    const currentUserId = auth?.user?.id;
+    const canEditTask = (task) => isProjectOwner || String(task?.assigned_to?.id || task?.assigned_to) === String(currentUserId);
 
     // Handle flash messages
     useEffect(() => {
@@ -302,7 +304,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const getStatusBadge = (status) => {
         const statusConfig = {
             completed: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', icon: CheckCircle },
-            'in-progress': { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            in_progress: { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            review: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300', icon: AlertCircle },
             todo: { color: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: AlertCircle },
         };
 
@@ -313,7 +316,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
         return (
             <Badge variant="outline" className={`${config.color} flex items-center gap-1 border-none`}>
                 <Icon className="h-3 w-3" />
-                {safeStatus === 'in-progress' ? 'In Progress' : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
+                {safeStatus
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}
             </Badge>
         );
     };
@@ -363,7 +369,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                     </Select>
@@ -421,10 +428,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select> */}
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Task
-                </Button>
+                {isProjectOwner && (
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                )}
             </div>
 
             {/* Tasks Table */}
@@ -513,19 +522,29 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         <span>View Details</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Task</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTogglePin(task)}>
-                                                        {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
-                                                        <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
-                                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                                        <span>Mark as Completed</span>
-                                                    </DropdownMenuItem>
-                                                    {(task.status === 'completed' || task.status === 'review') && (
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Task</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {isProjectOwner && (
+                                                        <DropdownMenuItem onClick={() => handleTogglePin(task)}>
+                                                            {task.is_pinned ? (
+                                                                <PinOff className="mr-2 h-4 w-4" />
+                                                            ) : (
+                                                                <Pin className="mr-2 h-4 w-4" />
+                                                            )}
+                                                            <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
+                                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                                            <span>Mark as Completed</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (task.status === 'completed' || task.status === 'review') && (
                                                         <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
                                                             <AlertCircle className="mr-2 h-4 w-4" />
                                                             <span>Mark as Incomplete</span>
@@ -535,11 +554,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        <span>Delete</span>
-                                                    </DropdownMenuItem>
+                                                    {isProjectOwner && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
+                                                                <Trash className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -688,6 +711,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 teamMembers={safeTeamMembers}
                 onUpdateTask={handleUpdateTask}
                 focusCommentInput={focusCommentInput}
+                isProjectOwner={isProjectOwner}
+                canEditTask={selectedTask ? canEditTask(selectedTask) : false}
             />
 
             {/* Confirmation Modal for Deletion */}

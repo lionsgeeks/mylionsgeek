@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
+const ProjectHeader = ({ project, teamMembers, tasks = [], isProjectOwner = false }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
@@ -172,32 +172,41 @@ const ProjectHeader = ({ project, teamMembers, tasks = [] }) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={() => setIsShareModalOpen(true)}>
-                                <Share2 className="mr-2 h-4 w-4" />
-                                Share
-                            </Button>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                                        <MoreHorizontal className="h-4 w-4" />
+                            {isProjectOwner && (
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-white hover:bg-white/20"
+                                        onClick={() => setIsShareModalOpen(true)}
+                                    >
+                                        <Share2 className="mr-2 h-4 w-4" />
+                                        Share
                                     </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Edit Project
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setIsShareModalOpen(true)}>
-                                        <Users className="mr-2 h-4 w-4" />
-                                        Invite Members
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-destructive">
-                                        <Trash className="mr-2 h-4 w-4" />
-                                        Delete Project
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setIsEditModalOpen(true)}>
+                                                <Edit className="mr-2 h-4 w-4" />
+                                                Edit Project
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setIsShareModalOpen(true)}>
+                                                <Users className="mr-2 h-4 w-4" />
+                                                Invite Members
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-destructive">
+                                                <Trash className="mr-2 h-4 w-4" />
+                                                Delete Project
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </>
+                            )}
                         </div>
                     </div>
 

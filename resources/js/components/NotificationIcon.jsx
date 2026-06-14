@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Link, usePage } from '@inertiajs/react';
 import * as Ably from 'ably';
 import { Bell, Briefcase, Calendar, CheckCircle, Clock, Flag, Lock, User, Users, XCircle } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 export default function NotificationIcon() {
     const page = usePage();
@@ -14,9 +14,17 @@ export default function NotificationIcon() {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const [ablyClient, setAblyClient] = useState(null);
+    const notificationsRef = useRef([]);
     const [denyModalOpen, setDenyModalOpen] = useState(false);
     const [denyNotificationId, setDenyNotificationId] = useState(null);
     const [denialReason, setDenialReason] = useState('');
+    const [dismissedAttendanceIds, setDismissedAttendanceIds] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('dismissedAttendanceNotifications') || '[]');
+        } catch {
+            return [];
+        }
+    });
 
     const userRoles = useMemo(() => {
         const role = auth?.user?.role;
@@ -27,6 +35,10 @@ export default function NotificationIcon() {
     const isCoach = userRoles.includes('coach');
     const isAdmin = userRoles.includes('admin');
     const isStudioResponsable = userRoles.includes('studio_responsable');
+
+    useEffect(() => {
+        notificationsRef.current = notifications;
+    }, [notifications]);
 
     // Fetch notifications function
     const fetchNotifications = React.useCallback(async () => {
@@ -95,8 +107,13 @@ export default function NotificationIcon() {
             const activeTrainings = allTrainings.filter((t) => getTrainingStatus(t) === 'active');
 
             activeTrainings.forEach((training) => {
+                const notificationId = `attendance-${training.id}`;
+                if (dismissedAttendanceIds.includes(notificationId)) {
+                    return;
+                }
+
                 notificationList.push({
-                    id: `attendance-${training.id}`,
+                    id: notificationId,
                     type: 'attendance',
                     senderName: 'System',
                     senderImage: null,
@@ -112,7 +129,7 @@ export default function NotificationIcon() {
         // Sort by timestamp (newest first)
         notificationList.sort((a, b) => b.timestamp - a.timestamp);
         setNotifications(notificationList);
-    }, [isCoach, isAdmin, isStudioResponsable, attendanceWarning]);
+    }, [isCoach, isAdmin, isStudioResponsable, attendanceWarning, dismissedAttendanceIds]);
 
     // Fetch notifications on mount and when dependencies change
     useEffect(() => {
@@ -180,12 +197,20 @@ export default function NotificationIcon() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                 },
             });
+            const attendanceIds = notificationsRef.current
+                .filter((notification) => notification.type === 'attendance')
+                .map((notification) => notification.id);
+            if (attendanceIds.length > 0) {
+                const nextDismissedIds = Array.from(new Set([...dismissedAttendanceIds, ...attendanceIds]));
+                localStorage.setItem('dismissedAttendanceNotifications', JSON.stringify(nextDismissedIds));
+                setDismissedAttendanceIds(nextDismissedIds);
+            }
             // Refresh notifications to get updated list with read_at timestamps
             await fetchNotifications();
         } catch (error) {
             console.error('Failed to mark all notifications as read:', error);
         }
-    }, [fetchNotifications]);
+    }, [dismissedAttendanceIds, fetchNotifications]);
 
     // Fetch notifications when dropdown opens
     useEffect(() => {
