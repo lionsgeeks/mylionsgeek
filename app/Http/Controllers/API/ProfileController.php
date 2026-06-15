@@ -46,6 +46,7 @@ class ProfileController extends Controller
             'status' => $user->status,
             'created_at' => $user->created_at ? (is_string($user->created_at) ? $user->created_at : $user->created_at->toDateTimeString()) : null,
             'updated_at' => $user->updated_at ? (is_string($user->updated_at) ? $user->updated_at : $user->updated_at->toDateTimeString()) : null,
+            'access_scan' => $user->access_scan ?? 0,
         ];
 
         // Sensitive fields - only for admins

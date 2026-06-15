@@ -67,6 +67,7 @@ class MobileAuthController extends Controller
             'state' => $user->account_state ?? 0, // Alias for compatibility
             'access_cowork' => $user->access_cowork ?? 0,
             'access_studio' => $user->access_studio ?? 0,
+            'access_scan' => $user->access_scan ?? 0,
             'wakatime_api_key' => $user->wakatime_api_key ? substr($user->wakatime_api_key, 0, 10) . '...' : null, // Partially hidden for security
             'last_online' => $user->last_online ? (is_string($user->last_online) ? $user->last_online : $user->last_online->format('Y-m-d H:i:s')) : null,
             'created_at' => $user->created_at ? (is_string($user->created_at) ? $user->created_at : $user->created_at->toDateTimeString()) : null,
