@@ -173,7 +173,7 @@ const StatusPopover = ({ currentStatus, onStatusChange, onClose, getStatusIcon, 
 };
 
 // Helper component for member popover
-const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAssignee, onClose }) => {
+const MemberPopover = ({ teamMembers = [], selectedAssigneeIds = [], onToggleAssignee, onClose }) => {
     const [search, setSearch] = useState('');
     const [hoveredId, setHoveredId] = useState(null);
 
@@ -185,12 +185,8 @@ const MemberPopover = ({ teamMembers = [], selectedAssigneeId = null, onToggleAs
         return String(id1) === String(id2);
     };
 
-    // Check if a member is selected - single ID
     const isSelected = (memberId) => {
-        if (memberId == null || selectedAssigneeId == null) {
-            return false;
-        }
-        return isIdEqual(memberId, selectedAssigneeId);
+        return selectedAssigneeIds.some((assigneeId) => isIdEqual(memberId, assigneeId));
     };
 
     const handleMemberClick = (memberId, e) => {
@@ -378,12 +374,25 @@ const TaskModal = ({
         tags: [],
         attachments: [],
         comments: [],
+        assignees: [],
         is_pinned: false,
         progress: 0,
         due_date: '',
     });
 
     const { auth } = usePage().props;
+    const normalizeAssigneeIds = (assignees = []) =>
+        (assignees || [])
+            .map((assignee) => (typeof assignee === 'object' && assignee !== null ? assignee.id : assignee))
+            .filter((assigneeId) => assigneeId != null)
+            .map((assigneeId) => Number(assigneeId));
+
+    const primaryAssignedToId = selectedTask?.assigned_to?.id || selectedTask?.assigned_to || null;
+    const selectedAssigneeIds = normalizeAssigneeIds(taskData.assignees);
+    const visibleAssignees = selectedAssigneeIds
+        .filter((assigneeId) => String(assigneeId) !== String(primaryAssignedToId))
+        .map((assigneeId) => teamMembers.find((member) => String(member.id) === String(assigneeId)))
+        .filter(Boolean);
 
     // Update form data when selectedTask changes
     useEffect(() => {
@@ -398,6 +407,7 @@ const TaskModal = ({
                 tags: selectedTask.tags || [],
                 attachments: selectedTask.attachments || [],
                 comments: selectedTask.comments || [],
+                assignees: selectedTask.assignees || [],
                 is_pinned: selectedTask.is_pinned || false,
                 progress: selectedTask.progress || 0,
                 due_date: selectedTask.due_date || '',
@@ -581,34 +591,31 @@ const TaskModal = ({
     };
 
     const handleToggleAssignee = (memberId) => {
-        const currentAssignedTo = taskData.assigned_to;
+        if (String(memberId) === String(primaryAssignedToId)) {
+            return;
+        }
 
-        // Helper function to compare IDs consistently (handles both string and number IDs)
-        const isIdEqual = (id1, id2) => {
-            if (id1 == null || id2 == null) return false;
-            return String(id1) === String(id2);
-        };
+        const currentAssignees = normalizeAssigneeIds(taskData.assignees);
+        const isSelected = currentAssignees.some((assigneeId) => String(assigneeId) === String(memberId));
+        const newAssignees = isSelected
+            ? currentAssignees.filter((assigneeId) => String(assigneeId) !== String(memberId))
+            : [...currentAssignees, Number(memberId)];
 
-        // If clicking the same user, unassign. Otherwise, assign the new user.
-        const newAssignedTo = isIdEqual(currentAssignedTo, memberId) ? null : memberId;
-
-        setTaskData('assigned_to', newAssignedTo);
+        setTaskData('assignees', newAssignees);
 
         router.patch(
             `/admin/tasks/${selectedTask.id}/assigned-to`,
             {
-                assigned_to: newAssignedTo,
+                assigned_to: memberId,
             },
             {
-                onSuccess: (page) => {
-                    // Ensure taskData stays in sync with the updated assigned_to
-                    setTaskData('assigned_to', newAssignedTo);
+                onSuccess: () => {
+                    setTaskData('assignees', newAssignees);
                     updateTask();
                     onUpdateTask?.();
                 },
                 onError: () => {
-                    // Revert on error
-                    setTaskData('assigned_to', currentAssignedTo);
+                    setTaskData('assignees', currentAssignees);
                 },
             },
         );
@@ -1357,6 +1364,16 @@ const TaskModal = ({
                                             onlineCircleClass="hidden"
                                         />
                                     )}
+                                    {visibleAssignees.map((member) => (
+                                        <Avatar
+                                            key={member.id}
+                                            className="h-8 w-8"
+                                            image={member.image}
+                                            name={member.name}
+                                            lastActivity={member.last_login ?? member.last_online ?? member.last_activity ?? null}
+                                            onlineCircleClass="hidden"
+                                        />
+                                    ))}
                                     {isProjectOwner && (
                                         <Button
                                             variant="ghost"
@@ -1373,9 +1390,9 @@ const TaskModal = ({
                             {/* MemberPopover */}
                             {isProjectOwner && showMembersPopover && (
                                 <MemberPopover
-                                    key={`members-${taskData.assigned_to || 'none'}`}
+                                    key={`members-${selectedAssigneeIds.join('-') || 'none'}`}
                                     teamMembers={teamMembers}
-                                    selectedAssigneeId={taskData.assigned_to}
+                                    selectedAssigneeIds={[...selectedAssigneeIds, primaryAssignedToId].filter(Boolean)}
                                     onToggleAssignee={handleToggleAssignee}
                                     onClose={() => setShowMembersPopover(false)}
                                 />

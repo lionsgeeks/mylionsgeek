@@ -41,7 +41,7 @@ export default function NotificationIcon() {
     }, [notifications]);
 
     // Fetch notifications function
-    const fetchNotifications = React.useCallback(async () => {
+    const fetchNotifications = React.useCallback(async (dismissedIds = dismissedAttendanceIds) => {
         const notificationList = [];
 
         try {
@@ -108,7 +108,7 @@ export default function NotificationIcon() {
 
             activeTrainings.forEach((training) => {
                 const notificationId = `attendance-${training.id}`;
-                if (dismissedAttendanceIds.includes(notificationId)) {
+                if (dismissedIds.includes(notificationId)) {
                     return;
                 }
 
@@ -204,7 +204,11 @@ export default function NotificationIcon() {
                 const nextDismissedIds = Array.from(new Set([...dismissedAttendanceIds, ...attendanceIds]));
                 localStorage.setItem('dismissedAttendanceNotifications', JSON.stringify(nextDismissedIds));
                 setDismissedAttendanceIds(nextDismissedIds);
+                await fetchNotifications(nextDismissedIds);
+
+                return;
             }
+
             // Refresh notifications to get updated list with read_at timestamps
             await fetchNotifications();
         } catch (error) {
@@ -232,6 +236,15 @@ export default function NotificationIcon() {
 
     const markAsRead = async (notification) => {
         try {
+            if (notification.type === 'attendance') {
+                const nextDismissedIds = Array.from(new Set([...dismissedAttendanceIds, notification.id]));
+                localStorage.setItem('dismissedAttendanceNotifications', JSON.stringify(nextDismissedIds));
+                setDismissedAttendanceIds(nextDismissedIds);
+                setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+
+                return;
+            }
+
             // Extract type and ID from notification.id (e.g., "follow-123" -> type="follow", id="123")
             // Handle compound types like "project-submission-123", "project-status-123", or "access-request-123"
             const parts = notification.id.split('-');

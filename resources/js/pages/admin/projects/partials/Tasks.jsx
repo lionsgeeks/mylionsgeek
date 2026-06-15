@@ -28,7 +28,7 @@ const getTaskOverallProgress = (task) => {
     }
 };
 
-const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false }) => {
+const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false, currentUserProjectRole = null }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
 
@@ -93,7 +93,28 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
     // Get flash messages from Inertia
     const { auth, flash } = usePage().props;
     const currentUserId = auth?.user?.id;
-    const canEditTask = (task) => isProjectOwner || String(task?.assigned_to?.id || task?.assigned_to) === String(currentUserId);
+    const canManageTasks = isProjectOwner || currentUserProjectRole === 'admin';
+    const normalizeAssigneeId = (assignee) => (typeof assignee === 'object' && assignee !== null ? assignee.id : assignee);
+    const getTaskAssigneeIds = (task) => {
+        const assignedToId = normalizeAssigneeId(task?.assigned_to);
+        const collaboratorIds = (task?.assignees || []).map(normalizeAssigneeId);
+
+        return [assignedToId, ...collaboratorIds]
+            .filter((assigneeId) => assigneeId != null)
+            .map((assigneeId) => String(assigneeId));
+    };
+    const getTaskAssigneeMembers = (task) =>
+        getTaskAssigneeIds(task)
+            .filter((assigneeId, index, assigneeIds) => assigneeIds.indexOf(assigneeId) === index)
+            .map((assigneeId) => {
+                if (String(normalizeAssigneeId(task?.assigned_to)) === assigneeId && typeof task.assigned_to === 'object') {
+                    return task.assigned_to;
+                }
+
+                return safeTeamMembers.find((member) => String(member.id) === assigneeId);
+            })
+            .filter(Boolean);
+    const canEditTask = (task) => canManageTasks || String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId);
 
     // Handle flash messages
     useEffect(() => {
@@ -134,13 +155,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
             if (taskFilter.status !== 'all' && task.status !== taskFilter.status) return false;
             if (taskFilter.priority !== 'all' && task.priority !== taskFilter.priority) return false;
             if (taskFilter.assignee !== 'all') {
+                const assigneeIds = getTaskAssigneeIds(task);
+
                 if (taskFilter.assignee === 'unassigned') {
-                    const assignedToId = task.assigned_to?.id || task.assigned_to;
-                    if (assignedToId != null) return false;
+                    if (assigneeIds.length > 0) return false;
                 } else {
-                    const assignedToId = task.assigned_to?.id || task.assigned_to;
-                    // Convert both to strings for comparison
-                    if (String(assignedToId) !== String(taskFilter.assignee)) return false;
+                    if (!assigneeIds.includes(String(taskFilter.assignee))) return false;
                 }
             }
             return true;
@@ -428,7 +448,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                         </SelectContent>
                     </Select> */}
                 </div>
-                {isProjectOwner && (
+                {canManageTasks && (
                     <Button onClick={() => setIsCreateModalOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Task
@@ -482,25 +502,34 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                                     <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                                     <TableCell>
-                                        {task.assigned_to ? (
-                                            <Avatar
-                                                className="relative z-50 h-10 w-10 overflow-hidden"
-                                                image={task.assigned_to.image || task.assigned_to.user?.image}
-                                                name={task.assigned_to.name || task.assigned_to.user?.name || 'Unknown'}
-                                                lastActivity={
-                                                    task.assigned_to.last_login ??
-                                                    task.assigned_to.user?.last_login ??
-                                                    task.assigned_to.last_online ??
-                                                    task.assigned_to.user?.last_online ??
-                                                    task.assigned_to.last_activity ??
-                                                    task.assigned_to.user?.last_activity ??
-                                                    null
-                                                }
-                                                onlineCircleClass="hidden"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground">Unassigned</span>
-                                        )}
+                                        {(() => {
+                                            const assigneeMembers = getTaskAssigneeMembers(task);
+
+                                            return assigneeMembers.length > 0 ? (
+                                                <div className="flex -space-x-2">
+                                                    {assigneeMembers.slice(0, 4).map((member) => (
+                                                        <Avatar
+                                                            key={member.id}
+                                                            className="relative h-10 w-10 overflow-hidden border-2 border-background"
+                                                            image={member.image || member.user?.image}
+                                                            name={member.name || member.user?.name || 'Unknown'}
+                                                            lastActivity={
+                                                                member.last_login ??
+                                                                member.user?.last_login ??
+                                                                member.last_online ??
+                                                                member.user?.last_online ??
+                                                                member.last_activity ??
+                                                                member.user?.last_activity ??
+                                                                null
+                                                            }
+                                                            onlineCircleClass="hidden"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground">Unassigned</span>
+                                            );
+                                        })()}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -528,7 +557,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                                             <span>Edit Task</span>
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {isProjectOwner && (
+                                                    {canManageTasks && (
                                                         <DropdownMenuItem onClick={() => handleTogglePin(task)}>
                                                             {task.is_pinned ? (
                                                                 <PinOff className="mr-2 h-4 w-4" />
@@ -554,7 +583,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
-                                                    {isProjectOwner && (
+                                                    {canManageTasks && (
                                                         <>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
@@ -711,7 +740,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                 teamMembers={safeTeamMembers}
                 onUpdateTask={handleUpdateTask}
                 focusCommentInput={focusCommentInput}
-                isProjectOwner={isProjectOwner}
+                isProjectOwner={canManageTasks}
                 canEditTask={selectedTask ? canEditTask(selectedTask) : false}
             />
 
