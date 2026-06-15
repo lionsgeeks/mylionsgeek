@@ -25,6 +25,7 @@ use Throwable;
  *   GET  /api/events
  *   GET  /api/events/{event}
  *   PUT  /api/validate-event-invitation
+ *   POST /booking/store
  *   GET  /api/lionsgate/infosessions
  *   GET  /api/session-data
  *   PUT  /api/validate-invitation
@@ -49,6 +50,20 @@ class EventsInfoProxyController extends Controller
     public function validateEventInvitation(Request $request): JsonResponse
     {
         return $this->forward('PUT', 'validate-event-invitation', [
+            'json' => $request->all(),
+        ]);
+    }
+
+    public function manualEventChecking(Request $request): JsonResponse
+    {
+        return $this->forward('PUT', 'manual-event-checking', [
+            'json' => $request->all(),
+        ]);
+    }
+
+    public function storeBooking(Request $request): JsonResponse
+    {
+        return $this->forward('POST', 'booking/store', [
             'json' => $request->all(),
         ]);
     }
@@ -301,5 +316,73 @@ class EventsInfoProxyController extends Controller
         }
 
         return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * Relays a request to a public web route on lionsgeek.ma (no /api prefix).
+     * Used for booking, which lives on the web stack alongside the Inertia site.
+     */
+    private function forwardPublic(string $method, string $path, array $options = []): JsonResponse
+    {
+        $baseUrl = rtrim((string) config('services.lionsgeek.url'), '/');
+
+        if ($baseUrl === '') {
+            Log::error('LionsGeek proxy is not configured.');
+
+            return response()->json([
+                'error' => 'Events proxy is not configured on the server. Set LIONSGEEK_MA_API_URL.',
+            ], 500);
+        }
+
+        $verify = config('services.lionsgeek.verify', true);
+        $path = ltrim($path, '/');
+
+        try {
+            $client = Http::acceptJson()
+                ->asJson()
+                ->timeout(self::TIMEOUT);
+
+            if ($verify === false) {
+                $client = $client->withoutVerifying();
+            }
+
+            $response = $client->send($method, "{$baseUrl}/{$path}", $options);
+        } catch (ConnectionException $e) {
+            Log::error('LionsGeek public proxy could not reach upstream.', [
+                'path'    => $path,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Could not reach the LionsGeek events server.',
+            ], 502);
+        } catch (Throwable $e) {
+            Log::error('LionsGeek public proxy failed unexpectedly.', [
+                'path'    => $path,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Unexpected error while contacting the events server.',
+            ], 502);
+        }
+
+        $contentType = (string) $response->header('Content-Type');
+
+        if (str_contains($contentType, 'application/json')) {
+            return response()->json($response->json(), $response->status());
+        }
+
+        if ($response->successful()) {
+            return response()->json([
+                'success' => true,
+                'message' => ['en' => 'Booking successful!'],
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => ['en' => 'Booking request failed.'],
+        ], $response->status());
     }
 }
