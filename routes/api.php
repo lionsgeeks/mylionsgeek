@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\LearningController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\MobileAuthController;
@@ -8,6 +9,8 @@ use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
+
+Route::post("/token", [LearningController::class, "handleToken"]);
 
 Route::get('/reservations/{id}', [ReservationController::class, 'show']);
 Route::get('/user', function (Request $request) {
@@ -48,14 +51,14 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/leaderboard.php';
     require __DIR__ . '/api/search.php';
     require __DIR__ . '/api/training.php';
-    
+
     // Push token endpoint
     Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
-    
+
     // Test push notification endpoints (for debugging)
     Route::post('/test-push', [\App\Http\Controllers\API\TestPushController::class, 'test']);
     Route::get('/push-status', [\App\Http\Controllers\API\TestPushController::class, 'status']);
-    
+
     // Chat routes
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [ChatController::class, 'index'])->name('index');
