@@ -15,6 +15,81 @@ use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
+    private function ensureProjectOwner(Project $project): void
+    {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can manage project tasks.');
+        }
+    }
+
+    private function canManageProjectTasks(Project $project, int $userId): bool
+    {
+        if ((int) $project->created_by === $userId) {
+            return true;
+        }
+
+        return $project->users()
+            ->where('users.id', $userId)
+            ->wherePivot('role', 'admin')
+            ->exists();
+    }
+
+    private function ensureCanManageProjectTasks(Project $project): void
+    {
+        if (! $this->canManageProjectTasks($project, (int) Auth::id())) {
+            abort(403, 'Only project admins or the project owner can manage project tasks.');
+        }
+    }
+
+    private function ensureCanWorkOnTask(Task $task): void
+    {
+        $userId = (int) Auth::id();
+
+        if ($this->canManageProjectTasks($task->project, $userId)) {
+            return;
+        }
+
+        if ((int) $task->assigned_to === $userId) {
+            return;
+        }
+
+        abort(403, 'You can only edit tasks assigned to you.');
+    }
+
+    private function taskAssigneeIds(Task $task): array
+    {
+        return collect($task->assignees ?? [])
+            ->map(fn ($assignee) => is_array($assignee) ? ($assignee['id'] ?? null) : $assignee)
+            ->filter()
+            ->map(fn ($assigneeId) => (int) $assigneeId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function ensureCanViewTask(Task $task): void
+    {
+        $userId = (int) Auth::id();
+
+        if ((int) $task->project->created_by === $userId) {
+            return;
+        }
+
+        if ((int) $task->assigned_to === $userId) {
+            return;
+        }
+
+        if (in_array($userId, $this->taskAssigneeIds($task), true)) {
+            return;
+        }
+
+        if ($task->project->users()->where('users.id', $userId)->exists()) {
+            return;
+        }
+
+        abort(403, 'You do not have access to this task.');
+    }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -38,6 +113,9 @@ class TaskController extends Controller
             $data = $request->all();
             $data['created_by'] = Auth::id();
 
+            $project = Project::findOrFail($request->project_id);
+            $this->ensureCanManageProjectTasks($project);
+
             // Set default values
             $data['priority'] = $data['priority'] ?? 'medium';
             $data['status'] = $data['status'] ?? 'todo';
@@ -47,6 +125,7 @@ class TaskController extends Controller
             $data['subtasks'] = $data['subtasks'] ?? [];
             $data['tags'] = $data['tags'] ?? [];
             $data['assigned_to'] = $data['assigned_to'] ?? null;
+            $data['assignees'] = $data['assignees'] ?? [];
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
@@ -69,7 +148,6 @@ class TaskController extends Controller
             }
 
             // Update project last activity
-            $project = Project::find($request->project_id);
             $project->update([
                 'last_activity' => now(),
                 'is_updated' => true,
@@ -89,6 +167,8 @@ class TaskController extends Controller
     public function update(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'title' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
@@ -103,7 +183,23 @@ class TaskController extends Controller
                 'is_editable' => 'nullable|boolean',
             ]);
 
-            $data = $request->all();
+            $data = $request->only([
+                'title',
+                'description',
+                'priority',
+                'status',
+                'assigned_to',
+                'due_date',
+                'subtasks',
+                'tags',
+                'progress',
+                'is_pinned',
+                'is_editable',
+            ]);
+
+            if (array_key_exists('assigned_to', $data) && ! $this->canManageProjectTasks($task->project, (int) Auth::id())) {
+                unset($data['assigned_to']);
+            }
 
             // Handle status changes
             if (isset($data['status'])) {
@@ -169,6 +265,8 @@ class TaskController extends Controller
     public function destroy(Task $task)
     {
         try {
+            $this->ensureCanManageProjectTasks($task->project);
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
@@ -191,6 +289,8 @@ class TaskController extends Controller
     public function updateStatus(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'status' => 'required|in:todo,in_progress,review,completed',
             ]);
@@ -235,6 +335,8 @@ class TaskController extends Controller
      */
     public function addSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'title' => 'required|string|max:255',
             'completed' => 'boolean',
@@ -259,6 +361,8 @@ class TaskController extends Controller
      */
     public function updateSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'subtask_id' => 'required|string',
             'title' => 'nullable|string|max:255',
@@ -298,6 +402,8 @@ class TaskController extends Controller
      */
     public function deleteSubtask(Request $request, Task $task)
     {
+        $this->ensureCanWorkOnTask($task);
+
         $request->validate([
             'subtask_id' => 'required|string',
         ]);
@@ -317,6 +423,8 @@ class TaskController extends Controller
     public function togglePin(Task $task)
     {
         try {
+            $this->ensureCanManageProjectTasks($task->project);
+
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
@@ -339,6 +447,8 @@ class TaskController extends Controller
     public function updateTitle(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'title' => 'required|string|max:255',
             ]);
@@ -363,6 +473,8 @@ class TaskController extends Controller
     public function updateDescription(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'description' => 'nullable|string',
             ]);
@@ -387,6 +499,8 @@ class TaskController extends Controller
     public function updatePriority(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'priority' => 'required|in:low,medium,high,urgent',
             ]);
@@ -411,6 +525,8 @@ class TaskController extends Controller
     public function addAttachment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'file' => 'required|file|max:10240', // 10MB max
                 'name' => 'nullable|string|max:255',
@@ -447,6 +563,8 @@ class TaskController extends Controller
     public function removeAttachment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanWorkOnTask($task);
+
             $request->validate([
                 'attachment_id' => 'required|string',
             ]);
@@ -465,27 +583,43 @@ class TaskController extends Controller
     }
 
     /**
-     * Update task assigned_to
+     * Toggle task collaborators.
      */
     public function updateAssignedTo(Request $request, Task $task)
     {
         try {
+            $this->ensureCanManageProjectTasks($task->project);
+
             $request->validate([
                 'assigned_to' => 'nullable|exists:users,id',
             ]);
 
-            $assignedTo = $request->assigned_to ?? null;
-            $oldAssignedTo = $task->assigned_to;
-
-            // Convert to integers for proper comparison
-            $assignedTo = $assignedTo ? (int) $assignedTo : null;
-            $oldAssignedTo = $oldAssignedTo ? (int) $oldAssignedTo : null;
+            $assignedTo = $request->assigned_to ? (int) $request->assigned_to : null;
             $currentUserId = (int) Auth::id();
+            $assignees = collect($task->assignees ?? [])
+                ->map(fn ($assignee) => is_array($assignee) ? ($assignee['id'] ?? null) : $assignee)
+                ->filter()
+                ->map(fn ($assigneeId) => (int) $assigneeId)
+                ->unique()
+                ->values();
+
+            if (! $assignedTo) {
+                return back()->with('success', 'Task collaborators updated successfully!');
+            }
+
+            if ((int) $task->assigned_to === $assignedTo) {
+                return back()->with('success', 'Task collaborators updated successfully!');
+            }
+
+            $wasAssigned = $assignees->contains($assignedTo);
+            $updatedAssignees = $wasAssigned
+                ? $assignees->reject(fn ($assigneeId) => $assigneeId === $assignedTo)->values()
+                : $assignees->push($assignedTo)->unique()->values();
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
 
-            $task->update(['assigned_to' => $assignedTo]);
+            $task->update(['assignees' => $updatedAssignees->all()]);
 
             // Refresh task to get updated data
             $task->refresh();
@@ -493,26 +627,22 @@ class TaskController extends Controller
             // Re-enable foreign key checks
             DB::statement('PRAGMA foreign_keys=ON');
 
-            // Create notification if assigned_to changed (always notify when task is assigned)
-            if ($assignedTo && $assignedTo !== $oldAssignedTo) {
+            if (! $wasAssigned) {
                 Log::info('Creating task assignment notification', [
                     'task_id' => $task->id,
                     'assigned_to' => $assignedTo,
                     'assigned_by' => $currentUserId,
-                    'old_assigned_to' => $oldAssignedTo,
                 ]);
                 $this->createTaskAssignmentNotification($task, $assignedTo, $currentUserId);
             } else {
-                Log::info('Skipping task assignment notification', [
+                Log::info('Removed task collaborator', [
                     'task_id' => $task->id,
                     'assigned_to' => $assignedTo,
-                    'old_assigned_to' => $oldAssignedTo,
                     'current_user_id' => $currentUserId,
-                    'reason' => $assignedTo === $oldAssignedTo ? 'Assignment unchanged' : 'No assignment',
                 ]);
             }
 
-            return back()->with('success', 'Task assignment updated successfully!');
+            return back()->with('success', 'Task collaborators updated successfully!');
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -527,6 +657,8 @@ class TaskController extends Controller
     public function addComment(Request $request, Task $task)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $request->validate([
                 'content' => 'required|string|max:1000',
             ]);
@@ -556,6 +688,8 @@ class TaskController extends Controller
     public function updateComment(Request $request, Task $task, $commentId)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $request->validate([
                 'content' => 'required|string|max:1000',
             ]);
@@ -586,6 +720,8 @@ class TaskController extends Controller
     public function deleteComment(Request $request, Task $task, $commentId)
     {
         try {
+            $this->ensureCanViewTask($task);
+
             $comments = $task->comments ?? [];
             $commentIndex = array_search($commentId, array_column($comments, 'id'));
 

@@ -52,8 +52,6 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/search.php';
     require __DIR__ . '/api/training.php';
 
-    Route::post('/password', [MobileAuthController::class, 'updatePassword']);
-
     // Push token endpoint
     Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
 

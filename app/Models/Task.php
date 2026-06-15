@@ -15,6 +15,7 @@ class Task extends Model
         'project_id',
         'created_by',
         'assigned_to',
+        'assignees',
         'due_date',
         'sort_order',
         'subtasks',
@@ -25,7 +26,7 @@ class Task extends Model
         'started_at',
         'completed_at',
         'attachments',
-        'comments'
+        'comments',
     ];
 
     protected $casts = [
@@ -37,7 +38,8 @@ class Task extends Model
         'is_editable' => 'boolean',
         'tags' => 'array',
         'attachments' => 'array',
-        'comments' => 'array'
+        'comments' => 'array',
+        'assignees' => 'array',
     ];
 
     public function project(): BelongsTo
