@@ -54,6 +54,13 @@ class EventsInfoProxyController extends Controller
         ]);
     }
 
+    public function manualEventChecking(Request $request): JsonResponse
+    {
+        return $this->forward('PUT', 'manual-event-checking', [
+            'json' => $request->all(),
+        ]);
+    }
+
     public function storeBooking(Request $request): JsonResponse
     {
         return $this->forward('POST', 'booking/store', [

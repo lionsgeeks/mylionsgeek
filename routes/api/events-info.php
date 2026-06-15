@@ -15,6 +15,7 @@ Route::prefix('events-info')->group(function () {
     Route::get('/events/{event}', [EventsInfoProxyController::class, 'event'])->where('event', '[0-9]+');
     Route::get('/images/events/{cover}', [EventsInfoProxyController::class, 'eventCover'])->where('cover', '.*');
     Route::put('/validate-event-invitation', [EventsInfoProxyController::class, 'validateEventInvitation']);
+    Route::put('/manual-event-checking', [EventsInfoProxyController::class, 'manualEventChecking']);
     Route::post('/booking/store', [EventsInfoProxyController::class, 'storeBooking']);
 
     Route::get('/lionsgate/infosessions', [EventsInfoProxyController::class, 'infoSessions']);
