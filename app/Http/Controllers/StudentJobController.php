@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Mail\NewJobApplicationMail;
 use App\Models\Job;
+use App\Models\JobApplication;
+use App\Models\JobApplicationNotification;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +19,50 @@ use Inertia\Response;
 
 class StudentJobController extends Controller
 {
+    public function myApplications(Request $request): Response
+    {
+        $user = $request->user();
+        if (! $user instanceof User) {
+            abort(401);
+        }
+
+        $applications = JobApplication::query()
+            ->where('user_id', $user->id)
+            ->with([
+                'job:id,title,reference,location,job_type,is_published',
+                'recruiterInterviews' => fn ($q) => $q->orderByDesc('starts_at')->limit(1),
+            ])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (JobApplication $application) {
+                $interview = $application->recruiterInterviews->first();
+
+                return [
+                    'id' => $application->id,
+                    'status' => $application->status,
+                    'subject' => $application->subject,
+                    'created_at' => $application->created_at?->toIso8601String(),
+                    'job' => $application->job ? [
+                        'id' => $application->job->id,
+                        'title' => $application->job->title,
+                        'reference' => $application->job->reference,
+                        'location' => $application->job->location,
+                        'job_type' => $application->job->job_type,
+                        'is_published' => (bool) $application->job->is_published,
+                    ] : null,
+                    'interview' => $interview ? [
+                        'starts_at' => $interview->starts_at?->toIso8601String(),
+                        'location' => $interview->location,
+                        'outcome' => $interview->outcome,
+                    ] : null,
+                ];
+            });
+
+        return Inertia::render('students/Jobs/partials/my-applications', [
+            'applications' => $applications,
+        ]);
+    }
+
     public function index(Request $request): Response
     {
         $filterJobTypes = $this->distinctJobTypes();
@@ -67,7 +113,7 @@ class StudentJobController extends Controller
 
     public function show(Request $request, Job $job): Response
     {
-        if (! $job->is_published) {
+        if (! $job->isOpenForApplications()) {
             abort(404);
         }
 
@@ -89,7 +135,7 @@ class StudentJobController extends Controller
             abort(401);
         }
 
-        if (! $job->is_published) {
+        if (! $job->isOpenForApplications()) {
             abort(404);
         }
 
@@ -137,7 +183,7 @@ class StudentJobController extends Controller
             'subject' => $validated['subject'],
             'cover_letter' => $validated['cover_letter'],
             'cv_path' => $cvPath,
-            'status' => 'pending',
+            'status' => JobApplication::STATUS_PENDING,
         ]);
 
         $job->load(['organizations.accountUser', 'organizations.employers', 'creator']);
@@ -166,6 +212,8 @@ class StudentJobController extends Controller
             Mail::to($recipient->email)->send(new NewJobApplicationMail($job, $application, $user, $applicationsUrl));
         }
 
+        JobApplicationNotification::notifyRecruiters($job, $application, $user);
+
         return back()->with('success', __('Your application was submitted.'));
     }
 
@@ -187,6 +235,7 @@ class StudentJobController extends Controller
             'location' => $job->location,
             'job_type' => $job->job_type,
             'skills' => $skills,
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
             'created_at' => $job->created_at->toIso8601String(),
         ];
     }
@@ -205,6 +254,7 @@ class StudentJobController extends Controller
             'location' => $job->location,
             'job_type' => $job->job_type,
             'skills' => $job->skills ?? [],
+            'application_deadline' => $job->application_deadline?->format('Y-m-d'),
             'created_at' => $job->created_at->toIso8601String(),
             'has_applied' => $hasApplied,
             'can_apply' => $canApply,
@@ -241,6 +291,10 @@ class StudentJobController extends Controller
 
     private function userCanStartNewApplication(Job $job, User $user): bool
     {
+        if (! $job->isOpenForApplications()) {
+            return false;
+        }
+
         if ($job->applications()->where('user_id', $user->id)->exists()) {
             return false;
         }

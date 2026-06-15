@@ -12,6 +12,8 @@ import { timeAgo } from '../../../../lib/utils';
 import LineStatistic from './components/LineChart';
 const User = ({ user, trainings, close, open }) => {
     const { auth } = usePage().props;
+    const currentUserRoles = Array.isArray(auth?.user?.role) ? auth.user.role : (auth?.user?.role ? [auth.user.role] : []);
+    const isPro = currentUserRoles.includes('pro') && !currentUserRoles.includes('admin') && !currentUserRoles.includes('super_admin');
 
     const [projects, setProjects] = useState([]);
     const [rejectingId, setRejectingId] = useState(null);
@@ -204,7 +206,9 @@ const User = ({ user, trainings, close, open }) => {
                 {/* Tabs Navigation */}
                 <div className="mt-2 px-1">
                     <div className="flex gap-1 border-b border-alpha/10">
-                        {['overview', 'attendance', 'projects', 'documents', 'notes'].map((tab) => (
+                        {['overview', 'attendance', 'projects', 'documents', 'notes']
+                            .filter(tab => !(tab === 'documents' && isPro))
+                            .map((tab) => (
                             <button
                                 key={tab}
                                 className={`rounded-t-lg px-4 py-3 text-sm font-medium capitalize transition-all ${
@@ -345,10 +349,12 @@ const User = ({ user, trainings, close, open }) => {
                                         <Label className="text-xs font-semibold text-alpha">Training</Label>
                                         <p className="text-dark dark:text-light">{trainingName}</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-semibold text-alpha">Phone</Label>
-                                        <p className="text-dark dark:text-light">{user.phone || '-'}</p>
-                                    </div>
+                                    {!isPro && (
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold text-alpha">Phone</Label>
+                                            <p className="text-dark dark:text-light">{user.phone || '-'}</p>
+                                        </div>
+                                    )}
                                     {(auth.user?.role?.includes('admin') || auth.user?.role?.includes('moderateur')) && (
                                         <div className="space-y-1">
                                             <Label className="text-xs font-semibold text-alpha">CIN</Label>
@@ -388,6 +394,18 @@ const User = ({ user, trainings, close, open }) => {
                                                 }`}
                                             >
                                                 {(user?.access?.access_cowork ?? user?.access_cowork) ? 'Granted' : 'No Access'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-alpha/10 bg-white/60 p-3 backdrop-blur dark:bg-neutral-900/60">
+                                            <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Scan</span>
+                                            <span
+                                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                                    (user?.access?.access_scan ?? user?.access_scan)
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400'
+                                                }`}
+                                            >
+                                                {(user?.access?.access_scan ?? user?.access_scan) ? 'Granted' : 'No Access'}
                                             </span>
                                         </div>
                                     </div>

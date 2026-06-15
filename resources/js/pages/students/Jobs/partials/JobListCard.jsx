@@ -1,7 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Link } from '@inertiajs/react';
 import { MapPin } from 'lucide-react';
-import { formatJobTypeLabel } from './jobHelpers';
+import { Calendar } from 'lucide-react';
+import { formatApplicationDeadline, formatJobTypeLabel } from './jobHelpers';
 
 export default function JobListCard({ job }) {
     return (
@@ -24,6 +25,12 @@ export default function JobListCard({ job }) {
                     <span className="inline-flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5" />
                         {job.location}
+                    </span>
+                )}
+                {job.application_deadline && (
+                    <span className="inline-flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        Apply by {formatApplicationDeadline(job.application_deadline)}
                     </span>
                 )}
             </div>

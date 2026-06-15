@@ -1322,7 +1322,13 @@ export default function Show({ training, usersNull, courses = [] }) {
                 </Dialog>
 
                 {/* Certificate Generation Modal */}
-                {canPrintCertificates && <CertificateModal open={showCertificateModal} onOpenChange={setShowCertificateModal} training={training} />}
+                {canPrintCertificates && (
+                    <CertificateModal
+                        open={showCertificateModal}
+                        onOpenChange={setShowCertificateModal}
+                        training={{ ...training, users: students }}
+                    />
+                )}
 
                 {/* Bulk Update Users Modal */}
                 <Dialog open={showBulkUpdateModal} onOpenChange={setShowBulkUpdateModal}>

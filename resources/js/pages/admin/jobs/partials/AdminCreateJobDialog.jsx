@@ -1,7 +1,10 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import JobPostingForm from '@/pages/admin/jobs/partials/JobPostingForm';
+import { defaultApplicationDeadline } from '@/pages/students/Jobs/partials/jobHelpers';
 import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+
+const EMPTY_ORGANIZATION_IDS = [];
 
 function buildDefaults(jobTypeOptions) {
     return {
@@ -10,6 +13,7 @@ function buildDefaults(jobTypeOptions) {
         location: '',
         job_type: jobTypeOptions[0] ?? 'full_time',
         skills: '',
+        application_deadline: defaultApplicationDeadline(),
         is_published: true,
         organization_ids: [],
     };
@@ -22,20 +26,28 @@ export default function AdminCreateJobDialog({
     jobTypeOptions = [],
     actionUrl = '/admin/jobs',
     showOrganisationSelect = true,
-    defaultOrganizationIds = [],
+    defaultOrganizationIds = EMPTY_ORGANIZATION_IDS,
 }) {
     const { data, setData, post, processing, errors } = useForm(buildDefaults(jobTypeOptions));
 
+    const defaultOrgIdsKey = useMemo(
+        () => (Array.isArray(defaultOrganizationIds) ? defaultOrganizationIds.map(Number).join(',') : ''),
+        [defaultOrganizationIds],
+    );
+    const wasOpenRef = useRef(false);
+
     useEffect(() => {
-        if (!open) {
+        const justOpened = open && !wasOpenRef.current;
+        wasOpenRef.current = open;
+        if (!justOpened) {
             return;
         }
         const d = buildDefaults(jobTypeOptions);
-        if (Array.isArray(defaultOrganizationIds) && defaultOrganizationIds.length > 0) {
-            d.organization_ids = defaultOrganizationIds;
+        if (defaultOrgIdsKey) {
+            d.organization_ids = defaultOrgIdsKey.split(',').map(Number);
         }
         Object.keys(d).forEach((key) => setData(key, d[key]));
-    }, [open, jobTypeOptions, setData, defaultOrganizationIds]);
+    }, [open, jobTypeOptions, setData, defaultOrgIdsKey]);
 
     const submit = (e) => {
         e.preventDefault();

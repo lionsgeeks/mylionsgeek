@@ -16,6 +16,7 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
 // Recruiters may browse and apply to jobs. Student directory / profiles for recruiters live under /recruiter/students.
 Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsable,responsable_studio,coworker,moderateur,super_admin,recruiter'])->prefix('students')->group(function () {
     Route::get('/jobs', [StudentJobController::class, 'index'])->name('student.jobs.index');
+    Route::get('/jobs/applications/mine', [StudentJobController::class, 'myApplications'])->name('student.jobs.applications');
     Route::get('/jobs/{job}', [StudentJobController::class, 'show'])->whereNumber('job')->name('student.jobs.show');
     Route::post('/jobs/{job}/apply', [StudentJobController::class, 'apply'])->whereNumber('job')->name('student.jobs.apply');
 });
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified', 'role:admin,coach,student,studio_responsa
     Route::post('/changeCover/{id}', [StudentController::class, 'changeCover']);
     Route::post('/changeProfileImage/{id}', [StudentController::class, 'changeProfileImage']);
     Route::post('/about/{id}', [StudentController::class, 'updateAbout']);
+    Route::get('/certificate/download', [StudentController::class, 'downloadCertificate'])->name('student.certificate.download');
     Route::post('/follow/{user}', [FollowController::class, 'create']);
     Route::delete('/unfollow/{user}', [FollowController::class, 'delete']);
     Route::post('/social-links', [UserSocialLinkController::class, 'create']);

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useInitials } from '@/hooks/use-initials';
 import RoleBadge from '@/pages/admin/users/partials/RoleBadge';
+import Rolegard from '@/components/rolegard';
 import { router, usePage } from '@inertiajs/react';
 import { CameraIcon, ChevronsLeft, ChevronsRight, CircleCheckBig, Pencil, Trash, UsersRoundIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -90,7 +91,9 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                         <TableHead>Email</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Role</TableHead>
-                        <TableHead>Menu</TableHead>
+                        <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                            <TableHead>Menu</TableHead>
+                        </Rolegard>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -145,26 +148,28 @@ const UsersTable = ({ users, filters, roles = [], trainings = [], status }) => {
                                 </div>
                             </TableCell>
 
-                            <TableCell className="flex items-center gap-2 font-medium">
-                                <Button
-                                    className="bg-transparent p-2 duration-200 hover:bg-transparent"
-                                    title="Edit"
-                                    onClick={() => setOpenEditUser(user)}
-                                >
-                                    <Pencil size={20} className="text-alpha" />
-                                </Button>
-                                <Button
-                                    className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
-                                    title={user.account_state ? 'Active' : 'Suspend'}
-                                    onClick={() => changeAccountStatus(user)} // Open delete confirmation dialog
-                                >
-                                    {user.account_state ? (
-                                        <CircleCheckBig size={25} className="text-green-600" />
-                                    ) : (
-                                        <Trash size={25} className="text-error" />
-                                    )}
-                                </Button>
-                            </TableCell>
+                            <Rolegard authorized={['admin', 'super_admin', 'moderateur', 'coach']}>
+                                <TableCell className="flex items-center gap-2 font-medium">
+                                    <Button
+                                        className="bg-transparent p-2 duration-200 hover:bg-transparent"
+                                        title="Edit"
+                                        onClick={() => setOpenEditUser(user)}
+                                    >
+                                        <Pencil size={20} className="text-alpha" />
+                                    </Button>
+                                    <Button
+                                        className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
+                                        title={user.account_state ? 'Active' : 'Suspend'}
+                                        onClick={() => changeAccountStatus(user)} // Open delete confirmation dialog
+                                    >
+                                        {user.account_state ? (
+                                            <CircleCheckBig size={25} className="text-green-600" />
+                                        ) : (
+                                            <Trash size={25} className="text-error" />
+                                        )}
+                                    </Button>
+                                </TableCell>
+                            </Rolegard>
                         </TableRow>
                     ))}
                 </TableBody>

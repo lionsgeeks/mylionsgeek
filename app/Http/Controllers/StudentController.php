@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentController extends Controller
 {
@@ -76,6 +80,8 @@ class StudentController extends Controller
             ->select('users.id', 'users.name', 'users.image')
             ->get();
 
+        $isOwner = Auth::id() === (int) $id;
+
         return [
             'user' => [
                 'id' => $user->id,
@@ -96,6 +102,8 @@ class StudentController extends Controller
                 'field' => $user->field,
                 'phone' => $user->phone,
                 'resume' => $user->resume,
+                'resume_url' => $user->resumePublicUrl(),
+                'resume_view_url' => $user->resumePublicUrl() ? $user->resumeViewUrl() : null,
                 'created_at' => $user->created_at->format('Y-m-d'),
                 'formation' => $user->formation_id != null ? $user->formation->name : '',
                 'formation_id' => $user->formation_id,
@@ -109,8 +117,45 @@ class StudentController extends Controller
                 'experiences' => $userExperience->experiences,
                 'educations' => $userEducation->educations,
                 'social_links' => $userSocialLinks->socialLinks,
+                'certified_at' => $user->certified_at
+                    ? Carbon::parse($user->certified_at)->format('Y-m-d')
+                    : null,
+                'certificate_pdf_path' => $isOwner ? $user->certificate_pdf_path : null,
+                'certificate_pdf_url' => $isOwner ? $this->resolveCertificatePdfUrl($user) : null,
             ],
         ];
+    }
+
+    /**
+     * Public URL for a stored certificate PDF, or null if path is unset or file missing.
+     */
+    private function resolveCertificatePdfUrl(User $user): ?string
+    {
+        $pdfPath = $user->certificate_pdf_path;
+
+        if (! $pdfPath || ! Storage::disk('public')->exists($pdfPath)) {
+            return null;
+        }
+
+        return url('/storage/' . ltrim($pdfPath, '/'));
+    }
+
+    /**
+     * Download the authenticated user's stored certificate PDF (profile owner only).
+     */
+    public function downloadCertificate(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+
+        $pdfPath = $user->certificate_pdf_path;
+
+        if (! $pdfPath || ! Storage::disk('public')->exists($pdfPath)) {
+            abort(404, 'Certificate file not found.');
+        }
+
+        $safeName = Str::slug((string) $user->name) ?: 'certificate';
+
+        return Storage::disk('public')->download($pdfPath, "certificate_{$safeName}.pdf");
     }
 
     public function changeProfileImage(Request $request, $id)

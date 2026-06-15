@@ -27,7 +27,7 @@ class OrganisationOnboardingController extends Controller
             return redirect()->route('recruiter.dashboard');
         }
 
-        return Inertia::render('organisation/onboarding', [
+        return Inertia::render('organisation/partials/onboardingForm', [
             'organization' => [
                 'email' => $organization->email,
                 'contact_name' => $organization->contact_name,

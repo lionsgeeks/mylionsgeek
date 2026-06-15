@@ -1,86 +1,222 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { saveAs } from 'file-saver';
-import { Award, Loader2 } from 'lucide-react';
+import {
+    AlertTriangle,
+    Award,
+    Calendar,
+    CheckCircle2,
+    ChevronRight,
+    Download,
+    Loader2,
+    Users,
+    XCircle,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
 
-/**
- * Coloured pill showing the student's attendance/discipline score.
- * Green ≥ 80 · Amber 60–79 · Red < 60
- */
-const AttendanceBadge = ({ score }) => {
+/* ─────────────────────────────────────────────
+   Helpers
+───────────────────────────────────────────── */
+const resolveTrack = (field) => {
+    const n = String(field || '').toLowerCase().trim();
+    if (!n) return null;
+    if (n === 'coding' || n.includes('coding') || n.includes('code') || n.includes('dev')) return 'coding';
+    if (n === 'media' || n.includes('media') || n.includes('content') || n.includes('studio')) return 'media';
+    return null;
+};
+
+const trackMeta = (field) => {
+    const t = resolveTrack(field);
+    if (t === 'coding') return { label: 'Coding · Web Dev', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
+    if (t === 'media') return { label: 'UGC · Digital Marketing', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' };
+    return null;
+};
+
+const attendanceColor = (pct) => {
+    if (pct >= 80) return { bar: 'bg-green-500', text: 'text-green-600 dark:text-green-400' };
+    if (pct >= 60) return { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' };
+    return { bar: 'bg-red-500', text: 'text-red-500 dark:text-red-400' };
+};
+
+const formatPreviewDate = (iso) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return '';
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+};
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+/* ─────────────────────────────────────────────
+   Sub-components
+───────────────────────────────────────────── */
+const AttendancePill = ({ score }) => {
     const pct = Math.round(score);
-    const colour =
-        pct >= 80
-            ? 'bg-green-500/15 text-green-600 dark:text-green-400 ring-green-500/30'
-            : pct >= 60
-              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-amber-500/30'
-              : 'bg-red-500/15 text-red-600 dark:text-red-400 ring-red-500/30';
+    const { text } = attendanceColor(pct);
     return (
-        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${colour}`} title="Taux de présence">
+        <span className={`text-xs font-bold tabular-nums ${text}`} title="Attendance rate">
             {pct}%
         </span>
     );
 };
 
-// Maps a student's field/role to the display title on the certificate
-const resolveTitle = (field) => {
-    const normalized = String(field || '').toLowerCase();
-    if (normalized.includes('coding') || normalized.includes('code') || normalized.includes('dev')) {
-        return 'Full Stack Developer';
-    }
-    if (normalized.includes('media') || normalized.includes('content') || normalized.includes('studio')) {
-        return 'Content Creator';
-    }
-    return field || '';
+const StudentCard = ({ student, checked, onToggle }) => {
+    const track = trackMeta(student.field);
+    const invalidTrack = !resolveTrack(student.field);
+
+    return (
+        <label
+            htmlFor={`cert-${student.id}`}
+            className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all duration-150 select-none ${
+                checked
+                    ? 'border-alpha bg-alpha/8 shadow-sm shadow-alpha/15'
+                    : invalidTrack
+                      ? 'border-dashed border-red-300/40 bg-red-500/5 opacity-70 dark:border-red-500/20'
+                      : 'border-alpha/10 bg-light hover:border-alpha/30 hover:bg-alpha/5 dark:bg-dark dark:hover:border-alpha/25'
+            }`}
+        >
+            <Checkbox
+                id={`cert-${student.id}`}
+                checked={checked}
+                onCheckedChange={onToggle}
+                disabled={invalidTrack}
+                className="h-4 w-4 flex-shrink-0 data-[state=checked]:border-alpha data-[state=checked]:bg-alpha"
+            />
+
+            <Avatar
+                name={student.name}
+                image={student.image ?? null}
+                lastActivity={student.last_login ?? student.last_online ?? student.last_activity ?? null}
+                className="h-10 w-10 flex-shrink-0 text-sm"
+                onlineCircleClass="w-3 h-3"
+            />
+
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight text-dark dark:text-light">{student.name}</p>
+
+                {track && !invalidTrack && (
+                    <span className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${track.color}`}>
+                        {track.label}
+                    </span>
+                )}
+
+                {invalidTrack && (
+                    <p className="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-red-500">
+                        <XCircle className="h-3 w-3" />
+                        No valid track — will be skipped
+                    </p>
+                )}
+
+                {student.email && (
+                    <p className="mt-0.5 truncate text-[10px] text-dark/40 dark:text-light/40">{student.email}</p>
+                )}
+            </div>
+
+            <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+                {student.discipline != null && <AttendancePill score={student.discipline} />}
+                {checked && <CheckCircle2 className="h-4 w-4 text-alpha" />}
+            </div>
+        </label>
+    );
 };
 
+/* ─────────────────────────────────────────────
+   Main modal
+───────────────────────────────────────────── */
 export default function CertificateModal({ open, onOpenChange, training }) {
     const students = training?.users ?? training?.students ?? [];
+    const eligibleStudents = students.filter((s) => resolveTrack(s.field));
 
     const [selectedIds, setSelectedIds] = useState([]);
+    const [issuedDate, setIssuedDate] = useState(todayIso);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [warnings, setWarnings] = useState([]);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
 
-    const allSelected = students.length > 0 && selectedIds.length === students.length;
+    const allEligibleSelected =
+        eligibleStudents.length > 0 && eligibleStudents.every((s) => selectedIds.includes(s.id));
 
     const toggleSelectAll = useCallback(() => {
-        setSelectedIds(allSelected ? [] : students.map((s) => s.id));
-    }, [allSelected, students]);
+        setSelectedIds(allEligibleSelected ? [] : eligibleStudents.map((s) => s.id));
+    }, [allEligibleSelected, eligibleStudents]);
 
     const toggleStudent = useCallback((id) => {
         setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     }, []);
 
+    const resetForm = useCallback(() => {
+        setSelectedIds([]);
+        setIssuedDate(todayIso());
+        setWarnings([]);
+        setError('');
+        setSuccess(false);
+    }, []);
+
     const handleConfirm = async () => {
-        if (selectedIds.length === 0 || isGenerating) return;
+        if (selectedIds.length === 0 || !issuedDate || isGenerating) return;
 
         setIsGenerating(true);
+        setError('');
+        setWarnings([]);
+        setSuccess(false);
+
         try {
             const response = await fetch(`/trainings/${training.id}/certificates/zip`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Accept: 'application/json, application/zip',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify({ user_ids: selectedIds }),
+                body: JSON.stringify({ user_ids: selectedIds, issued_date: issuedDate }),
             });
 
+            let parsedWarnings = [];
+            const warningsHeader = response.headers.get('X-Certificate-Warnings');
+            if (warningsHeader) {
+                try {
+                    const parsed = JSON.parse(warningsHeader);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        parsedWarnings = parsed;
+                        setWarnings(parsed);
+                    }
+                } catch {
+                    /* ignore malformed header */
+                }
+            }
+
             if (!response.ok) {
-                const bodyText = await response.text().catch(() => '');
-                throw new Error(`Certificate ZIP request failed (${response.status}). ${bodyText}`);
+                let message = `Request failed (${response.status})`;
+                const ct = response.headers.get('Content-Type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await response.json();
+                    if (data?.error) message = data.error;
+                    if (Array.isArray(data?.skipped) && data.skipped.length > 0) setWarnings(data.skipped);
+                } else {
+                    const text = await response.text().catch(() => '');
+                    if (text) message = text.slice(0, 200);
+                }
+                throw new Error(message);
             }
 
             const zipBlob = await response.blob();
-            saveAs(zipBlob, `certificats-${training.id}.zip`);
+            saveAs(zipBlob, `certificates-${training.id}.zip`);
 
-            // Close modal after successful generation + download trigger
-            setSelectedIds([]);
-            onOpenChange(false);
-        } catch (error) {
-            console.error('Certificate generation failed:', error);
+            if (parsedWarnings.length === 0) {
+                setSuccess(true);
+                setTimeout(() => {
+                    resetForm();
+                    onOpenChange(false);
+                }, 1400);
+            }
+        } catch (err) {
+            console.error('Certificate generation failed:', err);
+            setError(err?.message || 'Certificate generation failed. Please try again.');
         } finally {
             setIsGenerating(false);
         }
@@ -88,133 +224,190 @@ export default function CertificateModal({ open, onOpenChange, training }) {
 
     const handleOpenChange = (value) => {
         if (!isGenerating) {
-            if (!value) setSelectedIds([]);
+            if (!value) resetForm();
             onOpenChange(value);
         }
     };
 
+    const datePreview = formatPreviewDate(issuedDate);
+    const selectionPct = eligibleStudents.length > 0 ? (selectedIds.length / eligibleStudents.length) * 100 : 0;
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="w-[95vw] max-w-3xl overflow-hidden border border-alpha/20 bg-light p-0 text-dark dark:bg-dark dark:text-light">
-                {/* ── Header ── */}
-                <div className="border-b border-alpha/10 px-6 pt-6 pb-4">
-                    <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                        <Award className="h-6 w-6 flex-shrink-0 text-alpha" />
-                        Imprimer Certificats
-                    </DialogTitle>
-                    <DialogDescription className="mt-1 text-sm text-dark/60 dark:text-light/60">
-                        Sélectionnez les étudiants qui ont complété{' '}
-                        <span className="font-semibold text-dark dark:text-light">{training.name ?? training.title}</span> pour générer leurs
-                        certificats.
-                    </DialogDescription>
+            <DialogContent className="max-w-3xl gap-0 overflow-hidden border border-alpha/15 bg-light p-0 text-dark shadow-2xl shadow-black/20 dark:bg-dark dark:text-light [&>button]:hidden">
 
-                    {/* Select-all bar */}
-                    <div className="mt-4 flex items-center justify-between">
-                        <span className="text-sm font-medium text-dark/60 dark:text-light/60">
-                            <span className="font-bold text-alpha">{selectedIds.length}</span>
-                            {' / '}
-                            {students.length} sélectionné{selectedIds.length !== 1 ? 's' : ''}
-                        </span>
-                        <button type="button" onClick={toggleSelectAll} className="text-sm font-semibold text-alpha hover:underline">
-                            {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
-                        </button>
+                {/* ── Header ── */}
+                <div className="relative overflow-hidden border-b border-alpha/10">
+                    {/* Decorative gradient */}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-alpha/8 via-transparent to-transparent" />
+
+                    <div className="relative px-6 pt-6 pb-5">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-alpha text-beta shadow-md shadow-alpha/30">
+                                    <Award className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold leading-tight text-dark dark:text-light">
+                                        Print Certificates
+                                    </h2>
+                                    {training?.name && (
+                                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-dark/50 dark:text-light/50">
+                                            <ChevronRight className="h-3 w-3" />
+                                            {training.name}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Selection counter */}
+                            <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                                    <Users className="h-4 w-4 text-alpha" />
+                                    <span className="text-alpha">{selectedIds.length}</span>
+                                    <span className="text-dark/30 dark:text-light/30">/</span>
+                                    <span className="text-dark/60 dark:text-light/60">{eligibleStudents.length}</span>
+                                </div>
+                                {/* progress bar */}
+                                <div className="h-1.5 w-28 overflow-hidden rounded-full bg-alpha/10">
+                                    <div
+                                        className="h-full rounded-full bg-alpha transition-all duration-300"
+                                        style={{ width: `${selectionPct}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Date + Select-all row */}
+                        <div className="mt-5 flex flex-wrap items-end gap-4">
+                            <div className="min-w-[180px]">
+                                <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-dark/60 uppercase tracking-wider dark:text-light/60">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    Issue Date
+                                </label>
+                                <div className="relative">
+                                    <Input
+                                        type="date"
+                                        value={issuedDate}
+                                        onChange={(e) => setIssuedDate(e.target.value)}
+                                        disabled={isGenerating}
+                                        className="h-9 border-alpha/20 bg-light pr-3 text-sm focus-visible:ring-alpha dark:bg-dark"
+                                    />
+                                </div>
+                                {datePreview && (
+                                    <p className="mt-1.5 flex items-center gap-1 text-[11px] text-dark/45 dark:text-light/45">
+                                        <span className="font-medium text-alpha">On certificate:</span>
+                                        {datePreview}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-1 justify-end">
+                                <button
+                                    type="button"
+                                    onClick={toggleSelectAll}
+                                    disabled={eligibleStudents.length === 0 || isGenerating}
+                                    className="rounded-lg border border-alpha/20 px-3 py-1.5 text-xs font-semibold text-alpha transition hover:bg-alpha/10 disabled:pointer-events-none disabled:opacity-40"
+                                >
+                                    {allEligibleSelected ? 'Deselect all' : 'Select all eligible'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* ── Student grid ── */}
-                <div className="max-h-[55vh] overflow-y-auto px-6 py-4">
+                {/* ── Alerts ── */}
+                {success && (
+                    <div className="flex items-center gap-2 border-b border-green-500/20 bg-green-500/10 px-6 py-3 text-sm font-medium text-green-700 dark:text-green-300">
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                        Certificates generated! Your download is starting…
+                    </div>
+                )}
+
+                {error && (
+                    <div className="flex items-start gap-2 border-b border-red-500/20 bg-red-500/8 px-6 py-3 text-sm text-red-700 dark:text-red-300">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                {warnings.length > 0 && (
+                    <div className="border-b border-amber-500/20 bg-amber-500/8 px-6 py-3">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Skipped students
+                        </p>
+                        <ul className="mt-1.5 space-y-0.5">
+                            {warnings.map((w) => (
+                                <li key={w.id ?? w.name} className="text-xs text-amber-800 dark:text-amber-200">
+                                    <span className="font-semibold">{w.name}</span>
+                                    {w.reason ? <span className="text-amber-700/70 dark:text-amber-300/70"> — {w.reason}</span> : ''}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* ── Student list ── */}
+                <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4" style={{ maxHeight: '42vh' }}>
                     {students.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-3 py-16 text-dark/40 dark:text-light/40">
-                            <Award className="h-12 w-12 opacity-30" />
-                            <p className="text-sm">Aucun étudiant inscrit à cette formation.</p>
+                        <div className="flex flex-col items-center justify-center gap-3 py-16">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-alpha/10">
+                                <Users className="h-7 w-7 text-alpha/50" />
+                            </div>
+                            <p className="text-sm font-medium text-dark/40 dark:text-light/40">
+                                No students enrolled in this training.
+                            </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-1">
-                            {students.map((student) => {
-                                const checked = selectedIds.includes(student.id);
-                                const displayTitle = resolveTitle(student.field ?? student.specialite ?? student.domain ?? '');
-                                return (
-                                    <label
-                                        key={student.id}
-                                        htmlFor={`cert-student-${student.id}`}
-                                        className={`flex cursor-pointer items-center gap-4 rounded-2xl border p-4 transition-all duration-150 ${
-                                            checked
-                                                ? 'border-alpha/40 bg-alpha/10 shadow-sm'
-                                                : 'border-alpha/10 bg-light hover:border-alpha/30 hover:bg-alpha/5 dark:bg-dark'
-                                        }`}
-                                    >
-                                        {/* Checkbox */}
-                                        <Checkbox
-                                            id={`cert-student-${student.id}`}
-                                            checked={checked}
-                                            onCheckedChange={() => toggleStudent(student.id)}
-                                            className="h-5 w-5 flex-shrink-0 data-[state=checked]:border-alpha data-[state=checked]:bg-alpha"
-                                        />
-
-                                        {/* Avatar */}
-                                        <Avatar
-                                            name={student.name}
-                                            image={student.image ?? null}
-                                                lastActivity={student.last_login ?? student.last_online ?? student.last_activity ?? null}
-                                            className="h-12 w-12 flex-shrink-0 text-base"
-                                            onlineCircleClass="w-3.5 h-3.5"
-                                        />
-
-                                        {/* Info */}
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm leading-tight font-bold text-dark dark:text-light">{student.name}</p>
-                                            {displayTitle && (
-                                                <p className="mt-0.5 truncate text-xs text-dark/55 dark:text-light/55">{displayTitle}</p>
-                                            )}
-                                            {student.email && (
-                                                <p className="mt-0.5 truncate text-xs text-dark/40 dark:text-light/40">{student.email}</p>
-                                            )}
-                                        </div>
-
-                                        {/* Attendance / discipline badge */}
-                                        {student.discipline != null && <AttendanceBadge score={student.discipline} />}
-
-                                        {/* Selected checkmark */}
-                                        {checked && (
-                                            <span className="flex-shrink-0 rounded-full bg-alpha/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-alpha uppercase">
-                                                ✓
-                                            </span>
-                                        )}
-                                    </label>
-                                );
-                            })}
+                        <div className="grid grid-cols-1 gap-2 ">
+                            {students.map((student) => (
+                                <StudentCard
+                                    key={student.id}
+                                    student={student}
+                                    checked={selectedIds.includes(student.id)}
+                                    onToggle={() => toggleStudent(student.id)}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
 
                 {/* ── Footer ── */}
-                <div className="flex flex-col items-stretch justify-between gap-3 border-t border-alpha/10 px-6 py-4 sm:flex-row sm:items-center">
-                    <p className="hidden text-xs text-dark/50 sm:block dark:text-light/50">Un PDF par étudiant · téléchargé en .zip</p>
-                    <div className="flex justify-end gap-3">
+                <div className="flex items-center justify-between gap-3 border-t border-alpha/10 bg-light/60 px-6 py-4 backdrop-blur dark:bg-dark/60">
+                    <p className="hidden text-xs text-dark/40 sm:block dark:text-light/40">
+                        Each selected student gets an individual PDF · packaged as a ZIP
+                    </p>
+                    <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={() => handleOpenChange(false)}
                             disabled={isGenerating}
-                            className="flex-1 sm:flex-none"
+                            className="border-alpha/20 text-dark/70 hover:border-alpha/40 dark:text-light/70"
                         >
-                            Annuler
+                            Cancel
                         </Button>
                         <Button
                             type="button"
                             onClick={handleConfirm}
-                            disabled={selectedIds.length === 0 || isGenerating}
-                            className="flex-1 gap-2 border border-[var(--color-alpha)] bg-[var(--color-alpha)] text-black hover:bg-transparent hover:text-[var(--color-alpha)] disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                            disabled={selectedIds.length === 0 || !issuedDate || isGenerating || success}
+                            className="min-w-[140px] gap-2 border border-alpha bg-alpha font-semibold text-beta transition hover:bg-transparent hover:text-alpha disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isGenerating ? (
                                 <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Génération…
+                                    Generating…
+                                </>
+                            ) : success ? (
+                                <>
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Done!
                                 </>
                             ) : (
                                 <>
-                                    <Award className="h-4 w-4" />
-                                    Confirmer ({selectedIds.length})
+                                    <Download className="h-4 w-4" />
+                                    Download ({selectedIds.length})
                                 </>
                             )}
                         </Button>

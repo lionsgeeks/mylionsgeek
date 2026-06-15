@@ -3,6 +3,7 @@
 namespace App\Actions\JobPostings;
 
 use App\Models\Job;
+use Illuminate\Support\Carbon;
 
 class SaveJobPosting
 {
@@ -13,7 +14,8 @@ class SaveJobPosting
      *   location?: string|null,
      *   job_type: string,
      *   skills?: array<int, string>|null,
-     *   is_published?: bool|null
+     *   is_published?: bool|null,
+     *   application_deadline: string
      * }  $data
      * @param  list<int>  $organizationIds
      */
@@ -26,7 +28,8 @@ class SaveJobPosting
             'location' => $data['location'] ?? null,
             'job_type' => $data['job_type'],
             'skills' => array_values(array_filter($data['skills'] ?? [])),
-            'is_published' => (bool) ($data['is_published'] ?? true),
+            'application_deadline' => $data['application_deadline'],
+            'is_published' => $this->resolveIsPublished($data),
             'user_id' => $creatorUserId,
         ]);
 
@@ -42,7 +45,8 @@ class SaveJobPosting
      *   location?: string|null,
      *   job_type: string,
      *   skills?: array<int, string>|null,
-     *   is_published?: bool|null
+     *   is_published?: bool|null,
+     *   application_deadline: string
      * }  $data
      * @param  list<int>  $organizationIds
      */
@@ -54,11 +58,25 @@ class SaveJobPosting
             'location' => $data['location'] ?? null,
             'job_type' => $data['job_type'],
             'skills' => array_values(array_filter($data['skills'] ?? [])),
-            'is_published' => (bool) ($data['is_published'] ?? true),
+            'application_deadline' => $data['application_deadline'],
+            'is_published' => $this->resolveIsPublished($data),
         ]);
 
         $job->organizations()->sync($organizationIds);
 
         return $job;
+    }
+
+    /**
+     * @param  array{ is_published?: bool|null, application_deadline: string }  $data
+     */
+    private function resolveIsPublished(array $data): bool
+    {
+        $deadline = Carbon::parse($data['application_deadline'])->startOfDay();
+        if ($deadline->lt(now()->startOfDay())) {
+            return false;
+        }
+
+        return (bool) ($data['is_published'] ?? true);
     }
 }

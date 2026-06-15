@@ -1,11 +1,15 @@
 import { Avatar } from '@/components/ui/avatar';
 import { router } from '@inertiajs/react';
-import { Calendar, Camera, Edit3, Github, Globe, Linkedin, Twitter } from 'lucide-react';
+import { Award, Calendar, Camera, Edit3, Github, Globe, Linkedin, Twitter } from 'lucide-react';
 import { useState } from 'react';
+import { ADMIN_USER_STATUSES } from '@/components/helpers/userStatuses';
 import EditUserModal from '../EditModal';
+import DownloadCertificateDialog, { resolveCertificateTrack } from './DownloadCertificateDialog';
 
-const ProfileHeader = ({ user, trainings, roles, stats }) => {
+const ProfileHeader = ({ user, trainings, roles }) => {
     const [open, setOpen] = useState(false);
+    const [certDialogOpen, setCertDialogOpen] = useState(false);
+    const hasCertificateTrack = resolveCertificateTrack(user?.field) !== null;
     const onlineColor = user?.is_online ? 'bg-green-500' : 'bg-neutral-500';
     const lastLoginRaw = user?.last_login ?? user?.last_online ?? user?.last_activity ?? null;
     const lastLogin = lastLoginRaw ? new Date(lastLoginRaw).toLocaleString() : 'No last login available';
@@ -159,6 +163,18 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
                                                 <div className="h-6 w-px bg-neutral-200 dark:bg-neutral-700" />
                                             )}
 
+                                            {/* Certificate download button — visible only for students with a recognised field */}
+                                            {hasCertificateTrack && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCertDialogOpen(true)}
+                                                    className="flex items-center gap-2 rounded-lg border border-alpha/40 px-4 py-2 text-sm font-semibold text-dark shadow transition-all hover:border-alpha hover:bg-alpha/10 dark:text-light"
+                                                >
+                                                    <Award className="h-4 w-4 text-alpha" />
+                                                    Certificat
+                                                </button>
+                                            )}
+
                                             {/* Edit button */}
                                             <button
                                                 onClick={() => setOpen(true)}
@@ -175,7 +191,10 @@ const ProfileHeader = ({ user, trainings, roles, stats }) => {
                     </div>
                 </div>
             </div>
-            <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={stats} trainings={trainings} />
+            <EditUserModal open={!!open} onClose={() => setOpen(false)} editedUser={user} roles={roles} status={ADMIN_USER_STATUSES} trainings={trainings} />
+            {hasCertificateTrack && (
+                <DownloadCertificateDialog open={certDialogOpen} onOpenChange={setCertDialogOpen} user={user} />
+            )}
         </>
     );
 };

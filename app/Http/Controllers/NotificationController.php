@@ -17,6 +17,7 @@ use App\Models\AccessRequestNotification;
 use App\Models\AccessRequestResponseNotification;
 use App\Models\TaskAssignmentNotification;
 use App\Models\ProjectMessageNotification;
+use App\Models\JobApplicationNotification;
 use App\Models\PostReportNotification;
 use App\Models\Formation;
 use App\Models\User;
@@ -43,6 +44,7 @@ class NotificationController extends Controller
             $isModerator = in_array('moderateur', $roles);
             $isStudioResponsable = in_array('studio_responsable', $roles);
             $isCoach = in_array('coach', $roles);
+            $isRecruiter = in_array('recruiter', $roles);
 
             //  1. DISCIPLINE CHANGE NOTIFICATIONS (Admin, Moderator, Coach)
             // Using new DisciplineNotification model
@@ -456,6 +458,41 @@ class NotificationController extends Controller
                 ];
             }
 
+            if ($isRecruiter && Schema::hasTable('job_application_notifications')) {
+                try {
+                    $jobApplicationNotifications = JobApplicationNotification::with([
+                        'applicant:id,name,image',
+                        'jobApplication.job:id,title',
+                    ])
+                        ->where('notified_user_id', $user->id)
+                        ->orderByDesc('created_at')
+                        ->limit(20)
+                        ->get();
+
+                    foreach ($jobApplicationNotifications as $notif) {
+                        $applicant = $notif->applicant;
+                        $jobTitle = $notif->jobApplication?->job?->title ?? 'a job';
+                        $applicantName = $applicant?->name ?? 'Someone';
+                        $jobId = $notif->jobApplication?->job_posting_id;
+
+                        $notifications[] = [
+                            'id' => 'job-application-' . $notif->id,
+                            'type' => 'job_application',
+                            'sender_name' => $applicantName,
+                            'sender_image' => $applicant?->image,
+                            'message' => "{$applicantName} applied to {$jobTitle}",
+                            'link' => $jobId ? "/recruiter/applications/jobs/{$jobId}" : '/recruiter/applications',
+                            'icon_type' => 'briefcase',
+                            'created_at' => $notif->created_at->toISOString(),
+                            'read_at' => $notif->read_at ? $notif->read_at->toISOString() : null,
+                            'job_application_id' => $notif->job_application_id,
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Error fetching job application notifications: ' . $e->getMessage());
+                }
+            }
+
             // 6. PROJECT STATUS NOTIFICATIONS (Students - when project is approved/rejected)
             if (Schema::hasTable('project_status_notifications')) {
                 try {
@@ -713,6 +750,18 @@ class NotificationController extends Controller
                         }
                     }
                     break;
+                case 'job-application':
+                case 'job_application':
+                    if (Schema::hasTable('job_application_notifications')) {
+                        $notification = JobApplicationNotification::where('id', $id)
+                            ->where('notified_user_id', $user->id)
+                            ->first();
+                        if ($notification) {
+                            $notification->read_at = now();
+                            $notification->save();
+                        }
+                    }
+                    break;
                 default:
                     return response()->json(['error' => 'Invalid notification type'], 400);
             }
@@ -782,6 +831,12 @@ class NotificationController extends Controller
             // Mark all post report notifications as read (for staff)
             if (Schema::hasTable('post_report_notifications')) {
                 PostReportNotification::where('notified_user_id', $user->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            if (Schema::hasTable('job_application_notifications')) {
+                JobApplicationNotification::where('notified_user_id', $user->id)
                     ->whereNull('read_at')
                     ->update(['read_at' => now()]);
             }

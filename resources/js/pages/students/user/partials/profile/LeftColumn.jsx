@@ -1,5 +1,7 @@
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { router, usePage } from '@inertiajs/react';
-import { Briefcase, Edit2, ExternalLink, Github, Instagram, Linkedin, Pencil, Plus, Trash } from 'lucide-react';
+import { Award, Briefcase, Download, Edit2, ExternalLink, Eye, Github, Instagram, Linkedin, Pencil, Plus, Trash } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AboutModal from '../../../../../components/AboutModal';
 import CreateSocialLinkModal from '../../../../../components/CreateSocialLinkModal';
@@ -33,9 +35,13 @@ const LeftColumn = ({ user }) => {
     const [deletingSocial, setDeletingSocial] = useState(null);
     const [draggedItem, setDraggedItem] = useState(null);
     const [socialLinks, setSocialLinks] = useState(user?.social_links || []);
+    const [certPreviewOpen, setCertPreviewOpen] = useState(false);
     const { auth } = usePage().props;
     // const visibleLinks = socialLinks.slice(0, 2)
     const canManage = auth?.user?.id == user?.id;
+    const hasCertificate = Boolean(user?.certificate_pdf_path);
+    const certificatePdfUrl = user?.certificate_pdf_url ?? null;
+    const showCertificateCard = canManage && hasCertificate && Boolean(certificatePdfUrl);
 
     // Check if user is a coding user
     const isCodingUser = user?.formation?.toLowerCase().includes('developpement') || user?.formation?.toLowerCase().includes('coding');
@@ -138,6 +144,49 @@ const LeftColumn = ({ user }) => {
                     </div>
                     <div className="flex flex-wrap gap-2"></div>
                 </div>
+
+                {showCertificateCard && (
+                    <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
+                        <div className="mb-3 flex items-center gap-2">
+                            {/* <Award className="h-5 w-5 text-alpha" /> */}
+                            <h2 className="text-lg font-semibold text-beta dark:text-light">Certification</h2>
+                        </div>
+                        {/* <p className="mb-3 text-xs text-beta/60 dark:text-light/60">
+                            LionsGeek training certificate
+                            {user.certified_at ? ` · ${user.certified_at}` : ''}
+                        </p> */}
+                        <div className="overflow-hidden rounded-lg border border-beta/10 bg-white dark:border-light/10">
+                            <object data={certificatePdfUrl} type="application/pdf" className="h-60 w-full ">
+                                <div className="flex h-36 items-center justify-center p-3 text-center text-xs text-beta/60 dark:text-light/60">
+                                    PDF preview unavailable in this browser.
+                                </div>
+                            </object>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 border-beta/20 text-beta dark:border-light/20 dark:text-light"
+                                onClick={() => setCertPreviewOpen(true)}
+                            >
+                                <Eye className="h-4 w-4" />
+                                Preview
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90"
+                                asChild
+                            >
+                                <a href="/students/certificate/download">
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </a>
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Contact Info Card */}
                 <div className="rounded-lg bg-white p-4 shadow dark:bg-dark_gray">
@@ -280,6 +329,55 @@ const LeftColumn = ({ user }) => {
                         return router.delete(`/students/social-links/${deletingSocial.id}`);
                     }}
                 />
+            )}
+            {showCertificateCard && (
+                <Dialog open={certPreviewOpen} onOpenChange={setCertPreviewOpen}>
+                    <DialogContent className="max-h-[90vh] w-[95vw] max-w-3xl overflow-hidden border-beta/15 bg-light p-0 dark:border-light/10 dark:bg-dark">
+                        <DialogHeader className="border-b border-beta/10 px-6 py-4 dark:border-light/10">
+                            <DialogTitle className="flex items-center gap-2 text-beta dark:text-light">
+                                <Award className="h-5 w-5 text-alpha" />
+                                Certificate
+                            </DialogTitle>
+                            <DialogDescription className="text-beta/60 dark:text-light/60">
+                                {user.name}
+                                {user.certified_at ? ` · Certified ${user.certified_at}` : ''}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="overflow-hidden bg-white px-4 pb-4">
+                            <object data={certificatePdfUrl} type="application/pdf" className="h-[min(70vh,600px)] w-full rounded-lg border border-beta/10">
+                                <div className="rounded-lg border border-beta/10 p-6 text-center text-sm text-beta/70 dark:border-light/10 dark:text-light/70">
+                                    PDF preview is not supported in this browser.{' '}
+                                    <a
+                                        href={certificatePdfUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-semibold text-alpha hover:underline"
+                                    >
+                                        Open certificate PDF
+                                    </a>
+                                </div>
+                            </object>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t border-beta/10 px-6 py-4 dark:border-light/10">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-beta/20 text-beta dark:border-light/20 dark:text-light"
+                                asChild
+                            >
+                                <a href={certificatePdfUrl} target="_blank" rel="noopener noreferrer">
+                                    Open in new tab
+                                </a>
+                            </Button>
+                            <Button type="button" className="gap-1.5 border border-alpha bg-alpha text-black hover:bg-alpha/90" asChild>
+                                <a href="/students/certificate/download">
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </a>
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             )}
         </>
     );

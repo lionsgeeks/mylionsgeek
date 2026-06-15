@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Activity, AlertCircle, Download, MessageSquare, Package, Pencil, Trash, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import illustration from '../../../../../public/assets/images/banner/Camera-amico.png';
@@ -15,6 +15,10 @@ import Rolegard from '../../../components/rolegard';
 import ExportEquipmentDialog from './components/ExportEquipmentDialog';
 
 const EquipmentIndex = ({ equipment = [], types = [] }) => {
+    const { auth } = usePage().props;
+    const currentUserRoles = Array.isArray(auth?.user?.role) ? auth.user.role : (auth?.user?.role ? [auth.user.role] : []);
+    const isPro = currentUserRoles.includes('pro') && !currentUserRoles.includes('admin') && !currentUserRoles.includes('super_admin');
+
     const [previewSrc, setPreviewSrc] = useState(null);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -407,7 +411,7 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                 <th className="px-4 py-3 text-left text-sm font-medium">Reference</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium">Mark</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium">State</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>
+                                {!isPro && <th className="px-4 py-3 text-right text-sm font-medium">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-sidebar-border/70">
@@ -443,29 +447,31 @@ const EquipmentIndex = ({ equipment = [], types = [] }) => {
                                             {e.state ? 'Working' : 'Not working'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm">
-                                        <div className="inline-flex items-center gap-1.5">
-                                            <button
-                                                className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)]"
-                                                title="Edit"
-                                                onClick={() => handleEdit(e)}
-                                            >
-                                                <Pencil size={18} className="text-alpha" />
-                                            </button>
-                                            <button
-                                                className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600"
-                                                title="Delete"
-                                                onClick={() => handleDelete(e)}
-                                            >
-                                                <Trash size={18} className="text-error" />
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {!isPro && (
+                                        <td className="px-4 py-3 text-right text-sm">
+                                            <div className="inline-flex items-center gap-1.5">
+                                                <button
+                                                    className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-[var(--color-alpha)]"
+                                                    title="Edit"
+                                                    onClick={() => handleEdit(e)}
+                                                >
+                                                    <Pencil size={18} className="text-alpha" />
+                                                </button>
+                                                <button
+                                                    className="cursor-pointer p-2 text-foreground/70 transition-colors duration-200 hover:bg-transparent hover:text-red-600"
+                                                    title="Delete"
+                                                    onClick={() => handleDelete(e)}
+                                                >
+                                                    <Trash size={18} className="text-error" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                             {filteredEquipment.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                                    <td colSpan={!isPro ? 6 : 5} className="px-4 py-12 text-center text-sm text-muted-foreground">
                                         {filterType === 'all' ? 'No equipment yet.' : `No ${filterType} equipment found.`}
                                     </td>
                                 </tr>

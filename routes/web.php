@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GlobalAnalyticsController;
+use App\Http\Controllers\API\LearningController;
 use App\Http\Controllers\API\SearchController as ApiSearchController;
 use App\Http\Controllers\CertificateShareController;
 use App\Http\Controllers\LinkedInController;
@@ -34,7 +35,7 @@ Route::get('/', function () {
             if ($user->isOrganisationAccount()
                 && $user->organisationAccount
                 && (! $user->organisationAccount->hasCompletedOnboarding() || $user->must_change_password)) {
-                return redirect()->route('organisation.onboarding');
+                    return redirect()->route('organisation.onboarding');
             }
 
             return redirect()->route('recruiter.dashboard');
@@ -61,7 +62,7 @@ Route::get('/', function () {
 Route::get('/certificates/share/{token}', [CertificateShareController::class, 'show'])->name('certificates.share');
 
 // Protect admin dashboard
-Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,moderateur,coach,studio_responsable,pro'])->prefix('admin')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Global Analytics (admin)
@@ -101,7 +102,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/auth/linkedin/callback', [LinkedInController::class, 'callback'])->name('linkedin.callback');
     Route::post('/linkedin/share-prompted', [LinkedInController::class, 'markSharePrompted'])->name('linkedin.share.prompted');
     Route::post('/linkedin/share-dismiss', [LinkedInController::class, 'dismissSharePrompt'])->name('linkedin.share.dismiss');
-    Route::post('/linkedin/share-certificate', [LinkedInController::class, 'shareCertificate'])->name('linkedin.share.certificate');
+    // Certificate sharing to LinkedIn disabled (PDF-only certificates).
+    // Route::post('/linkedin/share-certificate', [LinkedInController::class, 'shareCertificate'])->name('linkedin.share.certificate');
 
     // Notifications API - Get all notifications
     // Route::get('/api/notifications', function (Request $request) {
@@ -290,6 +292,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/api/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
     Route::get('/api/notifications/ably-token', [NotificationController::class, 'getAblyToken'])->name('api.notifications.ably-token');
 });
+
+// learning routes
+    Route::middleware("auth")->get("/auth/learning",[LearningController::class, "redirectCode"]);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

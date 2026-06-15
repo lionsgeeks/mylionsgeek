@@ -4,21 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\AttendanceListe;
-use App\Models\Note;
 use App\Models\Formation;
+use App\Models\Note;
 use App\Models\User;
-use App\Services\CertificateImageGenerator;
+use App\Services\CertificatePdfGenerator;
+use App\Services\CertificateTrackResolver;
 use App\Services\DisciplineService;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 use ZipArchive;
-
 
 class FormationController extends Controller
 {
@@ -35,6 +35,7 @@ class FormationController extends Controller
 
         return in_array('admin', $roles, true) || in_array('super_admin', $roles, true);
     }
+
     public function index(Request $request)
     {
         $coachId = $request->query('coach');
@@ -45,74 +46,73 @@ class FormationController extends Controller
 
         // dd($query->where('promo', $promo)->get());
 
-        if (!empty($coachId)) {
+        if (! empty($coachId)) {
             $query->where('user_id', $coachId);
         }
 
-        if (!empty($track)) {
+        if (! empty($track)) {
             $query->where('category', $track);
         }
-        if (!empty($promo)) {
-           $query->where('promo', $promo);
+        if (! empty($promo)) {
+            $query->where('promo', $promo);
         }
 
         $trainings = $query->orderBy('created_at', 'desc')->get();
 
-       $coaches = User::whereJsonContains('role', 'coach')->get();
+        $coaches = User::whereJsonContains('role', 'coach')->get();
         $tracks = Formation::select('category')->distinct()->pluck('category');
         $promos = Formation::select('promo')->distinct()->pluck('promo');
 
         return Inertia::render('admin/training/index', [
             'trainings' => $trainings,
-            'coaches'   => $coaches,
-            'filters'   => [
+            'coaches' => $coaches,
+            'filters' => [
                 'coach' => $coachId,
                 'track' => $track,
                 'promo' => $promo,
             ],
-            'tracks'    => $tracks,
+            'tracks' => $tracks,
             'promos' => $promos,
         ]);
     }
 
     // //////////////////////////////////////////
     public function show(Formation $training)
-{
-   $usersNull = User::whereNull('formation_id')->get();
+    {
+        $usersNull = User::whereNull('formation_id')->get();
 
-   // Get courses that belong to this training through exercises
-   $courses = \App\Models\Course::whereHas('exercices', function($query) use ($training) {
-       $query->where('training_id', $training->id);
-   })->with('exercices')->get();
+        // Get courses that belong to this training through exercises
+        $courses = \App\Models\Course::whereHas('exercices', function ($query) use ($training) {
+            $query->where('training_id', $training->id);
+        })->with('exercices')->get();
 
-   $training->load('coach', 'users');
+        $training->load('coach', 'users');
 
-   // Attach the discipline score to every enrolled user so the frontend
-   // can display the attendance percentage without extra API calls.
-   $disciplineService = new \App\Services\DisciplineService();
-   $training->users->each(function (User $user) use ($disciplineService) {
-       $user->discipline = $disciplineService->calculateDisciplineScore($user);
-   });
+        // Attach the discipline score to every enrolled user so the frontend
+        // can display the attendance percentage without extra API calls.
+        $disciplineService = new \App\Services\DisciplineService;
+        $training->users->each(function (User $user) use ($disciplineService) {
+            $user->discipline = $disciplineService->calculateDisciplineScore($user);
+        });
 
-   return inertia('admin/training/[id]', [
-       'training'  => $training,
-       'usersNull' => $usersNull,
-       'courses'   => $courses,
-   ]);
-}
-
+        return inertia('admin/training/[id]', [
+            'training' => $training,
+            'usersNull' => $usersNull,
+            'courses' => $courses,
+        ]);
+    }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255',
-            'img'        => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'img' => 'nullable|string|max:255',
             'certificate_template' => 'nullable|image|max:5120',
-            'category'   => 'required|string|max:100',
+            'category' => 'required|string|max:100',
             'start_time' => 'required|date',
-            'end_time'   => 'nullable|date',
-            'user_id'    => 'required|exists:users,id',
-            'promo'      => 'nullable|string|max:50',
+            'end_time' => 'nullable|date',
+            'user_id' => 'required|exists:users,id',
+            'promo' => 'nullable|string|max:50',
         ]);
         // dd($request->all());
 
@@ -128,7 +128,7 @@ class FormationController extends Controller
             }
 
             // Always overwrite the global default template
-            $targetPath = $targetDir . DIRECTORY_SEPARATOR . 'certif.jpg';
+            $targetPath = $targetDir.DIRECTORY_SEPARATOR.'certif.jpg';
             $file->move($targetDir, 'certif.jpg');
 
             // Keep DB column aligned (optional; not used for rendering now)
@@ -139,11 +139,12 @@ class FormationController extends Controller
 
         return back()->with('success', 'Training added successfully!');
     }
-    /////////////////////
+
+    // ///////////////////
     public function addStudent(Formation $training, Request $request)
     {
         $validated = $request->validate([
-            'student_id' => 'required|exists:users,id'
+            'student_id' => 'required|exists:users,id',
         ]);
 
         $user = User::find($validated['student_id']);
@@ -161,35 +162,37 @@ class FormationController extends Controller
             $user->formation_id = null;
             $user->save();
         }
+
         return back()->with('success', 'Student removed');
     }
-// attendance
-public function attendance(Request $request)
-{
+
+    // attendance
+    public function attendance(Request $request)
+    {
         $request->validate([
             'formation_id' => 'required|integer|exists:formations,id',
             'attendance_day' => 'required|date',
         ]);
-    // Find existing attendance for formation + day or create one
+        // Find existing attendance for formation + day or create one
         $attendance = Attendance::where('formation_id', $request->formation_id)
             ->whereDate('attendance_day', $request->attendance_day)
             ->first();
 
-    if (! $attendance) {
-        $attendance = Attendance::create([
-            'formation_id'   => $request->formation_id,
-            'attendance_day' => $request->attendance_day,
-            'staff_name'     => Auth::user()->name,
-        ]);
-    }
-
-    // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
-        // Normalize legacy IDs: if non-numeric, migrate to fresh numeric id
-        if ($attendance && !is_numeric($attendance->id)) {
-            $new = Attendance::create([
-                'formation_id'   => $request->formation_id,
+        if (! $attendance) {
+            $attendance = Attendance::create([
+                'formation_id' => $request->formation_id,
                 'attendance_day' => $request->attendance_day,
-                'staff_name'     => Auth::user()->name,
+                'staff_name' => Auth::user()->name,
+            ]);
+        }
+
+        // If a legacy record was created earlier with a UUID string as id, replace it with a fresh integer id record
+        // Normalize legacy IDs: if non-numeric, migrate to fresh numeric id
+        if ($attendance && ! is_numeric($attendance->id)) {
+            $new = Attendance::create([
+                'formation_id' => $request->formation_id,
+                'attendance_day' => $request->attendance_day,
+                'staff_name' => Auth::user()->name,
             ]);
             // migrate any list rows
             AttendanceListe::where('attendance_id', $attendance->id)
@@ -200,41 +203,42 @@ public function attendance(Request $request)
             $attendance = $new;
         }
 
-    // Load existing list entries and attach notes per user (joined as one string)
-    $lists = AttendanceListe::where('attendance_id', $attendance->id)
-        ->get(['user_id', 'attendance_day', 'morning', 'lunch', 'evening']);
+        // Load existing list entries and attach notes per user (joined as one string)
+        $lists = AttendanceListe::where('attendance_id', $attendance->id)
+            ->get(['user_id', 'attendance_day', 'morning', 'lunch', 'evening']);
 
-    $userIds = $lists->pluck('user_id')->unique()->values();
-    $notesByUser = Note::whereIn('user_id', $userIds)
-        ->where('attendance_id', $attendance->id)
-        ->get(['user_id', 'note'])
-        ->groupBy('user_id')
-        ->map(function ($group) {
-            return $group->pluck('note')->implode(' | ');
+        $userIds = $lists->pluck('user_id')->unique()->values();
+        $notesByUser = Note::whereIn('user_id', $userIds)
+            ->where('attendance_id', $attendance->id)
+            ->get(['user_id', 'note'])
+            ->groupBy('user_id')
+            ->map(function ($group) {
+                return $group->pluck('note')->implode(' | ');
+            });
+
+        $lists = $lists->map(function ($row) use ($notesByUser) {
+            $row->note = $notesByUser[$row->user_id] ?? null;
+
+            return $row;
         });
 
-    $lists = $lists->map(function ($row) use ($notesByUser) {
-        $row->note = $notesByUser[$row->user_id] ?? null;
-        return $row;
-    });
-
-    return response()->json([
-        'attendance_id' => $attendance->id,
-        'lists' => $lists,
+        return response()->json([
+            'attendance_id' => $attendance->id,
+            'lists' => $lists,
             'staff_name' => $attendance->staff_name,
-    ]);
-}
+        ]);
+    }
 
     // List attendance events for a formation (calendar markers)
     public function attendanceEvents(Formation $training)
     {
         $events = Attendance::where('formation_id', $training->id)
             ->orderByDesc('attendance_day')
-            ->get(['attendance_day','staff_name'])
+            ->get(['attendance_day', 'staff_name'])
             ->map(function ($a) {
                 return [
                     'date' => $a->attendance_day,
-                    'title' => 'Saved by ' . ($a->staff_name ?? 'staff'),
+                    'title' => 'Saved by '.($a->staff_name ?? 'staff'),
                     'color' => '#FACC15', // yellow-400
                 ];
             });
@@ -243,99 +247,99 @@ public function attendance(Request $request)
     }
 
     // attendance list
-public function save(Request $request)
-{
-    $request->validate([
-        'attendance' => 'required|array|min:1',
-        'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
-        'attendance.*.user_id' => 'required|exists:users,id',
-        'attendance.*.attendance_day' => 'required|date',
-        'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
-        'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused',
-        'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused',
-        'attendance.*.note' => 'nullable|string',
-    ]);
+    public function save(Request $request)
+    {
+        $request->validate([
+            'attendance' => 'required|array|min:1',
+            'attendance.*.attendance_id' => 'required|integer|exists:attendances,id',
+            'attendance.*.user_id' => 'required|exists:users,id',
+            'attendance.*.attendance_day' => 'required|date',
+            'attendance.*.morning' => 'nullable|string|in:present,absent,late,excused',
+            'attendance.*.lunch' => 'nullable|string|in:present,absent,late,excused',
+            'attendance.*.evening' => 'nullable|string|in:present,absent,late,excused',
+            'attendance.*.note' => 'nullable|string',
+        ]);
 
-    $lastAttendanceId = null;
-    $disciplineService = new DisciplineService();
+        $lastAttendanceId = null;
+        $disciplineService = new DisciplineService;
 
-    foreach ($request->attendance as $data) {
-        $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
-            ? (int) $data['attendance_id']
-            : null;
+        foreach ($request->attendance as $data) {
+            $attendanceId = isset($data['attendance_id']) && is_numeric($data['attendance_id'])
+                ? (int) $data['attendance_id']
+                : null;
 
-        if ($attendanceId === null) {
-            continue;
-        }
+            if ($attendanceId === null) {
+                continue;
+            }
 
-        $lastAttendanceId = $attendanceId;
+            $lastAttendanceId = $attendanceId;
 
-        //  GET OLD DISCIPLINE BEFORE UPDATE
-        $user = User::find($data['user_id']);
-        if (!$user) {
-            continue;
-        }
+            //  GET OLD DISCIPLINE BEFORE UPDATE
+            $user = User::find($data['user_id']);
+            if (! $user) {
+                continue;
+            }
 
-        // Calculate discipline BEFORE updating attendance
-        $oldDiscipline = $disciplineService->calculateDisciplineScore($user);
+            // Calculate discipline BEFORE updating attendance
+            $oldDiscipline = $disciplineService->calculateDisciplineScore($user);
 
-        $payload = [
-            'attendance_day' => $data['attendance_day'],
-            'morning' => $data['morning'] ?? 'present',
-            'lunch' => $data['lunch'] ?? 'present',
-            'evening' => $data['evening'] ?? 'present',
-        ];
+            $payload = [
+                'attendance_day' => $data['attendance_day'],
+                'morning' => $data['morning'] ?? 'present',
+                'lunch' => $data['lunch'] ?? 'present',
+                'evening' => $data['evening'] ?? 'present',
+            ];
 
-        AttendanceListe::updateOrCreate(
-            [
-                'attendance_id' => $attendanceId,
-                'user_id' => $data['user_id'],
-            ],
-            $payload
-        );
+            AttendanceListe::updateOrCreate(
+                [
+                    'attendance_id' => $attendanceId,
+                    'user_id' => $data['user_id'],
+                ],
+                $payload
+            );
 
-        //  Process discipline change and create notification if threshold crossed
-        // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
-        $disciplineService->processDisciplineChange($user, $oldDiscipline);
+            //  Process discipline change and create notification if threshold crossed
+            // Only notifies on 5% threshold changes (100, 95, 90, 85, ...)
+            $disciplineService->processDisciplineChange($user, $oldDiscipline);
 
-        // Notes dyal absence (existing code)
-        if (!empty($data['note'])) {
-            $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
-            foreach ($notes as $noteText) {
-                try {
-                    Note::create([
-                        'user_id' => $data['user_id'],
-                        'attendance_id' => $attendanceId,
-                        'note' => $noteText,
-                        'author' => Auth::user()->name,
-                    ]);
-                } catch (\Throwable $e) {
-                    // Do not block attendance save if a note insert fails
+            // Notes dyal absence (existing code)
+            if (! empty($data['note'])) {
+                $notes = array_filter(array_map('trim', explode(' | ', (string) $data['note'])));
+                foreach ($notes as $noteText) {
+                    try {
+                        Note::create([
+                            'user_id' => $data['user_id'],
+                            'attendance_id' => $attendanceId,
+                            'note' => $noteText,
+                            'author' => Auth::user()->name,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Do not block attendance save if a note insert fails
+                    }
                 }
             }
         }
+
+        // Tag latest editor name on attendance row
+        if (! empty($lastAttendanceId)) {
+            Attendance::where('id', $lastAttendanceId)->update(['staff_name' => Auth::user()->name]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 
-    // Tag latest editor name on attendance row
-    if (!empty($lastAttendanceId)) {
-        Attendance::where('id', $lastAttendanceId)->update(['staff_name' => Auth::user()->name]);
-    }
-
-    return response()->json(['status' => 'ok']);
-}
-
-// Update formation
+    // Update formation
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'name'       => 'required|string|max:255',
-            'img'        => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
+            'img' => 'nullable|string|max:255',
             'certificate_template' => 'nullable|image|max:5120',
-            'category'   => 'required|string|max:100',
+            'category' => 'required|string|max:100',
             'start_time' => 'required|date',
-            'end_time'   => 'nullable|date',
-            'user_id'    => 'nullable|exists:users,id',
-            'promo'      => 'nullable|string|max:50',
+            'end_time' => 'nullable|date',
+            'user_id' => 'nullable|exists:users,id',
+            'promo' => 'nullable|string|max:50',
         ]);
 
         $formation = Formation::findOrFail($id);
@@ -396,17 +400,17 @@ public function save(Request $request)
         foreach ($users as $user) {
             $updateData = [];
 
-            if ($request->has('roles') && !empty($validated['roles'])) {
+            if ($request->has('roles') && ! empty($validated['roles'])) {
                 $updateData['role'] = array_values(array_map(function ($r) {
                     return strtolower((string) $r);
                 }, array_filter($validated['roles'])));
             }
 
-            if ($request->has('status') && !empty($validated['status'])) {
+            if ($request->has('status') && ! empty($validated['status'])) {
                 $updateData['status'] = $validated['status'];
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $user->update($updateData);
                 $updated++;
             }
@@ -416,85 +420,118 @@ public function save(Request $request)
     }
 
     /**
-     * Generate certificates on the server, store them, and return a ZIP download.
-     * - Stores PDF: storage/app/public/certificates/{trainingId}/{userId}.pdf
-     * - Stores PNG screenshot: storage/app/public/images/certificationImages/{userId}.png
+     * Admin or assigned coach only.
      */
-    public function downloadCertificatesZip(Formation $training, Request $request)
+    private function canPrintCertificates(Formation $training): bool
     {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        $roles = is_array($user->role) ? $user->role : [(string) $user->role];
+        $roles = array_filter(array_map('strval', $roles));
+
+        if (count(array_intersect($roles, ['admin', 'super_admin'])) > 0) {
+            return true;
+        }
+
+        if (in_array('coach', $roles, true) && (int) $training->user_id === (int) $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Generate or reuse certificates (PDF), store per student, return ZIP download.
+     * Stores: storage/app/public/certificates/{trainingId}/{userId}.pdf
+     */
+    public function downloadCertificatesZip(
+        Formation $training,
+        Request $request,
+        CertificateTrackResolver $trackResolver,
+        CertificatePdfGenerator $pdfGenerator,
+    ) {
+        if (! $this->canPrintCertificates($training)) {
+            abort(403, 'You are not allowed to print certificates for this training.');
+        }
+
         $validated = $request->validate([
             'user_ids' => 'required|array|min:1',
             'user_ids.*' => 'required|exists:users,id',
+            'issued_date' => 'required|date',
         ]);
+
+        $issuedCarbon = Carbon::parse($validated['issued_date'])->startOfDay();
+        $issuedDateFormatted = $issuedCarbon->format('d/m/Y');
 
         $users = User::whereIn('id', $validated['user_ids'])
             ->where('formation_id', $training->id)
             ->get();
 
         if ($users->isEmpty()) {
-            return back()->with('error', 'No valid users found for this training.');
+            return $this->certificateZipErrorResponse($request, 'No valid users found for this training.', 422);
         }
 
-        $readTemplateAsDataUri = function () use ($training): string {
-            $defaultPath = public_path('assets/images/certif.jpg');
-
-            if (! is_file($defaultPath)) {
-                abort(500, 'Default certificate template is missing at /public/assets/images/certif.jpg.');
-            }
-
-            return 'data:image/jpeg;base64,' . base64_encode((string) file_get_contents($defaultPath));
-        };
-
-        $templateDataUri = $readTemplateAsDataUri();
-
-        $tmpZipPath = storage_path('app/tmp/certificates-' . $training->id . '-' . now()->format('YmdHis') . '-' . Str::random(8) . '.zip');
+        $tmpZipPath = storage_path('app/tmp/certificates-'.$training->id.'-'.now()->format('YmdHis').'-'.Str::random(8).'.zip');
         if (! is_dir(dirname($tmpZipPath))) {
             @mkdir(dirname($tmpZipPath), 0755, true);
         }
 
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($tmpZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            abort(500, 'Failed to create ZIP archive.');
+            return $this->certificateZipErrorResponse($request, 'Failed to create ZIP archive.', 500);
         }
 
         $savedCount = 0;
+        $skipped = [];
+
         foreach ($users as $user) {
+            $track = $trackResolver->resolve($user->field ?? null);
+            if ($track === null) {
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Le champ doit être « coding » ou « media ».',
+                ];
+
+                continue;
+            }
+
+            // Flat path: one file per student, regardless of training.
+            // put() overwrites automatically, so regeneration is always safe.
+            $pdfStoragePath = 'certificates/'.$user->id.'.pdf';
+            $zipEntryName = 'certificat-'.preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name).'.pdf';
+
             try {
-                $pdf = Pdf::loadView('certificates.certificate', [
-                    'studentName' => (string) ($user->name ?? ''),
-                    'field' => (string) ($user->field ?? ''),
-                    'trainingTitle' => (string) ($training->name ?? ''),
-                    'issuedDate' => now()->locale('fr_FR')->translatedFormat('d F Y'),
-                    'templateDataUri' => $templateDataUri,
-                ])->setPaper('a4', 'landscape');
-
-                $pdfBytes = $pdf->output();
-
-                $pdfStoragePath = 'certificates/' . $training->id . '/' . $user->id . '.pdf';
-                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
-
-                $zip->addFromString('certificat-' . preg_replace('/[^a-zA-Z0-9_\- ]/u', '', (string) $user->name) . '.pdf', $pdfBytes);
-
-                // Mark Certified when a certificate is issued
-                $user->forceFill([
-                    'status' => 'Certified',
-                    'certified_at' => $user->certified_at ?? now(),
-                    'certified_training_id' => (int) $training->id,
-                    'linkedin_share_prompted_at' => null,
-                    'linkedin_share_dismissed_at' => null,
-                    'linkedin_shared_at' => null,
-                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
-                ])->save();
-
-                // Generate PNG using GD (no Ghostscript required)
-                app(CertificateImageGenerator::class)->generate(
-                    userId: $user->id,
-                    studentName: (string) ($user->name ?? ''),
-                    field: (string) ($user->field ?? ''),
-                    trainingTitle: (string) ($training->name ?? ''),
-                    issuedDate: now()->locale('fr_FR')->translatedFormat('d F Y'),
+                $pdfBytes = $pdfGenerator->generate(
+                    $track,
+                    (string) ($user->name ?? ''),
+                    $issuedDateFormatted,
                 );
 
+                if ($pdfBytes === null || $pdfBytes === '') {
+                    $skipped[] = [
+                        'id' => $user->id,
+                        'name' => (string) $user->name,
+                        'reason' => 'Échec de génération du PDF.',
+                    ];
+
+                    continue;
+                }
+
+                Storage::disk('public')->put($pdfStoragePath, $pdfBytes);
+
+                $user->forceFill([
+                    'status' => 'Certified',
+                    'certified_at' => $issuedCarbon,
+                    'certified_training_id' => (int) $training->id,
+                    'certificate_share_token' => $user->certificate_share_token ?: Str::random(48),
+                    'certificate_pdf_path' => $pdfStoragePath,
+                ])->save();
+
+                $zip->addFromString($zipEntryName, $pdfBytes);
                 $savedCount++;
             } catch (\Throwable $e) {
                 Log::error('Failed to generate certificate', [
@@ -502,6 +539,12 @@ public function save(Request $request)
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),
                 ]);
+
+                $skipped[] = [
+                    'id' => $user->id,
+                    'name' => (string) $user->name,
+                    'reason' => 'Erreur serveur lors de la génération.',
+                ];
             }
         }
 
@@ -509,15 +552,29 @@ public function save(Request $request)
 
         if ($savedCount === 0) {
             @unlink($tmpZipPath);
-            abort(500, 'Failed to generate certificates.');
+
+            return $this->certificateZipErrorResponse(
+                $request,
+                'Aucun certificat généré.',
+                422,
+                ['skipped' => $skipped],
+            );
         }
 
-        return response()->download($tmpZipPath, 'certificats-' . $training->id . '.zip', [
-            'Content-Type' => 'application/zip',
-        ])->deleteFileAfterSend(true);
+        return response()
+            ->download($tmpZipPath, 'certificats-'.$training->id.'.zip', [
+                'Content-Type' => 'application/zip',
+                'X-Certificate-Warnings' => json_encode($skipped, JSON_UNESCAPED_UNICODE),
+            ])
+            ->deleteFileAfterSend(true);
     }
 
+    private function certificateZipErrorResponse(Request $request, string $message, int $status, array $extra = [])
+    {
+        if ($request->expectsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json(array_merge(['error' => $message], $extra), $status);
+        }
 
-
-
+        return back()->with('error', $message);
+    }
 }

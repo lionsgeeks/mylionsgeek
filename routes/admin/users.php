@@ -2,12 +2,13 @@
 
 // use App\Http\Controllers\CompleteProfile;
 
-use App\Http\Controllers\PostController;
+use App\Http\Controllers\Admin\CertificateController;
 use App\Http\Controllers\CompleteProfileController;
+use App\Http\Controllers\PostController;
 use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach,pro'])->prefix('admin')->group(function () {
 
     Route::get('/users', [UsersController::class, 'index']);
     Route::get('/users/export', [UsersController::class, 'export']);
@@ -24,6 +25,7 @@ Route::middleware(['auth', 'verified', 'role:admin,super_admin,moderateur,coach'
     Route::post('/users/send-email', [UsersController::class, 'sendEmail']);
     Route::post('/users/{id}/resend-link', [CompleteProfileController::class, 'resendActivationLink']);
     Route::post('/users/{id}/reset-password', [CompleteProfileController::class, 'resetPassword']);
+    Route::post('/users/{user}/certificate/download', [CertificateController::class, 'download'])->name('admin.users.certificate.download');
 });
 Route::post('/complete-profile/update/{token}', [CompleteProfileController::class, 'submitCompleteProfile']);
 Route::get('/complete-profile/{token}', [CompleteProfileController::class, 'goToCompleteProfile'])

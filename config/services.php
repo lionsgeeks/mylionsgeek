@@ -61,4 +61,16 @@ return [
         'market'        => env('SPOTIFY_MARKET', 'MA'),
     ],
 
+    // Public LionsGeek site (lionsgeek.ma). Proxied for the mobile app so a
+    // device on the local network can read events / info-sessions through this
+    // server instead of needing direct public-internet access. The key is held
+    // here server-side and never shipped to the device in proxy mode.
+    'lionsgeek' => [
+        'url' => env('LIONSGEEK_MA_API_URL', 'https://lionsgeek.ma'),
+        'key' => env('LIONSGEEK_MA_API_KEY'),
+        // Keep TLS verification on. Set LIONSGEEK_MA_API_VERIFY=false only for
+        // local dev where PHP cURL lacks a CA bundle (cURL error 60).
+        'verify' => env('LIONSGEEK_MA_API_VERIFY', true),
+    ],
+
 ];

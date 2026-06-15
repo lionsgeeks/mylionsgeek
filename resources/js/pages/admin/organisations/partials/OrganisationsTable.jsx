@@ -72,7 +72,11 @@ export default function OrganisationsTable({ organisations }) {
                 </TableHeader>
                 <TableBody>
                     {currentItems.map((org) => (
-                        <TableRow key={org.id}>
+                        <TableRow
+                            key={org.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.visit(`/admin/organisations/${org.id}`)}
+                        >
                             <TableCell className="font-medium">{org.enterprise_name || '—'}</TableCell>
                             <TableCell>{org.email}</TableCell>
                             <TableCell>{org.contact_name || '—'}</TableCell>
@@ -86,7 +90,10 @@ export default function OrganisationsTable({ organisations }) {
                                     type="button"
                                     className="cursor-pointer bg-transparent p-2 duration-200 hover:bg-transparent"
                                     title={org.account_state === 0 ? 'Suspend' : 'Activate'}
-                                    onClick={() => toggleStatus(org)}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        toggleStatus(org);
+                                    }}
                                 >
                                     {org.account_state === 0 ? (
                                         <Trash size={25} className="text-error" />

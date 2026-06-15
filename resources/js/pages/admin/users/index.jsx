@@ -1,4 +1,5 @@
 import Banner from '@/components/banner';
+import { ADMIN_USER_STATUSES } from '@/components/helpers/userStatuses';
 import AppLayout from '@/layouts/app-layout';
 import { useMemo, useState } from 'react';
 import students from '../../../../../public/assets/images/banner/students.png';
@@ -76,7 +77,7 @@ const Users = ({ users, trainings }) => {
         return list;
     }, [users, filters]);
 
-    const allStatus = ['Working', 'Studying', 'Internship', 'Unemployed', 'Freelancing', 'Left'];
+    const allStatus = ADMIN_USER_STATUSES;
 
     return (
         <AppLayout>

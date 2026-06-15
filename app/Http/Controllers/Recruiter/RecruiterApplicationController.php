@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Job;
 use App\Models\JobApplication;
 use App\Models\RecruiterInterview;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -95,7 +97,7 @@ class RecruiterApplicationController extends Controller
             ];
         });
 
-        return Inertia::render('recruiter/applications/job', [
+        return Inertia::render('recruiter/applications/partials/job', [
             'job' => [
                 'id' => $job->id,
                 'title' => $job->title,
@@ -143,5 +145,30 @@ class RecruiterApplicationController extends Controller
         return response()->file($absolutePath, [
             'Content-Disposition' => 'inline; filename="'.$downloadName.'"',
         ]);
+    }
+
+    public function updateStatus(Request $request, JobApplication $application): RedirectResponse
+    {
+        $organizationId = $request->user()->organizationIdForRecruiting();
+        if (! $organizationId) {
+            abort(403);
+        }
+
+        $allowed = JobApplication::query()
+            ->whereKey($application->getKey())
+            ->whereHas('job', fn ($q) => $q->forOrganization($organizationId))
+            ->exists();
+
+        if (! $allowed) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(JobApplication::RECRUITER_MANUAL_STATUSES)],
+        ]);
+
+        $application->update(['status' => $validated['status']]);
+
+        return back()->with('success', __('Application status updated.'));
     }
 }

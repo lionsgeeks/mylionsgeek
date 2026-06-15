@@ -77,7 +77,15 @@
                     <p class="title">{{ $title }}</p>
                     <p class="subtitle">{{ $description }}</p>
                 </div>
-                <img src="{{ $imageUrl }}" alt="Certificate image" />
+                @if (!empty($pdfUrl))
+                    <object data="{{ $pdfUrl }}" type="application/pdf" class="h-[min(70vh,800px)] w-full">
+                        <p class="p-6 text-center text-sm">
+                            <a href="{{ $pdfUrl }}" class="font-semibold underline" target="_blank" rel="noopener">Ouvrir le certificat PDF</a>
+                        </p>
+                    </object>
+                @elseif (!empty($imageUrl))
+                    <img src="{{ $imageUrl }}" alt="Certificate" />
+                @endif
             </div>
         </div>
     </body>

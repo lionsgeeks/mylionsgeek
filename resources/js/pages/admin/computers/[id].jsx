@@ -4,12 +4,37 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 
+const VALID_COMPUTER_STATES = ['working', 'not_working', 'damaged'];
+
+const LEGACY_STATE_MAP = {
+    '0': 'not_working',
+    '1': 'working',
+    '2': 'damaged',
+};
+
+function getComputerState(computer) {
+    if (!computer) return 'not_working';
+
+    const normalizedState = (computer.state ?? '').toString().trim().toLowerCase();
+    if (VALID_COMPUTER_STATES.includes(normalizedState)) {
+        return normalizedState;
+    }
+
+    if (LEGACY_STATE_MAP[normalizedState]) {
+        return LEGACY_STATE_MAP[normalizedState];
+    }
+
+    if (computer.user_id) return 'working';
+
+    return 'not_working';
+}
+
 export default function ComputerDetail({ computer }) {
     const [form, setForm] = useState({
         reference: computer?.reference || '',
         cpu: computer?.cpu || '',
         gpu: computer?.gpu || '',
-        state: computer?.state || 'working',
+        state: getComputerState(computer),
         user_id: computer?.user_id || null,
         start: computer?.start || '',
         end: computer?.end || '',
@@ -57,7 +82,11 @@ export default function ComputerDetail({ computer }) {
                     </div>
                     <div>
                         <label className="mb-1 block text-sm">Computer State</label>
-                        <Select value={form.state} onValueChange={(value) => setForm((prev) => ({ ...prev, state: value }))}>
+                        <Select
+                            key={computer?.id ?? 'detail-state'}
+                            value={form.state || 'not_working'}
+                            onValueChange={(value) => setForm((prev) => ({ ...prev, state: value }))}
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select state" />
                             </SelectTrigger>

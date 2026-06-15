@@ -1,10 +1,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Check, Download, X } from 'lucide-react';
 
 const ReservationsTable = ({ reservations, loadingAction, setLoadingAction, onRowClick, showActions = true }) => {
-    const hasActionColumn = showActions && reservations.some((r) => r.type !== 'cowork');
+    const { auth } = usePage().props;
+    const currentUserRoles = Array.isArray(auth?.user?.role) ? auth.user.role : (auth?.user?.role ? [auth.user.role] : []);
+    const isPro = currentUserRoles.includes('pro') && !currentUserRoles.includes('admin') && !currentUserRoles.includes('super_admin');
+    
+    const hasActionColumn = showActions && reservations.some((r) => r.type !== 'cowork') && !isPro;
 
     return (
         <div className="overflow-x-auto rounded-xl border border-sidebar-border/70">
