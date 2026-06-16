@@ -60,6 +60,11 @@ class Project extends Model
         return $this->hasMany(ProjectMessage::class)->orderBy('created_at', 'asc');
     }
 
+    public function repositoryEvents(): HasMany
+    {
+        return $this->hasMany(ProjectRepositoryEvent::class)->latest('occurred_at');
+    }
+
     public function getActiveTasksCountAttribute()
     {
         return $this->tasks()->whereIn('status', ['todo', 'in_progress', 'review'])->count();

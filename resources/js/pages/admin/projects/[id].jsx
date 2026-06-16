@@ -90,6 +90,7 @@ const ProjectShow = ({
     tasks,
     attachments,
     notes,
+    repositoryEvents = [],
     canManageTeam = false,
     isProjectOwner = false,
     currentUserProjectRole = null,
@@ -389,6 +390,30 @@ const ProjectShow = ({
             });
         });
 
+        (repositoryEvents || []).forEach((event) => {
+            activities.push({
+                id: `repository-event-${event.id}`,
+                type: event.event_type,
+                user: {
+                    name: event.actor_name || 'GitHub',
+                    image: event.actor_avatar,
+                },
+                action: event.title || 'updated the repository',
+                target: event.repository_name,
+                timestamp: event.occurred_at || event.created_at,
+                read: false,
+                details: {
+                    provider: event.provider,
+                    repo: event.repository_name,
+                    branch: event.branch,
+                    commitHash: event.commit_sha,
+                    status: event.action,
+                    url: event.url,
+                    repositoryUrl: event.repository_url,
+                },
+            });
+        });
+
         // Sort by timestamp descending
         return activities
             .map((activity) => ({
@@ -396,7 +421,7 @@ const ProjectShow = ({
                 read: readActivityIds.includes(activity.id),
             }))
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }, [project, tasks, readActivityIds]);
+    }, [project, tasks, repositoryEvents, readActivityIds]);
 
     const markActivityAsRead = (activityId) => {
         setReadActivityIds((currentIds) => {

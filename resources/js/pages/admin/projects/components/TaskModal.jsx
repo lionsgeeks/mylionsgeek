@@ -332,6 +332,7 @@ const TaskModal = ({
     focusCommentInput = false,
     isProjectOwner = false,
     canEditTask = false,
+    canDeleteTask = false,
 }) => {
     const commentInputRef = useRef(null);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -1045,7 +1046,7 @@ const TaskModal = ({
                                             Progression
                                         </DropdownMenuItem>
                                     )}
-                                    {isProjectOwner && (
+                                    {canDeleteTask && (
                                         <DropdownMenuItem onClick={() => handleDeleteTask()} className="text-destructive">
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Delete Task

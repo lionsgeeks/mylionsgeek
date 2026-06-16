@@ -117,6 +117,18 @@ class ProfileController extends Controller
         // Add posts count
         $userData['posts_count'] = $user->posts()->count();
 
+        // Gamification (mobile More hub / profile)
+        $userData['XP'] = (int) ($user->XP ?? 0);
+        $userData['xp'] = $userData['XP'];
+        $userData['GP'] = (int) ($user->GP ?? 0);
+        $userData['gp'] = $userData['GP'];
+        $userData['coins'] = $userData['GP'];
+        $userData['level'] = (int) ($user->level ?? 0);
+
+        // Own cohort — required for mobile attendance history (not admin-only)
+        $userData['formation_ids'] = $user->resolvedFormationIds();
+        $userData['formation_id'] = $user->primaryFormationId();
+
         return response()->json($userData);
     }
 

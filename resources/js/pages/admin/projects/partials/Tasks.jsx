@@ -94,6 +94,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
     const { auth, flash } = usePage().props;
     const currentUserId = auth?.user?.id;
     const canManageTasks = isProjectOwner || currentUserProjectRole === 'admin';
+    const canDeleteTask = (task) => canManageTasks || String(task?.created_by || task?.creator?.id) === String(currentUserId);
     const normalizeAssigneeId = (assignee) => (typeof assignee === 'object' && assignee !== null ? assignee.id : assignee);
     const getTaskAssigneeIds = (task) => {
         const assignedToId = normalizeAssigneeId(task?.assigned_to);
@@ -114,7 +115,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                 return safeTeamMembers.find((member) => String(member.id) === assigneeId);
             })
             .filter(Boolean);
-    const canEditTask = (task) => canManageTasks || String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId);
+    const canEditTask = (task) =>
+        canManageTasks ||
+        String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId) ||
+        String(task?.created_by || task?.creator?.id) === String(currentUserId);
 
     // Handle flash messages
     useEffect(() => {
@@ -136,7 +140,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         description: '',
         priority: 'medium',
         status: 'todo',
-        assigned_to: null,
+        assigned_to: canManageTasks ? null : currentUserId ?? null,
         due_date: '',
         tags: [],
         progress: 0,
@@ -208,7 +212,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                     description: '',
                     priority: 'medium',
                     status: 'todo',
-                    assigned_to: null,
+                    assigned_to: canManageTasks ? null : currentUserId ?? null,
                     due_date: '',
                     tags: [],
                     progress: 0,
@@ -224,6 +228,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
             },
         });
     };
+
+    useEffect(() => {
+        if (!canManageTasks && currentUserId) {
+            setTaskData('assigned_to', currentUserId);
+        }
+    }, [canManageTasks, currentUserId, setTaskData]);
 
     const handleTaskClick = (task) => {
         setSelectedTask(task);
@@ -448,12 +458,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                         </SelectContent>
                     </Select> */}
                 </div>
-                {canManageTasks && (
-                    <Button onClick={() => setIsCreateModalOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Task
-                    </Button>
-                )}
+                <Button onClick={() => setIsCreateModalOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Task
+                </Button>
             </div>
 
             {/* Tasks Table */}
@@ -583,7 +591,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
-                                                    {canManageTasks && (
+                                                    {canDeleteTask(task) && (
                                                         <>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
@@ -668,13 +676,14 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                                 onValueChange={(value) => {
                                     setTaskData('assigned_to', value === 'unassigned' ? null : value ? parseInt(value) : null);
                                 }}
+                                disabled={!canManageTasks}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select assignee" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                                    {safeTeamMembers.map((member) => {
+                                    {canManageTasks && <SelectItem value="unassigned">Unassigned</SelectItem>}
+                                    {(canManageTasks ? safeTeamMembers : safeTeamMembers.filter((member) => String(member.id) === String(currentUserId))).map((member) => {
                                         if (!member?.id) return null;
                                         return (
                                             <SelectItem key={member.id} value={String(member.id)}>
@@ -742,6 +751,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                 focusCommentInput={focusCommentInput}
                 isProjectOwner={canManageTasks}
                 canEditTask={selectedTask ? canEditTask(selectedTask) : false}
+                canDeleteTask={selectedTask ? canDeleteTask(selectedTask) : false}
             />
 
             {/* Confirmation Modal for Deletion */}

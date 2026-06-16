@@ -1,7 +1,7 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 // Removed ScrollArea import - using native scroll with hidden scrollbar
@@ -29,6 +29,12 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
     const messagesEndRef = useRef(null);
 
     const reactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+    const getMessagePreview = (message) => {
+        if (!message) return '';
+        if (message.content) return message.content;
+        if (message.attachment_type === 'audio') return 'Voice message';
+        return 'Attachment';
+    };
 
     // Subscribe to real-time messages via Ably
     const channelName = projectId ? `project:${projectId}` : null;
@@ -739,14 +745,14 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
                                                 {message.reply_to && (
                                                     <div
                                                         className={cn(
-                                                            'mb-1 rounded border-l-2 p-2 text-xs',
+                                                            'mb-1 w-full max-w-full rounded-lg border-l-2 px-3 py-2 text-xs',
                                                             isCurrentUser
-                                                                ? 'border-primary bg-primary/10 text-primary-foreground/70'
-                                                                : 'border-muted-foreground/30 bg-muted/50 text-muted-foreground',
+                                                                ? 'border-primary-foreground/50 bg-primary-foreground/10 text-primary-foreground/80'
+                                                                : 'border-muted-foreground/30 bg-muted/60 text-muted-foreground',
                                                         )}
                                                     >
-                                                        <div className="font-medium">{message.reply_to.user.name}</div>
-                                                        <div className="truncate">{message.reply_to.content}</div>
+                                                        <div className="truncate font-medium">{message.reply_to.user.name}</div>
+                                                        <div className="line-clamp-2 break-words">{getMessagePreview(message.reply_to)}</div>
                                                     </div>
                                                 )}
                                                 {editingMessage?.id === message.id ? (
@@ -967,15 +973,15 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
-                    <SheetFooter className="flex-col gap-2 border-t border-border/50 bg-background/80 px-4 pt-2 pb-4 backdrop-blur-sm">
+                    <div className="flex flex-col gap-2 border-t border-border/50 bg-background/80 px-4 pt-2 pb-4 backdrop-blur-sm">
                         {replyingTo && (
-                            <div className="flex w-full items-center justify-between rounded-lg border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
-                                <div className="flex-1">
-                                    <div className="text-xs text-muted-foreground">Replying to {replyingTo.user.name}</div>
-                                    <div className="truncate text-sm">{replyingTo.content}</div>
+                            <div className="flex w-full items-start justify-between gap-3 rounded-lg border border-border bg-muted/60 p-3 shadow-sm">
+                                <div className="min-w-0 flex-1 border-l-2 border-primary pl-3">
+                                    <div className="truncate text-xs font-medium text-muted-foreground">Replying to {replyingTo.user.name}</div>
+                                    <div className="line-clamp-2 text-sm leading-snug break-words">{getMessagePreview(replyingTo)}</div>
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setReplyingTo(null)}>
-                                    <X className="h-3 w-3" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => setReplyingTo(null)}>
+                                    <X className="h-4 w-4" />
                                 </Button>
                             </div>
                         )}
@@ -1048,7 +1054,7 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
                                 }}
                             />
                         ) : (
-                            <form onSubmit={handleSubmit} className="flex w-full gap-2">
+                            <form onSubmit={handleSubmit} className="flex w-full min-w-0 items-center gap-2">
                                 <VoiceRecorder
                                     onRecordingComplete={handleRecordingComplete}
                                     onCancel={handleRecordingCancel}
@@ -1121,7 +1127,7 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
                                     placeholder={replyingTo ? `Reply to ${replyingTo.user.name}...` : 'Type something...'}
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    className="flex-1 rounded-lg border-border/50 transition-all duration-200 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                                    className="min-w-0 flex-1 rounded-lg border-border/50 transition-all duration-200 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                                     disabled={isSending}
                                 />
                                 <Button
@@ -1145,7 +1151,7 @@ const Chat = ({ projectId, messages: initialMessages = [], onChatOpen, unreadCou
                                 </Button>
                             </form>
                         )}
-                    </SheetFooter>
+                    </div>
                 </SheetContent>
             </Sheet>
         </div>

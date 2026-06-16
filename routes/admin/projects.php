@@ -5,10 +5,14 @@ use App\Http\Controllers\Admin\TaskController;
 use App\Http\Controllers\Admin\TaskCommentController;
 use App\Http\Controllers\Admin\AttachmentController;
 use App\Http\Controllers\Admin\ProjectNoteController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 // Public join route (no auth required)
 Route::get('projects/{project}/join/{token}', [ProjectController::class, 'join'])->name('projects.join');
+Route::post('projects/{project}/repository-events/github', [ProjectController::class, 'recordGitHubRepositoryEvent'])
+    ->name('projects.repository-events.github')
+    ->withoutMiddleware([VerifyCsrfToken::class]);
 
 Route::middleware(['auth', 'role:admin,super_admin,moderateur,coach,pro'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('projects/attachments', [ProjectController::class, 'uploadAttachment'])->name('projects.upload-attachment');
