@@ -24,7 +24,8 @@
         "peterujah/php-agora-tokens": "^1.1",
         "php-flasher/flasher-laravel": "^2.1",
         "setasign/fpdf": "^1.8",
-        "setasign/fpdi": "^2.6"
+        "setasign/fpdi": "^2.6",
+        "tecnickcom/tcpdf": "^6.11"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
