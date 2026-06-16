@@ -199,7 +199,7 @@ class ProjectController extends Controller
         $userId = Auth::id();
 
         // Check if user has access: owner or team member
-        $isOwner = $project->created_by === $userId;
+        $isOwner = (int) $project->created_by === (int) $userId;
         $isTeamMember = ProjectUser::where('project_id', $project->id)
             ->where('user_id', $userId)
             ->exists();
@@ -224,7 +224,7 @@ class ProjectController extends Controller
             })
             ->map(function ($projectUser) use ($project) {
                 // Check if this user is the project owner (created_by or has owner role)
-                $isOwner = $project->created_by === $projectUser->user_id || $projectUser->role === 'owner';
+                $isOwner = (int) $project->created_by === (int) $projectUser->user_id || $projectUser->role === 'owner';
 
                 return [
                     'id' => $projectUser->user->id,
@@ -248,9 +248,7 @@ class ProjectController extends Controller
             ->where('user_id', $userId)
             ->first();
 
-        // Check if user is project owner or has admin/owner role
-        $isProjectAdmin = $currentUserProjectRole && in_array($currentUserProjectRole->role, ['owner', 'admin']);
-        $canManageTeam = $isOwner || $isProjectAdmin;
+        $canManageTeam = $isOwner;
 
         return Inertia::render('admin/projects/[id]', [
             'project' => $project,
@@ -269,15 +267,10 @@ class ProjectController extends Controller
      */
     public function update(Request $request, Project $project)
     {
-        // Check if user has access: owner or team member
         $userId = Auth::id();
-        $isOwner = $project->created_by === $userId;
-        $isTeamMember = ProjectUser::where('project_id', $project->id)
-            ->where('user_id', $userId)
-            ->exists();
 
-        if (! $isOwner && ! $isTeamMember) {
-            abort(403, 'You do not have access to this project.');
+        if ((int) $project->created_by !== (int) $userId) {
+            abort(403, 'Only the project owner can edit this project.');
         }
 
         try {
@@ -327,7 +320,7 @@ class ProjectController extends Controller
     {
         // Only owner can delete the project
         $userId = Auth::id();
-        $isOwner = $project->created_by === $userId;
+        $isOwner = (int) $project->created_by === (int) $userId;
 
         if (! $isOwner) {
             abort(403, 'Only the project owner can delete this project.');
@@ -381,6 +374,11 @@ class ProjectController extends Controller
             ]);
 
             $project = Project::findOrFail($request->project_id);
+
+            if ((int) $project->created_by !== (int) Auth::id()) {
+                abort(403, 'Only the project owner can invite members.');
+            }
+
             $emails = $request->emails ?? [];
             $usernames = $request->usernames ?? [];
             $role = $request->role;
@@ -581,6 +579,10 @@ class ProjectController extends Controller
      */
     public function inviteUser(Request $request, Project $project)
     {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can invite members.');
+        }
+
         $request->validate([
             'email' => 'required|email',
             'role' => 'required|in:admin,member',
@@ -651,6 +653,10 @@ class ProjectController extends Controller
      */
     public function removeUser(Project $project, User $user)
     {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can manage team members.');
+        }
+
         // Check if user is the project owner
         $isProjectOwner = $project->created_by === $user->id;
 
@@ -675,6 +681,10 @@ class ProjectController extends Controller
      */
     public function updateRole(Request $request, Project $project, User $user)
     {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can manage team members.');
+        }
+
         $request->validate([
             'role' => 'required|in:admin,member',
         ]);
@@ -851,6 +861,10 @@ class ProjectController extends Controller
      */
     public function shareProject(Request $request, Project $project)
     {
+        if ((int) $project->created_by !== (int) Auth::id()) {
+            abort(403, 'Only the project owner can invite members.');
+        }
+
         $request->validate([
             'email' => 'required|email',
             'role' => 'required|in:admin,member',

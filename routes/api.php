@@ -52,8 +52,6 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/search.php';
     require __DIR__ . '/api/training.php';
 
-    Route::post('/password', [MobileAuthController::class, 'updatePassword']);
-
     // Push token endpoint
     Route::post('/push-token', [\App\Http\Controllers\API\PushTokenController::class, 'store']);
 
@@ -106,7 +104,9 @@ Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
 
     // Phase 4c: music search (Spotify + iTunes fallback) for the story
     // creator's music sticker.
+    Route::get('/music/browse', [\App\Http\Controllers\API\MusicController::class, 'browse'])->name('music.browse');
     Route::get('/music/search', [\App\Http\Controllers\API\MusicController::class, 'search'])->name('music.search');
+    Route::get('/music/charts', [\App\Http\Controllers\API\MusicController::class, 'charts'])->name('music.charts');
     Route::get('/music/lyrics', [\App\Http\Controllers\API\MusicController::class, 'lyrics'])->name('music.lyrics');
 
     // Voice call routes

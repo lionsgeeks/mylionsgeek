@@ -28,7 +28,7 @@ const getTaskOverallProgress = (task) => {
     }
 };
 
-const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
+const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false, currentUserProjectRole = null }) => {
     // Ensure we have safe defaults
     const safeTasks = tasks || [];
 
@@ -91,7 +91,30 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
 
     // Get flash messages from Inertia
-    const { flash } = usePage().props;
+    const { auth, flash } = usePage().props;
+    const currentUserId = auth?.user?.id;
+    const canManageTasks = isProjectOwner || currentUserProjectRole === 'admin';
+    const normalizeAssigneeId = (assignee) => (typeof assignee === 'object' && assignee !== null ? assignee.id : assignee);
+    const getTaskAssigneeIds = (task) => {
+        const assignedToId = normalizeAssigneeId(task?.assigned_to);
+        const collaboratorIds = (task?.assignees || []).map(normalizeAssigneeId);
+
+        return [assignedToId, ...collaboratorIds]
+            .filter((assigneeId) => assigneeId != null)
+            .map((assigneeId) => String(assigneeId));
+    };
+    const getTaskAssigneeMembers = (task) =>
+        getTaskAssigneeIds(task)
+            .filter((assigneeId, index, assigneeIds) => assigneeIds.indexOf(assigneeId) === index)
+            .map((assigneeId) => {
+                if (String(normalizeAssigneeId(task?.assigned_to)) === assigneeId && typeof task.assigned_to === 'object') {
+                    return task.assigned_to;
+                }
+
+                return safeTeamMembers.find((member) => String(member.id) === assigneeId);
+            })
+            .filter(Boolean);
+    const canEditTask = (task) => canManageTasks || String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId);
 
     // Handle flash messages
     useEffect(() => {
@@ -132,13 +155,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
             if (taskFilter.status !== 'all' && task.status !== taskFilter.status) return false;
             if (taskFilter.priority !== 'all' && task.priority !== taskFilter.priority) return false;
             if (taskFilter.assignee !== 'all') {
+                const assigneeIds = getTaskAssigneeIds(task);
+
                 if (taskFilter.assignee === 'unassigned') {
-                    const assignedToId = task.assigned_to?.id || task.assigned_to;
-                    if (assignedToId != null) return false;
+                    if (assigneeIds.length > 0) return false;
                 } else {
-                    const assignedToId = task.assigned_to?.id || task.assigned_to;
-                    // Convert both to strings for comparison
-                    if (String(assignedToId) !== String(taskFilter.assignee)) return false;
+                    if (!assigneeIds.includes(String(taskFilter.assignee))) return false;
                 }
             }
             return true;
@@ -302,7 +324,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
     const getStatusBadge = (status) => {
         const statusConfig = {
             completed: { color: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300', icon: CheckCircle },
-            'in-progress': { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            in_progress: { color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300', icon: Clock },
+            review: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300', icon: AlertCircle },
             todo: { color: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: AlertCircle },
         };
 
@@ -313,7 +336,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
         return (
             <Badge variant="outline" className={`${config.color} flex items-center gap-1 border-none`}>
                 <Icon className="h-3 w-3" />
-                {safeStatus === 'in-progress' ? 'In Progress' : safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)}
+                {safeStatus
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}
             </Badge>
         );
     };
@@ -363,7 +389,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                         </SelectContent>
                     </Select>
@@ -421,10 +448,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                         </SelectContent>
                     </Select> */}
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Task
-                </Button>
+                {canManageTasks && (
+                    <Button onClick={() => setIsCreateModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                )}
             </div>
 
             {/* Tasks Table */}
@@ -473,25 +502,34 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                                     <TableCell>{getPriorityBadge(task.priority)}</TableCell>
                                     <TableCell>
-                                        {task.assigned_to ? (
-                                            <Avatar
-                                                className="relative z-50 h-10 w-10 overflow-hidden"
-                                                image={task.assigned_to.image || task.assigned_to.user?.image}
-                                                name={task.assigned_to.name || task.assigned_to.user?.name || 'Unknown'}
-                                                lastActivity={
-                                                    task.assigned_to.last_login ??
-                                                    task.assigned_to.user?.last_login ??
-                                                    task.assigned_to.last_online ??
-                                                    task.assigned_to.user?.last_online ??
-                                                    task.assigned_to.last_activity ??
-                                                    task.assigned_to.user?.last_activity ??
-                                                    null
-                                                }
-                                                onlineCircleClass="hidden"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground">Unassigned</span>
-                                        )}
+                                        {(() => {
+                                            const assigneeMembers = getTaskAssigneeMembers(task);
+
+                                            return assigneeMembers.length > 0 ? (
+                                                <div className="flex -space-x-2">
+                                                    {assigneeMembers.slice(0, 4).map((member) => (
+                                                        <Avatar
+                                                            key={member.id}
+                                                            className="relative h-10 w-10 overflow-hidden border-2 border-background"
+                                                            image={member.image || member.user?.image}
+                                                            name={member.name || member.user?.name || 'Unknown'}
+                                                            lastActivity={
+                                                                member.last_login ??
+                                                                member.user?.last_login ??
+                                                                member.last_online ??
+                                                                member.user?.last_online ??
+                                                                member.last_activity ??
+                                                                member.user?.last_activity ??
+                                                                null
+                                                            }
+                                                            onlineCircleClass="hidden"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground">Unassigned</span>
+                                            );
+                                        })()}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -513,19 +551,29 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         <span>View Details</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTaskClick(task)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        <span>Edit Task</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleTogglePin(task)}>
-                                                        {task.is_pinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
-                                                        <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
-                                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                                        <span>Mark as Completed</span>
-                                                    </DropdownMenuItem>
-                                                    {(task.status === 'completed' || task.status === 'review') && (
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleTaskClick(task)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            <span>Edit Task</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canManageTasks && (
+                                                        <DropdownMenuItem onClick={() => handleTogglePin(task)}>
+                                                            {task.is_pinned ? (
+                                                                <PinOff className="mr-2 h-4 w-4" />
+                                                            ) : (
+                                                                <Pin className="mr-2 h-4 w-4" />
+                                                            )}
+                                                            <span>{task.is_pinned ? 'Unpin' : 'Pin'}</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (
+                                                        <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'completed')}>
+                                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                                            <span>Mark as Completed</span>
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canEditTask(task) && (task.status === 'completed' || task.status === 'review') && (
                                                         <DropdownMenuItem onClick={() => handleUpdateStatus(task, 'in_progress')}>
                                                             <AlertCircle className="mr-2 h-4 w-4" />
                                                             <span>Mark as Incomplete</span>
@@ -535,11 +583,15 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                                                         <MessageSquare className="mr-2 h-4 w-4" />
                                                         <span>Add Comment</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
-                                                        <Trash className="mr-2 h-4 w-4" />
-                                                        <span>Delete</span>
-                                                    </DropdownMenuItem>
+                                                    {canManageTasks && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteTask(task)}>
+                                                                <Trash className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -688,6 +740,8 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId }) => {
                 teamMembers={safeTeamMembers}
                 onUpdateTask={handleUpdateTask}
                 focusCommentInput={focusCommentInput}
+                isProjectOwner={canManageTasks}
+                canEditTask={selectedTask ? canEditTask(selectedTask) : false}
             />
 
             {/* Confirmation Modal for Deletion */}

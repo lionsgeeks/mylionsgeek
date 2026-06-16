@@ -61,8 +61,7 @@ class MobileAuthController extends Controller
             'role' => $roles, // Alias for compatibility
             'promo' => $user->promo ?? null,
             'status' => $user->status ?? null,
-            'formation_id' => $user->primaryFormationId(),
-            'formation_ids' => $user->resolvedFormationIds(),
+            'formation_id' => $user->formation_id ?? null,
             'account_state' => $user->account_state ?? 0,
             'state' => $user->account_state ?? 0, // Alias for compatibility
             'access_cowork' => $user->access_cowork ?? 0,
@@ -93,35 +92,7 @@ class MobileAuthController extends Controller
             'ok' => $status === Password::RESET_LINK_SENT,
         ]);
     }
-
-    /**
-     * Change password while authenticated (mobile). Requires current password.
-     */
-    public function updatePassword(Request $request)
-    {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
-        $validated = $request->validate([
-            'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
-
-        if (!Hash::check($validated['current_password'], $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => [__('The provided password does not match your current password.')],
-            ]);
-        }
-
-        $user->forceFill([
-            'password' => Hash::make($validated['password']),
-        ])->save();
-
-        return response()->json([
-            'message' => 'Password updated successfully.',
-        ]);
-    }
 }
+
+
 

@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     // Training CRUD operations
     Route::get('/trainings', [TrainingController::class, 'index']);
-    Route::get('/trainings/enrolled', [TrainingController::class, 'enrolled']);
     Route::get('/trainings/{id}', [TrainingController::class, 'show']);
     Route::post('/trainings', [TrainingController::class, 'store']);
     Route::put('/trainings/{id}', [TrainingController::class, 'update']);

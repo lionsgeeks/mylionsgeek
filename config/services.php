@@ -58,7 +58,7 @@ return [
     'spotify' => [
         'client_id'     => env('SPOTIFY_CLIENT_ID'),
         'client_secret' => env('SPOTIFY_CLIENT_SECRET'),
-        'market'        => env('SPOTIFY_MARKET', 'US'),
+        'market'        => env('SPOTIFY_MARKET', 'MA'),
     ],
 
     // Public LionsGeek site (lionsgeek.ma). Proxied for the mobile app so a
