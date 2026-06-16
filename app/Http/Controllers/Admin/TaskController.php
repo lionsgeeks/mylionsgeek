@@ -41,6 +41,30 @@ class TaskController extends Controller
         }
     }
 
+    private function ensureProjectMember(Project $project): void
+    {
+        $userId = (int) Auth::id();
+
+        if ((int) $project->created_by === $userId) {
+            return;
+        }
+
+        if ($project->users()->where('users.id', $userId)->exists()) {
+            return;
+        }
+
+        abort(403, 'You do not have access to this project.');
+    }
+
+    private function canDeleteTask(Task $task, int $userId): bool
+    {
+        if ($this->canManageProjectTasks($task->project, $userId)) {
+            return true;
+        }
+
+        return (int) $task->created_by === $userId;
+    }
+
     private function ensureCanWorkOnTask(Task $task): void
     {
         $userId = (int) Auth::id();
@@ -114,7 +138,11 @@ class TaskController extends Controller
             $data['created_by'] = Auth::id();
 
             $project = Project::findOrFail($request->project_id);
-            $this->ensureCanManageProjectTasks($project);
+            $this->ensureProjectMember($project);
+
+            if (! $this->canManageProjectTasks($project, (int) Auth::id())) {
+                $data['assigned_to'] = (int) Auth::id();
+            }
 
             // Set default values
             $data['priority'] = $data['priority'] ?? 'medium';
@@ -265,7 +293,9 @@ class TaskController extends Controller
     public function destroy(Task $task)
     {
         try {
-            $this->ensureCanManageProjectTasks($task->project);
+            if (! $this->canDeleteTask($task, (int) Auth::id())) {
+                abort(403, 'You can only delete tasks you created.');
+            }
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');

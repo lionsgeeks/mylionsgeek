@@ -11,6 +11,7 @@ use App\Models\ProjectInvitation;
 use App\Models\ProjectMessage;
 use App\Models\ProjectMessageNotification;
 use App\Models\ProjectMessageReaction;
+use App\Models\ProjectRepositoryEvent;
 use App\Models\ProjectUser;
 use App\Models\Task;
 use App\Models\User;
@@ -214,6 +215,7 @@ class ProjectController extends Controller
             'tasks.assignedTo',
             'tasks.creator',
             'attachments.uploader',
+            'repositoryEvents',
         ]);
 
         $teamMembers = ProjectUser::with('user')
@@ -242,6 +244,7 @@ class ProjectController extends Controller
         $tasks = $project->tasks()->with(['assignedTo', 'creator'])->get();
         $attachments = $project->attachments()->with(['uploader:id,name,image,last_online'])->get();
         $notes = $project->notes()->with('user')->orderBy('is_pinned', 'desc')->orderBy('created_at', 'desc')->get();
+        $repositoryEvents = $project->repositoryEvents()->latest('occurred_at')->limit(50)->get();
 
         // Get current user's role in this project
         $currentUserProjectRole = ProjectUser::where('project_id', $project->id)
@@ -256,10 +259,90 @@ class ProjectController extends Controller
             'tasks' => $tasks,
             'attachments' => $attachments,
             'notes' => $notes,
+            'repositoryEvents' => $repositoryEvents,
             'currentUserProjectRole' => $currentUserProjectRole ? $currentUserProjectRole->role : null,
             'canManageTeam' => $canManageTeam,
             'isProjectOwner' => $isOwner,
         ]);
+    }
+
+    public function recordGitHubRepositoryEvent(Request $request, Project $project)
+    {
+        $secret = config('services.github.webhook_secret');
+
+        if ($secret) {
+            $signature = $request->header('X-Hub-Signature-256');
+            $expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
+
+            if (! $signature || ! hash_equals($expected, $signature)) {
+                return response()->json(['error' => 'Invalid signature'], 403);
+            }
+        }
+
+        $eventName = $request->header('X-GitHub-Event', 'repository');
+        $payload = $request->all();
+
+        if ($eventName === 'ping') {
+            return response()->json(['ok' => true, 'message' => 'Webhook connected']);
+        }
+
+        $repository = $payload['repository'] ?? [];
+        $sender = $payload['sender'] ?? [];
+        $eventType = 'github_event';
+        $action = $payload['action'] ?? null;
+        $branch = null;
+        $commitSha = null;
+        $title = ucfirst(str_replace('_', ' ', $eventName));
+        $url = $repository['html_url'] ?? null;
+
+        if ($eventName === 'push') {
+            $eventType = 'github_push';
+            $branch = isset($payload['ref']) ? basename($payload['ref']) : null;
+            $headCommit = $payload['head_commit'] ?? null;
+            $commitSha = isset($payload['after']) ? substr($payload['after'], 0, 7) : null;
+            $commitCount = count($payload['commits'] ?? []);
+            $title = 'Pushed '.$commitCount.' commit'.($commitCount === 1 ? '' : 's').($branch ? " to {$branch}" : '');
+            $url = $headCommit['url'] ?? $repository['html_url'] ?? null;
+        } elseif ($eventName === 'pull_request') {
+            $pullRequest = $payload['pull_request'] ?? [];
+            $isMerged = ($payload['action'] ?? null) === 'closed' && ($pullRequest['merged'] ?? false);
+            $eventType = $isMerged ? 'github_merge' : 'github_pull_request';
+            $branch = $pullRequest['head']['ref'] ?? null;
+            $title = ($isMerged ? 'Merged' : ucfirst($payload['action'] ?? 'updated')).' pull request #'.($payload['number'] ?? '');
+            if (! empty($pullRequest['title'])) {
+                $title .= ': '.$pullRequest['title'];
+            }
+            $url = $pullRequest['html_url'] ?? $repository['html_url'] ?? null;
+        } elseif ($eventName === 'fork') {
+            $eventType = 'github_fork';
+            $forkee = $payload['forkee'] ?? [];
+            $title = 'Forked repository'.(! empty($forkee['full_name']) ? ' to '.$forkee['full_name'] : '');
+            $url = $forkee['html_url'] ?? $repository['html_url'] ?? null;
+        }
+
+        ProjectRepositoryEvent::create([
+            'project_id' => $project->id,
+            'provider' => 'github',
+            'event_type' => $eventType,
+            'action' => $action,
+            'actor_name' => $sender['login'] ?? null,
+            'actor_avatar' => $sender['avatar_url'] ?? null,
+            'repository_name' => $repository['full_name'] ?? $repository['name'] ?? null,
+            'repository_url' => $repository['html_url'] ?? null,
+            'branch' => $branch,
+            'commit_sha' => $commitSha,
+            'title' => $title,
+            'url' => $url,
+            'payload' => $payload,
+            'occurred_at' => now(),
+        ]);
+
+        $project->update([
+            'last_activity' => now(),
+            'is_updated' => true,
+        ]);
+
+        return response()->json(['ok' => true]);
     }
 
     /**

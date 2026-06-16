@@ -3,7 +3,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
-import { Briefcase, CheckCircle, FileText as FileTextIcon, GitBranch, GitCommit, GitPullRequest, MessageSquare, PlusCircle } from 'lucide-react';
+import {
+    Briefcase,
+    CheckCircle,
+    FileText as FileTextIcon,
+    GitBranch,
+    GitCommit,
+    GitFork,
+    GitMerge,
+    GitPullRequest,
+    MessageSquare,
+    PlusCircle,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 // Helper to format relative time
@@ -31,6 +42,17 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
         return activities.filter((activity) => activity.type.includes(notificationTab));
     }, [activities, notificationTab]);
 
+    const filters = [
+        { value: 'all', label: 'All' },
+        { value: 'unread', label: 'Unread' },
+        { value: 'task_creation', label: 'Tasks' },
+        { value: 'task_status_update', label: 'Status' },
+        { value: 'task_comment', label: 'Comments' },
+        { value: 'note_creation', label: 'Notes' },
+        { value: 'project_creation', label: 'Project' },
+        { value: 'github', label: 'GitHub' },
+    ];
+
     const markAllAsRead = () => {
         onMarkAllAsRead?.();
     };
@@ -52,9 +74,15 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
             case 'note_creation':
                 return <FileTextIcon className="h-3.5 w-3.5 text-muted-foreground" />;
             case 'github_commit':
+            case 'github_push':
                 return <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />;
             case 'github_pr':
+            case 'github_pull_request':
                 return <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'github_merge':
+                return <GitMerge className="h-3.5 w-3.5 text-muted-foreground" />;
+            case 'github_fork':
+                return <GitFork className="h-3.5 w-3.5 text-muted-foreground" />;
             default:
                 return <CheckCircle className="h-3.5 w-3.5 text-muted-foreground" />;
         }
@@ -63,28 +91,23 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
     return (
         <div className="space-y-6">
             {/* Filter Tabs */}
-            <div className="flex items-center justify-between">
-                <Tabs defaultValue="all" onValueChange={setNotificationTab} value={notificationTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="all">All</TabsTrigger>
-                        <TabsTrigger value="unread" className="relative">
-                            Unread
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                                    {unreadCount}
-                                </span>
-                            )}
-                        </TabsTrigger>
-                        <TabsTrigger value="task_creation">Task Creation</TabsTrigger>
-                        <TabsTrigger value="task_status_update">Task Status</TabsTrigger>
-                        <TabsTrigger value="task_comment">Comments</TabsTrigger>
-                        <TabsTrigger value="note_creation">Notes</TabsTrigger>
-                        <TabsTrigger value="project_creation">Project</TabsTrigger>
-                        <TabsTrigger value="github">GitHub</TabsTrigger>
+            <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 md:flex-row md:items-center md:justify-between">
+                <Tabs defaultValue="all" onValueChange={setNotificationTab} value={notificationTab} className="min-w-0 flex-1">
+                    <TabsList className="flex h-auto flex-wrap justify-start gap-2 bg-muted/60 p-1.5">
+                        {filters.map((filter) => (
+                            <TabsTrigger key={filter.value} value={filter.value} className="relative h-10 px-4 text-sm">
+                                {filter.label}
+                                {filter.value === 'unread' && unreadCount > 0 && (
+                                    <span className="ml-1.5 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
                 </Tabs>
 
-                <Button variant="outline" size="sm" className="ml-4 whitespace-nowrap" onClick={markAllAsRead}>
+                <Button variant="outline" className="h-10 self-start whitespace-nowrap px-4 md:self-center" onClick={markAllAsRead}>
                     Mark All Read
                 </Button>
             </div>
@@ -113,8 +136,8 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
                                             {activity.target}
                                         </span>
                                     )}
-                                    {activity.type.startsWith('github') && (
-                                        <span className="flex items-center gap-1 font-medium">
+                                    {activity.type.startsWith('github') && activity.target && (
+                                        <span className="flex items-center gap-1 font-medium text-primary-foreground/80 dark:text-primary-foreground/90">
                                             {activity.target}
                                             {getActivityIcon(activity.type)}
                                         </span>
@@ -122,32 +145,39 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
                                 </div>
 
                                 {/* GitHub Commit Details */}
-                                {activity.type === 'github_commit' && activity.details && (
+                                {activity.type.startsWith('github') && activity.details && (
                                     <div className="mt-2 rounded-md bg-muted/50 p-3 text-sm">
-                                        <div className="flex items-center gap-1 text-muted-foreground">
+                                        <div className="flex flex-wrap items-center gap-1 text-muted-foreground">
                                             <GitBranch className="h-3.5 w-3.5" />
-                                            <span>{activity.details.repo}</span>
-                                            <span>•</span>
-                                            <span>{activity.details.commitHash}</span>
+                                            {activity.details.repo && <span>{activity.details.repo}</span>}
+                                            {activity.details.branch && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{activity.details.branch}</span>
+                                                </>
+                                            )}
+                                            {activity.details.commitHash && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{activity.details.commitHash}</span>
+                                                </>
+                                            )}
+                                            {activity.details.status && (
+                                                <Badge variant="outline" className="h-5 border-none bg-muted text-[10px]">
+                                                    {activity.details.status}
+                                                </Badge>
+                                            )}
                                         </div>
-                                        <div className="mt-1 font-medium">{activity.details.message}</div>
-                                    </div>
-                                )}
-
-                                {/* GitHub PR Details */}
-                                {activity.type === 'github_pr' && activity.details && (
-                                    <div className="mt-2 rounded-md bg-muted/50 p-3 text-sm">
-                                        <div className="flex items-center gap-1 text-muted-foreground">
-                                            <span>{activity.details.repo}</span>
-                                            <span>•</span>
-                                            <span>{activity.details.prNumber}</span>
-                                            <Badge
-                                                variant="outline"
-                                                className="h-4 border-none bg-green-100 text-[10px] text-green-800 dark:bg-green-950 dark:text-green-300"
+                                        {activity.details.url && (
+                                            <a
+                                                href={activity.details.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="mt-1 inline-flex text-xs font-medium text-primary hover:underline"
                                             >
-                                                {activity.details.status}
-                                            </Badge>
-                                        </div>
+                                                View on GitHub
+                                            </a>
+                                        )}
                                     </div>
                                 )}
 
