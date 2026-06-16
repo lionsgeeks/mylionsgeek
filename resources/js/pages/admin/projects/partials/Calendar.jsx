@@ -1,6 +1,7 @@
 import interactionPlugin from '@fullcalendar/interaction';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
+import { Avatar } from '@/components/ui/avatar';
 import { UserRound } from 'lucide-react';
 
 const Calendar = ({ events = [], onEventClick }) => {
@@ -14,7 +15,7 @@ const Calendar = ({ events = [], onEventClick }) => {
     };
 
     return (
-        <div className="mb-6 h-[50vh]">
+        <div className="mb-6 h-[60vh]">
             <FullCalendar
                 plugins={[timeGridPlugin, interactionPlugin]}
                 initialView="timeGridDay"
@@ -33,23 +34,20 @@ const Calendar = ({ events = [], onEventClick }) => {
                     const showProgress = progress !== undefined && progress > 0;
 
                     return (
-                        <div className="flex h-full min-h-0 flex-col gap-1 p-1">
+                        <div className="flex h-full min-h-0 flex-col gap-1.5 p-1.5">
                             <div className="truncate text-xs font-semibold leading-tight">{eventInfo.event.title}</div>
-                            <div className="flex min-w-0 items-center gap-1 text-[10px] leading-tight text-black/70">
+                            <div className="flex min-w-0 items-center gap-1.5 text-[11px] leading-tight text-black/70">
                                 {assignees.length > 0 ? (
                                     <>
                                         <div className="flex -space-x-1">
                                             {assignees.slice(0, 3).map((assignee) => (
-                                                <div
+                                                <Avatar
                                                     key={assignee.id}
-                                                    className="flex h-4 w-4 items-center justify-center overflow-hidden rounded-full border border-white bg-black/10 text-[8px] font-semibold"
-                                                >
-                                                    {assignee.image ? (
-                                                        <img src={assignee.image} alt="" className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        assignee.name?.charAt(0) || '?'
-                                                    )}
-                                                </div>
+                                                    className="h-5 w-5 border border-white"
+                                                    image={assignee.image}
+                                                    name={assignee.name || 'Unknown'}
+                                                    onlineCircleClass="hidden"
+                                                />
                                             ))}
                                         </div>
                                         <span className="truncate">{assignees.map((assignee) => assignee.name).join(', ')}</span>
