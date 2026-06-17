@@ -62,6 +62,10 @@ class AuthenticatedSessionController extends Controller
             'last_online' => now(),
         ])->save();
 
+        if ($request->session()->has('url.intended')) {
+            return Inertia::location($request->session()->pull('url.intended'));
+        }
+
         $roles = is_array($user->role) ? $user->role : [$user->role];
 
         if (in_array('student', $roles, true)) {

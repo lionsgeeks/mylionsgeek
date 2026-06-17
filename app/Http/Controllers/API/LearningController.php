@@ -8,7 +8,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Str;
 
 class LearningController extends Controller
@@ -16,7 +15,7 @@ class LearningController extends Controller
     public function redirectCode(): RedirectResponse
     {
         $code = $this->getCode();
-        return redirect()->guest(env("LEARNING_URL") . "/callback/" . $code);
+        return redirect(env('LEARNING_URL') . '/callback/' . $code);
     }
 
 
