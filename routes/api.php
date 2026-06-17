@@ -8,9 +8,10 @@ use App\Http\Controllers\PlacesController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SendClassController;
 use Illuminate\Http\Request;
 
-Route::post("/token", [LearningController::class, "handleToken"]);
+
 
 Route::get('/reservations/{id}', [ReservationController::class, 'show']);
 Route::get('/user', function (Request $request) {
@@ -41,6 +42,8 @@ Route::post('/reservations/store', [ReservationController::class, 'storemobile']
     ->name('reservations.store');
 
 Route::post('/cowork/reserve', [ReservationController::class, 'storeReservationCoworkMobile']);
+
+require __DIR__ . "/api/learning.php";
 
 Route::middleware('auth:sanctum')->prefix('mobile')->group(function () {
     require __DIR__ . '/api/profile.php';
