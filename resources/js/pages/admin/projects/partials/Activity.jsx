@@ -120,24 +120,26 @@ const Activity = ({ activities = [], onMarkAsRead, onMarkAllAsRead }) => {
                     filteredActivities.map((activity) => (
                         <div
                             key={activity.id}
-                            className={`flex gap-3 rounded-lg border p-4 ${!activity.read ? 'border-primary/20 bg-primary/5' : 'bg-card'}`}
+                            className={`flex gap-3 rounded-lg border p-4 transition-colors ${
+                                !activity.read ? 'border-alpha/30 bg-alpha/5' : 'bg-card/80'
+                            }`}
                         >
                             {/* <Avatar className="h-10 w-10 flex-shrink-0">
                                 <AvatarImage src={activity.user?.image ? `/storage/${activity.user.image}` : null} alt={activity.user?.name} />
                                 <AvatarFallback>{activity.user?.name?.substring(0, 2).toUpperCase() || '??'}</AvatarFallback>
                             </Avatar> */}
-                            <Avatar className="h-10 w-10" image={activity.user?.image} name={activity.user?.name} onlineCircleClass="hidden" />
-                            <div className="flex-1">
-                                <div className="flex flex-wrap items-baseline gap-1">
-                                    <span className="font-medium">{activity.user?.name || 'Unknown User'}</span>
+                            <Avatar className="h-10 w-10 shrink-0" image={activity.user?.image} name={activity.user?.name} onlineCircleClass="hidden" />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-2">
+                                    <span className="font-semibold text-foreground">{activity.user?.name || 'Unknown User'}</span>
                                     <span className="text-muted-foreground">{activity.action}</span>
                                     {activity.target && !activity.type.startsWith('github') && (
-                                        <span className="font-medium text-primary-foreground/80 dark:text-primary-foreground/90">
+                                        <span className="max-w-full break-words rounded-md border border-alpha/25 bg-alpha/10 px-2 py-0.5 text-sm font-medium text-foreground">
                                             {activity.target}
                                         </span>
                                     )}
                                     {activity.type.startsWith('github') && activity.target && (
-                                        <span className="flex items-center gap-1 font-medium text-primary-foreground/80 dark:text-primary-foreground/90">
+                                        <span className="flex max-w-full items-center gap-1 break-words rounded-md border border-alpha/25 bg-alpha/10 px-2 py-0.5 text-sm font-medium text-foreground">
                                             {activity.target}
                                             {getActivityIcon(activity.type)}
                                         </span>

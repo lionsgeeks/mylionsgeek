@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { AlertCircle, CheckCircle, Clock, Edit, Eye, MessageSquare, MoreHorizontal, Pin, PinOff, Plus, Search, Tag, Trash } from 'lucide-react';
@@ -89,6 +90,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
     const [taskToDelete, setTaskToDelete] = useState(null);
     const [sortCriteria, setSortCriteria] = useState('due_date'); // 'due_date', 'priority', 'status'
     const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
+    const [taskView, setTaskView] = useState('active');
 
     // Get flash messages from Inertia
     const { auth, flash } = usePage().props;
@@ -119,6 +121,35 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         canManageTasks ||
         String(normalizeAssigneeId(task?.assigned_to)) === String(currentUserId) ||
         String(task?.created_by || task?.creator?.id) === String(currentUserId);
+    const todayStart = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+    }, []);
+    const isTaskOverdue = (task) => {
+        if (!task?.due_date || task.status === 'completed') {
+            return false;
+        }
+
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+
+        return dueDate < todayStart;
+    };
+    const taskViewOptions = useMemo(
+        () => [
+            { value: 'active', label: 'Active', count: safeTasks.filter((task) => task.status !== 'completed').length },
+            { value: 'completed', label: 'Completed', count: safeTasks.filter((task) => task.status === 'completed').length },
+            { value: 'overdue', label: 'Overdue', count: safeTasks.filter(isTaskOverdue).length },
+            {
+                value: 'mine',
+                label: 'My Tasks',
+                count: safeTasks.filter((task) => getTaskAssigneeIds(task).includes(String(currentUserId))).length,
+            },
+            { value: 'all', label: 'All', count: safeTasks.length },
+        ],
+        [safeTasks, currentUserId],
+    );
 
     // Handle flash messages
     useEffect(() => {
@@ -167,6 +198,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                     if (!assigneeIds.includes(String(taskFilter.assignee))) return false;
                 }
             }
+            if (taskView === 'active' && task.status === 'completed') return false;
+            if (taskView === 'completed' && task.status !== 'completed') return false;
+            if (taskView === 'overdue' && !isTaskOverdue(task)) return false;
+            if (taskView === 'mine' && !getTaskAssigneeIds(task).includes(String(currentUserId))) return false;
             return true;
         });
 
@@ -192,7 +227,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
         });
 
         return filtered;
-    }, [safeTasks, searchTerm, taskFilter, sortCriteria, sortDirection]);
+    }, [safeTasks, searchTerm, taskFilter, taskView, currentUserId, sortCriteria, sortDirection]);
 
     const handleCreateTask = (e) => {
         e.preventDefault();
@@ -356,9 +391,10 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
 
     const getPriorityBadge = (priority) => {
         const priorityConfig = {
-            high: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
-            medium: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
             low: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300',
+            medium: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300',
+            high: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+            urgent: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
         };
 
         const safePriority = priority || 'medium';
@@ -414,6 +450,7 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                             <SelectItem value="low">Low</SelectItem>
                             <SelectItem value="medium">Medium</SelectItem>
                             <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -464,8 +501,19 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                 </Button>
             </div>
 
+            <Tabs value={taskView} onValueChange={setTaskView}>
+                <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-muted/60 p-1.5">
+                    {taskViewOptions.map((option) => (
+                        <TabsTrigger key={option.value} value={option.value} className="h-9 gap-2 px-3 text-sm">
+                            <span>{option.label}</span>
+                            <span className="rounded-full bg-background/80 px-2 py-0.5 text-xs text-muted-foreground">{option.count}</span>
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </Tabs>
+
             {/* Tasks Table */}
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-md bg-card/30">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -487,7 +535,12 @@ const Tasks = ({ tasks = [], teamMembers = [], projectId, isProjectOwner = false
                             </TableRow>
                         ) : (
                             filteredTasks.map((task) => (
-                                <TableRow key={task.id} className={`hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''}`}>
+                                <TableRow
+                                    key={task.id}
+                                    className={`hover:bg-muted/50 ${task.is_pinned ? 'bg-yellow-50 dark:bg-yellow-950/20' : ''} ${
+                                        task.status === 'completed' ? 'text-muted-foreground opacity-75' : ''
+                                    }`}
+                                >
                                     <TableCell className="w-[300px]">
                                         <div className="py-2">
                                             <div className="flex items-center gap-2">
