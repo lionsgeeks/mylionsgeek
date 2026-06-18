@@ -440,11 +440,11 @@ const TaskModal = ({
     const getPriorityColor = (priority) => {
         switch (priority) {
             case 'urgent':
-                return 'bg-red-500/20 text-red-400 border-red-500/30';
+                return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
             case 'high':
-                return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+                return 'bg-red-500/20 text-red-400 border-red-500/30';
             case 'medium':
-                return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+                return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
             case 'low':
                 return 'bg-green-500/20 text-green-400 border-green-500/30';
             default:
@@ -485,15 +485,15 @@ const TaskModal = ({
     const getPriorityBadgeClass = (priority) => {
         switch (priority) {
             case 'urgent':
-                return 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300';
             case 'high':
-                return 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300';
+                return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
             case 'medium':
-                return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+                return 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
             case 'low':
                 return 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300';
             default:
-                return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+                return 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300';
         }
     };
 

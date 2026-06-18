@@ -294,7 +294,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // learning routes
-    Route::middleware("auth")->get("/auth/learning",[LearningController::class, "redirectCode"]);
+    Route::middleware("auth")->get(env("CENTRAL_AUTH_ACADEMY"),[LearningController::class, "redirectCode"]);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

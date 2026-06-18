@@ -527,7 +527,7 @@ const ProjectShow = ({
                     </div>
 
                     {/* Right Sidebar */}
-                    <Sidebar todaysTasks={todaysTasks} />
+                    <Sidebar todaysTasks={todaysTasks} tasks={tasks} recentActivities={recentActivities} />
                 </div>
 
                 {/* Floating Chat */}

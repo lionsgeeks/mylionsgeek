@@ -40,40 +40,41 @@ class LearningController extends Controller
             return $token;
         }
 
-
+        
         $user = User::where("id", $cacheKey["user_id"])->first();
         Cache::delete($code);
         if ($user) {
-            $token = [
-                "central_id" => $user->id ?? 0,
-                "username" => $user->name ?? "",
-                "role"  => $user->role ?? [],
-                "promo" => $user->promo ?? "",
+            $token = [  
+                "central_id" => $user->id ?? null,
+                "name" => $user->name ?? "",
                 "email" => $user->email ?? "",
-
+                "avatar" => $user->image ?? "",
+                "promo" => $user->promo ?? "",
+                "field" => $user->field ?? "",
+                "roles"  => $user->role ?? [],
+                "status" => $user->status ?? "",
+                "formation_id" => $user->formation_id ?? null
             ];
         }
-
 
         return $token;
     }
 
     public function handleToken(Request $request)
     {
-        $code = $request->code;
-        $client_secret = $request->client_secret;
-        if (!$code || env("LEARNING_CLIENT_SECRET") !== $client_secret) {
+        $code = $request->header("code");
+        if (!$code) {
             return response()->json([
-                "status" => "error",
-                "message" => "unauthorized"
-            ], 401);
+                'error' => 'invalid_request',
+                'message' => 'Authorization code is required'
+            ], 400);
         }
 
         $token = $this->getToken($code);
         if ($token === []) {
             return response()->json([
-                "status" => "error",
-                "message" => "unauthorized"
+                'error' => 'invalid_grant',
+                'message' => 'Authorization code is invalid or expired'
             ], 401);
         }
 

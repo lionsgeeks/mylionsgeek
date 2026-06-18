@@ -8,14 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInitials } from '@/hooks/use-initials';
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
-    Bell,
     Calendar,
     CheckCircle,
     CheckSquare,
@@ -28,7 +26,6 @@ import {
     Plus,
     Search,
     Share2,
-    Star,
     Trash,
     UserPlus,
     Users,
@@ -38,7 +35,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import illustration from '../../../../../public/assets/images/banner/Organizing projects-pana.png';
 import AdvancedInviteModal from './components/AdvancedInviteModal';
 
-const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
+const ProjectsIndex = ({ projects, filters, flash, users = [] }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -264,15 +261,15 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
     const getStatusColor = useCallback((status) => {
         switch (status) {
             case 'active':
-                return 'bg-green-100 text-green-800';
+                return 'border-alpha/30 bg-alpha/15 text-foreground';
             case 'completed':
-                return 'bg-blue-100 text-blue-800';
+                return 'border-alpha bg-alpha text-black';
             case 'on_hold':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'border-border bg-muted text-muted-foreground';
             case 'cancelled':
-                return 'bg-red-100 text-red-800';
+                return 'border-border bg-background text-muted-foreground';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'border-border bg-muted text-muted-foreground';
         }
     }, []);
 
@@ -291,15 +288,36 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
         }
     }, []);
 
-    const chartData = useMemo(
-        () => [
-            { name: 'Active', value: stats.active, color: '#10b981' },
-            { name: 'Completed', value: stats.completed, color: '#3b82f6' },
-            { name: 'On Hold', value: stats.on_hold, color: '#f59e0b' },
-            { name: 'Cancelled', value: stats.cancelled, color: '#ef4444' },
-        ],
-        [stats],
-    );
+    const getProjectProgress = useCallback((project) => {
+        const tasks = project.tasks || [];
+
+        if (tasks.length > 0) {
+            const completedTasks = tasks.filter((task) => task.status === 'completed').length;
+            return Math.round((completedTasks / tasks.length) * 100);
+        }
+
+        return Number(project.progress_percentage || 0);
+    }, []);
+
+    const getProjectTaskStats = useCallback((project) => {
+        const tasks = project.tasks || [];
+
+        if (tasks.length === 0) {
+            return {
+                completed: 0,
+                active: Math.max(Number(project.tasks_count || 0), 0),
+                total: Number(project.tasks_count || 0),
+            };
+        }
+
+        const completed = tasks.filter((task) => task.status === 'completed').length;
+
+        return {
+            completed,
+            active: tasks.length - completed,
+            total: tasks.length,
+        };
+    }, []);
 
     return (
         <AppLayout>
@@ -348,30 +366,34 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
 
                 {/* Projects Grid - Compact Style */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {projects.data.map((project) => (
+                    {projects.data.map((project) => {
+                        const progress = getProjectProgress(project);
+                        const taskStats = getProjectTaskStats(project);
+
+                        return (
                         <div
                             key={project.id}
-                            className="group relative flex h-80 cursor-pointer flex-col rounded-lg border border-dark/10 bg-white transition-all duration-200 hover:border-[var(--color-alpha)] hover:shadow-lg dark:border-light/30 dark:bg-transparent dark:hover:border-[var(--color-alpha)] dark:hover:shadow-xl"
+                            className="group relative flex min-h-80 cursor-pointer flex-col overflow-hidden rounded-lg border bg-card transition-all duration-200 hover:border-alpha/70 hover:shadow-lg hover:shadow-alpha/10"
                             onClick={() => router.get(`/admin/projects/${project.id}`)}
                         >
                             {/* Project Header - Compact */}
-                            <div className="border-b border-gray-100 p-3 dark:border-gray-700">
+                            <div className="border-b bg-muted/20 p-4">
                                 <div className="mb-2 flex items-center justify-between">
-                                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    <div className="flex min-w-0 flex-1 items-center gap-3">
                                         {project.photo ? (
                                             <img
                                                 src={`/storage/${project.photo}`}
                                                 alt={project.name}
-                                                className="h-8 w-8 flex-shrink-0 rounded-lg object-cover"
+                                                className="h-11 w-11 flex-shrink-0 rounded-md border object-cover"
                                             />
                                         ) : (
-                                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[var(--color-alpha)] to-[var(--color-alpha)]/80">
-                                                <FolderOpen className="h-4 w-4 text-white" />
+                                            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md bg-alpha text-black">
+                                                <FolderOpen className="h-5 w-5" />
                                             </div>
                                         )}
                                         <div className="min-w-0 flex-1">
-                                            <h3 className="truncate text-sm font-semibold text-gray-900 dark:text-white">{project.name}</h3>
-                                            <p className="truncate text-xs text-gray-500 dark:text-gray-400">by {project.creator?.name}</p>
+                                            <h3 className="truncate text-base font-semibold text-foreground">{project.name}</h3>
+                                            <p className="truncate text-xs text-muted-foreground">by {project.creator?.name || 'Unknown'}</p>
                                         </div>
                                     </div>
 
@@ -380,9 +402,9 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-6 w-6 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+                                                className="h-8 w-8 p-0 opacity-0 transition-opacity group-hover:opacity-100"
                                             >
-                                                <MoreVertical className="h-3 w-3" />
+                                                <MoreVertical className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
@@ -419,14 +441,14 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <Badge className={`${getStatusColor(project.status)} flex items-center gap-1 px-2 py-1 text-xs`}>
+                                    <Badge variant="outline" className={`${getStatusColor(project.status)} flex items-center gap-1 px-2 py-1 text-xs`}>
                                         {getStatusIcon(project.status)}
                                         <span className="text-xs capitalize">{project.status.replace('_', ' ')}</span>
                                     </Badge>
-                                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <CheckSquare className="h-3 w-3" />
-                                            <span>{project.tasks_count}</span>
+                                            <span>{taskStats.total}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Users className="h-3 w-3" />
@@ -437,25 +459,31 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                             </div>
 
                             {/* Description - Fixed Height */}
-                            <div className="flex-1 p-3">
-                                <p className="line-clamp-5 overflow-hidden text-sm text-gray-600 dark:text-gray-300">
+                            <div className="flex-1 p-4">
+                                <p className="line-clamp-4 overflow-hidden text-sm leading-6 text-muted-foreground">
                                     {project.description || 'No description provided'}
                                 </p>
                             </div>
 
                             {/* Progress Section - Compact */}
-                            {project.tasks_count > 0 && (
-                                <div className="px-3 pb-2">
-                                    <div className="mb-1 flex items-center justify-between">
-                                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Progress</span>
-                                        <span className="text-xs font-semibold text-[var(--color-alpha)]">{project.progress_percentage || 0}%</span>
+                            {taskStats.total > 0 && (
+                                <div className="px-4 pb-4">
+                                    <div className="mb-2 flex items-center justify-between text-xs">
+                                        <span className="font-medium text-foreground">Progress</span>
+                                        <span className="font-semibold text-alpha">{progress}%</span>
                                     </div>
-                                    <Progress value={project.progress_percentage || 0} className="h-1" />
+                                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                        <div className="h-full rounded-full bg-alpha transition-all" style={{ width: `${progress}%` }} />
+                                    </div>
+                                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                                        <span>{taskStats.completed} completed</span>
+                                        <span>{taskStats.active} active</span>
+                                    </div>
                                 </div>
                             )}
 
                             {/* Footer - Fixed Height */}
-                            <div className="mt-auto border-t border-gray-100 p-3 dark:border-gray-700">
+                            <div className="mt-auto border-t p-4">
                                 <div className="mb-2 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="flex -space-x-1">
@@ -472,14 +500,14 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                                 <Avatar className="h-6 w-6" image={user.image} name={user.name} onlineCircleClass="hidden" />
                                             ))}
                                             {project.users_count > 3 && (
-                                                <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white bg-gray-100 text-xs font-medium dark:border-gray-800 dark:bg-gray-600">
+                                                <div className="flex h-6 w-6 items-center justify-center rounded-full border bg-muted text-xs font-medium">
                                                     +{project.users_count - 3}
                                                 </div>
                                             )}
                                         </div>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">{project.users_count} members</span>
+                                        <span className="text-xs text-muted-foreground">{project.users_count} members</span>
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                         <Calendar className="h-3 w-3" />
                                         <span>{new Date(project.created_at).toLocaleDateString()}</span>
                                     </div>
@@ -515,19 +543,16 @@ const ProjectsIndex = ({ projects, stats, filters, flash, users = [] }) => {
                                         </Button>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                            <Star className="h-3 w-3" />
-                                            <span>0</span>
-                                        </div>
-                                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                            <Bell className="h-3 w-3" />
-                                            <span>2</span>
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <CheckSquare className="h-3 w-3" />
+                                            <span>{taskStats.completed}/{taskStats.total}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {projects.data.length === 0 && (
