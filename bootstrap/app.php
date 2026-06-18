@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\UpdateLastOnline;
 use App\Http\Middleware\UpdateRolesUsers;
+use App\Http\Middleware\VerifyLearning;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(([
             'role' => RoleMiddleware::class,
             'organisation.onboarded' => EnsureOrganisationOnboarded::class,
+            "learning" => VerifyLearning::class,
         ]));
 
         $middleware->web(append: [
