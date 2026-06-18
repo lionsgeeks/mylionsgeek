@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { home } from '@/routes';
+// import { home } from '@/routes';
 import { Head, Link } from '@inertiajs/react';
 
 export default function NotFound({ message }) {
@@ -16,7 +16,7 @@ export default function NotFound({ message }) {
                     Go back
                 </Button>
                 <Button asChild variant="default">
-                    <Link href={home.url()}>Home</Link>
+                    <Link href='/'>Home</Link>
                 </Button>
             </div>
         </div>
