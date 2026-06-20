@@ -77,6 +77,10 @@ class TaskController extends Controller
             return;
         }
 
+        if (in_array($userId, $this->taskAssigneeIds($task), true)) {
+            return;
+        }
+
         abort(403, 'You can only edit tasks assigned to you.');
     }
 
@@ -128,6 +132,8 @@ class TaskController extends Controller
                 'status' => 'nullable|in:todo,in_progress,review,completed',
                 'project_id' => 'required|exists:projects,id',
                 'assigned_to' => 'nullable|exists:users,id',
+                'assignees' => 'nullable|array',
+                'assignees.*' => 'nullable|exists:users,id',
                 'due_date' => 'nullable|date',
                 'subtasks' => 'nullable|array',
                 'tags' => 'nullable|array',
@@ -140,8 +146,42 @@ class TaskController extends Controller
             $project = Project::findOrFail($request->project_id);
             $this->ensureProjectMember($project);
 
-            if (! $this->canManageProjectTasks($project, (int) Auth::id())) {
-                $data['assigned_to'] = (int) Auth::id();
+            $currentUserId = (int) Auth::id();
+            $canManageTasks = $this->canManageProjectTasks($project, $currentUserId);
+
+            if (! $canManageTasks) {
+                $data['assigned_to'] = $currentUserId;
+                if (($data['status'] ?? null) === 'completed') {
+                    $data['status'] = 'review';
+                }
+            }
+
+            $projectMemberIds = $project->users()
+                ->pluck('users.id')
+                ->push($project->created_by)
+                ->map(fn ($memberId) => (int) $memberId)
+                ->unique()
+                ->values();
+
+            $assignedTo = isset($data['assigned_to']) && $data['assigned_to'] !== ''
+                ? (int) $data['assigned_to']
+                : null;
+
+            if ($assignedTo && ! $projectMemberIds->contains($assignedTo)) {
+                return redirect()->back()
+                    ->with('error', 'Assigned user must be a project member.');
+            }
+
+            $assignees = collect($data['assignees'] ?? [])
+                ->map(fn ($assignee) => is_array($assignee) ? ($assignee['id'] ?? null) : $assignee)
+                ->filter()
+                ->map(fn ($assigneeId) => (int) $assigneeId)
+                ->unique()
+                ->values();
+
+            if ($assignees->diff($projectMemberIds)->isNotEmpty()) {
+                return redirect()->back()
+                    ->with('error', 'All task assignees must be project members.');
             }
 
             // Set default values
@@ -152,8 +192,11 @@ class TaskController extends Controller
             $data['is_editable'] = $data['is_editable'] ?? true;
             $data['subtasks'] = $data['subtasks'] ?? [];
             $data['tags'] = $data['tags'] ?? [];
-            $data['assigned_to'] = $data['assigned_to'] ?? null;
-            $data['assignees'] = $data['assignees'] ?? [];
+            $data['assigned_to'] = $assignedTo;
+            $data['assignees'] = $assignees
+                ->reject(fn ($assigneeId) => $assignedTo && $assigneeId === $assignedTo)
+                ->values()
+                ->all();
 
             // Temporarily disable foreign key checks for SQLite
             DB::statement('PRAGMA foreign_keys=OFF');
@@ -165,14 +208,19 @@ class TaskController extends Controller
 
             // Create notification if task is assigned to a user
             $assignedTo = $task->assigned_to ? (int) $task->assigned_to : null;
-            $currentUserId = (int) Auth::id();
-            if ($assignedTo) {
+            $notificationUserIds = collect([$assignedTo, ...($task->assignees ?? [])])
+                ->filter()
+                ->map(fn ($assigneeId) => (int) $assigneeId)
+                ->unique()
+                ->values();
+
+            foreach ($notificationUserIds as $notificationUserId) {
                 Log::info('Creating task assignment notification on create', [
                     'task_id' => $task->id,
-                    'assigned_to' => $assignedTo,
+                    'assigned_to' => $notificationUserId,
                     'assigned_by' => $currentUserId,
                 ]);
-                $this->createTaskAssignmentNotification($task, $assignedTo, $currentUserId);
+                $this->createTaskAssignmentNotification($task, $notificationUserId, $currentUserId);
             }
 
             // Update project last activity
@@ -227,6 +275,11 @@ class TaskController extends Controller
 
             if (array_key_exists('assigned_to', $data) && ! $this->canManageProjectTasks($task->project, (int) Auth::id())) {
                 unset($data['assigned_to']);
+            }
+
+            if (($data['status'] ?? null) === 'completed' && ! $this->canManageProjectTasks($task->project, (int) Auth::id())) {
+                return redirect()->back()
+                    ->with('error', 'Only project admins or the project owner can mark a task as completed.');
             }
 
             // Handle status changes
@@ -324,6 +377,10 @@ class TaskController extends Controller
             $request->validate([
                 'status' => 'required|in:todo,in_progress,review,completed',
             ]);
+
+            if ($request->status === 'completed' && ! $this->canManageProjectTasks($task->project, (int) Auth::id())) {
+                return back()->withErrors(['message' => 'Only project admins or the project owner can mark a task as completed.']);
+            }
 
             if ($request->status === 'completed') {
                 $subtasks = $task->subtasks ?? [];
